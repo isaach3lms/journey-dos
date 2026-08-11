@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}About | {{ brand.church_name }}{% endblock %}
+{% block body %}
+<section class="section forest">
+  <div class="wrap">
+    <p class="eyebrow">About</p>
+    <h1 style="max-width:18ch">{{ c.heading }}</h1>
+    <p style="max-width:52ch;color:rgba(242,240,231,.78)">{{ c.intro }}</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="narrow">
+    {% for paragraph in c.story %}<p>{{ paragraph }}</p>{% endfor %}
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <p class="eyebrow dark">The team</p>
+    <div class="grid three">
+      {% for member in c.team %}
+      <article class="card">
+        <h3>{{ member.name }}</h3>
+        <p class="muted" style="margin-bottom:.4rem">{{ member.role }}</p>
+        <p>{{ member.bio }}</p>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section forest">
+  <div class="wrap">
+    <p class="eyebrow">{{ c.values_heading }}</p>
+    <div class="values">{% for value in brand.core_values %}<span>{{ value }}</span>{% endfor %}</div>
+    <div style="margin-top:2rem"><a class="btn gold" href="{{ url_for('public.connect') }}">Get connected</a></div>
+  </div>
+</section>
+{% endblock %}

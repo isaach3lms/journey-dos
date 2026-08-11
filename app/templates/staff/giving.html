@@ -1,0 +1,55 @@
+{% extends "staff/_shell.html" %}
+{% block title %}Giving | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<h1 style="font-size:1.9rem">Giving</h1>
+<p class="muted">Gifts are processed in Tithely. This is the record the church reports on.</p>
+
+<form method="get" style="display:flex;gap:.6rem;margin:1rem 0 1.4rem;flex-wrap:wrap">
+  {% for value, label in [('30','Last 30 days'),('90','Last 90 days'),('365','Last year'),('all','All time')] %}
+    <a class="btn {{ 'forest' if window == value else 'ghost' }} small" href="{{ url_for('staff.giving', window=value) }}">{{ label }}</a>
+  {% endfor %}
+</form>
+
+<div class="stats">
+  <div class="stat"><div class="n">${{ '{:,.0f}'.format(t.total_cents / 100) }}</div><div class="l">Total</div></div>
+  <div class="stat"><div class="n">{{ t.gift_count }}</div><div class="l">Gifts</div></div>
+  <div class="stat"><div class="n">{{ t.donor_count }}</div><div class="l">Givers</div></div>
+  <div class="stat"><div class="n">${{ '{:,.0f}'.format(t.recurring_cents / 100) }}</div><div class="l">Recurring</div></div>
+</div>
+
+<div class="grid two">
+  <div>
+    <h3>By fund</h3>
+    <table>
+      <tr><th>Fund</th><th>Amount</th></tr>
+      {% for fund, cents in t.by_fund %}
+      <tr><td>{{ fund }}</td><td>${{ '{:,.2f}'.format(cents / 100) }}</td></tr>
+      {% else %}<tr><td colspan="2" class="muted">No gifts imported yet.</td></tr>{% endfor %}
+    </table>
+  </div>
+  <div class="card">
+    <h3>Import from Tithely</h3>
+    <p class="muted" style="font-size:.9rem">Tithely > Giving > Transactions. Filter a date range, then Export.
+      Re-importing an overlapping range is safe, duplicates are skipped by transaction id.</p>
+    <form method="post" enctype="multipart/form-data" class="form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label for="csv">CSV file</label><input type="file" id="csv" name="csv" accept=".csv" required></div>
+      <div><button class="btn gold small" type="submit">Import</button></div>
+    </form>
+  </div>
+</div>
+
+<h3 style="margin-top:1.8rem">Recent gifts</h3>
+<table>
+  <tr><th>Date</th><th>Giver</th><th>Fund</th><th>Method</th><th>Amount</th></tr>
+  {% for gift in t.records[:50] %}
+  <tr>
+    <td>{{ gift.given_at.strftime('%b %d, %Y') }}</td>
+    <td>{% if gift.person_id %}<a href="{{ url_for('staff.person', person_id=gift.person_id) }}">{{ gift.donor_name }}</a>{% else %}{{ gift.donor_name }} <span class="pill warn">unmatched</span>{% endif %}</td>
+    <td>{{ gift.fund }}</td>
+    <td>{{ gift.method }}{% if gift.is_recurring %} · recurring{% endif %}</td>
+    <td>${{ '{:,.2f}'.format(gift.amount) }}</td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="muted">Import a Tithely export to populate this.</td></tr>{% endfor %}
+</table>
+{% endblock %}

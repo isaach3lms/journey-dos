@@ -1,0 +1,37 @@
+{% extends "staff/_shell.html" %}
+{% block title %}Automations | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<h1 style="font-size:1.9rem">Automations</h1>
+<p class="muted">Follow up that runs whether or not anyone remembers. It stops the moment a person makes real contact.</p>
+
+<div class="grid two" style="margin:1.4rem 0">
+  {% for key, sequence in sequences.items() %}
+  <div class="card">
+    <h3>{{ sequence.name }}</h3>
+    <p class="muted" style="font-size:.9rem;margin-bottom:.6rem">
+      Starts when someone arrives via {{ sequence.trigger_source | join(' or ') }}.
+      Stops at {{ sequence.stop_at_stage }}.
+    </p>
+    <ul class="timeline">
+      {% for step in sequence.steps %}
+      <li><strong>{{ step.subject.replace('{first_name}', 'their name') }}</strong><div class="when">Day {{ step.delay_days }}</div></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+
+<h3>Who is in a sequence</h3>
+<table>
+  <tr><th>Person</th><th>Sequence</th><th>Progress</th><th>Status</th><th>Why it stopped</th></tr>
+  {% for item in enrollments %}
+  <tr>
+    <td><a href="{{ url_for('staff.person', person_id=item.person_id) }}">{{ item.person.full_name }}</a></td>
+    <td>{{ sequences[item.sequence_key].name if item.sequence_key in sequences else item.sequence_key }}</td>
+    <td>{{ item.last_step_sent + 1 }} of {{ sequences[item.sequence_key].steps | length if item.sequence_key in sequences else '?' }} sent</td>
+    <td><span class="pill {{ 'warn' if item.status == 'stopped' }}">{{ item.status }}</span></td>
+    <td class="muted">{{ item.stop_reason or '' }}</td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="muted">Nobody is enrolled yet. Enrollment happens the moment a form is submitted.</td></tr>{% endfor %}
+</table>
+{% endblock %}

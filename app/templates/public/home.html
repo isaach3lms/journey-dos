@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block body %}
+
+<section class="hero">
+  <svg class="trail" viewBox="0 0 200 600" fill="none" aria-hidden="true" preserveAspectRatio="none">
+    <path d="M150 -20 C 60 90, 190 180, 90 280 S 40 430, 140 520 S 120 610, 60 660"
+          stroke="{{ brand.colors.gold }}" stroke-width="16" stroke-linecap="round"/>
+  </svg>
+  <div class="wrap">
+    <p class="eyebrow">{{ c.hero_kicker }}</p>
+    <h1>{{ c.hero_line_1 }} <span class="accent">{{ c.hero_line_2 }}</span> {{ c.hero_line_3 }}</h1>
+    <p>{{ c.hero_sub }}</p>
+    <div class="actions">
+      {% for cta in c.hero_ctas %}
+        <a class="btn {{ cta.style }}" href="{{ cta.href }}">{{ cta.label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <p class="eyebrow dark">{{ c.mission_eyebrow }}</p>
+    <h2 style="max-width:24ch">{{ brand.mission }}</h2>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="grid three">
+      {% for step in c.next_steps %}
+      <article class="card">
+        <h3>{{ step.title }}</h3>
+        <p class="muted">{{ step.body }}</p>
+        <a class="btn forest small" href="{{ step.href }}">{{ step.cta }}</a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="section forest">
+  <div class="wrap">
+    <p class="eyebrow">{{ c.values_eyebrow }}</p>
+    <div class="values">
+      {% for value in brand.core_values %}<span>{{ value }}</span>{% endfor %}
+    </div>
+  </div>
+</section>
+
+{% endblock %}

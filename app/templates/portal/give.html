@@ -1,0 +1,13 @@
+{% extends "portal/_app_base.html" %}
+{% block title %}Give | {{ brand.church_name }}{% endblock %}
+{% block app_body %}
+<h1 style="font-size:2rem">{{ c.heading }}</h1>
+<p class="muted">{{ c.intro }}</p>
+<div class="embed" style="margin-top:1.2rem">
+  {% if give_url %}
+    <iframe src="{{ give_url }}" title="Give to {{ brand.church_name }}" loading="lazy"></iframe>
+  {% else %}
+    <div class="fallback"><h3>Giving is almost ready</h3><p class="muted">Add TITHELY_GIVE_URL to turn this on.</p></div>
+  {% endif %}
+</div>
+{% endblock %}

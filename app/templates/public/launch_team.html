@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Launch team | {{ brand.church_name }}{% endblock %}
+{% block body %}
+<section class="section forest">
+  <div class="wrap">
+    <p class="eyebrow">{{ brand.launch_line }}</p>
+    <h1>{{ c.heading }}</h1>
+    <p style="max-width:50ch;color:rgba(242,240,231,.78)">{{ c.intro }}</p>
+  </div>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="grid two">
+      <div>
+        <p class="eyebrow dark">What you are saying yes to</p>
+        <ul style="padding-left:1.1rem">
+          {% for item in c.commitments %}<li style="margin-bottom:.5rem">{{ item }}</li>{% endfor %}
+        </ul>
+        <p class="muted">{{ c.closing }}</p>
+      </div>
+      <div>
+        {% include "public/_intake_form.html" %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

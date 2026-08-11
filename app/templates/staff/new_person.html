@@ -1,0 +1,23 @@
+{% extends "staff/_shell.html" %}
+{% block title %}Add a person | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<p class="muted"><a href="{{ url_for('staff.people') }}">Back to people</a></p>
+<h1 style="font-size:1.9rem">Add a person</h1>
+<p class="muted">For people you met in a room instead of on a form.</p>
+
+<form method="post" class="form" style="margin-top:1.2rem">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <div class="field"><label for="first_name">First name</label><input type="text" id="first_name" name="first_name" required></div>
+    <div class="field"><label for="last_name">Last name</label><input type="text" id="last_name" name="last_name"></div>
+  </div>
+  <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+  <div class="field"><label for="phone">Phone</label><input type="tel" id="phone" name="phone"></div>
+  <div class="field">
+    <label for="stage_id">Starting stage</label>
+    <select id="stage_id" name="stage_id">{% for stage in stages %}<option value="{{ stage.id }}">{{ stage.name }}</option>{% endfor %}</select>
+  </div>
+  <div class="field"><label for="notes">Notes</label><textarea id="notes" name="notes"></textarea></div>
+  <div><button class="btn gold" type="submit">Add person</button></div>
+</form>
+{% endblock %}

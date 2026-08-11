@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block body %}
+<div style="min-height:60vh">
+  <section class="section" style="padding-bottom:1.5rem">
+    <div class="narrow">
+      <p class="eyebrow dark">{{ current_user.first_name }}</p>
+      {% block app_body %}{% endblock %}
+    </div>
+  </section>
+</div>
+<nav class="tabbar">
+  <a class="{{ 'on' if request.endpoint == 'portal.home' }}" href="{{ url_for('portal.home') }}">Home</a>
+  <a class="{{ 'on' if request.endpoint == 'portal.journey' }}" href="{{ url_for('portal.journey') }}">My journey</a>
+  <a class="{{ 'on' if request.endpoint == 'portal.give' }}" href="{{ url_for('portal.give') }}">Give</a>
+  <a href="{{ url_for('auth.logout') }}">Sign out</a>
+</nav>
+{% endblock %}

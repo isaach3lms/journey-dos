@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Set up your account | {{ brand.church_name }}{% endblock %}
+{% block body %}
+<section class="section">
+  <div class="narrow">
+    <p class="eyebrow dark">Your account</p>
+    <h1>Set up your account</h1>
+    <p class="muted">Use the email you gave us and pick a password. Your journey and giving live here.</p>
+    <form class="form" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="row">
+        <div class="field"><label for="first_name">First name</label><input type="text" id="first_name" name="first_name"></div>
+        <div class="field"><label for="last_name">Last name</label><input type="text" id="last_name" name="last_name"></div>
+      </div>
+      <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+      <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" required minlength="8"></div>
+      <div><button class="btn gold" type="submit">Create account</button></div>
+    </form>
+  </div>
+</section>
+{% endblock %}

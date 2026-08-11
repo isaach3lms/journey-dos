@@ -1,0 +1,79 @@
+services:
+  - type: web
+    name: journey-dos
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app
+    autoDeploy: true
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CHURCH_SLUG
+        value: journey
+      - key: SITE_URL
+        value: https://thejourneychurchsemo.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-db
+          property: connectionString
+      - key: TITHELY_GIVE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: website@thejourneychurchsemo.com
+      - key: NOTIFY_TO
+        sync: false
+
+  # Daily follow up. 9:00 am Central.
+  - type: cron
+    name: journey-automations
+    runtime: python
+    plan: starter
+    schedule: "0 14 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask --app wsgi run-automations
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: CHURCH_SLUG
+        value: journey
+      - key: SITE_URL
+        value: https://thejourneychurchsemo.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: website@thejourneychurchsemo.com
+
+  # Monday morning staff digest. 8:00 am Central.
+  - type: cron
+    name: journey-digest
+    runtime: python
+    plan: starter
+    schedule: "0 13 * * 1"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask --app wsgi send-digest
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: CHURCH_SLUG
+        value: journey
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-db
+          property: connectionString
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: website@thejourneychurchsemo.com
+      - key: NOTIFY_TO
+        sync: false
+
+databases:
+  - name: journey-db
+    plan: basic-256mb

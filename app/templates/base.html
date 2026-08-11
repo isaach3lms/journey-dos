@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{{ brand.church_name }}{% endblock %}</title>
+<meta name="description" content="{{ brand.mission }}">
+<meta name="theme-color" content="{{ brand.colors.forest }}">
+<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
+<link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family={{ brand.type.display }}:wght@{{ brand.type.display_weights }}&family={{ brand.type.body }}:wght@{{ brand.type.body_weights }}&display=swap" rel="stylesheet">
+<style>:root{ {{ brand_css }} }</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+{% block head %}{% endblock %}
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <a href="{{ url_for('public.home') }}" aria-label="{{ brand.church_name }} home">
+      <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="{{ brand.church_name }}">
+    </a>
+    <nav class="nav">
+      <a href="{{ url_for('public.about') }}">About</a>
+      <a href="{{ url_for('public.launch_team') }}">Launch team</a>
+      <a href="{{ url_for('public.give') }}">Give</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('portal.home') }}">My journey</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}">Sign in</a>
+      {% endif %}
+      <a class="btn gold small" href="{{ url_for('public.connect') }}">Get connected</a>
+    </nav>
+  </div>
+</header>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <div class="wrap" style="padding-top:1.2rem">
+      {% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% block body %}{% endblock %}
+
+<footer class="foot">
+  <div class="wrap">
+    <div style="max-width:34ch">
+      <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="" style="height:44px;margin-bottom:0.8rem">
+      <p style="margin:0">{{ footer.tagline if footer else brand.mission }}</p>
+    </div>
+    <div>
+      <a href="{{ brand.social.facebook }}">Facebook</a>
+      <a href="{{ brand.social.instagram }}">Instagram</a>
+      <a href="{{ brand.social.youtube }}">YouTube</a>
+      <p style="margin:0.8rem 0 0">{{ brand.city }}, {{ brand.state }}</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
+  });
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

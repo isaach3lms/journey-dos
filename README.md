@@ -241,6 +241,36 @@ python -m pytest
 rules, the delay schedule, honeypot and timing gates, CSV parsing and dedupe,
 and staff route access control.
 
+## Roles and getting yourself an account
+
+| Role | Sees | Counted in reports and audiences |
+|---|---|---|
+| `member` | The member app only | Yes |
+| `leader` | The member app only | Yes |
+| `staff` | Staff dashboard | Yes |
+| `admin` | Staff dashboard, can change other people's roles | Yes |
+| `support` | Staff dashboard, can change roles | **No** |
+
+`support` is the vendor account. A consultant who administers the system is not
+someone this church is trying to disciple, and letting that account sit in the
+people list quietly corrupts the headcount, the never contacted report, and every
+"everyone" announcement. Use `support` for yourself, `admin` for the lead pastor.
+
+Create or promote an account from the Render shell:
+
+```bash
+flask --app wsgi grant-access you@example.com --role support --first Dennis --last Hering
+flask --app wsgi grant-access pastor@thejourneychurchsemo.com --role admin
+```
+
+It prints a single use link that expires in 48 hours. No password is set or
+printed by this command, which means nothing sensitive ends up in shell history
+or a deploy log. Run it again any time to change a role or reissue a link.
+
+Once one admin exists, roles can be changed from Staff > People > the person >
+Access level. Admins cannot demote themselves, so the last admin account cannot
+be locked out by accident.
+
 ## Accounts
 
 A person record existing in the database is not proof that whoever is typing is

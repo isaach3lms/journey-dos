@@ -349,9 +349,9 @@ class Announcement(db.Model):
 
 def audience_query(church_id: int, audience: str):
     """Resolve an audience key to a list of Person records."""
-    from .models import Person, Stage
+    from .models import Person, Stage, congregation
 
-    base = Person.query.filter_by(church_id=church_id, is_active_record=True)
+    base = congregation(church_id)
 
     if audience == "launch_team":
         stage = Stage.query.filter_by(church_id=church_id, name="Launch team").first()

@@ -31,6 +31,29 @@
   </div>
 
   <div class="card">
+    <h3>Access level</h3>
+    <p class="muted" style="font-size:.9rem">
+      Currently <strong>{{ p.role }}</strong>.
+      Staff and admin see the dashboard. Support is the vendor account and is
+      hidden from every count and audience.
+    </p>
+    {% if current_user.is_admin and p.id != current_user.id %}
+    <form method="post" style="display:flex;gap:.6rem;align-items:flex-end">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="role">
+      <select name="role" style="padding:.55rem .7rem;border-radius:9px;border:1px solid rgba(47,62,36,.25)">
+        {% for role in roles %}<option value="{{ role }}" {{ 'selected' if p.role == role }}>{{ role }}</option>{% endfor %}
+      </select>
+      <button class="btn forest small" type="submit">Update</button>
+    </form>
+    {% else %}
+    <p class="muted" style="font-size:.86rem;margin:0">
+      {% if p.id == current_user.id %}Change your own access from another admin account.{% else %}Only an admin can change this.{% endif %}
+    </p>
+    {% endif %}
+  </div>
+
+  <div class="card">
     <h3>Member app access</h3>
     <p class="muted" style="font-size:.9rem">
       {% if p.password_hash %}This person has an account.{% else %}No account yet.{% endif %}

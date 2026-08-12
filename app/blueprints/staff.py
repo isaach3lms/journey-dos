@@ -14,6 +14,7 @@ from ..models import (
     Interaction,
     Person,
     Stage,
+    congregation,
     giving_totals,
     stage_summary,
 )
@@ -38,7 +39,7 @@ def staff_only(view):
 def dashboard():
     church_id = current_user.church_id
     summary = stage_summary(church_id)
-    people = Person.query.filter_by(church_id=church_id, is_active_record=True).all()
+    people = congregation(church_id).all()
     stuck = sorted(
         [p for p in people if p.is_stuck], key=lambda p: p.days_in_stage, reverse=True
     )
@@ -58,7 +59,7 @@ def dashboard():
 @staff_only
 def people():
     church_id = current_user.church_id
-    query = Person.query.filter_by(church_id=church_id, is_active_record=True)
+    query = congregation(church_id)
 
     stage_id = request.args.get("stage", type=int)
     if stage_id:
@@ -103,6 +104,19 @@ def person(person_id: int):
             ).first_or_404()
             record.move_to_stage(target, actor=current_user, note=request.form.get("note", ""))
             flash(f"Moved to {target.name}.", "success")
+        elif action == "role":
+            if not current_user.is_admin:
+                flash("Only an admin can change access.", "error")
+            elif record.id == current_user.id:
+                # Nobody demotes themselves out of the only admin account by
+                # accident on a Saturday night.
+                flash("Change your own access from another admin account.", "error")
+            else:
+                new_role = request.form.get("role")
+                if new_role in Person.ROLES:
+                    record.role = new_role
+                    flash(f"{record.first_name} is now {new_role}.", "success")
+
         elif action == "invite":
             from .auth import _send_link
 
@@ -129,6 +143,7 @@ def person(person_id: int):
         p=record,
         stages=stages,
         kinds=Interaction.KINDS,
+        roles=Person.ROLES,
         gifts=gifts,
         gift_total=sum(g.amount_cents for g in gifts) / 100.0,
         sequences=SEQUENCES,

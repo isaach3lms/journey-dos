@@ -1,5 +1,6 @@
 import os
 
+import click
 from flask import Flask, render_template, request
 
 from .brand import BRAND, css_variables
@@ -99,6 +100,53 @@ def create_app() -> Flask:
         db.create_all()
         seed()
         print("Database ready.")
+
+    @app.cli.command("grant-access")
+    @click.argument("email")
+    @click.option(
+        "--role",
+        default="admin",
+        type=click.Choice(["member", "leader", "staff", "admin", "support"]),
+        help="support is the vendor account, hidden from all congregation reports.",
+    )
+    @click.option("--first", default="", help="First name, for a new record.")
+    @click.option("--last", default="", help="Last name, for a new record.")
+    def grant_access(email, role, first, last):
+        """Create or promote an account and print a one time set password link.
+
+        No password is set here and none is printed. The link is single use and
+        expires in 48 hours, same as every other account link in the system.
+        """
+        from .models import Church, Person, issue_token
+
+        email = email.strip().lower()
+        church = Church.query.filter_by(slug=app.config["CHURCH_SLUG"]).first()
+        if not church:
+            print("No church found. Run init-db first.")
+            return
+
+        person = Person.query.filter_by(church_id=church.id, email=email).first()
+        if person:
+            was = person.role
+            person.role = role
+            print(f"Updated {person.full_name}: {was} to {role}")
+        else:
+            person = Person(
+                church_id=church.id,
+                first_name=first or email.split("@")[0],
+                last_name=last,
+                email=email,
+                role=role,
+                source="granted by CLI",
+            )
+            db.session.add(person)
+            db.session.flush()
+            print(f"Created {person.full_name} as {role}")
+
+        raw, _ = issue_token(person, "reset" if person.password_hash else "claim")
+        db.session.commit()
+        base = (app.config.get("SITE_URL") or "").rstrip("/")
+        print(f"\nSet a password here, once, within 48 hours:\n{base}/account/set-password/{raw}\n")
 
     @app.cli.command("run-automations")
     def run_automations():

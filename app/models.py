@@ -61,7 +61,13 @@ class Person(db.Model, UserMixin):
         Index("ix_person_stage", "church_id", "stage_id"),
     )
 
-    ROLES = ("member", "leader", "staff", "admin")
+    # "support" is the vendor account: full staff access, invisible to every
+    # congregation report and audience. A consultant who administers the system
+    # is not a person this church is trying to disciple, and letting them sit
+    # in the people count quietly corrupts every number on the dashboard.
+    ROLES = ("member", "leader", "staff", "admin", "support")
+    STAFF_ROLES = ("staff", "admin", "support")
+    HIDDEN_ROLES = ("support",)
 
     id = db.Column(db.Integer, primary_key=True)
     church_id = db.Column(db.Integer, db.ForeignKey("churches.id"), nullable=False, index=True)
@@ -119,7 +125,15 @@ class Person(db.Model, UserMixin):
 
     @property
     def is_staff(self) -> bool:
-        return self.role in ("staff", "admin")
+        return self.role in self.STAFF_ROLES
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role in ("admin", "support")
+
+    @property
+    def is_hidden(self) -> bool:
+        return self.role in self.HIDDEN_ROLES
 
     # --- journey --------------------------------------------------------
     @property
@@ -284,6 +298,17 @@ def giving_totals(church_id: int, since=None):
     }
 
 
+def congregation(church_id: int):
+    """Everyone this church is actually trying to know and disciple. Use this
+    for counts, reports, audiences, and pickers. Never use a bare Person query
+    for those, or vendor accounts leak into the numbers."""
+    return Person.query.filter(
+        Person.church_id == church_id,
+        Person.is_active_record.is_(True),
+        Person.role.notin_(Person.HIDDEN_ROLES),
+    )
+
+
 def stage_summary(church_id: int):
     """Counts and stuck counts per stage. Drives the journey rail."""
     stages = (
@@ -291,9 +316,7 @@ def stage_summary(church_id: int):
     )
     out = []
     for stage in stages:
-        people = Person.query.filter_by(
-            church_id=church_id, stage_id=stage.id, is_active_record=True
-        ).all()
+        people = congregation(church_id).filter(Person.stage_id == stage.id).all()
         cutoff = utcnow() - timedelta(days=stage.stuck_after_days)
         stuck = [p for p in people if p.stage_since < cutoff]
         out.append({"stage": stage, "count": len(people), "stuck": len(stuck)})

@@ -13,7 +13,7 @@ from flask import current_app
 from .brand import BRAND
 from .emails import send_email
 from .extensions import db, utcnow
-from .models import Enrollment, Interaction, Person, Stage
+from .models import Enrollment, Interaction, Person, Stage, congregation
 from .sequences import SEQUENCES, render, sequence_for_source
 
 
@@ -158,7 +158,7 @@ def run_sequences(site_url: str = None) -> dict:
 def staff_digest(church_id: int, to: str) -> bool:
     """The weekly email that makes the product's promise visible: here is who
     stopped moving, and here is who nobody has talked to."""
-    people = Person.query.filter_by(church_id=church_id, is_active_record=True).all()
+    people = congregation(church_id).all()
     stuck = sorted([p for p in people if p.is_stuck], key=lambda p: p.days_in_stage, reverse=True)
     cold = [p for p in people if p.last_contact_at is None]
     new_this_week = [p for p in people if (utcnow() - p.created_at).days <= 7]

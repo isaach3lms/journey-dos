@@ -32,7 +32,7 @@ from ..ministry import (
     TeamMembership,
     audience_query,
 )
-from ..models import Church, Person, Stage
+from ..models import Church, Person, Stage, congregation
 from .staff import staff_only
 
 bp = Blueprint("ministry", __name__, url_prefix="/staff")
@@ -232,9 +232,7 @@ def service_detail(service_id: int):
 
     teams = Team.query.filter_by(church_id=service.church_id).order_by(Team.name).all()
     people = (
-        Person.query.filter_by(church_id=service.church_id, is_active_record=True)
-        .order_by(Person.first_name)
-        .all()
+        congregation(service.church_id).order_by(Person.first_name).all()
     )
     return render_template(
         "staff/service_detail.html",
@@ -306,9 +304,7 @@ def teams():
     return render_template(
         "staff/teams.html",
         teams=Team.query.filter_by(church_id=church_id).order_by(Team.name).all(),
-        people=Person.query.filter_by(church_id=church_id, is_active_record=True)
-        .order_by(Person.first_name)
-        .all(),
+        people=congregation(church_id).order_by(Person.first_name).all(),
     )
 
 
@@ -444,9 +440,7 @@ def groups():
     return render_template(
         "staff/groups.html",
         groups=Group.query.filter_by(church_id=church_id).order_by(Group.name).all(),
-        people=Person.query.filter_by(church_id=church_id, is_active_record=True)
-        .order_by(Person.first_name)
-        .all(),
+        people=congregation(church_id).order_by(Person.first_name).all(),
         days=DAYS,
     )
 

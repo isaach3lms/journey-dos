@@ -202,3 +202,84 @@ def test_next_cannot_send_someone_off_site(app, client):
     )
     assert "evil.example.com" not in response.headers["Location"]
     assert "/app/" in response.headers["Location"]
+
+
+# --- roles and vendor access ------------------------------------------------
+
+
+def a_staffer(email="pastor@example.com", role="admin", password="original-password"):
+    stage = Stage.query.order_by(Stage.position).first()
+    person = Person(
+        church_id=stage.church_id,
+        first_name="Pat",
+        last_name="Grissom",
+        email=email,
+        role=role,
+        source="seed",
+    )
+    person.set_password(password)
+    db.session.add(person)
+    db.session.commit()
+    return person
+
+
+def test_support_account_is_invisible_to_the_congregation(app, client):
+    """A consultant administering the system is not someone this church is
+    trying to disciple. They must not appear in any count or audience."""
+    from app.ministry import audience_query
+    from app.models import congregation
+
+    a_person()  # a real member
+    vendor = a_staffer(email="dennis@example.com", role="support")
+
+    ids = {p.id for p in congregation(vendor.church_id).all()}
+    assert vendor.id not in ids
+    assert vendor.id not in {p.id for p in audience_query(vendor.church_id, "everyone")}
+
+    client.post("/account/login", data={"email": "dennis@example.com", "password": "original-password"})
+    dashboard = client.get("/staff/")
+    assert dashboard.status_code == 200  # full access
+    assert b"Dennis" not in dashboard.data  # but not in the people list
+
+
+def test_support_has_staff_access(app):
+    vendor = a_staffer(role="support")
+    assert vendor.is_staff is True
+    assert vendor.is_admin is True
+
+
+def test_only_an_admin_can_change_access(app, client):
+    a_staffer(email="admin@example.com", role="admin")
+    target = a_person()
+    a_staffer(email="volunteer@example.com", role="staff")
+
+    client.post("/account/login", data={"email": "volunteer@example.com", "password": "original-password"})
+    client.post(
+        f"/staff/people/{target.id}",
+        data={"action": "role", "role": "admin"},
+        follow_redirects=True,
+    )
+    db.session.refresh(target)
+    assert target.role == "member"  # a staffer cannot promote anyone
+
+    client.get("/account/logout")
+    client.post("/account/login", data={"email": "admin@example.com", "password": "original-password"})
+    client.post(
+        f"/staff/people/{target.id}",
+        data={"action": "role", "role": "staff"},
+        follow_redirects=True,
+    )
+    db.session.refresh(target)
+    assert target.role == "staff"
+
+
+def test_an_admin_cannot_demote_themselves(app, client):
+    admin = a_staffer(email="admin@example.com", role="admin")
+    client.post("/account/login", data={"email": "admin@example.com", "password": "original-password"})
+    client.post(
+        f"/staff/people/{admin.id}",
+        data={"action": "role", "role": "member"},
+        follow_redirects=True,
+    )
+    db.session.refresh(admin)
+    assert admin.role == "admin"

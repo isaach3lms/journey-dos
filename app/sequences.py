@@ -78,7 +78,8 @@ SEQUENCES = {
                     "<p>{first_name},</p>"
                     "<p>You are in. A pastor will call you this week to talk through which "
                     "team fits you: setup, kids, worship, hospitality, or tech.</p>"
-                    "<p>Set up your account so you can see where you are and what is next: "
+                    "<p>Set up your account so you can see where you are and what is next. "
+                    "Ask for your sign in link here: "
                     "<a href=\"{site_url}/account/claim\">{site_url}/account/claim</a></p>"
                 ),
             },

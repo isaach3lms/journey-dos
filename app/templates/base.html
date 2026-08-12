@@ -20,19 +20,17 @@
 
 <header class="masthead">
   <div class="wrap">
-    <a href="{{ url_for('public.home') }}" aria-label="{{ brand.church_name }} home">
+    <a href="{{ config.PUBLIC_SITE_URL }}" aria-label="{{ brand.church_name }} website">
       <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="{{ brand.church_name }}">
     </a>
     <nav class="nav">
-      <a href="{{ url_for('public.about') }}">About</a>
-      <a href="{{ url_for('public.launch_team') }}">Launch team</a>
-      <a href="{{ url_for('public.give') }}">Give</a>
+      <a href="{{ config.PUBLIC_SITE_URL }}">Church website</a>
       {% if current_user.is_authenticated %}
         <a href="{{ url_for('portal.home') }}">My journey</a>
+        <a class="btn gold small" href="{{ url_for('auth.logout') }}">Sign out</a>
       {% else %}
-        <a href="{{ url_for('auth.login') }}">Sign in</a>
+        <a class="btn gold small" href="{{ url_for('auth.login') }}">Sign in</a>
       {% endif %}
-      <a class="btn gold small" href="{{ url_for('public.connect') }}">Get connected</a>
     </nav>
   </div>
 </header>
@@ -51,12 +49,11 @@
   <div class="wrap">
     <div style="max-width:34ch">
       <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="" style="height:44px;margin-bottom:0.8rem">
-      <p style="margin:0">{{ footer.tagline if footer else brand.mission }}</p>
+      <p style="margin:0">{{ brand.mission }}</p>
     </div>
     <div>
-      <a href="{{ brand.social.facebook }}">Facebook</a>
+      <a href="{{ config.PUBLIC_SITE_URL }}">Church website</a>
       <a href="{{ brand.social.instagram }}">Instagram</a>
-      <a href="{{ brand.social.youtube }}">YouTube</a>
       <p style="margin:0.8rem 0 0">{{ brand.city }}, {{ brand.state }}</p>
     </div>
   </div>

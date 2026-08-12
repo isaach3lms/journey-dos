@@ -5,6 +5,8 @@ Every table carries church_id from day one. This instance serves one church,
 but the schema is multi-tenant so church number two is a row, not a migration.
 """
 
+import hashlib
+import secrets
 from datetime import timedelta
 
 from flask_login import UserMixin
@@ -296,3 +298,67 @@ def stage_summary(church_id: int):
         stuck = [p for p in people if p.stage_since < cutoff]
         out.append({"stage": stage, "count": len(people), "stuck": len(stuck)})
     return out
+
+
+class AccessToken(db.Model):
+    """One time links for claiming an account and resetting a password.
+
+    Only the hash is stored. If the database leaks, the links in it are dead.
+    """
+
+    __tablename__ = "access_tokens"
+
+    PURPOSES = ("claim", "reset")
+
+    id = db.Column(db.Integer, primary_key=True)
+    church_id = db.Column(db.Integer, db.ForeignKey("churches.id"), nullable=False, index=True)
+    person_id = db.Column(db.Integer, db.ForeignKey("people.id"), nullable=False, index=True)
+    purpose = db.Column(db.String(20), default="claim", nullable=False)
+    token_hash = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    expires_at = db.Column(UTCDateTime, nullable=False)
+    used_at = db.Column(UTCDateTime)
+    created_at = db.Column(UTCDateTime, default=utcnow, nullable=False)
+
+    person = db.relationship("Person")
+
+    @property
+    def is_valid(self) -> bool:
+        return self.used_at is None and self.expires_at > utcnow()
+
+
+def hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def issue_token(person, purpose: str = "claim", hours: int = 48):
+    """Create a single use link token. Returns (raw_token, record). The raw
+    value is never stored and never logged, so it exists only in the email."""
+    raw = secrets.token_urlsafe(32)
+    # Any older unused token for the same purpose is retired, so a forwarded
+    # email from last week cannot be used after a new link is requested.
+    for stale in AccessToken.query.filter_by(
+        church_id=person.church_id, person_id=person.id, purpose=purpose, used_at=None
+    ).all():
+        stale.used_at = utcnow()
+
+    record = AccessToken(
+        church_id=person.church_id,
+        person_id=person.id,
+        purpose=purpose,
+        token_hash=hash_token(raw),
+        expires_at=utcnow() + timedelta(hours=hours),
+    )
+    db.session.add(record)
+    return raw, record
+
+
+def consume_token(raw: str, purpose: str):
+    """Return the person a valid token belongs to, or None. The token is spent
+    on success, so a link works exactly once."""
+    if not raw:
+        return None
+    record = AccessToken.query.filter_by(token_hash=hash_token(raw), purpose=purpose).first()
+    if not record or not record.is_valid:
+        return None
+    record.used_at = utcnow()
+    return record.person

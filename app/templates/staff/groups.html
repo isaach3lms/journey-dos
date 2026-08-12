@@ -1,0 +1,71 @@
+{% extends "staff/_shell.html" %}
+{% block title %}Groups | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<h1 style="font-size:1.9rem">Groups</h1>
+<p class="muted">Open groups appear in the member app and people join themselves. Closed groups are invitation only.</p>
+
+<div class="card" style="margin:1.2rem 0">
+  <h3>Start a group</h3>
+  <form method="post" class="form" style="max-width:none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="create">
+    <div class="row">
+      <div class="field"><label for="name">Name</label><input type="text" id="name" name="name" required></div>
+      <div class="field"><label for="location">Location</label><input type="text" id="location" name="location" placeholder="The Webb home, Jackson"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="day_of_week">Day</label>
+        <select id="day_of_week" name="day_of_week">{% for day in days %}<option {{ 'selected' if day == 'Wednesday' }}>{{ day }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="meeting_time">Time</label><input type="text" id="meeting_time" name="meeting_time" value="6:30 pm"></div>
+    </div>
+    <div class="row">
+      <div class="field"><label for="leader_id">Leader</label>
+        <select id="leader_id" name="leader_id"><option value="">Not assigned</option>{% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}</select></div>
+      <div class="field"><label for="capacity">Capacity</label><input type="number" id="capacity" name="capacity" value="12" min="2" max="60"></div>
+    </div>
+    <div class="field"><label for="description">Description</label><textarea id="description" name="description"></textarea></div>
+    <div><button class="btn gold small" type="submit">Create group</button></div>
+  </form>
+</div>
+
+{% for group in groups %}
+<div class="card" style="margin-bottom:1rem">
+  <h3>{{ group.name }}
+    <span class="pill {{ 'warn' if not group.is_open }}">{{ 'open' if group.is_open else 'closed' }}</span>
+  </h3>
+  <p class="muted" style="margin-bottom:.5rem">
+    {{ group.day_of_week }}s at {{ group.meeting_time }}{% if group.location %} · {{ group.location }}{% endif %}
+    {% if group.leader %} · led by {{ group.leader.full_name }}{% endif %}
+    · {{ group.member_count }} of {{ group.capacity }}
+  </p>
+  {% if group.description %}<p style="font-size:.92rem">{{ group.description }}</p>{% endif %}
+
+  <table>
+    <tr><th>Member</th><th>Joined</th><th></th></tr>
+    {% for membership in group.memberships if membership.status == 'joined' %}
+    <tr>
+      <td><a href="{{ url_for('staff.person', person_id=membership.person_id) }}">{{ membership.person.full_name }}</a></td>
+      <td class="muted">{{ membership.joined_at.strftime('%b %-d') }}</td>
+      <td>
+        <form method="post">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="remove_member">
+          <input type="hidden" name="membership_id" value="{{ membership.id }}">
+          <button class="btn ghost small" style="padding:.2rem .5rem">×</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}<tr><td colspan="3" class="muted">Nobody has joined yet.</td></tr>{% endfor %}
+  </table>
+
+  <form method="post" style="margin-top:.8rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="toggle">
+    <input type="hidden" name="group_id" value="{{ group.id }}">
+    <button class="btn ghost small">{{ 'Close signups' if group.is_open else 'Open signups' }}</button>
+  </form>
+</div>
+{% else %}
+<p class="muted">No groups yet.</p>
+{% endfor %}
+{% endblock %}

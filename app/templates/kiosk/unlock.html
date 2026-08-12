@@ -1,0 +1,12 @@
+{% extends "kiosk/_base.html" %}
+{% block main %}
+<h1>Kiosk locked</h1>
+<p class="k-muted">Enter the kiosk PIN to put this tablet into check in mode.</p>
+<div class="k-card">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input class="k-input" type="password" name="pin" inputmode="numeric" autocomplete="off" autofocus>
+    <button class="k-btn wide" style="margin-top:1rem" type="submit">Unlock</button>
+  </form>
+</div>
+{% endblock %}

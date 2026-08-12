@@ -1,0 +1,43 @@
+{% extends "kiosk/_base.html" %}
+{% block main %}
+<h1>Kids check in</h1>
+<p class="k-muted">
+  {% if service %}{{ service.name }} · {{ service.local_start(tzname).strftime('%A, %B %-d') }}{% else %}No service scheduled. Check ins will not be counted toward attendance.{% endif %}
+</p>
+
+<div class="k-card">
+  <h2>Enter the last 4 digits of your phone</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="lookup">
+    <input class="k-input" type="tel" name="phone" inputmode="numeric" maxlength="14" autofocus>
+    <button class="k-btn wide" style="margin-top:1rem" type="submit">Find my family</button>
+  </form>
+</div>
+
+{% for household in households %}
+<div class="k-card">
+  <h2>{{ household.name }}</h2>
+  <form method="post" action="{{ url_for('kiosk.check_in', household_id=household.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% for child in household.children if child.is_active_record %}
+    <label class="k-child">
+      <input type="checkbox" name="child_id" value="{{ child.id }}" checked>
+      <span><strong>{{ child.full_name }}</strong><br><span class="k-muted">{{ child.room }}{% if child.age is not none %} · {{ child.age }} years old{% endif %}</span></span>
+      {% if child.allergies %}<span class="alert">{{ child.allergies }}</span>{% endif %}
+    </label>
+    {% else %}
+    <p class="k-muted">No children on this household yet. See a kids volunteer.</p>
+    {% endfor %}
+    <button class="k-btn wide" style="margin-top:.6rem" type="submit">Check in</button>
+  </form>
+</div>
+{% endfor %}
+
+{% if searched and not households %}
+<div class="k-card">
+  <h2>We could not find that number</h2>
+  <p class="k-muted">See a kids volunteer and they will get you added in under a minute.</p>
+</div>
+{% endif %}
+{% endblock %}

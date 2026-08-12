@@ -1,0 +1,49 @@
+{% extends "staff/_shell.html" %}
+{% block title %}Services | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<h1 style="font-size:1.9rem">Services</h1>
+<p class="muted">Plan the run sheet, schedule the volunteers, record what actually happened.</p>
+
+<div class="card" style="margin:1.2rem 0">
+  <h3>Schedule a service</h3>
+  <form method="post" class="form" style="max-width:none">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="row">
+      <div class="field"><label for="name">Name</label><input type="text" id="name" name="name" value="Sunday Gathering"></div>
+      <div class="field"><label for="date">Date</label><input type="date" id="date" name="date" value="{{ suggested_date }}" required></div>
+    </div>
+    <div class="field" style="max-width:220px"><label for="time">Start time</label><input type="time" id="time" name="time" value="10:00" required></div>
+    <div><button class="btn gold small" type="submit">Create with a standard run sheet</button></div>
+  </form>
+</div>
+
+<h3>Upcoming</h3>
+<table>
+  <tr><th>Service</th><th>When</th><th>Length</th><th>Scheduled</th><th>Unconfirmed</th></tr>
+  {% for service in upcoming %}
+  {% set unconfirmed = service.assignments | selectattr('status', 'equalto', 'invited') | list | length %}
+  <tr>
+    <td><a href="{{ url_for('ministry.service_detail', service_id=service.id) }}">{{ service.name }}</a></td>
+    <td>{{ service.local_start(tzname).strftime('%a, %b %-d at %-I:%M %p') }}</td>
+    <td>{{ service.total_minutes }} min</td>
+    <td>{{ service.assignments | length }}</td>
+    <td>{% if unconfirmed %}<span class="pill warn">{{ unconfirmed }}</span>{% else %}<span class="pill">all set</span>{% endif %}</td>
+  </tr>
+  {% else %}<tr><td colspan="5" class="muted">Nothing on the calendar yet.</td></tr>{% endfor %}
+</table>
+
+{% if past %}
+<h3 style="margin-top:1.8rem">Past</h3>
+<table>
+  <tr><th>Service</th><th>When</th><th>Adults</th><th>Kids</th></tr>
+  {% for service in past %}
+  <tr>
+    <td><a href="{{ url_for('ministry.service_detail', service_id=service.id) }}">{{ service.name }}</a></td>
+    <td>{{ service.local_start(tzname).strftime('%b %-d, %Y') }}</td>
+    <td>{{ service.headcount if service.headcount is not none else '—' }}</td>
+    <td>{{ service.kids_count if service.kids_count is not none else '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% endblock %}

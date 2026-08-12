@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Slow down | {{ brand.church_name }}{% endblock %}
+{% block body %}
+<section class="section">
+  <div class="narrow">
+    <p class="eyebrow dark">Hold on</p>
+    <h1>Too many attempts</h1>
+    <p class="muted">Too many tries from this connection. Wait about fifteen minutes and try again. If you are locked out of your own account, ask for a fresh link instead of guessing.</p>
+    <a class="btn gold" href="{{ url_for('auth.claim') }}">Send me a link</a>
+  </div>
+</section>
+{% endblock %}

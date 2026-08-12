@@ -11,7 +11,10 @@
       <div class="field"><label for="password">Password</label><input type="password" id="password" name="password" required></div>
       <div><button class="btn forest" type="submit">Sign in</button></div>
     </form>
-    <p class="muted" style="margin-top:1.2rem">First time here? <a href="{{ url_for('auth.claim') }}">Set up your account</a>.</p>
+    <p class="muted" style="margin-top:1.2rem">
+      First time here, or forgot your password?
+      <a href="{{ url_for('auth.claim') }}">Get a sign in link</a>.
+    </p>
   </div>
 </section>
 {% endblock %}

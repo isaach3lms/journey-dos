@@ -17,8 +17,15 @@ from .models import Enrollment, Interaction, Person, Stage
 from .sequences import SEQUENCES, render, sequence_for_source
 
 
-def enroll(person: Person, commit: bool = True):
-    """Put a person into the sequence that matches how they came in."""
+def enroll(person: Person, commit: bool = True, send_now: bool = True):
+    """Put a person into the sequence that matches how they came in.
+
+    send_now matters more than it looks. The day 0 step is the confirmation the
+    visitor expects within seconds of pressing submit. Waiting for the nightly
+    cron would mean a stranger fills out a connect card and hears nothing for up
+    to a day, which reads as a broken form. So the first step goes out inline
+    and every later step waits for the runner.
+    """
     key, sequence = sequence_for_source(person.source)
     if not sequence:
         return None
@@ -33,7 +40,39 @@ def enroll(person: Person, commit: bool = True):
     db.session.add(enrollment)
     if commit:
         db.session.commit()
+    if send_now and commit:
+        first_step = sequence["steps"][0]
+        if first_step["delay_days"] == 0:
+            _send_step(enrollment, sequence, person, 0)
+            db.session.commit()
     return enrollment
+
+
+def _send_step(enrollment: Enrollment, sequence: dict, person: Person, index: int) -> bool:
+    """Send one step and record it. Shared by the inline first send and the
+    nightly runner so both log the same way and neither can double send."""
+    if enrollment.last_step_sent >= index:
+        return False
+    site_url = current_app.config.get("SITE_URL", "")
+    step = sequence["steps"][index]
+    subject = render(step["subject"], person, BRAND, site_url)
+    body = render(step["body"], person, BRAND, site_url)
+    if not send_email(to=person.email, subject=subject, html=body):
+        return False
+
+    enrollment.last_step_sent = index
+    enrollment.last_sent_at = utcnow()
+    db.session.add(
+        Interaction(
+            church_id=person.church_id,
+            person_id=person.id,
+            kind="automated",
+            summary=f"{sequence['name']}: {subject}",
+        )
+    )
+    if index == len(sequence["steps"]) - 1:
+        enrollment.completed_at = utcnow()
+    return True
 
 
 def stop(enrollment: Enrollment, reason: str) -> None:
@@ -105,25 +144,11 @@ def run_sequences(site_url: str = None) -> dict:
         if enrollment.last_sent_at and (now - enrollment.last_sent_at) < timedelta(hours=20):
             continue
 
-        subject = render(step["subject"], person, BRAND, site_url)
-        body = render(step["body"], person, BRAND, site_url)
-        delivered = send_email(to=person.email, subject=subject, html=body)
-        if not delivered:
+        if not _send_step(enrollment, sequence, person, next_index):
             continue
 
-        enrollment.last_step_sent = next_index
-        enrollment.last_sent_at = now
-        db.session.add(
-            Interaction(
-                church_id=person.church_id,
-                person_id=person.id,
-                kind="automated",
-                summary=f"{sequence['name']}: {subject}",
-            )
-        )
         sent += 1
-        if next_index == len(sequence["steps"]) - 1:
-            enrollment.completed_at = now
+        if enrollment.completed_at:
             completed += 1
 
     db.session.commit()

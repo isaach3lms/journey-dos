@@ -62,16 +62,20 @@ def make_person(email="test@example.com", source="connect card", stage_index=0):
 # --- public pages -----------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "path", ["/", "/about", "/launch-team", "/connect", "/give", "/account/login"]
-)
-def test_public_pages_render(client, path):
-    assert client.get(path).status_code == 200
+def test_root_sends_anonymous_visitors_to_sign_in(client):
+    response = client.get("/", follow_redirects=False)
+    assert response.status_code == 302
+    assert "/account/login" in response.headers["Location"]
 
 
-def test_connect_card_creates_person_and_enrolls(client, sent):
+def test_login_and_embed_render(client):
+    assert client.get("/account/login").status_code == 200
+    assert client.get("/embed/connect").status_code == 200
+
+
+def test_embedded_form_creates_person_and_enrolls(client, sent):
     response = client.post(
-        "/connect",
+        "/embed/connect",
         data={
             "first_name": "Marcus",
             "last_name": "Webb",
@@ -88,7 +92,7 @@ def test_connect_card_creates_person_and_enrolls(client, sent):
 
 def test_honeypot_blocks_submission(client, sent):
     client.post(
-        "/connect",
+        "/embed/connect",
         data={
             "first_name": "Bot",
             "email": "bot@example.com",
@@ -101,10 +105,78 @@ def test_honeypot_blocks_submission(client, sent):
 
 def test_timing_gate_blocks_instant_submission(client, sent):
     client.post(
-        "/connect",
+        "/embed/connect",
         data={"first_name": "Fast", "email": "fast@example.com", "started_at": str(time.time())},
     )
     assert Person.query.filter_by(email="fast@example.com").first() is None
+
+
+# --- intake API -------------------------------------------------------------
+
+
+def test_api_rejects_a_bad_token(app, client, sent):
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    response = client.post(
+        "/api/intake",
+        json={"first_name": "Nope", "email": "nope@example.com", "token": "wrong"},
+    )
+    assert response.status_code == 401
+    assert Person.query.filter_by(email="nope@example.com").first() is None
+
+
+def test_api_accepts_json_from_the_church_website(app, client, sent):
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    response = client.post(
+        "/api/intake",
+        json={
+            "first_name": "Rachel",
+            "last_name": "Kim",
+            "email": "rachel@example.com",
+            "phone": "573-555-0110",
+            "message": "New to Jackson",
+            "form": "launch team",
+        },
+        headers={"X-Intake-Token": "secret-token"},
+    )
+    assert response.status_code == 200
+    assert response.get_json() == {"ok": True, "created": True}
+    person = Person.query.filter_by(email="rachel@example.com").one()
+    assert person.stage.name == "Launch team"
+    assert person.source == "launch team"
+    assert "New to Jackson" in person.notes
+
+
+def test_api_splits_a_single_name_field(app, client, sent):
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    client.post(
+        "/api/intake",
+        json={"name": "Dana Whitfield", "email": "dana@example.com"},
+        headers={"X-Intake-Token": "secret-token"},
+    )
+    person = Person.query.filter_by(email="dana@example.com").one()
+    assert (person.first_name, person.last_name) == ("Dana", "Whitfield")
+
+
+def test_api_resubmission_updates_rather_than_duplicates(app, client, sent):
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    payload = {"first_name": "Sam", "email": "sam@example.com", "phone": "111"}
+    client.post("/api/intake", json=payload, headers={"X-Intake-Token": "secret-token"})
+    second = client.post(
+        "/api/intake",
+        json={**payload, "phone": "222"},
+        headers={"X-Intake-Token": "secret-token"},
+    )
+    assert second.get_json()["created"] is False
+    person = Person.query.filter_by(email="sam@example.com").one()
+    assert person.phone == "222"
+
+
+def test_api_requires_name_and_email(app, client, sent):
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    response = client.post(
+        "/api/intake", json={"email": ""}, headers={"X-Intake-Token": "secret-token"}
+    )
+    assert response.status_code == 400
 
 
 # --- journey tracking -------------------------------------------------------
@@ -131,31 +203,38 @@ def test_stage_move_writes_history(app):
 # --- automation rules -------------------------------------------------------
 
 
-def test_first_step_sends_immediately(app, sent):
+def test_first_step_sends_the_moment_someone_enrolls(app, sent):
+    """The day zero email is the confirmation the visitor expects on submit.
+    It must not wait for the nightly cron."""
     person = make_person()
     enroll(person)
-    result = run_sequences("https://example.org")
-    assert result["sent"] == 1
+    assert len(sent) == 1
     assert "Test" in sent[0]["html"]
     assert person.interactions[0].kind == "automated"
+    # and the runner must not send it a second time
+    assert run_sequences("https://example.org")["sent"] == 0
 
 
 def test_no_duplicate_send_on_second_run(app, sent):
     enroll(make_person())
     run_sequences()
     assert run_sequences()["sent"] == 0
+    assert len(sent) == 1
 
 
 def test_human_contact_stops_the_sequence(app, sent):
     person = make_person()
     enrollment = enroll(person)
+    assert len(sent) == 1  # the day zero confirmation already went out
+
     person.log_contact("call", "Talked at the coffee shop")
     db.session.commit()
     run_sequences()
+
     db.session.refresh(enrollment)
     assert enrollment.stopped_at is not None
     assert enrollment.stop_reason == "a person made contact"
-    assert sent == []
+    assert len(sent) == 1  # nothing further
 
 
 def test_reaching_the_target_stage_stops_the_sequence(app, sent):
@@ -171,7 +250,6 @@ def test_reaching_the_target_stage_stops_the_sequence(app, sent):
 
 def test_later_steps_wait_for_their_delay(app, sent):
     enrollment = enroll(make_person())
-    run_sequences()
     enrollment.last_sent_at = utcnow() - timedelta(days=2)
     db.session.commit()
     assert run_sequences()["sent"] == 0  # step two is day three
@@ -232,3 +310,61 @@ def test_member_cannot_reach_staff_pages(app, client):
     client.post("/account/login", data={"email": "member@example.com", "password": "passw0rd123"})
     assert client.get("/staff/").status_code == 404
     assert client.get("/app/").status_code == 200
+
+
+# --- the DOS now owns intake notification -----------------------------------
+
+
+def test_staff_alert_carries_what_the_site_used_to_send(app, client, monkeypatch):
+    """The public site no longer emails on submit, so this alert has to stand
+    on its own: identity, source, stage, the message, and a way to act."""
+    outbox = []
+    monkeypatch.setattr(
+        "app.emails.send_email",
+        lambda to, subject, html, reply_to=None: outbox.append(
+            {"to": to, "subject": subject, "html": html, "reply_to": reply_to}
+        )
+        or True,
+    )
+    monkeypatch.setattr("app.automations.send_email", lambda *a, **k: True)
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    app.config["NOTIFY_TO"] = "pastors@example.com"
+
+    client.post(
+        "/api/intake",
+        json={
+            "first_name": "Morgan",
+            "last_name": "Ellis",
+            "email": "morgan@example.com",
+            "phone": "573-555-0180",
+            "message": "Moving to Jackson in September",
+            "form": "launch team",
+        },
+        headers={"X-Intake-Token": "secret-token"},
+    )
+
+    alert = outbox[0]
+    assert alert["to"] == "pastors@example.com"
+    assert alert["reply_to"] == "morgan@example.com"  # reply goes to the person
+    assert "New launch team: Morgan Ellis" == alert["subject"]
+    assert "Moving to Jackson in September" in alert["html"]
+    assert "Launch team" in alert["html"]  # the stage they landed in
+    assert "/staff/people/" in alert["html"]  # a link straight to the record
+
+
+def test_a_returning_person_is_labelled_as_such(app, client, monkeypatch):
+    outbox = []
+    monkeypatch.setattr(
+        "app.emails.send_email",
+        lambda to, subject, html, reply_to=None: outbox.append({"subject": subject}) or True,
+    )
+    monkeypatch.setattr("app.automations.send_email", lambda *a, **k: True)
+    app.config["INTAKE_TOKEN"] = "secret-token"
+    payload = {"first_name": "Sam", "email": "sam@example.com"}
+    headers = {"X-Intake-Token": "secret-token"}
+
+    client.post("/api/intake", json=payload, headers=headers)
+    client.post("/api/intake", json=payload, headers=headers)
+
+    assert outbox[0]["subject"].startswith("New")
+    assert outbox[1]["subject"].startswith("Returning")

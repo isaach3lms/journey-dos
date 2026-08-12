@@ -10,8 +10,9 @@
 </div>
 <nav class="tabbar">
   <a class="{{ 'on' if request.endpoint == 'portal.home' }}" href="{{ url_for('portal.home') }}">Home</a>
-  <a class="{{ 'on' if request.endpoint == 'portal.journey' }}" href="{{ url_for('portal.journey') }}">My journey</a>
+  <a class="{{ 'on' if request.endpoint == 'portal.journey' }}" href="{{ url_for('portal.journey') }}">Journey</a>
+  <a class="{{ 'on' if request.endpoint == 'portal.groups' }}" href="{{ url_for('portal.groups') }}">Groups</a>
+  <a class="{{ 'on' if request.endpoint == 'portal.serving' }}" href="{{ url_for('portal.serving') }}">Serving</a>
   <a class="{{ 'on' if request.endpoint == 'portal.give' }}" href="{{ url_for('portal.give') }}">Give</a>
-  <a href="{{ url_for('auth.logout') }}">Sign out</a>
 </nav>
 {% endblock %}

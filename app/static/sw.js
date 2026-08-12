@@ -21,6 +21,7 @@ self.addEventListener("fetch", (event) => {
   const skip =
     event.request.method !== "GET" ||
     url.pathname.startsWith("/staff") ||
+    url.pathname.startsWith("/kiosk") ||
     url.pathname.includes("/give") ||
     url.pathname.startsWith("/account");
   if (skip) return;

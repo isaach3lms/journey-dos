@@ -103,6 +103,12 @@ def person(person_id: int):
             ).first_or_404()
             record.move_to_stage(target, actor=current_user, note=request.form.get("note", ""))
             flash(f"Moved to {target.name}.", "success")
+        elif action == "invite":
+            from .auth import _send_link
+
+            _send_link(record, "reset" if record.password_hash else "claim")
+            flash(f"Account link emailed to {record.email}.", "success")
+
         elif action == "log":
             summary = (request.form.get("summary") or "").strip()
             if summary:

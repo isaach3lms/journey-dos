@@ -4,6 +4,7 @@ from flask import current_app
 
 from .brand import BRAND
 from .extensions import db
+from .ministry import Group, Team
 from .models import Church, Person, Stage
 
 # The Journey Church journey. Fewer stages than a launched church needs,
@@ -48,6 +49,25 @@ def seed():
                 description=description,
             )
         )
+
+    # Starting five teams. Kids requires a background check by default.
+    default_teams = [
+        ("Setup", "Load in, room set, tear down.", False),
+        ("Kids", "Check in desk and classrooms.", True),
+        ("Worship", "Band and vocals.", False),
+        ("Hospitality", "Doors, coffee, first conversations.", False),
+        ("Tech", "Sound, slides, stream.", False),
+    ]
+    for name, description, clearance in default_teams:
+        if not Team.query.filter_by(church_id=church.id, name=name).first():
+            db.session.add(
+                Team(
+                    church_id=church.id,
+                    name=name,
+                    description=description,
+                    requires_clearance=clearance,
+                )
+            )
 
     admin_email = os.environ.get("ADMIN_EMAIL")
     admin_password = os.environ.get("ADMIN_PASSWORD")

@@ -1,0 +1,112 @@
+{% extends "staff/_shell.html" %}
+{% block title %}{{ s.name }} | {{ brand.church_name }}{% endblock %}
+{% block main %}
+<p class="muted"><a href="{{ url_for('ministry.services') }}">Back to services</a></p>
+<h1 style="font-size:1.9rem;margin-bottom:.2rem">{{ s.name }}</h1>
+<p class="muted">{{ s.local_start(tzname).strftime('%A, %B %-d, %Y at %-I:%M %p') }} · {{ s.total_minutes }} minutes planned</p>
+
+<div class="grid two" style="margin-top:1.4rem;align-items:start">
+  <div>
+    <h3>Run sheet</h3>
+    <table>
+      <tr><th>Time</th><th>Item</th><th>Min</th><th></th></tr>
+      {% for element, clock in rows %}
+      <tr>
+        <td class="muted">{{ clock }}</td>
+        <td><strong>{{ element.title }}</strong><br><span class="muted" style="font-size:.82rem">{{ element.kind }}{% if element.details %} · {{ element.details }}{% endif %}</span></td>
+        <td>{{ element.minutes }}</td>
+        <td style="white-space:nowrap">
+          <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="move_element">
+            <input type="hidden" name="element_id" value="{{ element.id }}">
+            <button name="direction" value="up" class="btn ghost small" style="padding:.2rem .5rem" aria-label="Move up">↑</button>
+            <button name="direction" value="down" class="btn ghost small" style="padding:.2rem .5rem" aria-label="Move down">↓</button>
+          </form>
+          <form method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="delete_element">
+            <input type="hidden" name="element_id" value="{{ element.id }}">
+            <button class="btn ghost small" style="padding:.2rem .5rem" aria-label="Remove">×</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+
+    <div class="card" style="margin-top:1rem">
+      <h3>Add an item</h3>
+      <form method="post" class="form" style="max-width:none">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="add_element">
+        <div class="row">
+          <div class="field"><label for="kind">Type</label>
+            <select id="kind" name="kind">{% for kind in element_types %}<option>{{ kind }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="minutes">Minutes</label><input type="number" id="minutes" name="minutes" value="5" min="1" max="120"></div>
+        </div>
+        <div class="field"><label for="title">Title</label><input type="text" id="title" name="title" required></div>
+        <div class="field"><label for="details">Details</label><input type="text" id="details" name="details" placeholder="Song key, speaker, cue"></div>
+        <div><button class="btn forest small" type="submit">Add</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div>
+    <h3>Who is serving</h3>
+    <table>
+      <tr><th>Person</th><th>Role</th><th>Status</th><th></th></tr>
+      {% for assignment in s.assignments %}
+      <tr>
+        <td><a href="{{ url_for('staff.person', person_id=assignment.person_id) }}">{{ assignment.person.full_name }}</a></td>
+        <td>{{ assignment.role }}</td>
+        <td><span class="pill {{ 'warn' if assignment.status == 'invited' }}">{{ assignment.status }}</span></td>
+        <td>
+          <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="unassign">
+            <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+            <button class="btn ghost small" style="padding:.2rem .5rem">×</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}<tr><td colspan="4" class="muted">Nobody scheduled yet.</td></tr>{% endfor %}
+    </table>
+
+    <form method="post" style="margin-top:.8rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="notify">
+      <button class="btn gold small" type="submit">Email everyone not yet confirmed</button>
+    </form>
+
+    <div class="card" style="margin-top:1rem">
+      <h3>Schedule someone</h3>
+      <form method="post" class="form" style="max-width:none">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="assign">
+        <div class="field"><label for="person_id">Person</label>
+          <select id="person_id" name="person_id">{% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}</select></div>
+        <div class="row">
+          <div class="field"><label for="team_id">Team</label>
+            <select id="team_id" name="team_id"><option value="">No team</option>{% for team in teams %}<option value="{{ team.id }}">{{ team.name }}</option>{% endfor %}</select></div>
+          <div class="field"><label for="role">Role</label><input type="text" id="role" name="role" value="Volunteer"></div>
+        </div>
+        <div><button class="btn forest small" type="submit">Schedule</button></div>
+      </form>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h3>After the service</h3>
+      <form method="post" class="form" style="max-width:none">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="counts">
+        <div class="row">
+          <div class="field"><label for="headcount">Adults</label><input type="number" id="headcount" name="headcount" value="{{ s.headcount if s.headcount is not none }}"></div>
+          <div class="field"><label for="kids_count">Kids</label><input type="number" id="kids_count" name="kids_count" value="{{ s.kids_count if s.kids_count is not none }}"></div>
+        </div>
+        <div class="field"><label for="notes">Notes</label><textarea id="notes" name="notes">{{ s.notes or '' }}</textarea></div>
+        <div><button class="btn forest small" type="submit">Save</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

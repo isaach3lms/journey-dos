@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Get connected | {{ brand.church_name }}</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family={{ brand.type.display }}:wght@{{ brand.type.display_weights }}&family={{ brand.type.body }}:wght@{{ brand.type.body_weights }}&display=swap" rel="stylesheet">
+<style>
+:root{ {{ brand_css }} }
+*{box-sizing:border-box}
+/* Transparent background so the iframe inherits the host page. */
+body{margin:0;padding:0;background:transparent;font-family:"Inter",Arial,sans-serif;color:var(--ink)}
+.e-wrap{padding:0 0 8px}
+h2{font-family:"Montserrat",sans-serif;font-size:1.15rem;margin:0 0 .6rem}
+.field{margin-bottom:.85rem}
+label{display:block;font-family:"Montserrat",sans-serif;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:.3rem}
+input,textarea{width:100%;padding:.75rem .85rem;font-family:inherit;font-size:1rem;border:1px solid rgba(47,62,36,.3);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{min-height:96px;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:.85rem}
+@media (max-width:520px){.row{grid-template-columns:1fr}}
+button{font-family:"Montserrat",sans-serif;font-weight:600;font-size:.92rem;padding:.8rem 1.6rem;border:0;border-radius:999px;background:var(--gold);color:var(--forest);cursor:pointer}
+.hp{position:absolute;left:-9999px;height:0;width:0;opacity:0}
+.err{background:#FDF3E3;color:#B45309;padding:.7rem .9rem;border-radius:9px;margin-bottom:.8rem;font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="e-wrap">
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <form method="post">
+    <input type="hidden" name="started_at" value="{{ now }}">
+    <div class="hp" aria-hidden="true">
+      <label for="website">Website</label>
+      <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
+    </div>
+    <div class="row">
+      <div class="field"><label for="first_name">First name</label><input type="text" id="first_name" name="first_name" required></div>
+      <div class="field"><label for="last_name">Last name</label><input type="text" id="last_name" name="last_name"></div>
+    </div>
+    <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" required></div>
+    <div class="field"><label for="phone">Phone</label><input type="tel" id="phone" name="phone"></div>
+    <div class="field"><label for="message">Anything you want us to know</label><textarea id="message" name="message"></textarea></div>
+    <button type="submit">Send it</button>
+  </form>
+</div>
+</body>
+</html>

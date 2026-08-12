@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thank you | {{ brand.church_name }}</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family={{ brand.type.display }}:wght@{{ brand.type.display_weights }}&family={{ brand.type.body }}:wght@{{ brand.type.body_weights }}&display=swap" rel="stylesheet">
+<style>
+:root{ {{ brand_css }} }
+body{margin:0;background:transparent;font-family:"Inter",Arial,sans-serif;color:var(--ink)}
+h2{font-family:"Montserrat",sans-serif;font-size:1.3rem;margin:0 0 .4rem}
+p{margin:0}
+</style>
+</head>
+<body>
+<h2>{{ c.thanks_heading }}</h2>
+<p>{{ c.thanks_body }}</p>
+</body>
+</html>

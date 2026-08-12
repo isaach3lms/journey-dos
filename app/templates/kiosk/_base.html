@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check in | {{ brand.church_name }}</title>
+<meta name="robots" content="noindex, nofollow">
+<link href="https://fonts.googleapis.com/css2?family={{ brand.type.display }}:wght@{{ brand.type.display_weights }}&family={{ brand.type.body }}:wght@{{ brand.type.body_weights }}&display=swap" rel="stylesheet">
+<style>
+:root{ {{ brand_css }} }
+*{box-sizing:border-box}
+body{margin:0;font-family:"Inter",Arial,sans-serif;background:var(--forest);color:var(--bone);min-height:100vh}
+.k-wrap{width:min(760px,92vw);margin:0 auto;padding:2rem 0 4rem}
+.k-head{display:flex;align-items:center;gap:1rem;padding:1.4rem 0}
+.k-head img{height:46px}
+.k-head .spacer{flex:1}
+h1{font-family:"Montserrat",sans-serif;font-size:2rem;margin:.4rem 0 1rem;line-height:1.1}
+h2{font-family:"Montserrat",sans-serif;font-size:1.3rem;margin:0 0 .5rem}
+.k-card{background:var(--bone);color:var(--ink);border-radius:16px;padding:1.6rem;margin-bottom:1rem}
+.k-input{width:100%;font-size:1.6rem;padding:1rem 1.1rem;border-radius:12px;border:2px solid rgba(47,62,36,.2);font-family:inherit;text-align:center;letter-spacing:.2em}
+.k-btn{display:inline-block;font-family:"Montserrat",sans-serif;font-weight:700;font-size:1.05rem;padding:1rem 1.8rem;border-radius:999px;border:2px solid transparent;background:var(--gold);color:var(--forest);cursor:pointer;text-decoration:none}
+.k-btn.ghost{background:transparent;border-color:currentColor;color:var(--bone)}
+.k-btn.wide{width:100%;text-align:center}
+.k-child{display:flex;align-items:center;gap:1rem;padding:1rem;border-radius:12px;border:2px solid rgba(47,62,36,.15);margin-bottom:.7rem;cursor:pointer;font-size:1.1rem}
+.k-child input{width:26px;height:26px}
+.k-child .alert{margin-left:auto;background:#B45309;color:#fff;font-weight:700;font-size:1rem;padding:.5rem 1rem;border-radius:999px;text-transform:uppercase;letter-spacing:.04em}
+.k-code{font-family:"Montserrat",sans-serif;font-size:4.6rem;font-weight:700;letter-spacing:.15em;text-align:center;margin:.6rem 0}
+.k-flash{background:var(--gold);color:var(--forest);border-radius:12px;padding:.9rem 1.1rem;font-weight:600;margin-bottom:1rem}
+.k-muted{opacity:.72;font-size:.95rem}
+a{color:var(--gold)}
+</style>
+</head>
+<body>
+<div class="k-wrap">
+  <div class="k-head">
+    <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="{{ brand.church_name }}">
+    <div class="spacer"></div>
+    <a class="k-btn ghost" href="{{ url_for('kiosk.home') }}">Check in</a>
+    <a class="k-btn ghost" href="{{ url_for('kiosk.check_out') }}">Pick up</a>
+  </div>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}{% for message in messages %}<div class="k-flash">{{ message }}</div>{% endfor %}{% endif %}
+  {% endwith %}
+  {% block main %}{% endblock %}
+</div>
+</body>
+</html>

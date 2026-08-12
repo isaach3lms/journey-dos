@@ -1,0 +1,35 @@
+{% extends "kiosk/_base.html" %}
+{% block main %}
+<h1>Pick up</h1>
+<p class="k-muted">{{ open_count }} child(ren) currently checked in.</p>
+
+<div class="k-card">
+  <h2>Enter your pickup code</h2>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input class="k-input" type="tel" name="code" inputmode="numeric" maxlength="3" autofocus>
+    <button class="k-btn wide" style="margin-top:1rem" type="submit">Find my kids</button>
+  </form>
+</div>
+
+{% for record in matches %}
+<div class="k-card">
+  <h2>{{ record.child.full_name }}</h2>
+  <p class="k-muted">{{ record.room }} · checked in at {{ record.checked_in_at.strftime('%-I:%M %p') }}</p>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="release">
+    <input type="hidden" name="checkin_id" value="{{ record.id }}">
+    <input type="hidden" name="code" value="{{ record.code }}">
+    <button class="k-btn wide" type="submit">Release {{ record.child.first_name }}</button>
+  </form>
+</div>
+{% endfor %}
+
+{% if searched and not matches %}
+<div class="k-card">
+  <h2>No match for that code</h2>
+  <p class="k-muted">Check the code on your tag. If it still does not work, see a kids leader. Do not release without a match.</p>
+</div>
+{% endif %}
+{% endblock %}

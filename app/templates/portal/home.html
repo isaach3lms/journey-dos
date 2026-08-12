@@ -4,20 +4,40 @@
 <h1 style="font-size:2rem">Welcome, {{ current_user.first_name }}</h1>
 <p class="muted">{{ brand.mission }}</p>
 
-<div class="card flag" style="margin-top:1.5rem">
+{% if assignments %}
+<div class="card flag" style="margin-top:1.4rem">
+  <h3>You are serving</h3>
+  {% for assignment in assignments %}
+  <p style="margin:.2rem 0">{{ assignment.service.local_start(tzname).strftime('%A, %b %-d at %-I:%M %p') }} · {{ assignment.role }}
+    <span class="pill {{ 'warn' if assignment.status == 'invited' }}">{{ assignment.status }}</span></p>
+  {% endfor %}
+  <a class="btn forest small" href="{{ url_for('portal.serving') }}">Confirm or decline</a>
+</div>
+{% endif %}
+
+<div class="card" style="margin-top:1.2rem">
   <h3>Where you are</h3>
   <p style="margin:0">{{ current_user.stage.name if current_user.stage else 'Getting started' }}
     <span class="muted">for {{ current_user.days_in_stage }} days</span></p>
 </div>
 
+{% if announcements %}
+<h3 style="margin-top:1.8rem">From the team</h3>
+{% for item in announcements %}
+<div class="card {{ 'flag' if item.is_pinned }}" style="margin-bottom:.8rem">
+  <h3 style="margin-bottom:.2rem">{{ item.title }}</h3>
+  <p class="muted" style="font-size:.8rem">{{ item.published_at.strftime('%b %-d') }}</p>
+  <p style="white-space:pre-wrap;margin:0">{{ item.body }}</p>
+</div>
+{% endfor %}
+{% endif %}
+
 <div class="grid two" style="margin-top:1.2rem">
-  <a class="card" style="text-decoration:none" href="{{ url_for('portal.journey') }}">
-    <h3>See your next step</h3>
-    <p class="muted" style="margin:0">The path from here.</p>
+  <a class="card" style="text-decoration:none" href="{{ url_for('portal.groups') }}">
+    <h3>Find a group</h3><p class="muted" style="margin:0">Where the church actually happens.</p>
   </a>
   <a class="card" style="text-decoration:none" href="{{ url_for('portal.give') }}">
-    <h3>Give</h3>
-    <p class="muted" style="margin:0">Support the launch.</p>
+    <h3>Give</h3><p class="muted" style="margin:0">Support the mission.</p>
   </a>
 </div>
 {% endblock %}

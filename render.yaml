@@ -4,6 +4,12 @@ services:
     runtime: python
     plan: starter
     buildCommand: pip install -r requirements.txt
+    # Schema comes from migrations. This runs before the new instance takes
+    # traffic, so a failed migration blocks the deploy instead of half
+    # applying while the old instance is still serving.
+    # One time, before the first deploy that includes this line, run
+    # `flask db stamp head` against the live database. See DEPLOY.md.
+    preDeployCommand: flask --app wsgi db upgrade
     startCommand: gunicorn wsgi:app
     autoDeploy: true
     envVars:

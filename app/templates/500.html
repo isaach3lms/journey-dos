@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Something went wrong</title>
+<!--
+  This page deliberately extends nothing, loads no stylesheet, and reads no
+  template context.
+
+  base.html renders the masthead and pulls `brand` from a context processor.
+  Every other template touches the session. If this page did any of that, a
+  database outage would crash the error handler itself and the visitor would
+  see a bare Gunicorn error page.
+
+  The palette below is hardcoded from the Journey brand sheet rather than
+  pulled from brand.py, for the same reason: no imports, no context, no
+  moving parts. If the brand changes, change it here too. That duplication
+  is the point.
+-->
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+    background:#2F3E24;color:#F2F0E7;
+    display:grid;place-items:center;min-height:100vh;padding:24px;
+    line-height:1.6;-webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:540px;width:100%}
+  .eyebrow{
+    font-family:'Montserrat',sans-serif;font-size:.72rem;font-weight:700;
+    letter-spacing:.18em;text-transform:uppercase;color:#F6C14B;margin:0 0 .9rem;
+  }
+  h1{
+    font-family:'Montserrat',sans-serif;font-size:clamp(1.6rem,4vw,2.1rem);
+    font-weight:700;line-height:1.2;margin:0 0 1rem;max-width:18ch;
+  }
+  p{font-size:1rem;color:rgba(242,240,231,.78);margin:0 0 1rem;max-width:46ch}
+  .actions{display:flex;flex-wrap:wrap;gap:.8rem;margin-top:2rem}
+  a.btn{
+    display:inline-block;text-decoration:none;font-family:'Montserrat',sans-serif;
+    font-size:.82rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    padding:.85rem 1.5rem;border-radius:4px;background:#F6C14B;color:#2F3E24;
+  }
+  a.btn.ghost{background:transparent;color:#F2F0E7;border:1px solid rgba(242,240,231,.38)}
+  .fine{font-size:.85rem;color:rgba(242,240,231,.5);margin-top:2.2rem}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <p class="eyebrow">Something went wrong</p>
+    <h1>This one is on us, not on you</h1>
+    <p>
+      The page failed to load. Nothing you entered was lost, and the team has
+      already been notified.
+    </p>
+    <p>
+      Give it a minute and try again. If it keeps happening, tell us what you
+      were doing when it broke and we will get it sorted.
+    </p>
+    <div class="actions">
+      <a class="btn" href="/">Try again</a>
+      <a class="btn ghost" href="mailto:hello@thejourneychurchsemo.com?subject=Something%20went%20wrong">Tell us</a>
+    </div>
+    <div class="fine">The Journey Church &middot; Jackson, Missouri</div>
+  </main>
+</body>
+</html>

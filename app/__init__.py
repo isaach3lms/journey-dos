@@ -4,14 +4,36 @@ import click
 from flask import Flask, render_template, request
 
 from .brand import BRAND, css_variables
-from .extensions import csrf, db, login_manager
+from .extensions import csrf, db, login_manager, migrate
+
+
+class ConfigError(RuntimeError):
+    """Raised at boot when configuration would silently lose data."""
 
 
 def _database_uri() -> str:
     uri = os.environ.get("DATABASE_URL", "")
     if uri.startswith("postgres://"):  # Render hands out the legacy scheme
-        uri = uri.replace("postgres://", "postgresql://", 1)
-    return uri or "sqlite:///journey.db"
+        uri = uri.replace("postgres://", "postgresql+psycopg2://", 1)
+    elif uri.startswith("postgresql://"):
+        # Name the driver explicitly. Without it SQLAlchemy picks whatever
+        # DBAPI is installed, which changes under us the day psycopg 3 lands
+        # in the image.
+        uri = uri.replace("postgresql://", "postgresql+psycopg2://", 1)
+
+    if not uri:
+        if os.environ.get("RENDER"):
+            # The dangerous case. Falling back to SQLite here would accept
+            # every person, gift, and check-in written that day onto Render's
+            # ephemeral disk, then lose all of it on the next deploy, with no
+            # error anywhere and no way to get it back.
+            raise ConfigError(
+                "DATABASE_URL is not set. Refusing to boot on Render. "
+                "A SQLite fallback would accept writes and lose them on the "
+                "next deploy. Check the database binding in render.yaml."
+            )
+        return "sqlite:///journey.db"
+    return uri
 
 
 def create_app() -> Flask:
@@ -46,6 +68,7 @@ def create_app() -> Flask:
         app.config["SESSION_COOKIE_SECURE"] = True
 
     db.init_app(app)
+    migrate.init_app(app, db)
     login_manager.init_app(app)
     csrf.init_app(app)
 
@@ -92,12 +115,47 @@ def create_app() -> Flask:
     def not_found(_):
         return render_template("404.html"), 404
 
+    @app.errorhandler(500)
+    @app.errorhandler(Exception)
+    def server_error(error):
+        """The one page that has to work when the database does not.
+
+        500.html extends nothing and reads no template context on purpose.
+        base.html renders the masthead and pulls `brand` from a context
+        processor, and every other page hits the session. If this handler
+        rendered any of that, a Postgres outage would raise inside the error
+        handler itself and a pastor would get a bare Gunicorn error instead
+        of a page that tells them what is happening.
+
+        Do not "tidy this up" by making 500.html extend base.html. There is
+        a test that fails if you do.
+        """
+        app.logger.exception("Unhandled error: %s", error)
+        try:
+            db.session.rollback()
+        except Exception:  # noqa: BLE001 - the session may already be dead
+            pass
+        return render_template("500.html"), 500
+
     @app.cli.command("init-db")
     def init_db():
-        """Create tables and seed the tenant church and journey stages."""
+        """Bring the schema up to date and seed the tenant church and stages.
+
+        Schema now comes from migrations, not db.create_all(). create_all
+        creates missing tables but never alters existing ones, so every
+        column added from here on would have silently failed to appear on
+        the deployed Postgres while passing locally against a fresh SQLite
+        file.
+
+        On a database that already has the phase 1 tables but no
+        alembic_version row, run `flask db stamp head` once first. See
+        DEPLOY.md.
+        """
+        from flask_migrate import upgrade
+
         from .seed import seed
 
-        db.create_all()
+        upgrade()
         seed()
         print("Database ready.")
 

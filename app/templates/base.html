@@ -1,71 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}{{ brand.church_name }}{% endblock %}</title>
-<meta name="description" content="{{ brand.mission }}">
-<meta name="theme-color" content="{{ brand.colors.forest }}">
-<link rel="manifest" href="{{ url_for('static', filename='manifest.webmanifest') }}">
-<link rel="icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-<link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family={{ brand.type.display }}:wght@{{ brand.type.display_weights }}&family={{ brand.type.body }}:wght@{{ brand.type.body_weights }}&display=swap" rel="stylesheet">
-<style>:root{ {{ brand_css }} }</style>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
-{% block head %}{% endblock %}
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ church.name if church else "Discipleship Operating System" }}{% endblock %}</title>
+  {#
+    Brand tokens are injected here and nowhere else. Templates below this line
+    reference var(--accent), never a hex value. Reskinning a client is a row
+    update on church.accent_hex.
+  #}
+  <style>{{ brand_css }}</style>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-
-<header class="masthead">
-  <div class="wrap">
-    <a href="{{ config.PUBLIC_SITE_URL }}" aria-label="{{ brand.church_name }} website">
-      <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="{{ brand.church_name }}">
-    </a>
-    <nav class="nav">
-      <a href="{{ config.PUBLIC_SITE_URL }}">Church website</a>
-      {% if current_user.is_authenticated %}
-        <a href="{{ url_for('portal.home') }}">My journey</a>
-        <a class="btn gold small" href="{{ url_for('auth.logout') }}">Sign out</a>
-      {% else %}
-        <a class="btn gold small" href="{{ url_for('auth.login') }}">Sign in</a>
-      {% endif %}
-    </nav>
-  </div>
-</header>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}
-    <div class="wrap" style="padding-top:1.2rem">
-      {% for category, message in messages %}<div class="flash">{{ message }}</div>{% endfor %}
+  <header class="topbar">
+    <div class="wrap">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="churchname">{{ church.name if church else "" }}</span>
     </div>
-  {% endif %}
-{% endwith %}
-
-{% block body %}{% endblock %}
-
-<footer class="foot">
-  <div class="wrap">
-    <div style="max-width:34ch">
-      <img src="{{ url_for('static', filename=brand.logo_white) }}" alt="" style="height:44px;margin-bottom:0.8rem">
-      <p style="margin:0">{{ brand.mission }}</p>
-    </div>
-    <div>
-      <a href="{{ config.PUBLIC_SITE_URL }}">Church website</a>
-      <a href="{{ brand.social.instagram }}">Instagram</a>
-      <p style="margin:0.8rem 0 0">{{ brand.city }}, {{ brand.state }}</p>
-    </div>
-  </div>
-</footer>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function () {
-    navigator.serviceWorker.register("{{ url_for('static', filename='sw.js') }}");
-  });
-}
-</script>
-{% block scripts %}{% endblock %}
+  </header>
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
 </body>
 </html>

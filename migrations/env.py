@@ -65,26 +65,11 @@ def run_migrations_offline():
     """
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
-        url=url,
-        target_metadata=get_metadata(),
-        literal_binds=True,
-        render_item=render_item,
+        url=url, target_metadata=get_metadata(), literal_binds=True
     )
 
     with context.begin_transaction():
         context.run_migrations()
-
-
-def render_item(type_, obj, autogen_context):
-    """Render UTCDateTime as its underlying SQL type.
-
-    Autogenerate would otherwise emit ``app.extensions.UTCDateTime()`` into
-    the migration, which fails with ``NameError: name 'app' is not defined``
-    because migrations do not import the application package.
-    """
-    if type_ == "type" and obj.__class__.__name__ == "UTCDateTime":
-        return "sa.DateTime()"
-    return False
 
 
 def run_migrations_online():
@@ -108,7 +93,6 @@ def run_migrations_online():
     conf_args = current_app.extensions['migrate'].configure_args
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
-    conf_args.setdefault("render_item", render_item)
 
     connectable = get_engine()
 

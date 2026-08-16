@@ -1,42 +1,33 @@
-from datetime import datetime, timezone
+"""Flask extensions, instantiated once and bound in the application factory."""
+
+from __future__ import annotations
 
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
-from sqlalchemy import DateTime, TypeDecorator
+from sqlalchemy import MetaData
+from sqlalchemy.orm import DeclarativeBase
 
-db = SQLAlchemy()
+# Explicit naming convention so Alembic can autogenerate reversible migrations.
+# Without this, dropping an unnamed constraint on Postgres requires hand editing
+# every migration, and SQLite batch mode fails outright.
+NAMING_CONVENTION = {
+    "ix": "ix_%(table_name)s_%(column_0_N_name)s",
+    "uq": "uq_%(table_name)s_%(column_0_N_name)s",
+    "ck": "ck_%(table_name)s_%(constraint_name)s",
+    "fk": "fk_%(table_name)s_%(column_0_N_name)s_%(referred_table_name)s",
+    "pk": "pk_%(table_name)s",
+}
+
+
+class Base(DeclarativeBase):
+    """SQLAlchemy 2.x declarative base for every model in the system."""
+
+    metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
+
+db = SQLAlchemy(model_class=Base)
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-
-login_manager.login_view = "auth.login"
-login_manager.login_message = "Sign in to continue."
-login_manager.login_message_category = "info"
-
-
-class UTCDateTime(TypeDecorator):
-    """SQLite silently drops tzinfo. Force everything to aware UTC on the way
-    in and on the way out so local SQLite and production Postgres agree."""
-
-    impl = DateTime
-    cache_ok = True
-
-    def process_bind_param(self, value, dialect):
-        if value is None:
-            return None
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
-
-    def process_result_value(self, value, dialect):
-        if value is None:
-            return None
-        if value.tzinfo is None:
-            return value.replace(tzinfo=timezone.utc)
-        return value.astimezone(timezone.utc)
-
-
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)

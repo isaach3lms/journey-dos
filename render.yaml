@@ -1,91 +1,41 @@
-services:
-  - type: web
-    name: journey-dos
-    runtime: python
-    plan: starter
-    buildCommand: pip install -r requirements.txt
-    # Schema comes from migrations. This runs before the new instance takes
-    # traffic, so a failed migration blocks the deploy instead of half
-    # applying while the old instance is still serving.
-    # One time, before the first deploy that includes this line, run
-    # `flask db stamp head` against the live database. See DEPLOY.md.
-    preDeployCommand: flask --app wsgi db upgrade
-    startCommand: gunicorn wsgi:app
-    autoDeploy: true
-    envVars:
-      - key: SECRET_KEY
-        generateValue: true
-      - key: CHURCH_SLUG
-        value: journey
-      - key: SITE_URL
-        value: https://app.thejourneychurchsemo.com
-      - key: PUBLIC_SITE_URL
-        value: https://thejourneychurchsemo.com
-      - key: INTAKE_TOKEN
-        generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: journey-db
-          property: connectionString
-      - key: TITHELY_GIVE_URL
-        sync: false
-      - key: KIOSK_PIN
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_FROM
-        value: website@thejourneychurchsemo.com
-      - key: NOTIFY_TO
-        sync: false
-
-  # Daily follow up. 9:00 am Central.
-  - type: cron
-    name: journey-automations
-    runtime: python
-    plan: starter
-    schedule: "0 14 * * *"
-    buildCommand: pip install -r requirements.txt
-    startCommand: flask --app wsgi run-automations
-    envVars:
-      - key: SECRET_KEY
-        sync: false
-      - key: CHURCH_SLUG
-        value: journey
-      - key: SITE_URL
-        value: https://app.thejourneychurchsemo.com
-      - key: DATABASE_URL
-        fromDatabase:
-          name: journey-db
-          property: connectionString
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_FROM
-        value: website@thejourneychurchsemo.com
-
-  # Monday morning staff digest. 8:00 am Central.
-  - type: cron
-    name: journey-digest
-    runtime: python
-    plan: starter
-    schedule: "0 13 * * 1"
-    buildCommand: pip install -r requirements.txt
-    startCommand: flask --app wsgi send-digest
-    envVars:
-      - key: SECRET_KEY
-        sync: false
-      - key: CHURCH_SLUG
-        value: journey
-      - key: DATABASE_URL
-        fromDatabase:
-          name: journey-db
-          property: connectionString
-      - key: RESEND_API_KEY
-        sync: false
-      - key: MAIL_FROM
-        value: website@thejourneychurchsemo.com
-      - key: NOTIFY_TO
-        sync: false
+# Render Blueprint. Create this service FROM the Blueprint, never by hand.
+# A manually created service never reads this file and its Environment tab
+# comes up empty, which is a full afternoon lost to a problem with no error.
+#
+# Verify current plan names in the Render dashboard before the first apply.
+# They change, and an invalid plan fails the apply with a vague message.
 
 databases:
-  - name: journey-db
+  - name: dos-db
+    databaseName: dos
+    user: dos
     plan: basic-256mb
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: dos-app
+    runtime: python
+    plan: starter
+    region: ohio
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: flask db upgrade
+    startCommand: gunicorn wsgi:app --workers 2 --threads 4 --timeout 60 --access-logfile - --error-logfile -
+    healthCheckPath: /livez
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PLATFORM_DOMAIN
+        value: dos.betweensundaysconsulting.com
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dos-db
+          property: connectionString

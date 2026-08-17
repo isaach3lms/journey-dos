@@ -19,7 +19,8 @@ from flask import current_app
 from app.brand import PALETTES, assert_accent_readable, brand_css_vars, palette_for
 from app.content import ERRORS
 from app.extensions import db
-from app.models import Church
+from app.models import Church, User
+from app.models.user import ROLES
 
 # The tenants shipped with the repo. A new client is a new entry here, or a
 # single `flask add-church` call. Neither is a migration.
@@ -197,3 +198,93 @@ a{{
             click.echo(f"{key:16} accent {p.green} on white {accent:5.2f}:1  {mark}")
             click.echo(f"{'':16} gold   {p.gold} on white {contrast(p.gold, '#FFFFFF'):5.2f}:1  never carries text")
             click.echo(f"{'':16} chrome {p.deep} on white {contrast(p.deep, '#FFFFFF'):5.2f}:1")
+
+    # -- users --------------------------------------------------------------
+
+    @app.cli.command("create-user")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--email", required=True)
+    @click.option("--name", required=True)
+    @click.option("--role", default="member", type=click.Choice(ROLES))
+    @click.password_option("--password", confirmation_prompt=True)
+    def create_user(church_slug, email, name, role, password):
+        """Create a login. Passwords are prompted, never passed as an argument.
+
+        A password on the command line lands in shell history and in the
+        process list, where any other user on the machine can read it.
+        """
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        email = email.strip().lower()
+        if User.by_email(church.id, email) is not None:
+            raise click.ClickException(
+                f"{email} already has an account at {church.name}. "
+                f"Use `flask set-password` to change it."
+            )
+
+        user = User(church_id=church.id, email=email, name=name, role=role)
+        try:
+            user.set_password(password)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        db.session.add(user)
+        db.session.commit()
+        click.echo(f"Created {role} {email} at {church.name}.")
+
+    @app.cli.command("set-password")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--email", required=True)
+    @click.password_option("--password", confirmation_prompt=True)
+    def set_password(church_slug, email, password):
+        """Reset one user's password.
+
+        This is how a password gets reset until increment 4 ships the outbox
+        and self-serve reset by email becomes possible.
+        """
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        user = User.by_email(church.id, email)
+        if user is None:
+            raise click.ClickException(f"No account for {email} at {church.name}.")
+
+        try:
+            user.set_password(password)
+        except ValueError as exc:
+            raise click.ClickException(str(exc)) from exc
+
+        db.session.commit()
+        click.echo(f"Password reset for {email}. The lockout counter is cleared.")
+
+    @app.cli.command("list-users")
+    @click.option("--church", "church_slug", default=None)
+    def list_users(church_slug):
+        query = db.select(User).join(Church).order_by(Church.slug, User.role, User.email)
+        if church_slug:
+            query = query.where(Church.slug == church_slug)
+        for user in db.session.scalars(query):
+            state = "active" if user.is_active_account else "deactivated"
+            lock = " LOCKED" if user.is_locked else ""
+            last = user.last_login_at.strftime("%Y-%m-%d") if user.last_login_at else "never"
+            click.echo(
+                f"{user.church.slug:12} {user.role:8} {user.email:36} "
+                f"{state:12} last login {last}{lock}"
+            )
+
+    @app.cli.command("unlock-user")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--email", required=True)
+    def unlock_user(church_slug, email):
+        """Clear a lockout without changing the password."""
+        church = Church.by_slug(church_slug)
+        user = User.by_email(church.id, email) if church else None
+        if user is None:
+            raise click.ClickException(f"No account for {email} at {church_slug}.")
+        user.failed_login_count = 0
+        user.locked_until = None
+        db.session.commit()
+        click.echo(f"Unlocked {email}.")

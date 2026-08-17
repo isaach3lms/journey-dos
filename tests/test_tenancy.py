@@ -36,29 +36,29 @@ class TestSubdomainParsing:
 
 class TestResolutionInRequests:
     def test_subdomain_resolves_the_church(self, client):
-        r = client.get("/", headers={"Host": "journey.dos.test"})
+        r = client.get("/auth/login", headers={"Host": "journey.dos.test"})
         assert r.status_code == 200
         assert b"The Journey Church" in r.data
 
     def test_a_different_subdomain_resolves_a_different_church(self, client):
-        r = client.get("/", headers={"Host": "riverbend.dos.test"})
+        r = client.get("/auth/login", headers={"Host": "riverbend.dos.test"})
         assert r.status_code == 200
         assert b"Riverbend Fellowship" in r.data
         assert b"The Journey Church" not in r.data
 
     def test_unknown_subdomain_is_a_404_not_a_fallback(self, app, client):
         app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
-        r = client.get("/", headers={"Host": "nosuchchurch.dos.test"})
+        r = client.get("/auth/login", headers={"Host": "nosuchchurch.dos.test"})
         assert r.status_code == 404
 
     def test_reserved_subdomain_never_resolves_a_church(self, app, client):
         app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
-        r = client.get("/", headers={"Host": "www.dos.test"})
+        r = client.get("/auth/login", headers={"Host": "www.dos.test"})
         assert r.status_code == 404
 
     def test_inactive_church_does_not_resolve(self, app, client):
         app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
-        r = client.get("/", headers={"Host": "closed.dos.test"})
+        r = client.get("/auth/login", headers={"Host": "closed.dos.test"})
         assert r.status_code == 404
 
     def test_custom_domain_wins_over_subdomain(self, app, client, db):
@@ -68,17 +68,17 @@ class TestResolutionInRequests:
         church.custom_domain = "riverbendchurch.org"
         db.session.commit()
 
-        r = client.get("/", headers={"Host": "riverbendchurch.org"})
+        r = client.get("/auth/login", headers={"Host": "riverbendchurch.org"})
         assert r.status_code == 200
         assert b"Riverbend Fellowship" in r.data
 
     def test_query_override_works_in_development_only(self, app, client):
-        r = client.get("/?tenant=riverbend", headers={"Host": "localhost"})
+        r = client.get("/auth/login?tenant=riverbend", headers={"Host": "localhost"})
         assert r.status_code == 200
         assert b"Riverbend Fellowship" in r.data
 
         app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
-        r = client.get("/?tenant=riverbend", headers={"Host": "localhost"})
+        r = client.get("/auth/login?tenant=riverbend", headers={"Host": "localhost"})
         assert r.status_code == 404
 
     def test_health_endpoints_need_no_tenant(self, app, client):

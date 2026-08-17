@@ -1,0 +1,68 @@
+{# Sign in. No colors here; the chrome comes from brand tokens. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ content.title }} | {{ church.name }}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{ palette.font_url }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<style>:root{ {{ brand_css|safe }} }</style>
+</head>
+<body class="authbody">
+<main class="authwrap">
+  <div class="authcard">
+    <div class="authbrand">
+      {% if palette.logo_reversed %}
+        <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+             alt="{{ church.name }}">
+      {% else %}
+        <div class="crest">{{ church.name[:2]|upper }}</div>
+      {% endif %}
+    </div>
+
+    <div class="authbody-inner">
+      <h1>{{ content.title }}</h1>
+      <p class="lede">{{ content.subtitle }}</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      <form method="post" novalidate>
+        {{ form.hidden_tag() }}
+
+        <div class="field">
+          {{ form.email.label }}
+          {{ form.email(class="input") }}
+          {% for error in form.email.errors %}
+            <div class="fielderr">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <div class="field">
+          {{ form.password.label }}
+          {{ form.password(class="input") }}
+          {% for error in form.password.errors %}
+            <div class="fielderr">{{ error }}</div>
+          {% endfor %}
+        </div>
+
+        <label class="check">
+          {{ form.remember() }}
+          <span>{{ form.remember.label.text }}</span>
+        </label>
+
+        {{ form.submit(class="btn wide") }}
+      </form>
+
+      <p class="footnote">{{ content.no_reset_yet }}</p>
+    </div>
+  </div>
+</main>
+</body>
+</html>

@@ -5,6 +5,7 @@ application factory, which would be circular.
 """
 
 from flask_migrate import Migrate
+from flask_wtf import CSRFProtect
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 
@@ -15,3 +16,6 @@ class Model(DeclarativeBase):
 
 db = SQLAlchemy(model_class=Model)
 migrate = Migrate()
+
+# Applied to every POST in the app, not opted into per form.
+csrf = CSRFProtect()

@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app.models.user import ROLES
+
 
 @dataclass(frozen=True)
 class NavItem:
@@ -21,22 +23,39 @@ class NavItem:
     group: str
     increment: int
     icon: str
+    # Which roles see this item at all. A member never renders a link to the
+    # staff roster, so there is no link to guess at and no 403 to hit. The
+    # route still checks the role; the nav is presentation, not enforcement.
+    roles: frozenset = frozenset(ROLES)
     ready: bool = False
+
+
+STAFF_ONLY = frozenset({"staff"})
+STAFF_AND_LEADERS = frozenset({"staff", "leader"})
+EVERYONE = frozenset(ROLES)
 
 
 # Groups render in this order.
 NAV_GROUPS = ["Lead", "Run", "Manage"]
 
 NAV_ITEMS: list[NavItem] = [
-    NavItem("dashboard", "Dashboard", "Lead", 3, "dash", ready=False),
-    NavItem("people", "People", "Lead", 2, "people"),
-    NavItem("services", "Services", "Run", 10, "services"),
-    NavItem("kids", "Kids", "Run", 11, "kids"),
-    NavItem("giving", "Giving", "Run", 7, "giving"),
-    NavItem("resources", "Resources", "Run", 6, "resources"),
-    NavItem("messages", "Messages", "Manage", 12, "messages"),
-    NavItem("settings", "Settings", "Manage", 15, "settings"),
+    NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE),
+    NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS),
+    NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
+    NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
+    NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY),
+    NavItem("resources", "Resources", "Run", 6, "res", EVERYONE),
+    NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
+    NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
 ]
+
+
+def nav_for(user) -> list[NavItem]:
+    """The navigation one user can see. Anonymous users see nothing."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return []
+    return [item for item in NAV_ITEMS if user.role in item.roles]
+
 
 INCREMENT_NAMES = {
     0: "Foundation and tenancy",
@@ -88,9 +107,13 @@ ICONS: dict[str, str] = {
     ),
 }
 
+# Increments that are actually built. The roadmap card reads this, so the
+# dashboard cannot claim something is shipped that is not.
+SHIPPED_INCREMENTS = {0, 1}
+
 SHELL = {
     "title": "Foundation",
-    "subtitle": "Increment 0 is live. The shell, the tenant, and the brand.",
+    "subtitle": "The shell, the tenant, the brand, and who you are.",
     "proof_heading": "What this page proves",
     "proof_intro": (
         "Nothing here is hard coded to one church. This page is reading a "
@@ -119,18 +142,67 @@ SHELL = {
             "and Postgres in production, so a comparison cannot fail in one "
             "environment and pass in the other.",
         ),
+        (
+            "Your session belongs to this church only",
+            "Signing in here does not sign you in anywhere else. A session "
+            "issued by one church is refused by every other, even when the "
+            "same person holds an account at both.",
+        ),
+        (
+            "The menu on the left is yours",
+            "Staff, leaders, and members see different navigation from the "
+            "same code. Hiding a link is presentation; the page itself checks "
+            "the role again before it renders.",
+        ),
     ],
     "roadmap_heading": "What comes next",
     "roadmap_intro": (
         "Each item below becomes a working screen at the increment shown. The "
         "order is the approved build order."
     ),
+    "shipped_label": "Shipped",
+    "progress_label": "{shipped} of {total} shipped",
     "placeholder_lead": "Not built yet.",
     "placeholder_body": (
         "This screen arrives at increment {increment}, {name}. The navigation "
         "item is here now so the shape of the finished product is visible "
         "while it is being built."
     ),
+}
+
+
+AUTH = {
+    "title": "Sign in",
+    "subtitle": "Use the address your church has on file.",
+    "email_label": "Email address",
+    "password_label": "Password",
+    "remember_label": "Keep me signed in on this device",
+    "submit_label": "Sign in",
+
+    "email_required": "Enter your email address.",
+    "email_invalid": "That does not look like an email address.",
+    "password_required": "Enter your password.",
+
+    # One message for every failure. Distinguishing "no such account" from
+    # "wrong password" tells an outsider who attends this church.
+    "failed": "That email and password do not match. Check both and try again.",
+    "locked": (
+        "Too many attempts. This account is locked for 15 minutes. "
+        "If you need in sooner, ask a staff member to reset your password."
+    ),
+    "login_required": "Sign in to see that page.",
+    "signed_out": "You are signed out.",
+    "forbidden_title": "You do not have access to that",
+    "forbidden_body": (
+        "Your account does not include this area. If you think it should, "
+        "ask a staff member at your church to change your access."
+    ),
+
+    "no_reset_yet": (
+        "Password reset by email arrives at increment 4, when the outbox "
+        "ships. Until then a staff member resets passwords."
+    ),
+    "sign_out": "Sign out",
 }
 
 ERRORS = {

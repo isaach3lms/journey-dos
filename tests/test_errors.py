@@ -50,8 +50,8 @@ class TestErrorHandling:
         assert r.status_code == 500
         assert b"Something broke on our end" in r.data
 
-    def test_a_404_inside_a_known_tenant_is_branded(self, client):
-        r = client.get("/nope/?tenant=journey", headers={"Host": "localhost"})
+    def test_a_404_inside_a_known_tenant_is_branded(self, staff):
+        r = staff.get("/nope/", headers={"Host": "journey.dos.test"})
         assert r.status_code == 404
         assert b"The Journey Church" in r.data
 

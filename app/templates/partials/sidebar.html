@@ -11,9 +11,9 @@
   </div>
 
   <div class="navstrip">
-  {% for group in nav_groups %}
+  {% for group in nav_groups if visible_nav|selectattr('group','equalto',group)|list %}
     <div class="navlbl">{{ group }}</div>
-    {% for item in nav_items if item.group == group %}
+    {% for item in visible_nav if item.group == group %}
       <a class="nav" href="{{ url_for('shell.placeholder', key=item.key) if item.key != 'dashboard' else url_for('shell.index') }}"
          {% if active == item.key %}aria-current="page"{% endif %}>
         <span class="icwrap" aria-hidden="true">{{ icons[item.key]|safe }}</span>
@@ -25,7 +25,18 @@
   </div>
 
   <div class="sidefoot">
-    {{ church.name }}<br>
-    Increment 0, foundation
+    {% if current_user.is_authenticated %}
+      <div class="who">
+        <div class="whoname">{{ current_user.name }}</div>
+        <div class="whorole">{{ current_user.role_label }} at {{ church.name }}</div>
+      </div>
+      {# POST, because a GET sign-out fires from any image tag on any page. #}
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        {{ csrf_field() }}
+        <button type="submit" class="signout">{{ auth.sign_out }}</button>
+      </form>
+    {% else %}
+      {{ church.name }}
+    {% endif %}
   </div>
 </nav>

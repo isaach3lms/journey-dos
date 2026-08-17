@@ -13,6 +13,7 @@ Two rules live here and nowhere else:
 from __future__ import annotations
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -59,6 +60,18 @@ class BaseConfig:
     # Reserved hosts that are the platform itself, never a tenant.
     RESERVED_SUBDOMAINS = {"www", "app", "api", "admin", "static", "assets"}
 
+    # Session hardening. SESSION_COOKIE_DOMAIN is deliberately absent: setting
+    # it would share one cookie across every tenant subdomain, which is a
+    # cross-tenant session leak. app/security.py fails the boot if it appears.
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = False
+    PERMANENT_SESSION_LIFETIME = timedelta(days=14)
+    REMEMBER_COOKIE_HTTPONLY = True
+    REMEMBER_COOKIE_SAMESITE = "Lax"
+    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    WTF_CSRF_TIME_LIMIT = None
+
     TESTING = False
     DEBUG = False
 
@@ -81,10 +94,16 @@ class TestingConfig(BaseConfig):
     PLATFORM_DOMAIN = "dos.test"
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     WTF_CSRF_ENABLED = False
+    # Only ever lowered here. See User._hash_method.
+    PASSWORD_HASH_METHOD = "pbkdf2:sha256:1"
 
 
 class ProductionConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = normalize_database_url(os.environ.get("DATABASE_URL"))
+    # Cookies never leave TLS in production.
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
+    PREFERRED_URL_SCHEME = "https"
 
     @classmethod
     def init_app(cls, app):

@@ -7,5 +7,14 @@ from app.models.base import (  # noqa: F401
     utcnow,
 )
 from app.models.church import Church  # noqa: F401
+from app.models.user import ROLES, User  # noqa: F401
 
-__all__ = ["Church", "TenantScoped", "TimestampMixin", "UTCDateTime", "utcnow"]
+__all__ = [
+    "Church",
+    "User",
+    "ROLES",
+    "TenantScoped",
+    "TimestampMixin",
+    "UTCDateTime",
+    "utcnow",
+]

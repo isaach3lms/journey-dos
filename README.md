@@ -3,9 +3,9 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increment 0 complete.** Foundation and tenancy. 70 tests passing.
-No feature screens yet; every nav item resolves to a placeholder naming the
-increment it arrives in.
+**Status: increments 0 and 1 complete.** Foundation, tenancy, identity, and
+roles. 112 tests passing. No feature screens yet; every nav item resolves to a
+placeholder naming the increment it arrives in.
 
 ---
 
@@ -22,14 +22,23 @@ export FLASK_APP=wsgi.py FLASK_ENV=development
 flask db upgrade
 flask seed-tenants
 flask build-error-pages
+
+# Three logins, one per role. Passwords are prompted, never typed as arguments.
+flask create-user --church journey --email pastor@thejourneychurchsemo.com --name "Pastor Reed" --role staff
+flask create-user --church journey --email dana@thejourneychurchsemo.com --name "Dana Webb" --role leader
+flask create-user --church journey --email alicia@thejourneychurchsemo.com --name "Alicia Romero" --role member
+
 flask run
 ```
 
-Then open, in order:
+Then open `http://127.0.0.1:5000/?tenant=journey` and sign in as each of the
+three in turn. The navigation changes. The staff account sees eight items, the
+leader sees five, the member sees three. Then, as the member, type `/giving/`
+into the address bar: the route refuses it with a 403, because hiding a link is
+presentation and the page checks the role again before it renders.
 
-- `http://127.0.0.1:5000/?tenant=journey` and note the green chrome
-- `http://127.0.0.1:5000/?tenant=riverbend` and note it is a different brand
-  from the same code, the same templates, and the same stylesheet
+Switch tenants to see the branding change from the same code:
+`http://127.0.0.1:5000/?tenant=riverbend`.
 
 `localhost` has no subdomain, so development uses the `?tenant=` override.
 Production does not; see below.
@@ -53,6 +62,10 @@ python -m pytest
 | `flask list-churches` | Show every tenant and its branding. |
 | `flask build-error-pages` | Regenerate `app/static/500.html` from the brand tokens. |
 | `flask check-contrast` | Report every palette against the 4.5:1 floor. |
+| `flask create-user --church x --email y --name "Z" --role staff` | Create a login. Password prompted. |
+| `flask set-password --church x --email y` | Reset a password. This is the reset path until increment 4. |
+| `flask list-users [--church x]` | Every account, its role, and its last sign-in. |
+| `flask unlock-user --church x --email y` | Clear a lockout without changing the password. |
 
 ---
 
@@ -69,8 +82,11 @@ These are not conventions. Each one has a test that fails the build.
 | Production hard-fails without `DATABASE_URL` | `ProductionConfig.init_app`; `test_config.py` |
 | The 500 page never touches the database | `app/errors.py` serves a static file; `test_errors.py` |
 | Content lives in Python, not markup | `app/content.py` |
+| A session from one church is refused at another | `User.get_id`, `load_user`; `test_auth.py::TestCrossTenantIsolation` |
+| A hidden nav link is not a permission | Route-level role check; `test_auth.py::test_hiding_a_link_is_not_the_enforcement` |
+| The roadmap card cannot claim an unbuilt increment is shipped | `SHIPPED_INCREMENTS`; `test_shell.py::TestRoadmapHonesty` |
 
-### Two rules that earned their tests the hard way
+### Three rules that earned their tests the hard way
 
 **Jinja escapes the font stack.** `--font-body:'Inter',...` becomes
 `&#39;Inter&#39;` under autoescape, the declaration is invalid, and every
@@ -84,6 +100,64 @@ column a staff member can edit, so it is treated as untrusted input.
 because migrations do not import application code. `render_migration_item`
 renders it as `sa.DateTime(timezone=True)` instead. Identical DDL, and the
 migration still runs if that module is ever refactored.
+
+**A test harness that holds one app context proves nothing about sessions.**
+The first version of `TestCrossTenantIsolation` passed when it should have
+failed. The `app` fixture kept a single application context open for the whole
+test, and Flask-Login caches the signed-in user on `g._login_user`, so that
+cache survived from one request to the next and the user loader was never
+consulted at all. The defense was correct the entire time; the test was
+measuring nothing. The fixture now releases the context so each request builds
+its own, exactly as in production. A passing suite is not evidence unless the
+harness resembles the thing it claims to test.
+
+---
+
+## Identity and roles
+
+Three roles, ordered: `member`, `leader`, `staff`. `at_least("leader")` answers
+whether a role reaches another. The database rejects any value outside the
+three, so a typo in a script cannot invent a fourth.
+
+Email is unique **per church**, not globally. A person can attend two churches,
+and a Between Sundays staff member may hold an account at several. Login always
+happens inside an already-resolved tenant, so the scoped constraint is both
+correct and invisible.
+
+### Cross-tenant sessions: three defenses, all required
+
+Flask-Login hands the user loader whatever `get_id()` put in the cookie and
+nothing else. The single-tenant pattern, a primary key lookup, is a
+cross-tenant session replay here.
+
+1. `User.get_id()` returns `church_id:user_id`, so a mismatch is detectable.
+2. `load_user` compares that church id to the host-resolved church and returns
+   `None` on any disagreement.
+3. `SESSION_COOKIE_DOMAIN` is never set, so the browser scopes the cookie to
+   the exact issuing host. `assert_cookie_scope_is_safe` fails the boot if it
+   ever appears.
+
+Remove any one and the other two still hold. That is deliberate.
+
+### Smaller decisions
+
+- **One failure message for every failure.** Unknown address, wrong password,
+  and deactivated account return identical text and status, and a miss still
+  runs a hash against a decoy so timing cannot be used either. A form that
+  distinguishes them tells an outsider who attends the church, which in a
+  60-person congregation is a real disclosure.
+- **Lockout after 10 failed attempts, 15 minutes.** Short, because there is no
+  self-serve reset until the outbox ships at increment 4.
+- **Logout is POST only.** A GET logout fires from any image tag on any page.
+- **`?next=` is validated.** Anything with a scheme or a host is discarded, or
+  the login page becomes an open redirect.
+- **Email validation is syntax only.** `check_deliverability` does a live DNS
+  lookup on every submit, making the login form exactly as fast and as
+  available as the resolver.
+- **`User` is not `Person`.** Increment 2 introduces `Person` and the nullable
+  `person_id` that joins them. A secretary who logs in daily may never be
+  someone the stuck engine should flag, and a guest with no login still needs a
+  full pastoral record from the moment they fill out a connect card.
 
 ---
 
@@ -136,9 +210,10 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 1, identity and roles. Staff, leader, and member logins with
-different navigation, per spec v3 section D.1.
+Increment 2, people, households, and stages. Journey's roster, the Journey rail
+with real counts, and the person drawer with a real timeline, per spec v3
+section D.1.
 
 Three items in spec section F are still open and none of them block increment
-1: the revised Settings cost comparison, copy for three screens, and the
+2: the revised Settings cost comparison, copy for three screens, and the
 onboarding checklist owner.

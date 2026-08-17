@@ -19,7 +19,7 @@ from pathlib import Path
 from flask import current_app, g, render_template
 from werkzeug.exceptions import HTTPException
 
-from app.content import ERRORS
+from app.content import AUTH, ERRORS
 
 STATIC_500 = "500.html"
 
@@ -54,6 +54,20 @@ def register_error_handlers(app) -> None:
                 body=description,
             ),
             404,
+        )
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        if getattr(g, "church", None) is None:
+            return _static_error_page(STATIC_500, 403)
+        return (
+            render_template(
+                "errors/403.html",
+                church=g.church,
+                title=AUTH["forbidden_title"],
+                body=AUTH["forbidden_body"],
+            ),
+            403,
         )
 
     @app.errorhandler(500)

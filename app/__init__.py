@@ -16,12 +16,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from flask import Flask, g
+from markupsafe import Markup
 
 from app.brand import brand_css_vars, palette_for
 from app.config import resolve_config
-from app.content import ICONS, NAV_GROUPS, NAV_ITEMS
+from app.content import AUTH, ICONS, NAV_GROUPS, nav_for
 from app.errors import register_error_handlers
-from app.extensions import db, migrate
+from app.extensions import csrf, db, migrate
+from app.security import register_security
 from app.tenancy import register_tenancy
 
 load_dotenv()
@@ -37,6 +39,7 @@ def create_app(config_name: str | None = None) -> Flask:
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
+    csrf.init_app(app)
     # render_as_batch keeps SQLite ALTERs working locally.
     # render_migration_item keeps application imports out of migration files.
     from app.models.base import render_migration_item
@@ -48,13 +51,18 @@ def create_app(config_name: str | None = None) -> Flask:
     # Alembic autogenerate sees every table.
     from app import models  # noqa: F401
 
+    from app.blueprints.auth import bp as auth_bp
     from app.blueprints.health import bp as health_bp
     from app.blueprints.shell import bp as shell_bp
 
     app.register_blueprint(health_bp)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(shell_bp)
 
+    # Order matters. Tenancy runs first so `g.church` exists before the
+    # Flask-Login user loader needs it to validate the session.
     register_tenancy(app)
+    register_security(app)
     register_error_handlers(app)
 
     from app.cli import register_cli
@@ -75,12 +83,19 @@ def create_app(config_name: str | None = None) -> Flask:
             app.logger.exception("Brand resolution failed, using platform default")
             palette = palette_for(None)
             css = brand_css_vars(None)
+        from flask_login import current_user
+        from flask_wtf.csrf import generate_csrf
+
         return {
             "palette": palette,
             "brand_css": css,
-            "nav_items": NAV_ITEMS,
+            "visible_nav": nav_for(current_user),
             "nav_groups": NAV_GROUPS,
             "icons": ICONS,
+            "auth": AUTH,
+            "csrf_field": lambda: Markup(
+                f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">'
+            ),
         }
 
     @app.after_request

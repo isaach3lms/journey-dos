@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Discipleship Operating System | The Journey Church</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   THE JOURNEY CHURCH, Jackson MO. Brand tokens.
+   This block is the only theming lever. Do not reskin markup.
+   Palette source: The Journey Church brand board.
+     deep   #2F3E24   chrome, sidebar, kiosk, headings
+     green  #485B38   accent, anything with white text on it
+     gold   #F6C14B   emphasis. Dark surfaces and rail bars only.
+                      Fails 4.5:1 with white text, so it never
+                      carries text and never sits behind a label.
+     bone   #F2F0E7   page background
+     ink    #1A1A1A   body text
+   White on #485B38 measures 7.4:1, passes AA and AAA.
+   ============================================================ */
+:root{
+  --deep:#2F3E24;
+  --green:#485B38;
+  --gold:#F6C14B;
+  --bone:#F2F0E7;
+  --ink:#1A1A1A;
+  --chrome:#2F3E24;
+  --blue:#485B38;
+  --navy:#2F3E24;
+  --mist:#E4E9DD;
+  --white:#FFFFFF;
+  --line:rgba(47,62,36,.14);
+  --line-soft:rgba(47,62,36,.09);
+  --muted:rgba(26,26,26,.62);
+  --muted-2:rgba(26,26,26,.45);
+  --flag:#9A3412;
+  --flag-bg:#F8EAE3;
+  --good:#0F766E;
+  --good-bg:#E4F4F1;
+  --shadow-sm:0 1px 2px rgba(47,62,36,.07), 0 2px 6px rgba(47,62,36,.06);
+  --shadow-md:0 4px 14px rgba(47,62,36,.10), 0 1px 3px rgba(47,62,36,.07);
+  --shadow-lg:0 18px 48px rgba(26,26,26,.20);
+  --r-sm:8px; --r:14px; --r-lg:20px;
+  --accent:#485B38;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  background:#F2F0E7;color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  font-size:14px;line-height:1.5;
+}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px;border-radius:4px}
+.mono{font-family:'Montserrat','Inter',sans-serif;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1}
+h1,h2,h3,h4,.church .n,.topline h1,.rail .rhead h2{font-family:'Montserrat','Inter',sans-serif}
+.eyebrow{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--muted-2)}
+
+/* ---------- Demo chrome ---------- */
+.demobar{
+  position:sticky;top:0;z-index:60;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:10px 20px;background:var(--chrome);color:#fff;
+}
+.demobar .brandmark{display:flex;align-items:center;gap:9px;font-weight:600;font-size:13px;letter-spacing:.01em}
+.brandmark .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(246,193,75,.22)}
+.demobar .tag{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.45);font-weight:600}
+.demobar .spacer{flex:1}
+.seg{display:flex;background:rgba(255,255,255,.09);border-radius:999px;padding:3px}
+.seg button{padding:6px 14px;border-radius:999px;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.68)}
+.seg button[aria-selected="true"]{background:#fff;color:var(--ink);font-weight:600}
+.picker{display:flex;align-items:center;gap:8px;font-size:12.5px;color:rgba(255,255,255,.6)}
+.picker select{
+  font-family:inherit;font-size:12.5px;font-weight:500;color:#fff;
+  background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);
+  border-radius:8px;padding:6px 10px;appearance:none;cursor:pointer;
+}
+.picker select option{color:#111;background:#fff}
+.ghostbtn{font-size:12.5px;font-weight:500;color:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.18);padding:6px 12px;border-radius:8px}
+.ghostbtn:hover{background:rgba(255,255,255,.08);color:#fff}
+
+/* ---------- App shell ---------- */
+.shell{display:flex;min-height:calc(100vh - 52px)}
+.sidebar{
+  width:236px;flex:none;background:var(--chrome);color:#fff;
+  padding:22px 14px;display:flex;flex-direction:column;gap:4px;
+}
+.church{display:flex;align-items:center;gap:11px;padding:0 8px 20px}
+.church .crest{
+  width:38px;height:38px;border-radius:11px;flex:none;
+  display:grid;place-items:center;font-weight:700;font-size:14px;color:#fff;
+  background:var(--accent);
+}
+.church.islogo{display:block;padding:2px 8px 20px}
+.church .logotile{color:#fff;margin-bottom:9px}
+.church .logotile .mark{width:150px;height:auto;display:block}
+.church.islogo .s{font-size:11.5px;color:rgba(255,255,255,.42)}
+.church .n{font-weight:600;font-size:13.5px;line-height:1.25}
+.church .s{font-size:11px;color:rgba(255,255,255,.42)}
+.navlbl{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.32);font-weight:600;padding:14px 10px 6px}
+.nav{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:10px;font-size:13.5px;color:rgba(255,255,255,.66);width:100%;text-align:left;font-weight:400}
+.nav:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav[aria-current="true"]{background:rgba(255,255,255,.10);color:#fff;font-weight:600;box-shadow:inset 3px 0 0 var(--gold)}
+.nav .ic{width:17px;height:17px;flex:none;opacity:.9}
+.nav .cnt{margin-left:auto;font-size:11px;font-weight:600;background:var(--accent);color:#fff;padding:1px 7px;border-radius:999px}
+.sidefoot{margin-top:auto;padding:14px 10px 0;border-top:1px solid rgba(255,255,255,.09);font-size:11.5px;color:rgba(255,255,255,.4)}
+
+.main{flex:1;min-width:0;background:#F2F0E7}
+.topline{
+  display:flex;align-items:center;gap:16px;padding:20px 30px 0;
+}
+.topline h1{font-size:23px;font-weight:600;letter-spacing:-.02em;margin:0}
+.topline .sub{font-size:13px;color:var(--muted);margin-top:2px}
+.topline .spacer{flex:1}
+.btn{background:var(--accent);color:#fff;font-size:13px;font-weight:500;padding:9px 15px;border-radius:10px;box-shadow:var(--shadow-sm)}
+.btn:hover{filter:brightness(1.06)}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.content{padding:22px 30px 46px;display:grid;gap:18px}
+
+/* ---------- Cards ---------- */
+.card{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r);box-shadow:var(--shadow-sm)}
+.card .hd{display:flex;align-items:center;gap:12px;padding:16px 18px 0}
+.card .hd h2{font-size:14.5px;font-weight:600;margin:0;letter-spacing:-.01em}
+.card .hd .spacer{flex:1}
+.card .bd{padding:16px 18px 18px}
+.link{font-size:12.5px;color:var(--blue);font-weight:500}
+
+/* ---------- Journey rail (signature) ---------- */
+.rail{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r-lg);box-shadow:var(--shadow-md);overflow:hidden}
+.rail .rhead{display:flex;align-items:flex-end;gap:14px;padding:20px 22px 14px}
+.rail .rhead h2{margin:0;font-size:16px;font-weight:600;letter-spacing:-.01em}
+.rail .rhead p{margin:3px 0 0;font-size:12.5px;color:var(--muted)}
+.rail .rhead .spacer{flex:1}
+.stages{display:grid;grid-template-columns:repeat(7,1fr);border-top:1px solid var(--line-soft)}
+.stage{
+  position:relative;padding:16px 14px 18px;text-align:left;
+  border-right:1px solid var(--line-soft);background:#fff;transition:background .18s ease;
+}
+.stage:last-child{border-right:none}
+.stage:hover{background:#FAF9F3}
+.stage[aria-pressed="true"]{background:var(--mist)}
+.stage .nm{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.stage .num{font-size:27px;font-weight:600;letter-spacing:-.03em;line-height:1.1;margin-top:5px;font-family:'Montserrat','Inter',sans-serif}
+.stage .bar{height:4px;border-radius:999px;background:var(--mist);margin-top:9px;overflow:hidden}
+.stage .bar i{display:block;height:100%;border-radius:999px;background:var(--gold)}
+.stage .meta{margin-top:9px;font-size:11px;color:var(--muted-2);display:flex;align-items:center;gap:5px;min-height:17px}
+.stage .stuck{color:var(--flag);background:var(--flag-bg);border-radius:999px;padding:1px 7px;font-weight:600;font-size:10.5px}
+.stage .arrow{position:absolute;right:-6px;top:50%;width:11px;height:11px;border-top:1px solid var(--line);border-right:1px solid var(--line);transform:translateY(-50%) rotate(45deg);background:#fff;z-index:2}
+.stage:last-child .arrow{display:none}
+.railfoot{display:flex;gap:22px;align-items:center;padding:12px 22px;background:#FAF9F3;border-top:1px solid var(--line-soft);font-size:12px;color:var(--muted)}
+.railfoot b{color:var(--ink);font-weight:600}
+
+/* ---------- Metrics ---------- */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.metric{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r);padding:15px 16px;box-shadow:var(--shadow-sm)}
+.metric .k{font-size:11px;color:var(--muted);font-weight:500}
+.metric .v{font-size:25px;font-weight:600;letter-spacing:-.03em;margin-top:6px;font-family:'Montserrat','Inter',sans-serif}
+.metric .d{font-size:11.5px;margin-top:4px;color:var(--good);font-weight:500}
+.metric .d.down{color:var(--flag)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:10px}
+.spark i{flex:1;background:var(--mist);border-radius:2px}
+.spark i.on{background:var(--accent)}
+
+.grid-2{display:grid;grid-template-columns:1.25fr .9fr;gap:18px;align-items:start}
+
+/* ---------- Lists ---------- */
+.row{display:flex;align-items:center;gap:12px;padding:11px 18px;border-top:1px solid var(--line-soft);width:100%;text-align:left}
+.row:hover{background:#FAF9F3}
+.row:first-of-type{border-top:none}
+.av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:12px;font-weight:600;color:var(--navy);background:var(--mist)}
+.av.solid{background:var(--accent);color:#fff}
+.rn{font-size:13.5px;font-weight:500;display:block}
+.rs{font-size:11.5px;color:var(--muted);margin-top:1px;display:block}
+.row .spacer{flex:1}
+.pill{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--mist);color:var(--navy);white-space:nowrap}
+.pill.warn{background:var(--flag-bg);color:var(--flag)}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.ghost{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.mini{font-size:12px;font-weight:500;color:var(--blue);padding:5px 10px;border-radius:8px;border:1px solid var(--line)}
+.mini:hover{background:var(--mist)}
+
+.tablehd{display:flex;gap:12px;padding:10px 18px;background:#FAF9F3;border-top:1px solid var(--line-soft);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+
+.filters{display:flex;gap:8px;flex-wrap:wrap;padding:14px 18px 4px}
+.chip{font-size:12px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted);font-weight:500}
+.chip[aria-pressed="true"]{background:var(--deep);color:#fff;border-color:var(--deep)}
+.search{flex:1;min-width:180px;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-family:inherit;font-size:12.5px;color:var(--ink)}
+.search::placeholder{color:var(--muted-2)}
+
+/* ---------- Person drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(26,26,26,.48);opacity:0;pointer-events:none;transition:opacity .22s ease;z-index:70}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;height:100%;width:430px;max-width:94vw;background:#fff;z-index:80;
+  transform:translateX(100%);transition:transform .26s cubic-bezier(.22,1,.36,1);
+  box-shadow:var(--shadow-lg);display:flex;flex-direction:column;
+}
+.drawer.on{transform:translateX(0)}
+.dhead{padding:22px 22px 16px;background:var(--deep);color:#fff}
+.dhead .top{display:flex;align-items:center;gap:14px}
+.dhead .av{width:48px;height:48px;font-size:16px;background:var(--accent);color:#fff}
+.dhead h3{margin:0;font-size:18px;font-weight:600;letter-spacing:-.01em}
+.dhead .s{font-size:12px;color:rgba(255,255,255,.55);margin-top:2px}
+.dhead .x{margin-left:auto;color:rgba(255,255,255,.6);font-size:20px;line-height:1;padding:4px 8px;border-radius:8px}
+.dhead .x:hover{background:rgba(255,255,255,.1);color:#fff}
+.journeymini{display:flex;gap:4px;margin-top:18px}
+.journeymini i{flex:1;height:5px;border-radius:999px;background:rgba(255,255,255,.16)}
+.journeymini i.on{background:var(--accent)}
+.journeymini i.now{background:#fff}
+.dbody{flex:1;overflow-y:auto;padding:0 0 26px}
+.dsec{padding:18px 22px;border-bottom:1px solid var(--line-soft)}
+.dsec h4{margin:0 0 12px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-2);font-weight:600}
+.kv{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:13px;border-bottom:1px dashed var(--line-soft)}
+.kv:last-child{border-bottom:none}
+.kv span{color:var(--muted)}
+.kv b{font-weight:500}
+.alert{display:flex;gap:11px;background:var(--flag-bg);border:1px solid rgba(180,83,9,.16);border-radius:var(--r);padding:13px 14px}
+.alert .t{font-size:12.5px;font-weight:600;color:var(--flag)}
+.alert .d{font-size:12px;color:rgba(180,83,9,.9);margin-top:3px;line-height:1.45}
+.tl{position:relative;padding-left:20px}
+.tl:before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.tli{position:relative;padding:0 0 15px}
+.tli:before{content:"";position:absolute;left:-19px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--mist);border:2px solid #fff;box-shadow:0 0 0 1px var(--line)}
+.tli.hi:before{background:var(--accent)}
+.tli .w{font-size:13px;font-weight:500}
+.tli .d{font-size:11.5px;color:var(--muted);margin-top:1px}
+.dfoot{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:9px;background:#FAF9F3}
+
+/* ---------- Phone (member) ---------- */
+.memberwrap{display:grid;grid-template-columns:390px 1fr;gap:36px;padding:30px;align-items:start}
+.phone{
+  width:390px;height:800px;background:var(--ink);border-radius:46px;padding:11px;
+  box-shadow:var(--shadow-lg);position:sticky;top:76px;
+}
+.screen{width:100%;height:100%;background:#fff;border-radius:36px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.status{display:flex;justify-content:space-between;padding:13px 24px 4px;font-size:11.5px;font-weight:600}
+.mhead{padding:8px 22px 16px}
+.mhead .hi{font-size:21px;font-weight:600;letter-spacing:-.02em}
+.mhead .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.mbody{flex:1;overflow-y:auto;padding:0 18px 20px;display:grid;gap:13px;align-content:start}
+.mcard{border:1px solid var(--line-soft);border-radius:var(--r);padding:15px;box-shadow:var(--shadow-sm);background:#fff}
+.mcard.dark{background:var(--deep);color:#fff;border-color:transparent}
+.mcard.dark .lbl{color:rgba(255,255,255,.5)}
+.mcard.tint{background:var(--mist);border-color:transparent}
+.lbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;font-weight:600;color:var(--muted-2)}
+.verse{font-size:15.5px;line-height:1.5;margin-top:9px;font-weight:500}
+.vref{font-size:12px;margin-top:8px;color:var(--accent);font-weight:600}
+.mcard .t{font-size:14.5px;font-weight:600;margin-top:7px}
+.mcard .d{font-size:12.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.prog{height:6px;border-radius:999px;background:var(--mist);margin-top:11px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.mcard.dark .prog{background:rgba(255,255,255,.14)}
+.mbtn{width:100%;background:var(--accent);color:#fff;font-size:13.5px;font-weight:500;padding:11px;border-radius:11px;margin-top:12px}
+.mbtn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.streak{display:flex;gap:6px;margin-top:11px}
+.streak i{flex:1;height:30px;border-radius:7px;background:var(--mist);display:grid;place-items:center;font-size:9.5px;font-weight:600;color:var(--muted-2)}
+.streak i.on{background:var(--accent);color:#fff}
+.tabbar{display:flex;border-top:1px solid var(--line-soft);padding:9px 6px 20px;background:#fff}
+.tab{flex:1;min-width:0;display:grid;gap:4px;justify-items:center;font-size:9.5px;font-weight:500;color:var(--muted-2);padding:5px 0}
+.tab .ic{width:20px;height:20px}
+.tab[aria-current="true"]{color:var(--accent);font-weight:600}
+.amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.amt{border:1px solid var(--line);border-radius:11px;padding:11px 0;font-size:14px;font-weight:600;text-align:center;font-family:'Montserrat','Inter',sans-serif}
+.amt[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* ---------- Talk track panel ---------- */
+.track{position:sticky;top:76px;display:grid;gap:14px}
+.track .card .bd{font-size:13px;color:var(--muted);line-height:1.55}
+.beat{display:flex;gap:12px;padding:12px 18px;border-top:1px solid var(--line-soft)}
+.beat .n{font-family:'Montserrat','Inter',sans-serif;font-size:11.5px;font-weight:600;color:var(--accent);padding-top:2px}
+.beat .w{font-size:13px;font-weight:500;color:var(--ink)}
+.beat .s{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.45}
+
+/* ---------- Settings ---------- */
+.swatches{display:flex;gap:10px;margin-top:10px}
+.sw{width:38px;height:38px;border-radius:11px;border:2px solid transparent;box-shadow:var(--shadow-sm)}
+.sw[aria-pressed="true"]{border-color:var(--ink)}
+.toggle{width:40px;height:23px;border-radius:999px;background:var(--line);position:relative;flex:none}
+.toggle[aria-pressed="true"]{background:var(--accent)}
+.toggle:after{content:"";position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;transition:left .18s ease;box-shadow:var(--shadow-sm)}
+.toggle[aria-pressed="true"]:after{left:20px}
+
+.emptynote{padding:26px 18px;text-align:center;color:var(--muted);font-size:13px}
+
+/* ---------- Service planner ---------- */
+.weekstrip{display:flex;gap:10px;overflow-x:auto;padding:4px 2px 6px}
+.week{
+  flex:none;min-width:150px;text-align:left;background:#fff;border:1px solid var(--line-soft);
+  border-radius:var(--r);padding:12px 14px;box-shadow:var(--shadow-sm);
+}
+.week:hover{border-color:var(--line)}
+.week[aria-pressed="true"]{border-color:var(--accent);box-shadow:0 0 0 2px rgba(72,91,56,.20)}
+.week .wd{font-size:11px;color:var(--muted-2);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.week .wt{font-size:13.5px;font-weight:600;margin-top:4px;letter-spacing:-.01em;line-height:1.3}
+.week .wm{font-size:11.5px;color:var(--muted);margin-top:5px}
+.week .wp{margin-top:8px}
+.el{display:flex;align-items:center;gap:12px;padding:10px 18px;border-top:1px solid var(--line-soft)}
+.el:hover{background:#FAF9F3}
+.el .t{width:52px;flex:none;font-size:12px;color:var(--muted)}
+.el .body{flex:1;min-width:0}
+.el .ti{font-size:13.5px;font-weight:500;display:block}
+.el .su{font-size:11.5px;color:var(--muted);margin-top:1px;display:block}
+.el .dur{width:56px;text-align:right;font-size:12px;color:var(--muted)}
+.acts{display:flex;gap:4px;opacity:0;transition:opacity .15s ease}
+.el:hover .acts,.el:focus-within .acts{opacity:1}
+.iconbtn{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);display:grid;place-items:center;font-size:12px;color:var(--muted);line-height:1}
+.iconbtn:hover{background:var(--mist);color:var(--ink);border-color:var(--accent)}
+.iconbtn.danger:hover{background:var(--flag-bg);color:var(--flag);border-color:rgba(180,83,9,.3)}
+.addel{display:flex;gap:9px;padding:13px 18px;border-top:1px dashed var(--line);background:#FAF9F3;flex-wrap:wrap;align-items:center}
+.addel .mini{white-space:nowrap}
+.song{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--line-soft);flex-wrap:wrap}
+.song .sb{flex:1;min-width:190px}
+.song .st{font-size:13.5px;font-weight:500;display:block}
+.song .sa{font-size:11.5px;color:var(--muted);margin-top:1px;display:block}
+.keysel{font-family:inherit;font-size:12px;font-weight:600;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:5px 8px;background:#fff}
+.chartlinks{display:flex;gap:6px;flex-wrap:wrap}
+.chartbtn{font-size:11.5px;font-weight:500;color:var(--navy);background:var(--mist);border-radius:8px;padding:6px 10px;display:flex;align-items:center;gap:5px}
+.chartbtn:hover{background:var(--accent);color:#fff}
+.conn{display:flex;align-items:center;gap:13px;padding:14px 18px;background:#FAF9F3;border-top:1px solid var(--line-soft)}
+.conn .logo{width:38px;height:38px;border-radius:10px;background:var(--deep);color:#fff;display:grid;place-items:center;font-size:11px;font-weight:700;letter-spacing:.02em;flex:none}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:95;
+  background:var(--deep);color:#fff;font-size:13px;padding:11px 18px;border-radius:999px;box-shadow:var(--shadow-lg);
+}
+
+/* ---------- Chat ---------- */
+.chatwrap{display:grid;grid-template-columns:252px 1fr;height:580px;border-top:1px solid var(--line-soft)}
+.chanrail{border-right:1px solid var(--line-soft);background:#FAF9F3;display:flex;flex-direction:column;overflow-y:auto}
+.chanlbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted-2);font-weight:600;padding:15px 16px 6px}
+.chanbtn{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 14px;font-size:13px;color:var(--muted)}
+.chanbtn:hover{background:#EDEBE0;color:var(--ink)}
+.chanbtn[aria-current="true"]{background:var(--mist);color:var(--ink);font-weight:600}
+.chanbtn .ci{width:15px;height:15px;flex:none;opacity:.7}
+.chanbtn .nm2{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chanbtn .un{font-size:10.5px;font-weight:700;background:var(--accent);color:#fff;padding:1px 6px;border-radius:999px}
+.chanbtn .lock{font-size:11px;opacity:.5}
+.thread{display:flex;flex-direction:column;min-width:0}
+.thead{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--line-soft)}
+.thead .tn{font-size:14.5px;font-weight:600}
+.thead .ts{font-size:11.5px;color:var(--muted);margin-top:1px}
+.msgs{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+.msg{display:flex;gap:11px;max-width:78%}
+.msg .mv{width:31px;height:31px;border-radius:50%;background:var(--mist);color:var(--navy);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+.msg .mw{font-size:11.5px;color:var(--muted);margin-bottom:3px;display:block}
+.msg > span:not(.mv){display:block;min-width:0}
+.msg .bub{display:inline-block;max-width:100%;background:#fff;border:1px solid var(--line-soft);border-radius:4px 13px 13px 13px;padding:9px 13px;font-size:13.5px;line-height:1.5;box-shadow:var(--shadow-sm)}
+.msg.me{align-self:flex-end;flex-direction:row-reverse}
+.msg.me .bub{background:var(--accent);color:#fff;border-color:transparent;border-radius:13px 4px 13px 13px}
+.msg.me .mv{background:var(--accent);color:#fff}
+.msg.me .mw{text-align:right}
+.msg.sys{max-width:100%;align-self:center}
+.msg.sys .bub{background:var(--mist);border:none;font-size:12px;color:var(--navy);border-radius:999px;padding:5px 13px;box-shadow:none}
+.composer{display:flex;gap:9px;padding:12px 16px;min-width:0;border-top:1px solid var(--line-soft);background:#fff}
+.composer input{flex:1;min-width:0;font-family:inherit;font-size:13.5px;border:1px solid var(--line);border-radius:999px;padding:10px 16px;color:var(--ink)}
+.composer input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(72,91,56,.18)}
+.locked{padding:18px;text-align:center;font-size:12.5px;color:var(--muted);background:#FAF9F3;border-top:1px solid var(--line-soft)}
+.picklist{max-height:270px;overflow-y:auto;display:grid;gap:7px}
+.pickrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:11px}
+.pickrow:hover{border-color:var(--accent)}
+.pickrow[aria-pressed="true"]{border-color:var(--accent);background:var(--mist)}
+.mthread{display:flex;flex-direction:column;height:100%}
+.mback{font-size:12.5px;color:var(--accent);font-weight:500;padding:4px 0}
+.screen .composer{padding:10px 12px;gap:7px}
+.screen .composer input{padding:9px 13px;font-size:13px;min-width:0}
+.screen .composer .btn{padding:9px 14px;font-size:12.5px;flex:none}
+.screen .msgs{padding:6px 2px 10px}
+.screen .msg{max-width:90%}
+.screen .msg .bub{font-size:13px;padding:8px 11px}
+
+/* ---------- Resources ---------- */
+.resgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.rescard{background:#fff;border:1px solid var(--line-soft);border-radius:var(--r);box-shadow:var(--shadow-sm);overflow:hidden;text-align:left;display:flex;flex-direction:column}
+.rescard:hover{box-shadow:var(--shadow-md);border-color:var(--line)}
+.thumb{aspect-ratio:16/9;display:grid;place-items:center;position:relative;overflow:hidden}
+.thumb .glyph{width:44px;height:44px;opacity:.95}
+.thumb .badge{position:absolute;top:9px;right:9px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink)}
+.thumb.lite .glyph{color:var(--navy)}
+.rescard .rbody{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column}
+.rescard .rt{font-size:14px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+.rescard .rd{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.45;flex:1}
+.rescard .rf{display:flex;align-items:center;gap:8px;margin-top:11px}
+.rescard .rf .m{font-size:11.5px;color:var(--muted-2);margin-left:auto}
+.thumbpick{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.thumbpick button{aspect-ratio:1;border-radius:11px;border:2px solid transparent}
+.thumbpick button[aria-pressed="true"]{border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
+.sess{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px dashed var(--line-soft)}
+.sess .num{width:22px;flex:none;font-family:'Montserrat','Inter',sans-serif;font-size:12px;color:var(--muted-2);font-weight:600}
+.sess input{font-family:inherit;font-size:13px;border:1px solid var(--line);border-radius:8px;padding:7px 9px;color:var(--ink)}
+.sess .st{flex:1;min-width:0}
+.sess .sr{width:118px;flex:none}
+.sess .acts{display:flex;gap:4px;flex:none}
+.upload{display:grid;place-items:center;border:2px dashed var(--line);border-radius:11px;color:var(--muted-2);font-size:20px;background:#fff;aspect-ratio:1}
+.upload:hover{border-color:var(--accent);color:var(--accent)}
+.planhero{padding:0}
+.planhero .banner{aspect-ratio:3/1;display:grid;place-items:center;position:relative}
+.planhero .banner .glyph{width:52px;height:52px;color:#fff}
+.dayrow{display:flex;align-items:center;gap:13px;padding:13px 22px;border-top:1px solid var(--line-soft);width:100%;text-align:left}
+.dayrow:hover{background:#FAF9F3}
+.dayrow .dn{width:34px;height:34px;border-radius:50%;background:var(--mist);color:var(--navy);display:grid;place-items:center;font-size:12.5px;font-weight:600;flex:none;font-family:'Montserrat','Inter',sans-serif}
+.dayrow.done .dn{background:var(--good-bg);color:var(--good)}
+.dayrow .dt{font-size:13.5px;font-weight:500;display:block}
+.dayrow .ds{font-size:11.5px;color:var(--muted);margin-top:1px;display:block}
+.reader{max-width:560px}
+.reader .rhero{aspect-ratio:5/1;max-height:110px;display:grid;place-items:center;color:#fff}
+.reader .rbodytext{padding:22px 26px 8px}
+.reader .eyebrow2{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:600;color:var(--accent)}
+.reader h3{margin:8px 0 0;font-size:21px;font-weight:600;letter-spacing:-.02em;line-height:1.25}
+.reader .ref{display:inline-block;margin-top:9px;font-size:12px;font-weight:600;color:var(--navy);background:var(--mist);padding:4px 10px;border-radius:999px}
+.reader .article{font-size:15px;line-height:1.72;color:var(--ink);margin-top:16px}
+.reader .article p{margin:0 0 14px}
+.reader .block{background:#FAF9F3;border:1px solid var(--line-soft);border-radius:var(--r);padding:15px 16px;margin-top:6px}
+.reader .block .bl{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--muted-2)}
+.reader .block .bt{font-size:14.5px;line-height:1.55;margin-top:7px}
+.reader .nav{display:flex;gap:9px;align-items:center;padding:14px 26px;border-top:1px solid var(--line);background:#FAF9F3}
+.reader .nav .sp{flex:1;font-size:11.5px;color:var(--muted-2)}
+.bigthumb{aspect-ratio:5/1;max-height:118px;border-radius:14px;display:grid;place-items:center;margin-bottom:4px}
+.bigthumb .glyph{width:42px;height:42px}
+
+/* ---------- Giving reports ---------- */
+.rpt{display:grid;gap:16px}
+.rptnums{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.rptnums div{background:var(--mist);border-radius:12px;padding:11px 12px}
+.rptnums .k{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--navy);opacity:.7;font-weight:600}
+.rptnums .v{font-size:18px;font-weight:600;margin-top:3px;font-family:'Montserrat','Inter',sans-serif;letter-spacing:-.02em}
+.bars{display:flex;align-items:flex-end;gap:7px;height:112px;padding-top:6px}
+.bars .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%}
+.bars .bar2{width:100%;background:var(--accent);border-radius:5px 5px 0 0;min-height:3px}
+.bars .bl{font-size:9.5px;color:var(--muted-2);font-weight:500;white-space:nowrap}
+.brk{display:grid;gap:8px}
+.brk .r{display:grid;grid-template-columns:1fr auto;gap:10px;font-size:12.5px;align-items:center}
+.brk .track{grid-column:1/-1;height:5px;border-radius:999px;background:var(--mist);overflow:hidden}
+.brk .track i{display:block;height:100%;background:var(--accent);border-radius:999px}
+.periodpick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.periodpick button{border:2px solid var(--line);border-radius:13px;padding:14px 10px;text-align:left}
+.periodpick button:hover{border-color:var(--accent)}
+.periodpick button[aria-pressed="true"]{border-color:var(--accent);background:var(--mist)}
+.periodpick .pt{font-size:13.5px;font-weight:600}
+.periodpick .ps{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.35}
+
+/* ---------- Check in kiosk ---------- */
+.kiosk{position:fixed;inset:0;z-index:100;background:var(--chrome);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:26px;overflow-y:auto}
+.kiosk .exit{position:absolute;top:18px;right:20px;font-size:12.5px;color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.18);padding:7px 13px;border-radius:9px}
+.kiosk .exit:hover{background:rgba(255,255,255,.09);color:#fff}
+.kiosk .brand{position:absolute;top:18px;left:22px;color:#fff;opacity:.85}
+.kiosk .brand .mark{width:124px;height:auto;display:block}
+.kcard{width:100%;max-width:600px;background:#fff;border-radius:24px;box-shadow:var(--shadow-lg);overflow:hidden}
+.kcard .kh{padding:26px 30px 8px;text-align:center}
+.kcard .kh h2{margin:0;font-size:25px;font-weight:600;letter-spacing:-.02em}
+.kcard .kh p{margin:7px 0 0;font-size:14px;color:var(--muted);line-height:1.5}
+.kcard .kb{padding:22px 30px 30px}
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;max-width:330px;margin:0 auto}
+.pad button{height:62px;border-radius:15px;background:var(--mist);font-size:24px;font-weight:600;color:var(--navy);font-family:'Montserrat','Inter',sans-serif}
+.pad button:hover{background:var(--accent);color:#fff}
+.pad button.util{font-size:14px;font-family:inherit;background:#fff;border:1px solid var(--line);color:var(--muted)}
+.pad button.util:hover{background:var(--deep);color:#fff;border-color:var(--deep)}
+.digits{display:flex;gap:12px;justify-content:center;margin:6px 0 22px}
+.digits i{width:52px;height:62px;border-radius:14px;border:2px solid var(--line);display:grid;place-items:center;font-size:26px;font-weight:600;font-family:'Montserrat','Inter',sans-serif;color:var(--ink)}
+.digits i.on{border-color:var(--accent);background:var(--mist)}
+.kidcard{display:flex;align-items:center;gap:15px;width:100%;text-align:left;padding:17px 18px;border:2px solid var(--line);border-radius:16px;margin-bottom:11px;background:#fff}
+.kidcard:hover{border-color:var(--accent)}
+.kidcard[aria-pressed="true"]{border-color:var(--accent);background:var(--mist)}
+.kidcard .kav{width:48px;height:48px;border-radius:14px;background:var(--mist);color:var(--navy);display:grid;place-items:center;font-size:16px;font-weight:600;flex:none}
+.kidcard[aria-pressed="true"] .kav{background:var(--accent);color:#fff}
+.kidcard .kn{font-size:16px;font-weight:600}
+.kidcard .kr{font-size:12.5px;color:var(--muted);margin-top:2px}
+.kidcard .check{margin-left:auto;width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;color:transparent;font-size:13px;font-weight:700;flex:none}
+.kidcard[aria-pressed="true"] .check{background:var(--accent);border-color:var(--accent);color:#fff}
+.kbtn{width:100%;background:var(--accent);color:#fff;font-size:16px;font-weight:600;padding:16px;border-radius:15px;margin-top:8px}
+.kbtn:disabled{opacity:.35;cursor:not-allowed}
+.kbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink);font-weight:500;font-size:14px;padding:12px;margin-top:10px}
+.label{border:2px dashed var(--line);border-radius:16px;padding:18px;margin-bottom:12px}
+.label .lt{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.label .ln{font-size:19px;font-weight:600}
+.label .lc{font-family:'Montserrat','Inter',sans-serif;font-size:23px;font-weight:700;color:var(--deep);letter-spacing:.06em}
+.label .lr{font-size:12.5px;color:var(--muted);margin-top:4px}
+.label .la{margin-top:10px;display:inline-block}
+.kdone{text-align:center;padding:14px 0 4px}
+.kdone .tick{width:62px;height:62px;border-radius:50%;background:var(--good-bg);color:var(--good);display:grid;place-items:center;margin:0 auto 16px;font-size:29px;font-weight:600}
+
+/* ---------- Support modal ---------- */
+.modalwrap{position:fixed;inset:0;z-index:90;display:grid;place-items:center;padding:24px}
+.modalwrap .mscrim{position:absolute;inset:0;background:rgba(26,26,26,.55)}
+.modal{position:relative;width:100%;max-width:470px;background:#fff;border-radius:var(--r-lg);box-shadow:var(--shadow-lg);overflow:hidden;max-height:88vh;display:flex;flex-direction:column}
+.modal .mh{padding:20px 22px 16px;background:var(--deep);color:#fff;display:flex;align-items:flex-start;gap:12px}
+.modal .mh h3{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.modal .mh .s{font-size:12px;color:rgba(255,255,255,.55);margin-top:3px;line-height:1.45}
+.modal .mh .x{margin-left:auto;color:rgba(255,255,255,.6);font-size:20px;line-height:1;padding:2px 8px;border-radius:8px}
+.modal .mh .x:hover{background:rgba(255,255,255,.1);color:#fff}
+.modal .mb{padding:20px 22px;overflow-y:auto;display:grid;gap:14px}
+.field{display:grid;gap:6px}
+.field label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--muted-2)}
+.field input,.field textarea,.field select{
+  font-family:inherit;font-size:13.5px;color:var(--ink);background:#fff;
+  border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;
+}
+.field textarea{min-height:96px;resize:vertical;line-height:1.5}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(72,91,56,.18)}
+.field .err{font-size:11.5px;color:var(--flag);display:none}
+.field.bad input,.field.bad textarea{border-color:var(--flag)}
+.field.bad .err{display:block}
+.modal .mf{padding:14px 22px;border-top:1px solid var(--line);background:#FAF9F3;display:flex;gap:9px;align-items:center}
+.modal .mf .note{font-size:11px;color:var(--muted-2);flex:1;min-width:0;line-height:1.4;word-break:break-word}
+.modal .mf .btn{white-space:nowrap}
+.sent{padding:34px 26px;text-align:center}
+.sent .tick{width:46px;height:46px;border-radius:50%;background:var(--good-bg);color:var(--good);display:grid;place-items:center;margin:0 auto 14px;font-size:22px;font-weight:600}
+.sent h3{margin:0;font-size:17px;font-weight:600}
+.sent p{margin:8px 0 0;font-size:13px;color:var(--muted);line-height:1.55}
+
+@media (max-width:1180px){
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .grid-2{grid-template-columns:1fr}
+  .memberwrap{grid-template-columns:1fr;justify-items:center}
+  .phone{position:static}
+  .track{position:static;width:100%;max-width:560px}
+}
+@media (max-width:1100px){
+  .resgrid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:900px){
+  .shell{flex-direction:column}
+  .sidebar{width:100%;flex-direction:row;align-items:center;gap:6px;padding:10px 12px;overflow-x:auto}
+  .church,.navlbl,.sidefoot{display:none}
+  .nav{width:auto;flex:none;white-space:nowrap;padding:8px 12px}
+  .chatwrap{grid-template-columns:1fr;height:auto}
+  .chanrail{flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line-soft)}
+  .chanlbl{display:none}
+  .chanbtn{width:auto;flex:none;white-space:nowrap}
+  .msgs{height:330px}
+  .resgrid{grid-template-columns:1fr}
+  .stages{grid-template-columns:repeat(4,1fr)}
+  .stage .arrow{display:none}
+}
+@media (max-width:620px){
+  .stages{grid-template-columns:repeat(2,1fr)}
+  .metrics{grid-template-columns:1fr}
+  .content,.topline{padding-left:16px;padding-right:16px}
+  .phone{width:100%;max-width:390px;height:740px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<div class="demobar">
+  <div class="brandmark"><span class="dot"></span> Discipleship Operating System</div>
+  <span class="tag">Client demo</span>
+  <div class="spacer"></div>
+  <div class="seg" role="tablist" aria-label="View">
+    <button role="tab" id="viewStaff" aria-selected="true">Staff view</button>
+    <button role="tab" id="viewMember" aria-selected="false">Member app</button>
+  </div>
+</div>
+
+<div id="app"></div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Person profile"></aside>
+
+<script>
+/* ============================ DEMO DATA ============================ */
+const LOGO_JOURNEY = `<img class="mark" alt="The Journey Church" src="data:image/png;base64,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">`;
+
+const CHURCHES = [
+  {name:"The Journey Church", short:"Journey", city:"Jackson, MO", logo:LOGO_JOURNEY, accent:"#485B38",
+   appName:"The Journey Church", appDomain:"app.thejourneychurchsemo.com", people:412, weekly:38420},
+  {name:"Riverbend Fellowship", short:"RF", city:"Aurora, IL", logo:null, accent:"#2F3E24",
+   appName:"Riverbend Church", appDomain:"app.riverbendchurch.org", people:186, weekly:14970}
+];
+
+/* Support request routing.
+   endpoint: leave "" to open the sender's email app with the request prefilled (works with no setup).
+   Set it to a form service URL (Formspree, Web3Forms, or your own Resend endpoint) to send silently. */
+const SUPPORT = { to:"isaac@betweensundaysconsulting.com", endpoint:"" };
+
+const STAGES = ["Visitor","Guest","Attender","Member","Volunteer","Disciple","Leader"];
+const STAGE_COUNTS = [34,21,96,148,62,28,11];
+const STAGE_STUCK  = [0,4,3,0,1,0,0];
+
+const PEOPLE = [
+  {id:1, n:"Marcus Webb", stage:1, days:43, since:"June 22", last:"21 days ago", flag:"No contact in 3 weeks. Visited 5 times, never took a next step.",
+   family:"Marcus and Dana Webb, 2 kids in the Kids ministry", give:"Not giving", serve:"None", group:"None",
+   tl:[{w:"Filled out a connect card",d:"June 22 · first visit",hi:true},{w:"Checked in 2 kids on Sunday",d:"June 29"},{w:"Attended service",d:"July 6, July 13, July 27"},{w:"Opened the Next Steps email, did not register",d:"July 8"},{w:"Flagged: 43 days as a Guest",d:"Today",hi:true}],
+   next:"Invite to the August 10 Next Steps lunch"},
+  {id:2, n:"Sam Ortiz", stage:2, days:71, since:"May 25", last:"34 days ago", flag:"Attender for 71 days. Average move to Member is 38 days.",
+   family:"Single, no kids on file", give:"$40/mo since June", serve:"None", group:"None",
+   tl:[{w:"Moved from Guest to Attender",d:"May 25",hi:true},{w:"Started recurring giving",d:"June 2"},{w:"Attended 8 of last 10 Sundays",d:"Ongoing"},{w:"No group, no serving team",d:"Gap",hi:true}],
+   next:"Personal invite to a Tuesday group from Priya"},
+  {id:3, n:"Chris Vaughn", stage:2, days:58, since:"June 7", last:"29 days ago", flag:"Attendance dropped from weekly to twice in 6 weeks.",
+   family:"Chris and Alina Vaughn", give:"Lapsed after June", serve:"None", group:"Men's Tuesday (inactive)",
+   tl:[{w:"Joined Men's Tuesday group",d:"June 10"},{w:"Stopped attending group",d:"July 1",hi:true},{w:"Giving stopped",d:"July 5",hi:true},{w:"Last Sunday attendance",d:"July 6"}],
+   next:"Pastor call this week, not an email"},
+  {id:4, n:"Tyler Brooks", stage:0, days:6, since:"July 28", last:"2 days ago", flag:null,
+   family:"Tyler and Megan Brooks", give:"Not giving", serve:"None", group:"None",
+   tl:[{w:"First visit, submitted a connect card",d:"July 28",hi:true},{w:"Welcome text sent automatically",d:"July 28"},{w:"Opened the welcome video",d:"July 30"},{w:"Second visit",d:"August 2"}],
+   next:"Automated: coffee invite sends Thursday"},
+  {id:5, n:"Alicia Romero", stage:2, days:12, since:"July 22", last:"4 days ago", flag:null,
+   family:"Alicia Romero, 1 child", give:"$75/mo", serve:"Interested in Kids", group:"Wednesday Women's",
+   tl:[{w:"Moved from Guest to Attender",d:"July 22",hi:true},{w:"Joined Wednesday Women's group",d:"July 23"},{w:"Started giving",d:"July 25"},{w:"Marked interest in serving",d:"August 1",hi:true}],
+   next:"Kids team background check invite"},
+  {id:6, n:"Rachel Kim", stage:3, days:19, since:"July 15", last:"5 days ago", flag:null,
+   family:"Rachel and Daniel Kim", give:"$220/mo", serve:"None yet", group:"Sunday 5pm",
+   tl:[{w:"Completed the membership class",d:"July 15",hi:true},{w:"Baptized",d:"July 20",hi:true},{w:"Joined Sunday 5pm group",d:"July 26"}],
+   next:"Serving team match, worship or hospitality"},
+  {id:7, n:"Dana Whitfield", stage:4, days:210, since:"January 6", last:"Yesterday", flag:null,
+   family:"Dana Whitfield, 3 kids", give:"$150/mo", serve:"Kids team, 2 Sundays a month", group:"Wednesday Women's",
+   tl:[{w:"Serving on the Kids team",d:"Since February"},{w:"Completed volunteer training",d:"March 3"},{w:"Background check current through 2027",d:"On file"},{w:"Asked about leading a group",d:"July 30",hi:true}],
+   next:"Group leader track, starts September"},
+  {id:8, n:"Priya Anand", stage:5, days:365, since:"2024", last:"Today", flag:null,
+   family:"Priya and Raj Anand", give:"$400/mo", serve:"Group leader, Tuesday", group:"Leads Tuesday Women's",
+   tl:[{w:"Leads Tuesday Women's, 11 members",d:"Ongoing"},{w:"Completed leader development",d:"February"},{w:"Discipling 3 people one on one",d:"Ongoing",hi:true}],
+   next:"Campus leadership conversation"},
+  {id:9, n:"Jordan Ellis", stage:1, days:9, since:"July 26", last:"3 days ago", flag:null,
+   family:"Jordan Ellis", give:"Not giving", serve:"None", group:"None",
+   tl:[{w:"First visit",d:"July 26",hi:true},{w:"Welcome text and video",d:"July 26"},{w:"Returned for a second visit",d:"August 2"}],
+   next:"Automated: next steps invite Sunday"},
+  {id:10, n:"Kevin and Thao Nguyen", stage:3, days:540, since:"2024", last:"6 days ago", flag:null,
+   family:"Nguyen family, 3 kids", give:"$310/mo", serve:"Hospitality, occasional", group:"Sunday 5pm",
+   tl:[{w:"Members since 2024",d:"On file"},{w:"Giving consistent 18 months",d:"Ongoing"},{w:"Kids check in every week",d:"Ongoing"}],
+   next:"Invite Kevin to the serving team interest night"},
+  {id:11, n:"Hannah Doyle", stage:4, days:150, since:"March 8", last:"2 days ago", flag:null,
+   family:"Hannah Doyle", give:"$90/mo", serve:"Worship, weekly", group:"Wednesday Women's",
+   tl:[{w:"Joined the worship team",d:"March 8"},{w:"Serving weekly",d:"Ongoing"},{w:"Completed the leader interest form",d:"July 18",hi:true}],
+   next:"Worship leader development track"},
+  {id:12, n:"Grace Mbeki", stage:6, days:900, since:"2023", last:"Today", flag:null,
+   family:"Grace and Peter Mbeki", give:"$500/mo", serve:"Campus leader", group:"Leads leaders",
+   tl:[{w:"Campus leadership team",d:"Since 2023"},{w:"Oversees 6 group leaders",d:"Ongoing"},{w:"Leading the fall launch",d:"Planned",hi:true}],
+   next:"Fall group launch planning"}
+];
+
+/* ---- Messaging ---- */
+let CHANNELS = [
+  {id:"all", name:"All Members", open:true, members:412, purpose:"Church wide announcements and prayer"},
+  {id:"worship", name:"Worship Team", open:false, members:14, purpose:"Sunday sets, rehearsal, and call times"},
+  {id:"youth", name:"Youth Team", open:false, members:19, purpose:"Wednesday night and student leaders"},
+  {id:"kids", name:"Kids Team", open:false, members:23, purpose:"Rooms, ratios, and safety"},
+  {id:"welcome", name:"Welcome Team", open:false, members:11, purpose:"Guest follow up and lobby coverage"}
+];
+let DMS = [
+  {id:"dm-hannah", name:"Hannah Doyle"},
+  {id:"dm-priya", name:"Priya Anand"},
+  {id:"dm-dana", name:"Dana Whitfield"}
+];
+let CHAT = {
+  all:[
+    {w:"Pastor Reed", t:"Sunday 7:02 AM", x:"Doors open at 8:30 this morning. Coffee is in the lobby, and Next Steps lunch signups are open through Wednesday."},
+    {w:"Priya Anand", t:"Sunday 9:41 AM", x:"Praying for the Barrett family this week. Thank you all."},
+    {w:"Grace Mbeki", t:"Monday 8:15 AM", x:"Fall group launch is September 14. Leaders, watch for a note in the Worship and Youth rooms."}
+  ],
+  worship:[
+    {w:"Hannah Doyle", t:"Tuesday 6:40 PM", x:"Set for Aug 9 is locked. Cornerstone moved to C, charts are in the app."},
+    {w:"Josh Miller", t:"Tuesday 6:52 PM", x:"Copy. I will have the slides built by Thursday."},
+    {w:"Pastor Reed", t:"Wednesday 7:12 AM", x:"Rehearsal Thursday at 7. Call time 8:15 Sunday."},
+    {w:"Marcus Webb", t:"Wednesday 9:03 AM", x:"First time on acoustic this week. Anything I should know?"}
+  ],
+  youth:[
+    {w:"Grace Mbeki", t:"Monday 4:20 PM", x:"22 students Wednesday. We need one more adult in the gym."},
+    {w:"Dana Whitfield", t:"Monday 4:31 PM", x:"I can cover it."}
+  ],
+  kids:[
+    {w:"Dana Whitfield", t:"Sunday 11:04 AM", x:"86 kids today, 7 first timers. Room 2 was at ratio all morning."},
+    {w:"Alicia Romero", t:"Monday 12:15 PM", x:"Background check submitted. Excited to start Aug 17."},
+    {w:"Dana Whitfield", t:"Monday 12:22 PM", x:"Welcome Alicia. I will walk you through the room before service."}
+  ],
+  welcome:[
+    {w:"Pastor Reed", t:"Sunday 12:40 PM", x:"Nine first time guests today. Follow up texts went out automatically."},
+    {w:"Priya Anand", t:"Sunday 1:02 PM", x:"I met the Brooks family. Second visit. They asked about groups."}
+  ],
+  "dm-hannah":[
+    {w:"Hannah Doyle", t:"Yesterday 5:12 PM", x:"Do you want the Known set repeated on the 16th or something new?"},
+    {w:"Pastor Reed", t:"Yesterday 5:20 PM", me:true, x:"Something new. Week 3 goes a different direction."}
+  ],
+  "dm-priya":[
+    {w:"Priya Anand", t:"Monday 8:02 AM", x:"Sam Ortiz still has not landed in a group. Want me to call him?"}
+  ],
+  "dm-dana":[
+    {w:"Dana Whitfield", t:"Friday 3:30 PM", x:"I would like to talk about leading a group in the fall."}
+  ]
+};
+let UNREAD = {worship:2, kids:1, "dm-priya":1};
+
+function chanById(id){ return CHANNELS.find(c=>c.id===id) || DMS.find(d=>d.id===id); }
+function isDM(id){ return String(id).startsWith("dm-"); }
+
+/* ---- Resources ---- */
+const THUMBS = [
+  {bg:"linear-gradient(135deg,#485B38 0%,#2F3E24 100%)", lite:false},
+  {bg:"linear-gradient(135deg,#2F3E24 0%,#1A1A1A 100%)", lite:false},
+  {bg:"linear-gradient(135deg,#2F3E24 0%,#F6C14B 140%)", lite:false},
+  {bg:"linear-gradient(135deg,#F2F0E7 0%,#E4E9DD 100%)", lite:true},
+  {bg:"radial-gradient(circle at 30% 25%,#5E7548 0%,#2F3E24 70%)", lite:false},
+  {bg:"linear-gradient(160deg,#485B38 0%,#1A1A1A 100%)", lite:false}
+];
+const RES_TYPES = ["Reading plan","Course","Bible study","Training","Devotional","Next steps path"];
+
+let RESOURCES = [
+  {id:"r1", title:"Known: a 5 day reading plan", type:"Reading plan", status:"Published", thumb:0, custom:null, started:218,
+   desc:"Companion plan for the Known series. One passage and one question a day.",
+   sessions:[
+     {t:"Day 1: Searched and known", r:"Psalm 139:1-6", m:6,
+      body:"There is a difference between being watched and being known. One makes you smaller. The other makes you safe.\n\nDavid opens this psalm with a God who has already searched him and already knows. Not the version he manages in public. The sitting down and the getting up. The word before it leaves his mouth. Nothing about David is news to God.\n\nMost of us spend enormous energy managing what people know about us. Today, notice how much of that energy is wasted on a God who already saw all of it and did not leave.",
+      q:"What is one part of your life you would rather God not look at directly?",
+      pray:"God, you already know. Help me stop performing for someone who has seen everything and stayed."},
+     {t:"Day 2: Nowhere to hide", r:"Psalm 139:7-12", m:6,
+      body:"David runs through every escape route he can imagine. Up, down, east, the far side of the sea, total darkness. Each one ends the same way: you are already there.\n\nRead it as a threat and it is suffocating. Read it as a promise and it is the most stable thing in your life. The difference is not the verse. It is what you believe about the character of the one who followed you.\n\nThere is no room you can walk into today where you arrive alone.",
+      q:"Where have you been trying to go where you hoped God would not follow?",
+      pray:"God, I stop running today. Meet me where I actually am, not where I pretend to be."},
+     {t:"Day 3: Formed on purpose", r:"Psalm 139:13-16", m:7,
+      body:"Knit together. Written down before a single day of it happened. This is not language for an accident.\n\nWe are fluent in the vocabulary of self-improvement and almost illiterate in the vocabulary of being made. One says you are a project to be fixed. The other says you are a person who was intended.\n\nYou can work on yourself for the rest of your life and never once feel intended. That has to come from somewhere outside you.",
+      q:"What would change this week if you actually believed you were intended, not accidental?",
+      pray:"God, you made me on purpose. Let that settle deeper than the voice that says I am a problem to solve."},
+     {t:"Day 4: Known by name", r:"John 10:1-15", m:8,
+      body:"Jesus describes a shepherd who calls his own sheep by name and leads them out. Not by number. Not by the group. By name.\n\nThen he says something that costs him everything: the good shepherd lays down his life for the sheep. Being known here is not surveillance. It is somebody willing to stand between you and what is coming.\n\nA hired hand runs when it gets expensive. Jesus is telling you which one he is before you ever need to find out.",
+      q:"Who in your life knows your name and not just your role?",
+      pray:"Jesus, you call me by name. Teach me to recognize your voice over the louder ones."},
+     {t:"Day 5: Known and sent", r:"John 15:9-17", m:8,
+      body:"Jesus moves the relationship. Not servants, who do not know what the master is doing. Friends, who have been told everything.\n\nThen he sends them. Being known was never the destination. It was the ground to stand on so that they could go and bear fruit that lasts.\n\nThis is where a reading plan either ends or actually starts. You have spent five days on being known. The question now is what you do with the person next to you who is not sure anyone knows them at all.",
+      q:"Who is one person this week who needs to be known, and what will you actually do about it?",
+      pray:"Jesus, you called me friend. Send me to someone who has not heard that yet."}
+   ]},
+  {id:"r2", title:"Your first 30 days", type:"Next steps path", status:"Published", thumb:3, custom:null, started:41,
+   desc:"What to expect, who to meet, and the three steps we ask every new guest to take.",
+   sessions:[
+     {t:"Week 1: Who we are", r:"Welcome video", m:9,
+      body:"You do not need to know anyone here to belong here. That sounds like a slogan until somebody proves it to you, so here is how we try to.\n\nThis week is about orientation, not commitment. Watch the welcome video, learn who is on staff, and find out what actually happens on a Sunday morning. Nobody is going to ask you for anything.",
+      q:"What made you walk in the door the first time?",
+      pray:"God, thank you for whatever brought me here. Show me what is next."},
+     {t:"Week 2: Find a group", r:"Group finder", m:12,
+      body:"A church of four hundred can feel like a crowd until you are known by eight of them. Groups are how a big room gets small.\n\nUse the group finder to sort by night, neighborhood, and season of life. Visit one before you decide anything. Nobody signs a contract.",
+      q:"What has kept you from joining a group before?",
+      pray:"God, give me the nerve to walk into a room where I do not know anyone."},
+     {t:"Week 3: Meet the team", r:"Coffee invite", m:10,
+      body:"Every week somebody on our staff has coffee with people who are new. No agenda, no pitch, no ask.\n\nThe reason is simple. It is hard to trust an institution and easy to trust a person. Take the coffee.",
+      q:"What is one honest question about this church you have not asked out loud?",
+      pray:"God, help me ask the real question instead of the polite one."},
+     {t:"Week 4: Take a next step", r:"Next Steps class", m:15,
+      body:"Thirty days in, the question stops being what you think of us and starts being what you do next.\n\nNext Steps is one lunch. We cover what we believe, how we are structured, and the three ways people usually plug in: a group, a serving team, and generosity. Come and decide nothing if you want.",
+      q:"Which of the three is the one you are avoiding, and why?",
+      pray:"God, I do not want to stay a spectator. Show me the step that is actually mine."}
+   ]},
+  {id:"r3", title:"Leading a group well", type:"Training", status:"Published", thumb:1, custom:null, started:12,
+   desc:"Six lessons every group leader completes before their first meeting.",
+   sessions:[
+     {t:"Lesson 1: What a group is for", r:"Acts 2:42-47", m:14,
+      body:"A group is not a class with snacks. Acts describes people devoted to teaching, to each other, to the table, and to prayer, and then it says they were together and had everything in common.\n\nYour job is not to be the smartest person in the room. It is to build a room where people tell the truth and come back next week.",
+      q:"What do you want people to say about your group in six months?",
+      pray:"God, make my group a place where the truth is safe."},
+     {t:"Lesson 2: Asking better questions", r:"Facilitation", m:12,
+      body:"The fastest way to kill a discussion is a question with a right answer. The fastest way to open one is a question only that person can answer.\n\nSwap what does this verse mean for where does this land in your week. Then count to ten in your head before you rescue the silence.",
+      q:"Write one question you will open with. Does it have a right answer?",
+      pray:"God, help me listen longer than is comfortable."},
+     {t:"Lesson 3: Handling hard moments", r:"Care and referral", m:16,
+      body:"Someone will eventually say something you are not equipped for. A marriage coming apart. A diagnosis. A confession.\n\nYou are not the counselor. You are the person who does not flinch, stays present, and knows who to call. That is enough, and pretending to be more than that does real damage.",
+      q:"Who would you call tonight if someone in your group was in crisis?",
+      pray:"God, give me steadiness when the room gets heavy."},
+     {t:"Lesson 4: Multiplying leaders", r:"2 Timothy 2:2", m:13,
+      body:"Paul tells Timothy to entrust what he heard to reliable people who will teach others. That is four generations in one sentence.\n\nFrom your first meeting, watch for the person who shows up early and stays late. Hand them something small. Then something bigger.",
+      q:"Who in your group could be leading one within a year?",
+      pray:"God, help me build people, not attendance."},
+     {t:"Lesson 5: Prayer in a group", r:"Practice", m:10,
+      body:"Most groups spend fifty minutes talking and four minutes praying, then wonder why it feels like a book club.\n\nStart with prayer instead of ending with it. Keep a list. Follow up on last week's requests out loud so people learn that what they said was heard.",
+      q:"What would change if you gave prayer a third of your time?",
+      pray:"God, teach us to talk to you as easily as we talk about you."},
+     {t:"Lesson 6: Your first six weeks", r:"Planning", m:15,
+      body:"Plan the first six weeks before week one. Where you meet, who brings what, what you are studying, and how it ends.\n\nAmbiguity kills groups faster than bad teaching. People will commit to something specific and finite far more readily than to something open ended.",
+      q:"What are your six weeks, specifically?",
+      pray:"God, help me steward these people's time well."}
+   ]},
+  {id:"r4", title:"Money and faith", type:"Bible study", status:"Published", thumb:4, custom:null, started:64,
+   desc:"Four weeks on generosity, debt, contentment, and giving as worship.",
+   sessions:[
+     {t:"Week 1: Who owns it", r:"Psalm 24:1", m:18,
+      body:"The earth is the Lord's and everything in it. If that is true, then the conversation is not about how much of your money you give away. It is about how much of God's money you keep.\n\nThat single reframe changes the entire tone of every budget conversation you will have this month.",
+      q:"If you managed rather than owned, what line in your budget would change first?",
+      pray:"God, it was never mine. Help me hold it that way."},
+     {t:"Week 2: Debt and freedom", r:"Proverbs 22:7", m:18,
+      body:"The borrower is servant to the lender. Not a moral judgment, a description of how it actually feels at 2am.\n\nDebt is not a sin. It is a constraint on your freedom to say yes to God quickly. Most people cannot be generous because they are already committed.",
+      q:"What is one payment that is currently deciding your future for you?",
+      pray:"God, give me the patience to get free rather than the shortcut that digs deeper."},
+     {t:"Week 3: Contentment", r:"Philippians 4:10-13", m:16,
+      body:"Paul says he learned contentment. Learned. It was not his temperament, it was a skill he acquired in both plenty and need.\n\nWhich means discontent is not a personality trait you are stuck with either.",
+      q:"What are you currently telling yourself you need in order to be content?",
+      pray:"God, teach me the thing Paul had to learn."},
+     {t:"Week 4: Giving as worship", r:"2 Corinthians 9", m:20,
+      body:"Paul describes giving that is decided in advance, not under pressure, and cheerful. All three matter, and most of us miss at least two.\n\nGiving that happens only when you feel moved is not generosity. It is mood. Deciding in advance is what turns it into worship.",
+      q:"What will you decide in advance this month, before you feel anything?",
+      pray:"God, make me a cheerful giver, not a guilty one."}
+   ]},
+  {id:"r5", title:"Baptism: what it means", type:"Course", status:"Draft", thumb:5, custom:null, started:0,
+   desc:"Short course for anyone considering baptism. Not published yet.",
+   sessions:[
+     {t:"Part 1: Why we baptize", r:"Matthew 28:18-20", m:11,
+      body:"Jesus' last instruction included baptizing. It is not an upgrade for advanced Christians. It is the front door.\n\nBaptism does not save you. It announces publicly what has already happened privately, in front of people who will hold you to it.",
+      q:"What is keeping you from doing this publicly?",
+      pray:"God, give me courage to say out loud what I already believe."}
+   ]}
+];
+
+let RES_DONE = {};
+
+/* ---- Giving ---- */
+let MANUAL_GIFTS = [];
+
+const GIVING_WEEKS  = [{l:"Jul 12",a:8420},{l:"Jul 19",a:9310},{l:"Jul 26",a:7980},{l:"Aug 2",a:9140}];
+const GIVING_MONTHS = [{l:"Mar",a:36180},{l:"Apr",a:34920},{l:"May",a:39640},{l:"Jun",a:37110},{l:"Jul",a:39620},{l:"Aug",a:9140}];
+const GIVING_YTD    = [{l:"Jan",a:33410},{l:"Feb",a:31980},{l:"Mar",a:36180},{l:"Apr",a:34920},{l:"May",a:39640},{l:"Jun",a:37110},{l:"Jul",a:39620},{l:"Aug",a:9140}];
+const FUND_SPLIT = [["General",.78],["Building",.09],["Kids ministry",.08],["Missions",.05]];
+const FUNDS = ["General","Building","Kids ministry","Missions"];
+
+function manualTotal(){ return MANUAL_GIFTS.reduce((t,g)=>t+g.amount,0); }
+
+function buildReport(period){
+  const cfg = {
+    weekly:{buckets:GIVING_WEEKS, title:"Weekly giving", range:"July 12 through August 2, 2026", givers:214, newG:5},
+    monthly:{buckets:GIVING_MONTHS, title:"Monthly giving", range:"March through August 2026", givers:286, newG:19},
+    ytd:{buckets:GIVING_YTD, title:"Year to date giving", range:"January 1 through August 5, 2026", givers:341, newG:47}
+  }[period];
+  const base = cfg.buckets.reduce((t,b)=>t+b.a,0);
+  const total = base + manualTotal();
+  const online = Math.round(base*.86);
+  const cash = MANUAL_GIFTS.filter(g=>g.method==="Cash").reduce((t,g)=>t+g.amount, Math.round(base*.06));
+  const check = MANUAL_GIFTS.filter(g=>g.method!=="Cash").reduce((t,g)=>t+g.amount, Math.round(base*.08));
+  return {
+    period, title:cfg.title, range:cfg.range, total, givers:cfg.givers, newG:cfg.newG,
+    avg: Math.round(total/cfg.givers),
+    buckets: cfg.buckets,
+    funds: FUND_SPLIT.map(([n,pct])=>[n, Math.round(total*pct), pct]),
+    methods: [["Online recurring", Math.round(online*.72)],["Online one time", Math.round(online*.28)],["Check", check],["Cash", cash]]
+  };
+}
+
+function money(n){ return "$"+n.toLocaleString(); }
+
+/* ---- Kids check in ---- */
+const KIOSK_FAMILIES = [
+  {pin:"4471", family:"Webb", guardian:"Marcus and Dana Webb",
+   kids:[{id:"k1",name:"Ellie Webb",age:5,room:"Room 2"},{id:"k2",name:"Grant Webb",age:3,room:"Room 1"}]},
+  {pin:"8802", family:"Nguyen", guardian:"Kevin and Thao Nguyen",
+   kids:[{id:"k3",name:"Mia Nguyen",age:6,room:"Room 4"}]},
+  {pin:"2210", family:"Whitfield", guardian:"Dana Whitfield",
+   kids:[{id:"k4",name:"Jonah Whitfield",age:4,room:"Room 3",alert:"Peanut allergy"}]},
+  {pin:"9134", family:"Romero", guardian:"Alicia Romero",
+   kids:[{id:"k5",name:"Sofia Romero",age:4,room:"Room 3"}]}
+];
+let KIOSK_LOG = [];
+
+/* ---- Service planning ---- */
+const ELEMENT_TYPES = ["Welcome","Worship","Announcements","Giving","Message","Response","Prayer","Video","Transition","Dismissal"];
+
+let SERVICES = [
+  {id:"s1", date:"Sunday, August 9", short:"Aug 9", series:"Known, week 2", start:"9:00", status:"Ready", filled:[18,21],
+   elements:[
+     {id:11, type:"Welcome", title:"Countdown and welcome", owner:"Media: Josh", mins:4},
+     {id:12, type:"Worship", title:"Worship set, 3 songs", owner:"Worship: Hannah Doyle", mins:18},
+     {id:13, type:"Announcements", title:"Announcements and giving", owner:"Host: Pastor Reed", mins:5},
+     {id:14, type:"Message", title:"Message: Known, week 2", owner:"Pastor Reed", mins:25},
+     {id:15, type:"Response", title:"Response and next steps", owner:"Team: Priya, Dana", mins:8},
+     {id:16, type:"Dismissal", title:"Dismiss and lobby follow up", owner:"Guest team", mins:5}
+   ],
+   songs:[
+     {id:"a1", title:"Great Is Thy Faithfulness", author:"Chisholm, Runyan", key:"G", bpm:72},
+     {id:"a2", title:"Cornerstone", author:"Hillsong Worship", key:"C", bpm:74},
+     {id:"a3", title:"Goodness of God", author:"Bethel Music", key:"Ab", bpm:63}
+   ]},
+  {id:"s2", date:"Sunday, August 16", short:"Aug 16", series:"Known, week 3", start:"9:00", status:"Draft", filled:[12,21],
+   elements:[
+     {id:21, type:"Welcome", title:"Countdown and welcome", owner:"Media: unassigned", mins:4},
+     {id:22, type:"Worship", title:"Worship set, 4 songs", owner:"Worship: unassigned", mins:22},
+     {id:23, type:"Message", title:"Message: Known, week 3", owner:"Pastor Reed", mins:25},
+     {id:24, type:"Response", title:"Baptism response", owner:"Team: Grace Mbeki", mins:12},
+     {id:25, type:"Dismissal", title:"Dismiss and lobby follow up", owner:"Guest team", mins:5}
+   ],
+   songs:[
+     {id:"b1", title:"Build My Life", author:"Housefires", key:"G", bpm:70},
+     {id:"b2", title:"Christ Our Hope In Life And Death", author:"Keith and Kristyn Getty", key:"D", bpm:76},
+     {id:"b3", title:"O Come To The Altar", author:"Elevation Worship", key:"B", bpm:70}
+   ]},
+  {id:"s3", date:"Sunday, August 23", short:"Aug 23", series:"Known, week 4", start:"9:00", status:"Needs team", filled:[6,21],
+   elements:[
+     {id:31, type:"Welcome", title:"Countdown and welcome", owner:"Media: unassigned", mins:4},
+     {id:32, type:"Worship", title:"Worship set, 3 songs", owner:"Worship: unassigned", mins:18},
+     {id:33, type:"Message", title:"Message: Known, week 4", owner:"Guest speaker, to confirm", mins:28},
+     {id:34, type:"Dismissal", title:"Dismiss and lobby follow up", owner:"Guest team", mins:5}
+   ],
+   songs:[
+     {id:"c1", title:"How Great Thou Art", author:"Boberg, Hine", key:"Bb", bpm:68},
+     {id:"c2", title:"King Of Kings", author:"Hillsong Worship", key:"D", bpm:72}
+   ]},
+  {id:"s4", date:"Sunday, August 30", short:"Aug 30", series:"New series, untitled", start:"9:00", status:"Draft", filled:[2,21],
+   elements:[
+     {id:41, type:"Welcome", title:"Countdown and welcome", owner:"Media: unassigned", mins:4},
+     {id:42, type:"Worship", title:"Worship set, to plan", owner:"Worship: unassigned", mins:20},
+     {id:43, type:"Message", title:"Message: series launch", owner:"Pastor Reed", mins:30}
+   ],
+   songs:[]}
+];
+
+const TALK_BEATS = [
+  {n:"01", w:"Open on the Journey, not the features", s:"Point at the rail. Ask the pastor to guess how many people are stuck between Guest and Attender. They will not know. That is the sale."},
+  {n:"02", w:"Click a red flag", s:"Open Marcus Webb. Show 43 days as a Guest with no contact in 3 weeks. Say: this person is already leaving and nobody knows it yet."},
+  {n:"03", w:"Show the system does the work", s:"Point at Tyler Brooks. Welcome text, video, and coffee invite fired automatically. No staff time spent."},
+  {n:"04", w:"Switch to the member app", s:"Same person, same data, their brand. This is what replaces the Bible app, the giving page, and the volunteer texts."},
+  {n:"05", w:"Change their brand color in Settings", s:"Prove white label in 5 seconds. Their logo, their color, their app in the store, not ours."},
+  {n:"06", w:"Land the money math", s:"Planning Center plus a website plus a giving platform runs about $400 a month. Tier 2 is $100. Then stop talking."}
+];
+
+/* ============================ ICONS ============================ */
+const IC = {
+  dash:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>',
+  people:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.5a3 3 0 010 5.6"/><path d="M18 14.5c2 .8 3 2.6 3 5"/></svg>',
+  serv:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M8 4v5"/></svg>',
+  kids:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>',
+  give:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s-7-4.4-7-9.4A4.1 4.1 0 0112 9a4.1 4.1 0 017 2.6c0 5-7 9.4-7 9.4z"/></svg>',
+  res:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5.5A2 2 0 016 4h5v16H6a2 2 0 01-2-2z"/><path d="M20 5.5A2 2 0 0018 4h-5v16h5a2 2 0 002-2z"/></svg>',
+  msg:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M20 15a3 3 0 01-3 3H8l-4 3V6a3 3 0 013-3h10a3 3 0 013 3z"/></svg>',
+  set:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1 2 2 0 11-4 0 1.6 1.6 0 00-2.7-1.1l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.1-2.7l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009.6 4.4a2 2 0 014 0 1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/></svg>',
+  home:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10.5L12 4l8 6.5V19a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 19z"/></svg>',
+  grow:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20V9"/><path d="M12 9C12 6 9.5 4 6 4c0 3.5 2.5 5 6 5z"/><path d="M12 12c0-3 2.5-5 6-5 0 3.5-2.5 5-6 5z"/></svg>',
+  hand:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 12V5a1.5 1.5 0 013 0v6"/><path d="M11 11V4.5a1.5 1.5 0 013 0V11"/><path d="M14 11.5V6.5a1.5 1.5 0 013 0V14a6 6 0 01-6 6h-.5a5.5 5.5 0 01-5.5-5.5V12a1.5 1.5 0 013 0"/></svg>',
+  user:'<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>'
+};
+
+/* ============================ STATE ============================ */
+const S = {view:"staff", church:0, tab:"dashboard", stageFilter:null, q:"", memberTab:"home", talk:false, amount:100, support:false, supportSent:false, service:"s1", editEl:null, songModal:null, toast:null, kiosk:null, gift:false, giftSaved:null, reportPick:false, report:null, reportPeriod:"weekly", resEdit:null, resDraft:null, resView:null, resRead:null, editSession:null, chan:"all", compose:false, composeSent:false, invite:null, newDM:false, pick:[], mchat:null, mchatNew:false};
+const $ = id => document.getElementById(id);
+const app = $("app");
+const initials = n => n.split(/[\s]+/).filter(w=>w[0]&&/[A-Za-z]/.test(w[0])).slice(0,2).map(w=>w[0].toUpperCase()).join("");
+
+function setAccent(){ document.documentElement.style.setProperty("--accent", CHURCHES[S.church].accent); }
+
+/* ============================ STAFF VIEW ============================ */
+const PRIMARY_ACTION = {
+  services:"New Service"
+};
+
+const NAVS = [
+  ["dashboard","Dashboard",IC.dash,null],
+  ["people","People",IC.people,"8"],
+  ["services","Services",IC.serv,null],
+  ["kids","Kids",IC.kids,null],
+  ["giving","Giving",IC.give,null],
+  ["resources","Resources",IC.res,null],
+  ["messages","Messages",IC.msg,null],
+  ["settings","Settings",IC.set,null]
+];
+
+function sidebar(){
+  const c = CHURCHES[S.church];
+  return `<nav class="sidebar" aria-label="Main">
+    <div class="church ${c.logo?"islogo":""}">
+      ${c.logo
+        ? `<div class="logotile">${c.logo}</div><div class="s">${c.city}</div>`
+        : `<div class="crest">${c.short}</div><div><div class="n">${c.name.split(" ").slice(0,2).join(" ")}</div><div class="s">${c.city}</div></div>`}
+    </div>
+    <div class="navlbl">Lead</div>
+    ${NAVS.slice(0,2).map(navBtn).join("")}
+    <div class="navlbl">Run</div>
+    ${NAVS.slice(2,6).map(navBtn).join("")}
+    <div class="navlbl">Manage</div>
+    ${NAVS.slice(6).map(navBtn).join("")}
+    <div class="sidefoot">Signed in as Pastor Reed<br>Staff account</div>
+  </nav>`;
+}
+function navBtn([id,label,icon,cnt]){
+  return `<button class="nav" data-tab="${id}" aria-current="${S.tab===id}">${icon}<span>${label}</span>${cnt?`<span class="cnt">${cnt}</span>`:""}</button>`;
+}
+
+function journeyRail(){
+  const total = STAGE_COUNTS.reduce((a,b)=>a+b,0);
+  const max = Math.max(...STAGE_COUNTS);
+  return `<section class="rail">
+    <div class="rhead">
+      <div>
+        <h2>The Journey</h2>
+        <p>Where all ${total} people at ${CHURCHES[S.church].name} are right now. Click a stage to see who is in it.</p>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn sec" data-tab="people">Open People</button>
+    </div>
+    <div class="stages">
+      ${STAGES.map((s,i)=>`
+        <button class="stage" data-stage="${i}" aria-pressed="${S.stageFilter===i}">
+          <div class="nm">${s}</div>
+          <div class="num">${STAGE_COUNTS[i]}</div>
+          <div class="bar"><i style="width:${Math.round(STAGE_COUNTS[i]/max*100)}%"></i></div>
+          <div class="meta">${STAGE_STUCK[i] ? `<span class="stuck">${STAGE_STUCK[i]} stuck</span>` : `<span>Moving</span>`}</div>
+          <span class="arrow"></span>
+        </button>`).join("")}
+    </div>
+    <div class="railfoot">
+      <span><b>8</b> people flagged as stuck too long</span>
+      <span><b>14</b> next steps taken in the last 7 days</span>
+      <span><b>0</b> people with no owner</span>
+    </div>
+  </section>`;
+}
+
+function metrics(){
+  const m = [
+    {k:"Attendance last Sunday", v:"412", d:"Up 6% over 4 weeks", spark:[3,4,3,5,4,6,7]},
+    {k:"First time guests", v:"9", d:"Up 2 from last week", spark:[2,3,2,4,3,3,5]},
+    {k:"Next steps taken", v:"14", d:"Up 4 from last week", spark:[2,3,4,3,5,4,6]},
+    {k:"Giving month to date", v:"$"+CHURCHES[S.church].weekly.toLocaleString(), d:"Down 3% vs last month", down:true, spark:[6,5,6,4,5,4,4]}
+  ];
+  return `<div class="metrics">${m.map(x=>`
+    <div class="metric">
+      <div class="k">${x.k}</div>
+      <div class="v">${x.v}</div>
+      <div class="d ${x.down?"down":""}">${x.d}</div>
+      <div class="spark">${x.spark.map((h,i)=>`<i class="${i===x.spark.length-1?"on":""}" style="height:${h*13}%"></i>`).join("")}</div>
+    </div>`).join("")}</div>`;
+}
+
+function followUpCard(){
+  const flagged = PEOPLE.filter(p=>p.flag);
+  return `<section class="card">
+    <div class="hd"><h2>Needs a person, not an email</h2><div class="spacer"></div><span class="pill warn">${flagged.length} flagged</span></div>
+    <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">These people stopped moving. The system caught it before anyone noticed on a Sunday.</div>
+    ${flagged.map(p=>`
+      <button class="row" data-person="${p.id}">
+        <span class="av">${initials(p.n)}</span>
+        <span><span class="rn">${p.n}</span><span class="rs">${STAGES[p.stage]} for ${p.days} days · last contact ${p.last}</span></span>
+        <span class="spacer"></span>
+        <span class="pill warn">Stuck</span>
+      </button>`).join("")}
+  </section>`;
+}
+
+function autoCard(){
+  const rows = [
+    ["Welcome text and video","Sends 2 hours after a first visit","9 sent this week"],
+    ["Coffee invite from a staff member","Sends after a second visit","4 sent this week"],
+    ["Next Steps class invite","Sends at day 21 as a Guest","6 sent this week"],
+    ["Serving interest follow up","Sends when someone marks interest","3 sent this week"],
+    ["Giving thank you and statement","Sends on first gift","11 sent this week"]
+  ];
+  return `<section class="card">
+    <div class="hd"><h2>Running without staff time</h2><div class="spacer"></div><span class="pill good">All active</span></div>
+    <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">33 messages went out this week. None of them were written on a Monday morning.</div>
+    ${rows.map(r=>`<div class="row"><span class="av solid" style="font-size:10px">AUTO</span><span><span class="rn">${r[0]}</span><span class="rs">${r[1]}</span></span><span class="spacer"></span><span class="pill ghost">${r[2]}</span></div>`).join("")}
+  </section>`;
+}
+
+function dashboard(){
+  return `${journeyRail()}${metrics()}
+  <div class="grid-2">${followUpCard()}
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div class="hd"><h2>Church health</h2><div class="spacer"></div><span class="pill">74 of 100</span></div>
+        <div class="bd">
+          ${[["People taking a next step","68%"],["Members in a group","54%"],["Adults serving","41%"],["Guests contacted within 48 hours","92%"]].map(x=>`
+            <div style="margin-bottom:13px">
+              <div style="display:flex;justify-content:space-between;font-size:12.5px"><span>${x[0]}</span><b class="mono">${x[1]}</b></div>
+              <div class="bar" style="height:6px;border-radius:999px;background:var(--mist);margin-top:6px;overflow:hidden"><i style="display:block;height:100%;width:${x[1]};background:var(--accent);border-radius:999px"></i></div>
+            </div>`).join("")}
+          <p style="font-size:12px;color:var(--muted);margin:14px 0 0">Adults serving is the weakest number. 96 attenders have never been asked.</p>
+        </div>
+      </section>
+    </div>
+  </div>
+  ${autoCard()}`;
+}
+
+function peopleView(){
+  const list = PEOPLE.filter(p=>{
+    const okStage = S.stageFilter===null || p.stage===S.stageFilter;
+    const okQ = !S.q || p.n.toLowerCase().includes(S.q.toLowerCase());
+    return okStage && okQ;
+  });
+  return `${journeyRail()}
+  <section class="card">
+    <div class="hd" style="padding-bottom:0"><h2>People</h2><div class="spacer"></div>
+      <span class="pill ghost">${list.length} shown${S.stageFilter!==null?` · ${STAGES[S.stageFilter]}`:""}</span></div>
+    <div class="filters">
+      <input class="search" id="q" placeholder="Search people" value="${S.q}" aria-label="Search people">
+      <button class="chip" data-stage="all" aria-pressed="${S.stageFilter===null}">All stages</button>
+      ${STAGES.map((s,i)=>`<button class="chip" data-stage="${i}" aria-pressed="${S.stageFilter===i}">${s}</button>`).join("")}
+    </div>
+    <div class="tablehd" style="margin-top:12px"><span style="width:46px"></span><span style="flex:1">Person</span><span style="width:150px">Stage</span><span style="width:120px">Last contact</span><span style="width:90px">Status</span></div>
+    ${list.length ? list.map(p=>`
+      <button class="row" data-person="${p.id}">
+        <span class="av">${initials(p.n)}</span>
+        <span style="flex:1"><span class="rn">${p.n}</span><span class="rs">${p.family}</span></span>
+        <span style="width:150px"><span class="pill">${STAGES[p.stage]} · ${p.days}d</span></span>
+        <span style="width:120px;font-size:12px;color:var(--muted)">${p.last}</span>
+        <span style="width:90px">${p.flag?`<span class="pill warn">Stuck</span>`:`<span class="pill good">On track</span>`}</span>
+      </button>`).join("") : `<div class="emptynote">Nobody matches that filter yet. Clear the search or pick another stage.</div>`}
+  </section>`;
+}
+
+function svc(){ return SERVICES.find(x=>x.id===S.service) || SERVICES[0]; }
+
+function timesFor(sv){
+  const [h,m] = sv.start.split(":").map(Number);
+  let t = h*60+m; const out=[];
+  sv.elements.forEach(el=>{ out.push(t); t += Number(el.mins)||0; });
+  out.push(t);
+  return out.map(mins=>{
+    let hh = Math.floor(mins/60), mm = mins%60;
+    const suffix = hh>=12 ? "pm" : "am";
+    let disp = hh%12; if(disp===0) disp=12;
+    return `${disp}:${String(mm).padStart(2,"0")}`;
+  });
+}
+
+function weekStrip(){
+  return `<section class="card">
+    <div class="hd"><h2>Plan ahead</h2><div class="spacer"></div>
+      <span class="pill ghost">${SERVICES.length} services scheduled</span></div>
+    <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">Plan weeks out, not the night before. Click a Sunday to open its plan.</div>
+    <div class="bd" style="padding-top:0">
+      <div class="weekstrip">
+        ${SERVICES.map(sv=>`
+          <button class="week" data-svc="${sv.id}" aria-pressed="${S.service===sv.id}">
+            <div class="wd">${sv.short}</div>
+            <div class="wt">${sv.series}</div>
+            <div class="wm">${sv.filled[0]} of ${sv.filled[1]} roles</div>
+            <div class="wp"><span class="pill ${sv.status==="Ready"?"good":sv.status==="Needs team"?"warn":""}">${sv.status}</span></div>
+          </button>`).join("")}
+        <button class="week" data-newsvc style="display:grid;place-items:center;min-width:120px;border-style:dashed;color:var(--muted)">
+          <span style="font-size:20px;line-height:1">+</span><span style="font-size:12px;font-weight:500">Add a Sunday</span>
+        </button>
+      </div>
+    </div>
+  </section>`;
+}
+
+function planEditor(){
+  const sv = svc(); const t = timesFor(sv);
+  return `<section class="card">
+    <div class="hd"><h2>${sv.date} · ${sv.start} service</h2><div class="spacer"></div>
+      <span class="pill ${sv.filled[0]===sv.filled[1]?"good":"warn"}">${sv.filled[0]} of ${sv.filled[1]} roles filled</span></div>
+    <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">
+      ${sv.series} · ends at ${t[t.length-1]}. Edit any element and every time after it recalculates.
+    </div>
+    ${sv.elements.map((el,i)=>`
+      <div class="el">
+        <span class="t mono">${t[i]}</span>
+        <span class="body"><span class="ti">${el.title}</span><span class="su">${el.type} · ${el.owner}</span></span>
+        <span class="dur mono">${el.mins} min</span>
+        <span class="acts">
+          <button class="iconbtn" data-move="${el.id}" data-dir="-1" aria-label="Move up" ${i===0?"disabled style=opacity:.3":""}>&#9650;</button>
+          <button class="iconbtn" data-move="${el.id}" data-dir="1" aria-label="Move down" ${i===sv.elements.length-1?"disabled style=opacity:.3":""}>&#9660;</button>
+          <button class="iconbtn" data-editel="${el.id}" aria-label="Edit">&#9998;</button>
+          <button class="iconbtn danger" data-delel="${el.id}" aria-label="Delete">&times;</button>
+        </span>
+      </div>`).join("")}
+    <div class="addel">
+      <button class="mini" data-editel="new" style="border-color:var(--accent);color:var(--accent)">Add an element</button>
+      <button class="mini" data-copylast>Copy last Sunday's plan</button>
+      <button class="mini" data-sendplan>Send plan to the team</button>
+    </div>
+  </section>`;
+}
+
+function songSection(){
+  const sv = svc();
+  return `<section class="card">
+    <div class="hd"><h2>Songs for ${sv.short}</h2><div class="spacer"></div>
+      <button class="mini" data-addsong>Add from SongSelect</button></div>
+    <div class="conn">
+      <span class="logo">CCLI</span>
+      <span style="flex:1"><span class="rn">SongSelect connected</span><span class="rs">CCLI license on file · charts and sheet music open in SongSelect for anyone on the worship team</span></span>
+      <span class="pill good">Active</span>
+    </div>
+    ${sv.songs.length ? sv.songs.map(sg=>`
+      <div class="song">
+        <span class="sb"><span class="st">${sg.title}</span><span class="sa">${sg.author} · ${sg.bpm} bpm</span></span>
+        <label style="font-size:11px;color:var(--muted-2);font-weight:600;letter-spacing:.08em">KEY</label>
+        <select class="keysel" data-key="${sg.id}">
+          ${["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"].map(k=>`<option ${k===sg.key?"selected":""}>${k}</option>`).join("")}
+        </select>
+        <span class="chartlinks">
+          <button class="chartbtn" data-chart="${sg.id}|Chord chart">Chord chart</button>
+          <button class="chartbtn" data-chart="${sg.id}|Lead sheet">Lead sheet</button>
+          <button class="chartbtn" data-chart="${sg.id}|Vocal sheet">Vocal sheet</button>
+        </span>
+      </div>`).join("") : `<div class="emptynote">No songs picked for this Sunday yet.</div>`}
+    <div class="addel">
+      <button class="mini" data-sendset style="border-color:var(--accent);color:var(--accent)">Send the set to the worship team</button>
+      <span style="font-size:11.5px;color:var(--muted-2);align-self:center">Transposing a key here changes what the team sees in their app.</span>
+    </div>
+  </section>`;
+}
+
+function servicesView(){
+  return `${weekStrip()}
+  <div class="grid-2" style="grid-template-columns:1.25fr .9fr">
+    <div style="display:grid;gap:18px">${planEditor()}${songSection()}</div>
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div class="hd"><h2>Open roles</h2><div class="spacer"></div><button class="mini" data-sendreq>Send requests</button></div>
+        ${[["Kids, 2s and 3s","2 open","Dana suggested 3 people"],["Parking team","1 open","No suggestions yet"],["Media, August 16","1 open","Josh is out that Sunday"]].map(r=>`<div class="row"><span class="av">!</span><span><span class="rn">${r[0]}</span><span class="rs">${r[2]}</span></span><span class="spacer"></span><span class="pill warn">${r[1]}</span></div>`).join("")}
+      </section>
+      <section class="card">
+        <div class="hd"><h2>Worship team</h2><div class="spacer"></div><span class="pill">${svc().short}</span></div>
+        ${[["Hannah Doyle","Worship lead","Accepted"],["Marcus Webb","Acoustic","Invited"],["Priya Anand","Vocals","Accepted"],["Josh Miller","Media","Accepted"]].map(m=>`<div class="row"><span class="av">${initials(m[0])}</span><span><span class="rn">${m[0]}</span><span class="rs">${m[1]}</span></span><span class="spacer"></span><span class="pill ${m[2]==="Accepted"?"good":"ghost"}">${m[2]}</span></div>`).join("")}
+      </section>
+    </div>
+  </div>`;
+}
+
+function kidsView(){
+  const base = [
+    {name:"Webb, Ellie and Grant", room:"Room 2 · pickup code 4471", guardian:"Marcus Webb"},
+    {name:"Nguyen, Mia", room:"Room 4 · pickup code 8802", guardian:"Thao Nguyen"},
+    {name:"Whitfield, Jonah", room:"Room 3 · allergy alert on file", guardian:"Dana Whitfield"}
+  ];
+  return `<section class="card">
+    <div class="hd"><h2>Check in kiosk</h2><div class="spacer"></div><span class="pill good">Ready</span></div>
+    <div class="bd" style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px;font-size:12.5px;color:var(--muted);line-height:1.5">
+        Open this on any tablet at the door. Parents enter the last four digits of their phone, tap who is here, and take a pickup tag. No volunteer required.
+      </div>
+      <button class="btn" data-kiosk-open>Open kiosk</button>
+    </div>
+  </section>
+  <section class="card">
+    <div class="hd"><h2>Checked in today</h2><div class="spacer"></div><span class="pill">${86 + KIOSK_LOG.length} kids</span></div>
+    <div class="bd">${metrics_kids()}</div>
+    ${KIOSK_LOG.map(l=>`<div class="row"><span class="av solid">${initials(l.name)}</span><span><span class="rn">${l.name}</span><span class="rs">${l.room} · pickup code ${l.code} · ${l.when}${l.alert?` · ${l.alert}`:""}</span></span><span class="spacer"></span><span class="pill good">Just now</span></div>`).join("")}
+    ${base.map(k=>`<div class="row"><span class="av">${initials(k.name.split(",")[1]||"K")}</span><span><span class="rn">${k.name}</span><span class="rs">${k.room}</span></span><span class="spacer"></span><span class="pill ghost">${k.guardian}</span></div>`).join("")}
+  </section>`;
+}
+
+function metrics_kids(){
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+    ${[["Checked in","86"],["First time kids","7"],["Volunteers on duty","14"]].map(x=>`<div><div class="k" style="font-size:11px;color:var(--muted)">${x[0]}</div><div class="v mono" style="font-size:23px;font-weight:600;margin-top:4px">${x[1]}</div></div>`).join("")}
+  </div>`;
+}
+
+function givingView(){
+  const c = CHURCHES[S.church];
+  const mtd = c.weekly + manualTotal();
+  const online = [["Priya Anand","$400","Recurring · General"],["Kevin and Thao Nguyen","$310","Recurring · General"],["Rachel Kim","$220","Recurring · General"],["Dana Whitfield","$150","Recurring · Kids ministry"],["Alicia Romero","$75","First gift · General"]];
+  return `<div class="metrics">
+    ${[["Month to date",money(mtd),"Down 3% vs July"],["Recurring givers","148","Up 6 this month"],["Average gift","$127","Flat"],["First time givers","5","Up 2"]].map(x=>`<div class="metric"><div class="k">${x[0]}</div><div class="v">${x[1]}</div><div class="d">${x[2]}</div></div>`).join("")}
+  </div>
+  <div class="grid-2">
+    <section class="card">
+      <div class="hd"><h2>Recent gifts</h2><div class="spacer"></div>
+        <button class="mini" data-gift-open>Record a gift</button></div>
+      ${MANUAL_GIFTS.map(g=>`<div class="row"><span class="av solid" style="font-size:9.5px">${g.method==="Cash"?"CASH":"CHK"}</span><span><span class="rn">${g.giver}</span><span class="rs">${g.method}${g.ref?` #${g.ref}`:""} · ${g.fund} · recorded by hand</span></span><span class="spacer"></span><b class="mono" style="font-size:13.5px">${money(g.amount)}</b></div>`).join("")}
+      ${online.map(g=>`<div class="row"><span class="av">${initials(g[0])}</span><span><span class="rn">${g[0]}</span><span class="rs">${g[2]}</span></span><span class="spacer"></span><b class="mono" style="font-size:13.5px">${g[1]}</b></div>`).join("")}
+    </section>
+    <div style="display:grid;gap:18px">
+      <section class="card">
+        <div class="hd"><h2>Reports</h2><div class="spacer"></div><button class="mini" data-report-open style="border-color:var(--accent);color:var(--accent)">Run report</button></div>
+        <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">Weekly, monthly, or year to date. Cash and checks you record by hand are included in every total.</div>
+        ${[["Weekly giving","Last 4 Sundays","weekly"],["Monthly giving","Last 6 months","monthly"],["Year to date","January 1 through today","ytd"]].map(r=>`
+          <button class="row" data-quickreport="${r[2]}"><span class="av">${IC.give}</span><span><span class="rn">${r[0]}</span><span class="rs">${r[1]}</span></span><span class="spacer"></span><span class="pill ghost">Run</span></button>`).join("")}
+      </section>
+      <section class="card">
+        <div class="hd"><h2>Giving that stopped</h2><div class="spacer"></div><span class="pill warn">2 lapsed</span></div>
+        <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">Lapsed giving is usually a discipleship signal before it is a budget problem.</div>
+        ${[["Chris Vaughn","Stopped after June","$85/mo"],["T. and L. Barrett","Card expired July 2","$60/mo"]].map(g=>`<div class="row"><span class="av">${initials(g[0])}</span><span><span class="rn">${g[0]}</span><span class="rs">${g[1]}</span></span><span class="spacer"></span><span class="pill warn">${g[2]}</span></div>`).join("")}
+      </section>
+    </div>
+  </div>`;
+}
+
+const RES_GLYPH = {
+  "Reading plan":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 5.5A2 2 0 016 4h5v16H6a2 2 0 01-2-2z"/><path d="M20 5.5A2 2 0 0018 4h-5v16h5a2 2 0 002-2z"/></svg>',
+  "Course":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10.5V16c0 1.7 2.2 3 5 3s5-1.3 5-3v-5.5"/></svg>',
+  "Bible study":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M12 8v6M9.5 11h5"/></svg>',
+  "Training":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="3.3"/><path d="M5 20c0-3.5 3.1-5.8 7-5.8s7 2.3 7 5.8"/></svg>',
+  "Devotional":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 21s-7-4.4-7-9.4A4.1 4.1 0 0112 9a4.1 4.1 0 017 2.6c0 5-7 9.4-7 9.4z"/></svg>',
+  "Next steps path":'<svg class="glyph" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 18h5v-5h5V8h6"/><path d="M17 5l3 3-3 3"/></svg>'
+};
+function thumbStyle(i, custom){
+  if(custom) return `background-image:url(${custom});background-size:cover;background-position:center`;
+  const t = THUMBS[i] || THUMBS[0]; return `background:${t.bg}`;
+}
+function thumbLite(i, custom){ return (!custom && (THUMBS[i]||THUMBS[0]).lite) ? "lite" : ""; }
+function glyphFor(type){ return RES_GLYPH[type] || RES_GLYPH["Reading plan"]; }
+
+function resourcesView(){
+  return `<section class="card">
+    <div class="hd"><h2>Published to your people</h2><div class="spacer"></div>
+      <button class="mini" data-res-new style="border-color:var(--accent);color:var(--accent)">Add a resource</button></div>
+    <div class="bd" style="padding-bottom:6px;color:var(--muted);font-size:12.5px">
+      Written for ${CHURCHES[S.church].name} and delivered inside your app. Members never see another brand. Click any resource to edit the plan.
+    </div>
+    <div class="bd" style="padding-top:8px">
+      <div class="resgrid">
+        ${RESOURCES.map(r=>`
+          <button class="rescard" data-plan="${r.id}">
+            <span class="thumb ${thumbLite(r.thumb,r.custom)}" style="${thumbStyle(r.thumb,r.custom)};color:#fff">
+              ${glyphFor(r.type)}
+              <span class="badge">${r.status}</span>
+            </span>
+            <span class="rbody">
+              <span class="rt">${r.title}</span>
+              <span class="rd">${r.desc}</span>
+              <span class="rf">
+                <span class="pill">${r.type}</span>
+                <span class="m">${r.sessions.length} ${r.sessions.length===1?"session":"sessions"}${r.started?` · ${r.started} started`:""}</span>
+              </span>
+              <span class="rf" style="margin-top:9px">
+                <span class="mini" data-res="${r.id}">Edit plan</span>
+                <span class="m" style="font-size:11.5px;color:var(--muted-2)">Click card to open</span>
+              </span>
+            </span>
+          </button>`).join("")}
+        <button class="rescard" data-res-new style="display:grid;place-items:center;padding:26px;border-style:dashed;color:var(--muted);min-height:190px">
+          <span style="font-size:24px;line-height:1">+</span><span style="font-size:13px;font-weight:500;margin-top:6px">Add a resource</span>
+        </button>
+      </div>
+    </div>
+  </section>`;
+}
+
+/* ---- Plan overview and reader ---- */
+function doneSet(id){ return RES_DONE[id] || (RES_DONE[id]=[]); }
+
+function planView(){
+  if(!S.resView || S.resRead) return "";
+  const r = RESOURCES.find(x=>x.id===S.resView); if(!r) return "";
+  const done = doneSet(r.id);
+  const pct = Math.round(done.length/r.sessions.length*100);
+  return `<div class="modalwrap"><div class="mscrim" data-plan-close></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="${r.title}" style="max-width:540px">
+      <div class="planhero">
+        <div class="banner ${thumbLite(r.thumb,r.custom)}" style="${thumbStyle(r.thumb,r.custom)}">
+          ${r.custom?"":glyphFor(r.type)}
+          <button class="x" data-plan-close aria-label="Close" style="position:absolute;top:10px;right:12px;color:#fff;font-size:22px;background:rgba(26,26,26,.42);border-radius:8px;padding:2px 9px">&times;</button>
+        </div>
+      </div>
+      <div class="mb" style="gap:10px">
+        <div>
+          <div class="eyebrow">${r.type} · ${r.sessions.length} ${r.sessions.length===1?"session":"sessions"}</div>
+          <h3 style="margin:6px 0 0;font-size:20px;font-weight:600;letter-spacing:-.02em">${r.title}</h3>
+          <p style="margin:7px 0 0;font-size:13px;color:var(--muted);line-height:1.55">${r.desc}</p>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)"><span>${done.length} of ${r.sessions.length} complete</span><b class="mono">${pct}%</b></div>
+          <div class="prog" style="margin-top:6px"><i style="width:${pct}%"></i></div>
+        </div>
+      </div>
+      <div style="overflow-y:auto">
+        ${r.sessions.map((sn,i)=>`
+          <button class="dayrow ${done.includes(i)?"done":""}" data-read="${r.id}|${i}">
+            <span class="dn">${done.includes(i)?"&#10003;":i+1}</span>
+            <span style="flex:1"><span class="dt">${sn.t||"Untitled session"}</span><span class="ds">${sn.r||"No passage set"} · ${sn.m} min</span></span>
+            <span class="pill ghost">${done.includes(i)?"Done":"Read"}</span>
+          </button>`).join("")}
+      </div>
+      <div class="mf">
+        <span class="note">${r.started} people started this plan</span>
+        <button class="btn sec" data-res-edit="${r.id}">Edit plan</button>
+        <button class="btn" data-read="${r.id}|${Math.min(done.length, r.sessions.length-1)}">${done.length?"Continue":"Start"}</button>
+      </div>
+    </div></div>`;
+}
+
+function readerView(){
+  if(!S.resRead) return "";
+  const [id, idx] = S.resRead.split("|");
+  const r = RESOURCES.find(x=>x.id===id); if(!r) return "";
+  const i = Number(idx); const sn = r.sessions[i]; if(!sn) return "";
+  const done = doneSet(r.id);
+  const paras = (sn.body||"Content for this session has not been written yet. Open the editor and add it.").split("\n\n");
+  return `<div class="modalwrap"><div class="mscrim" data-reader-close></div>
+    <div class="modal reader" role="dialog" aria-modal="true" aria-label="${sn.t}">
+      <div class="rhero ${thumbLite(r.thumb,r.custom)}" style="${thumbStyle(r.thumb,r.custom)};position:relative">
+        <button class="x" data-reader-close aria-label="Close" style="position:absolute;top:10px;right:12px;color:#fff;font-size:22px;background:rgba(26,26,26,.42);border-radius:8px;padding:2px 9px">&times;</button>
+      </div>
+      <div class="mb" style="padding:0;display:block;overflow-y:auto">
+        <div class="rbodytext">
+          <div class="eyebrow2">${r.title} · ${i+1} of ${r.sessions.length}</div>
+          <h3>${sn.t||"Untitled session"}</h3>
+          ${sn.r?`<span class="ref">${sn.r}</span>`:""}
+          <div class="article">${paras.map(x=>`<p>${x}</p>`).join("")}</div>
+          ${sn.q?`<div class="block"><div class="bl">Reflect</div><div class="bt">${sn.q}</div></div>`:""}
+          ${sn.pray?`<div class="block" style="margin-top:10px;margin-bottom:18px"><div class="bl">Pray</div><div class="bt">${sn.pray}</div></div>`:""}
+        </div>
+      </div>
+      <div class="nav">
+        <button class="mini" data-read-jump="${i-1}" ${i===0?"disabled style=opacity:.35":""}>Previous</button>
+        <span class="sp" style="text-align:center">${sn.m} min read</span>
+        ${i<r.sessions.length-1
+          ? `<button class="btn" data-read-done="${i}">${done.includes(i)?"Next":"Mark complete"}</button>`
+          : `<button class="btn" data-read-done="${i}">Finish plan</button>`}
+      </div>
+    </div></div>`;
+}
+
+/* ---- Resource editor ---- */
+function resSync(){
+  const d = S.resDraft; if(!d) return;
+  const g = id => document.getElementById(id);
+  if(g("res-title")) d.title = g("res-title").value;
+  if(g("res-desc")) d.desc = g("res-desc").value;
+  if(g("res-type")) d.type = g("res-type").value;
+  if(g("res-status")) d.status = g("res-status").value;
+  document.querySelectorAll("[data-sess]").forEach(row=>{
+    const i = Number(row.dataset.sess);
+    d.sessions[i] = {
+      ...d.sessions[i],
+      t: row.querySelector(".st").value,
+      r: row.querySelector(".sr").value,
+      m: Number(row.querySelector(".sm").value)||10
+    };
+  });
+}
+
+function contentEditor(){
+  const d = S.resDraft; const i = S.editSession;
+  const sn = d.sessions[i]; if(!sn) return "";
+  return `<div class="modalwrap"><div class="mscrim" data-content-back></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Write content" style="max-width:600px">
+      <div class="mh">
+        <div><h3>Session ${i+1} content</h3><div class="s">${d.title||"Untitled resource"} · this is what members read</div></div>
+        <button class="x" data-content-back aria-label="Back">&times;</button>
+      </div>
+      <div class="mb">
+        <div class="field"><label for="c-title">Session title</label><input id="c-title" value="${(sn.t||"").replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label for="c-ref">Passage or reference</label><input id="c-ref" value="${(sn.r||"").replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label for="c-body">Article</label><textarea id="c-body" style="min-height:210px" placeholder="Write the devotional. Leave a blank line between paragraphs.">${sn.body||""}</textarea></div>
+        <div class="field"><label for="c-q">Reflection question</label><input id="c-q" value="${(sn.q||"").replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label for="c-pray">Prayer</label><input id="c-pray" value="${(sn.pray||"").replace(/"/g,"&quot;")}"></div>
+        <div class="field"><label for="c-mins">Minutes</label><input id="c-mins" type="number" min="1" value="${sn.m}"></div>
+      </div>
+      <div class="mf">
+        <span class="note">Members see this exactly as written</span>
+        <button class="btn sec" data-content-back>Back</button>
+        <button class="btn" data-content-save>Save content</button>
+      </div>
+    </div></div>`;
+}
+
+function saveContent(){
+  const d = S.resDraft, i = S.editSession;
+  const g = id => document.getElementById(id);
+  d.sessions[i] = {
+    t:g("c-title").value, r:g("c-ref").value, body:g("c-body").value,
+    q:g("c-q").value, pray:g("c-pray").value, m:Math.max(1, Number(g("c-mins").value)||8)
+  };
+  S.editSession = null; toast("Content saved."); render();
+}
+
+function resourceEditor(){
+  if(!S.resEdit) return "";
+  const d = S.resDraft; if(!d) return "";
+  if(S.editSession!==null && S.editSession!==undefined) return contentEditor();
+  const isNew = S.resEdit==="new";
+  return `<div class="modalwrap"><div class="mscrim" data-res-close></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit resource" style="max-width:600px">
+      <div class="mh">
+        <div><h3>${isNew?"Add a resource":"Edit resource"}</h3><div class="s">${isNew?"Build the plan once, publish it to every member":"Changes reach members the moment you save"}</div></div>
+        <button class="x" data-res-close aria-label="Close">&times;</button>
+      </div>
+      <div class="mb">
+        <div class="bigthumb ${thumbLite(d.thumb,d.custom)}" style="${thumbStyle(d.thumb,d.custom)};color:#fff">${d.custom?"":glyphFor(d.type)}</div>
+        <div class="field"><label>Thumbnail</label>
+          <div class="thumbpick">
+            ${THUMBS.map((t,i)=>`<button data-thumb="${i}" style="background:${t.bg}" aria-pressed="${!d.custom && d.thumb===i}" aria-label="Thumbnail ${i+1}"></button>`).join("")}
+            <button class="upload" data-upload aria-pressed="${!!d.custom}" title="Upload your own image">+</button>
+          </div>
+          <input type="file" id="res-upload" accept="image/*" style="display:none">
+          ${d.custom?`<button class="mini" data-thumb-clear style="margin-top:9px;width:max-content">Remove uploaded image</button>`:`<span style="font-size:11.5px;color:var(--muted-2)">Pick a preset or upload your own cover image.</span>`}
+        </div>
+        <div class="field" id="f-restitle"><label for="res-title">Title</label><input id="res-title" value="${d.title.replace(/"/g,"&quot;")}" placeholder="Known: a 5 day reading plan"><span class="err">Give the resource a title.</span></div>
+        <div class="field"><label for="res-type">Type</label><select id="res-type">${RES_TYPES.map(t=>`<option ${t===d.type?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field"><label for="res-desc">Description</label><textarea id="res-desc" placeholder="One or two lines members see under the title">${d.desc}</textarea></div>
+        <div class="field"><label for="res-status">Status</label><select id="res-status">
+          <option ${d.status==="Published"?"selected":""}>Published</option>
+          <option ${d.status==="Draft"?"selected":""}>Draft</option>
+        </select></div>
+        <div class="field">
+          <label>Sessions</label>
+          <div>
+            ${d.sessions.map((sn,i)=>`
+              <div class="sess" data-sess="${i}">
+                <span class="num">${i+1}</span>
+                <input class="st" value="${(sn.t||"").replace(/"/g,"&quot;")}" placeholder="Day 1: title" aria-label="Session title">
+                <input class="sr" value="${(sn.r||"").replace(/"/g,"&quot;")}" placeholder="Passage" aria-label="Passage">
+                <input class="sm" type="number" min="1" style="width:62px" value="${sn.m}" aria-label="Minutes">
+                <span class="acts">
+                  <button class="iconbtn" data-sesscontent="${i}" aria-label="Write content" title="Write the article">&#9998;</button>
+                  <button class="iconbtn" data-sessmove="${i}" data-dir="-1" aria-label="Move up">&#9650;</button>
+                  <button class="iconbtn" data-sessmove="${i}" data-dir="1" aria-label="Move down">&#9660;</button>
+                  <button class="iconbtn danger" data-sessdel="${i}" aria-label="Remove">&times;</button>
+                </span>
+              </div>`).join("")}
+            <button class="mini" data-sessadd style="margin-top:11px;border-color:var(--accent);color:var(--accent)">Add a session</button>
+          </div>
+        </div>
+      </div>
+      <div class="mf">
+        ${isNew?"":`<button class="mini danger" data-res-del style="color:var(--flag);border-color:rgba(180,83,9,.3)">Delete</button>`}
+        <span class="note">${d.sessions.length} session${d.sessions.length===1?"":"s"} · about ${d.sessions.reduce((t,x)=>t+(Number(x.m)||0),0)} minutes total</span>
+        <button class="btn sec" data-res-close>Cancel</button>
+        <button class="btn" data-res-save>Save</button>
+      </div>
+    </div></div>`;
+}
+
+function saveResource(){
+  resSync();
+  const d = S.resDraft;
+  if(!d.title.trim()){ document.getElementById("f-restitle").classList.add("bad"); return; }
+  if(S.resEdit==="new"){
+    RESOURCES.push({...d, id:"r"+Date.now(), started:0});
+    toast(`${d.title} created${d.status==="Published"?" and published":" as a draft"}.`);
+  } else {
+    const i = RESOURCES.findIndex(r=>r.id===S.resEdit);
+    RESOURCES[i] = {...RESOURCES[i], ...d};
+    toast(`${d.title} updated. Members see it now.`);
+  }
+  S.resEdit=null; S.resDraft=null; render();
+}
+
+const IC_HASH = '<svg class="ci" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 9h14M5 15h14M10 4L8 20M16 4l-2 16"/></svg>';
+const IC_LOCK = '<svg class="ci" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4.5" y="10" width="15" height="10" rx="2.5"/><path d="M8 10V7.5a4 4 0 018 0V10"/></svg>';
+const IC_DM   = '<svg class="ci" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>';
+
+function chatPanel(){
+  const c = chanById(S.chan);
+  const msgs = CHAT[S.chan] || [];
+  const dm = isDM(S.chan);
+  return `<section class="card" style="overflow:hidden">
+    <div class="hd"><h2>Church chat</h2><div class="spacer"></div>
+      <button class="mini" data-newdm>New direct message</button>
+      <button class="mini" data-compose style="border-color:var(--accent);color:var(--accent)">Send message</button></div>
+    <div class="bd" style="padding-bottom:10px;color:var(--muted);font-size:12.5px">
+      All Members is open to everyone. Team rooms are invite only. Anyone can start a direct message with another member.
+    </div>
+    <div class="chatwrap">
+      <div class="chanrail">
+        <div class="chanlbl">Group chats</div>
+        ${CHANNELS.map(ch=>`
+          <button class="chanbtn" data-chan="${ch.id}" aria-current="${S.chan===ch.id}">
+            ${ch.open?IC_HASH:IC_LOCK}
+            <span class="nm2">${ch.name}</span>
+            ${UNREAD[ch.id]?`<span class="un">${UNREAD[ch.id]}</span>`:""}
+          </button>`).join("")}
+        <div class="chanlbl">Direct messages</div>
+        ${DMS.map(d=>`
+          <button class="chanbtn" data-chan="${d.id}" aria-current="${S.chan===d.id}">
+            ${IC_DM}<span class="nm2">${d.name}</span>
+            ${UNREAD[d.id]?`<span class="un">${UNREAD[d.id]}</span>`:""}
+          </button>`).join("")}
+        <button class="chanbtn" data-newdm style="color:var(--accent);font-weight:500">
+          <span class="ci" style="text-align:center;font-size:15px;line-height:15px">+</span><span class="nm2">Start a chat</span>
+        </button>
+      </div>
+      <div class="thread">
+        <div class="thead">
+          <div style="flex:1">
+            <div class="tn">${dm?c.name:c.name}</div>
+            <div class="ts">${dm?"Direct message · only the two of you":`${c.members} members · ${c.purpose}`}</div>
+          </div>
+          ${dm?"":`<span class="pill ${c.open?"good":"ghost"}">${c.open?"Open to all":"Invite only"}</span>`}
+          ${dm||c.open?"":`<button class="mini" data-invite="${c.id}">Invite people</button>`}
+        </div>
+        <div class="msgs">
+          ${msgs.map(m=>`
+            <div class="msg ${m.me?"me":""} ${m.sys?"sys":""}">
+              ${m.sys?"":`<span class="mv">${initials(m.w)}</span>`}
+              <span>
+                ${m.sys?"":`<span class="mw">${m.w} · ${m.t}</span>`}
+                <span class="bub">${m.x}</span>
+              </span>
+            </div>`).join("")}
+        </div>
+        <div class="composer">
+          <input id="chatinput" placeholder="Message ${dm?c.name:c.name}" aria-label="Message">
+          <button class="btn" data-send-chat>Send</button>
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+function composeModal(){
+  if(!S.compose) return "";
+  if(S.composeSent){
+    return `<div class="modalwrap"><div class="mscrim" data-compose-close></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Message sent" style="max-width:420px">
+        <div class="sent"><div class="tick">&#10003;</div><h3>Message sent</h3>
+          <p>${S.composeSent}</p>
+          <button class="btn" style="margin-top:18px" data-compose-close>Close</button></div>
+      </div></div>`;
+  }
+  return `<div class="modalwrap"><div class="mscrim" data-compose-close></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Send a message" style="max-width:540px">
+      <div class="mh"><div><h3>Send a message</h3><div class="s">Goes to the app, and to email or text if you choose</div></div>
+        <button class="x" data-compose-close aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="field"><label for="cm-aud">Who gets this</label>
+          <select id="cm-aud">
+            ${CHANNELS.map(ch=>`<option value="${ch.id}">${ch.name} (${ch.members})</option>`).join("")}
+            <option value="guests">First time guests, last 30 days (23)</option>
+            <option value="stuck">People flagged as stuck (8)</option>
+          </select></div>
+        <div class="field"><label for="cm-chan">How it is delivered</label>
+          <select id="cm-chan">
+            <option>App notification</option>
+            <option>App notification and email</option>
+            <option>App notification and text</option>
+            <option>App, email, and text</option>
+          </select></div>
+        <div class="field" id="f-cmsubj"><label for="cm-subj">Subject</label><input id="cm-subj" placeholder="Sunday, August 9"><span class="err">Add a subject.</span></div>
+        <div class="field" id="f-cmbody"><label for="cm-body">Message</label><textarea id="cm-body" style="min-height:130px" placeholder="Write it the way you would say it from the stage."></textarea><span class="err">Write the message.</span></div>
+        <div class="field"><label for="cm-when">When</label>
+          <select id="cm-when"><option>Send now</option><option>Saturday 7:00 AM</option><option>Sunday 6:30 AM</option><option>Schedule for later</option></select></div>
+      </div>
+      <div class="mf">
+        <span class="note">Replies come back into the chat room, not a shared inbox</span>
+        <button class="btn sec" data-compose-close>Cancel</button>
+        <button class="btn" data-compose-send>Send</button>
+      </div>
+    </div></div>`;
+}
+
+function sendCompose(){
+  const g = id => document.getElementById(id);
+  const subj = g("cm-subj").value.trim(), body = g("cm-body").value.trim();
+  let ok = true;
+  if(!subj){ g("f-cmsubj").classList.add("bad"); ok=false; }
+  if(!body){ g("f-cmbody").classList.add("bad"); ok=false; }
+  if(!ok) return;
+  const aud = g("cm-aud").value, how = g("cm-chan").value, when = g("cm-when").value;
+  const ch = CHANNELS.find(c=>c.id===aud);
+  const count = ch ? ch.members : (aud==="guests"?23:8);
+  const label = ch ? ch.name : (aud==="guests"?"first time guests":"people flagged as stuck");
+  if(ch){
+    (CHAT[ch.id] = CHAT[ch.id]||[]).push({w:"Pastor Reed", t:when==="Send now"?"Just now":when, me:true, x:`<b>${subj}</b><br>${body}`});
+    S.chan = ch.id;
+  }
+  S.composeSent = `${when==="Send now"?"Delivered":"Scheduled"} to ${count} people in ${label} by ${how.toLowerCase()}.`;
+  render();
+}
+
+function inviteModal(){
+  if(!S.invite) return "";
+  const ch = CHANNELS.find(c=>c.id===S.invite);
+  const names = PEOPLE.map(p2=>p2.n);
+  return `<div class="modalwrap"><div class="mscrim" data-invite-close></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Invite people" style="max-width:460px">
+      <div class="mh"><div><h3>Invite to ${ch.name}</h3><div class="s">Invite only. People cannot join this room on their own.</div></div>
+        <button class="x" data-invite-close aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="picklist">
+          ${names.map(n=>`
+            <button class="pickrow" data-pick="${n}" aria-pressed="${S.pick.includes(n)}">
+              <span class="av">${initials(n)}</span>
+              <span style="flex:1"><span class="rn">${n}</span></span>
+              <span class="check" style="width:22px;height:22px;border-radius:50%;border:2px solid ${S.pick.includes(n)?"var(--accent)":"var(--line)"};background:${S.pick.includes(n)?"var(--accent)":"transparent"};color:#fff;display:grid;place-items:center;font-size:11px">${S.pick.includes(n)?"&#10003;":""}</span>
+            </button>`).join("")}
+        </div>
+      </div>
+      <div class="mf">
+        <span class="note">${S.pick.length} selected</span>
+        <button class="btn sec" data-invite-close>Cancel</button>
+        <button class="btn" data-invite-send ${S.pick.length?"":"disabled style=opacity:.4"}>Add to room</button>
+      </div>
+    </div></div>`;
+}
+
+function newDMModal(){
+  if(!S.newDM) return "";
+  const taken = DMS.map(d=>d.name);
+  const names = PEOPLE.map(p2=>p2.n).filter(n=>!taken.includes(n));
+  return `<div class="modalwrap"><div class="mscrim" data-dm-close></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Start a chat" style="max-width:440px">
+      <div class="mh"><div><h3>Start a chat</h3><div class="s">Any member can message another member directly</div></div>
+        <button class="x" data-dm-close aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="picklist">
+          ${names.length?names.map(n=>`
+            <button class="pickrow" data-startdm="${n}">
+              <span class="av">${initials(n)}</span>
+              <span style="flex:1"><span class="rn">${n}</span><span class="rs">Tap to open a conversation</span></span>
+            </button>`).join(""):`<div class="emptynote">You already have a chat with everyone here.</div>`}
+        </div>
+      </div>
+      <div class="mf"><span class="note">Direct messages are private between the two of you</span>
+        <button class="btn sec" data-dm-close>Close</button></div>
+    </div></div>`;
+}
+
+function messagesView(){
+  return `${chatPanel()}
+  <div class="grid-2">
+    <section class="card">
+      <div class="hd"><h2>Automations</h2><div class="spacer"></div><button class="mini">New automation</button></div>
+      ${[["First visit welcome","Text plus email, 2 hours after check in","On"],["Guest at 21 days","Invite to Next Steps","On"],["Stuck alert to staff","Any stage over 40 days","On"],["Serving interest","Route to team leader","On"],["Birthday note from the pastor","Sends 8am","Off"]].map(a=>`<div class="row"><span class="av solid" style="font-size:10px">${a[2]==="On"?"ON":"OFF"}</span><span><span class="rn">${a[0]}</span><span class="rs">${a[1]}</span></span><span class="spacer"></span><span class="toggle" role="button" aria-pressed="${a[2]==="On"}"></span></div>`).join("")}
+    </section>
+    <section class="card">
+      <div class="hd"><h2>Sent this week</h2><div class="spacer"></div><span class="pill">33 messages</span></div>
+      ${[["Sunday reminder","All Members · 412 recipients","Sunday 7:00am"],["Group leader huddle","11 leaders","Tuesday"],["Kids volunteer gap","Kids Team · 23 recipients","Wednesday"]].map(m=>`<div class="row"><span class="av">${IC.msg}</span><span><span class="rn">${m[0]}</span><span class="rs">${m[1]}</span></span><span class="spacer"></span><span class="pill ghost">${m[2]}</span></div>`).join("")}
+    </section>
+  </div>`;
+}
+
+function settingsView(){
+  const c = CHURCHES[S.church];
+  return `<section class="card">
+    <div class="hd"><h2>Your brand</h2><div class="spacer"></div><span class="pill good">White label</span></div>
+    <div class="bd">
+      <div class="kv"><span>Church name</span><b>${c.name}</b></div>
+      <div class="kv"><span>App name in the store</span><b>${c.appName || c.short + ' Church'}</b></div>
+      <div class="kv"><span>Domain</span><b>${c.appDomain || 'app.' + c.short.toLowerCase() + 'church.org'}</b></div>
+      <div style="margin-top:16px">
+        <div class="eyebrow">Primary color</div>
+        <div class="swatches" id="swatches">
+          ${["#485B38","#2F3E24","#1A1A1A"].map(h=>`<button class="sw" data-color="${h}" style="background:${h}" aria-pressed="${c.accent.toLowerCase()===h.toLowerCase()}" aria-label="Set ${h}"></button>`).join("")}
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:10px 0 0">Change this and every screen updates instantly, including the member app. Any hex code works.</p>
+      </div>
+    </div>
+  </section>
+  <section class="card">
+    <div class="hd"><h2>What this replaces</h2></div>
+    <div class="bd">
+      ${[["Planning Center","$199/mo","Replaced"],["Website and hosting","$95/mo","Replaced"],["Giving platform fees","$70/mo","Replaced"],["Bible and reading app","$40/mo","Replaced"]].map(r=>`<div class="kv"><span>${r[0]}</span><b>${r[1]} <span class="pill good" style="margin-left:8px">${r[2]}</span></b></div>`).join("")}
+      <div class="kv" style="margin-top:8px;border-top:1px solid var(--line);padding-top:12px"><span><b>Current total</b></span><b class="mono" style="font-size:16px">$404 / mo</b></div>
+      <div class="kv"><span><b>Discipleship Operating System, Tier 2</b></span><b class="mono" style="font-size:16px;color:var(--accent)">$100 / mo</b></div>
+      <p style="font-size:12.5px;color:var(--muted);margin:12px 0 0">Net savings of $304 a month, $3,648 a year, before counting staff hours.</p>
+    </div>
+  </section>`;
+}
+
+function staffView(){
+  const titles = {
+    dashboard:["Welcome To Your Dashboard","Sunday, August 9 is 5 days out"],
+    people:["People","Every person, and the step they are on"],
+    services:["Services","Plan Sunday and fill the team"],
+    kids:["Kids","Check in, rooms, and safety"],
+    giving:["Giving","Generosity and the signals inside it"],
+    resources:["Resources","Content published under your name"],
+    messages:["Messages","What the system sends so staff does not have to"],
+    settings:["Settings","Your brand, your data, your app"]
+  };
+  const body = {
+    dashboard:dashboard, people:peopleView, services:servicesView, kids:kidsView,
+    giving:givingView, resources:resourcesView, messages:messagesView, settings:settingsView
+  }[S.tab]();
+  const [t,sub] = titles[S.tab];
+  return `<div class="shell">${sidebar()}
+    <main class="main">
+      <div class="topline">
+        <div><h1>${t}</h1><div class="sub">${sub}</div></div>
+        <div class="spacer"></div>
+        ${S.tab==="settings" ? "" : `<button class="btn sec">Search</button>`}
+        ${S.tab==="settings"
+          ? ``
+          : S.tab==="dashboard"
+          ? `<button class="btn" data-support>Request support</button>`
+          : S.tab==="services"
+            ? `<button class="btn" data-newsvc>New Service</button>`
+          : S.tab==="kids"
+            ? `<button class="btn sec" data-kiosk-open>Open kiosk</button><button class="btn">Add Child</button>`
+          : S.tab==="giving"
+            ? `<button class="btn sec" data-report-open>Run report</button><button class="btn" data-gift-open>Record gift</button>`
+          : S.tab==="resources"
+            ? `<button class="btn" data-res-new>Add a resource</button>`
+          : S.tab==="messages"
+            ? `<button class="btn" data-compose>Send message</button>`
+            : `<button class="btn">${PRIMARY_ACTION[S.tab] || "Add a person"}</button>`}
+      </div>
+      <div class="content">${body}</div>
+    </main>
+  </div>`;
+}
+
+/* ============================ MEMBER VIEW ============================ */
+function memberHome(){
+  return `<div class="mhead"><div class="hi">Good morning, Alicia</div><div class="sub">Day 12 with ${CHURCHES[S.church].name}</div></div>
+  <div class="mbody">
+    <div class="mcard dark">
+      <div class="lbl">Today's verse</div>
+      <div class="verse">"And let us consider how to stir up one another to love and good works."</div>
+      <div class="vref" style="color:#fff;opacity:.75">Hebrews 10:24</div>
+    </div>
+    <div class="mcard tint">
+      <div class="lbl">Your next step</div>
+      <div class="t">Serve on the Kids team</div>
+      <div class="d">You marked interest on Friday. One form left, then Dana will text you about a Sunday.</div>
+      <button class="mbtn">Start the background check</button>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Keep reading</div>
+      <div class="t">Known: a 5 day plan</div>
+      <div class="d">Day 3 of 5 · about 6 minutes</div>
+      <div class="prog"><i style="width:60%"></i></div>
+      <div class="streak">${["M","T","W","T","F","S","S"].map((d,i)=>`<i class="${i<4?"on":""}">${d}</i>`).join("")}</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">This week</div>
+      <div class="t">Wednesday Women's group</div>
+      <div class="d">Wednesday 7:00pm at the Hollands' house. 9 going.</div>
+      <button class="mbtn ghost">I'm coming</button>
+    </div>
+    <div class="mcard">
+      <div class="lbl">From your church</div>
+      <div class="t">Known, week 2</div>
+      <div class="d">Sunday's message and notes are ready.</div>
+    </div>
+  </div>`;
+}
+function memberGive(){
+  const amounts=[50,100,250];
+  return `<div class="mhead"><div class="hi">Give</div><div class="sub">${CHURCHES[S.church].name}</div></div>
+  <div class="mbody">
+    <div class="mcard">
+      <div class="lbl">Amount</div>
+      <div class="amounts">${amounts.map(a=>`<button class="amt" data-amt="${a}" aria-pressed="${S.amount===a}">$${a}</button>`).join("")}</div>
+      <div class="d" style="margin-top:12px">Fund: General</div>
+      <button class="mbtn">Give $${S.amount}</button>
+      <button class="mbtn ghost" style="margin-top:8px">Make it monthly</button>
+    </div>
+    <div class="mcard tint">
+      <div class="lbl">Your giving this year</div>
+      <div class="t mono" style="font-size:22px">$675</div>
+      <div class="d">Statement ready any time, no email to the office.</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Recent</div>
+      <div class="d" style="margin-top:8px">July 25 · $75 · General<br>June 27 · $75 · General<br>May 30 · $75 · General</div>
+    </div>
+  </div>`;
+}
+function memberServe(){
+  return `<div class="mhead"><div class="hi">Serve</div><div class="sub">Kids team</div></div>
+  <div class="mbody">
+    <div class="mcard tint">
+      <div class="lbl">Waiting on you</div>
+      <div class="t">Sunday, August 17 · 9:00am</div>
+      <div class="d">Kids, 2s and 3s room with Dana Whitfield.</div>
+      <button class="mbtn">Accept</button>
+      <button class="mbtn ghost" style="margin-top:8px">Can't make it</button>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Your schedule</div>
+      <div class="d" style="margin-top:8px">Aug 17 · Kids · 9:00am<br>Sep 7 · Kids · 9:00am</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Sunday set</div>
+      <div class="t">3 songs · Aug 17</div>
+      <div class="d">Great Is Thy Faithfulness in G, Cornerstone in C, Goodness of God in Ab.</div>
+      <button class="mbtn ghost">Open charts in SongSelect</button>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Before your first Sunday</div>
+      <div class="t">Kids team training</div>
+      <div class="d">2 short videos and a safety walkthrough. 14 minutes.</div>
+      <div class="prog"><i style="width:35%"></i></div>
+    </div>
+  </div>`;
+}
+function memberGrow(){
+  return `<div class="mhead"><div class="hi">Grow</div><div class="sub">Reading, notes, and prayer</div></div>
+  <div class="mbody">
+    <div class="mcard dark">
+      <div class="lbl">Continue</div>
+      <div class="t" style="color:#fff">Known · Day 3</div>
+      <div class="d" style="color:rgba(255,255,255,.7)">Psalm 139:1 to 12</div>
+      <div class="prog"><i style="width:60%"></i></div>
+      <button class="mbtn" style="margin-top:14px" data-read="r1|2">Open today's reading</button>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Bible</div>
+      <div class="t">Search, highlight, and save</div>
+      <div class="d">Your highlights stay with you, and your notes stay private.</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Prayer journal</div>
+      <div class="t">3 entries this week</div>
+      <div class="d">Last: "For Marcus and Dana as they decide about the group."</div>
+    </div>
+    <div class="mcard tint">
+      <div class="lbl">From your pastor</div>
+      <div class="t">Money and faith, week 1</div>
+      <div class="d">A 4 week study written for your church.</div>
+    </div>
+  </div>`;
+}
+function memberChat(){
+  const mine = ["all","kids"];
+  if(S.mchat){
+    const c = chanById(S.mchat) || {name:"Chat"};
+    const msgs = CHAT[S.mchat] || [];
+    return `<div class="mhead" style="padding-bottom:10px">
+        <button class="mback" data-mchat-back>&#8249; All chats</button>
+        <div class="hi" style="font-size:18px;margin-top:4px">${c.name}</div>
+        <div class="sub">${isDM(S.mchat)?"Direct message":`${c.members} members`}</div>
+      </div>
+      <div class="mbody" style="gap:0">
+        <div class="msgs" style="padding:4px 0 10px">
+          ${msgs.map(m=>`
+            <div class="msg ${m.me?"me":""} ${m.sys?"sys":""}" style="max-width:88%">
+              ${m.sys?"":`<span class="mv">${initials(m.w)}</span>`}
+              <span>${m.sys?"":`<span class="mw">${m.w}</span>`}<span class="bub">${m.x}</span></span>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="composer" style="padding:10px 14px">
+        <input id="mchatinput" placeholder="Message" aria-label="Message">
+        <button class="btn" data-msend>Send</button>
+      </div>`;
+  }
+  return `<div class="mhead"><div class="hi">Chat</div><div class="sub">Your rooms and messages</div></div>
+    <div class="mbody">
+      <div class="mcard tint" style="padding:13px 15px">
+        <div class="lbl">Group chats</div>
+        ${CHANNELS.filter(c=>mine.includes(c.id)).map(c=>`
+          <button class="row" data-mchat="${c.id}" style="padding:10px 0;border-top:1px solid rgba(47,62,36,.09)">
+            <span class="av solid" style="width:30px;height:30px;font-size:11px">${c.open?"#":"&#0F766E;"}</span>
+            <span style="flex:1;text-align:left"><span class="rn">${c.name}</span><span class="rs">${c.members} members</span></span>
+            ${UNREAD[c.id]?`<span class="un">${UNREAD[c.id]}</span>`:""}
+          </button>`).join("")}
+        <div class="d" style="margin-top:9px">Worship, Youth, and Welcome rooms are invite only. A leader adds you when you join the team.</div>
+      </div>
+      <div class="mcard">
+        <div class="lbl">Direct messages</div>
+        ${DMS.map(d=>`
+          <button class="row" data-mchat="${d.id}" style="padding:10px 0;border-top:1px solid var(--line-soft)">
+            <span class="av" style="width:30px;height:30px;font-size:11px">${initials(d.name)}</span>
+            <span style="flex:1;text-align:left"><span class="rn">${d.name}</span><span class="rs">${(CHAT[d.id]&&CHAT[d.id].length)?CHAT[d.id][CHAT[d.id].length-1].x.slice(0,38)+"...":"No messages yet"}</span></span>
+          </button>`).join("")}
+        <button class="mbtn ghost" data-mchat-new>Message someone new</button>
+      </div>
+    </div>`;
+}
+
+function memberProfile(){
+  return `<div class="mhead"><div class="hi">Alicia Romero</div><div class="sub">Attender · 12 days</div></div>
+  <div class="mbody">
+    <div class="mcard">
+      <div class="lbl">Your journey</div>
+      <div class="journeymini" style="margin-top:12px">${STAGES.map((s,i)=>`<i class="${i<2?"on":i===2?"now":""}" style="${i<2?"background:var(--accent)":i===2?"background:var(--deep)":"background:var(--mist)"}"></i>`).join("")}</div>
+      <div class="d" style="margin-top:10px">Visitor and Guest complete. You are an Attender. Next: serving on a team.</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Family</div>
+      <div class="d" style="margin-top:8px">Alicia Romero<br>Sofia, age 4 · Kids room 3</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Groups</div>
+      <div class="d" style="margin-top:8px">Wednesday Women's · Priya Anand leads</div>
+    </div>
+    <div class="mcard">
+      <div class="lbl">Notifications</div>
+      <div class="d" style="margin-top:8px">Serving reminders on<br>Group messages on<br>Church announcements on</div>
+    </div>
+  </div>`;
+}
+function memberView(){
+  const tabs = [["home","Home",IC.home],["give","Give",IC.give],["serve","Serve",IC.hand],["grow","Grow",IC.grow],["chat","Chat",IC.msg],["profile","You",IC.user]];
+  const body = {home:memberHome,give:memberGive,serve:memberServe,grow:memberGrow,chat:memberChat,profile:memberProfile}[S.memberTab]();
+  return `<div class="memberwrap">
+    <div class="phone">
+      <div class="screen">
+        <div class="status"><span>9:41</span><span>${CHURCHES[S.church].short}</span></div>
+        ${body}
+        <div class="tabbar">${tabs.map(t=>`<button class="tab" data-mtab="${t[0]}" aria-current="${S.memberTab===t[0]}">${t[2]}<span>${t[1]}</span></button>`).join("")}</div>
+      </div>
+    </div>
+    <div class="track">
+      <section class="card">
+        <div class="hd"><h2>What the pastor is looking at</h2></div>
+        <div class="bd">This is the same database as the staff view. Alicia's next step, her group, and her giving are one record. The church's logo and color are on the app in the store. Ours is nowhere on it.</div>
+      </section>
+      <section class="card">
+        <div class="hd"><h2>What it replaces on their phone</h2></div>
+        <div class="bd" style="padding-bottom:8px">Four apps become one.</div>
+        ${[["Bible app","Reading, plans, highlights, notes"],["Giving page","One time and recurring, statements"],["Church Center","Serving, groups, check in"],["Group text threads","Team and group messages"]].map(r=>`<div class="row"><span class="av">${initials(r[0])}</span><span><span class="rn">${r[0]}</span><span class="rs">${r[1]}</span></span></div>`).join("")}
+      </section>
+    </div>
+  </div>`;
+}
+
+/* ============================ TALK TRACK ============================ */
+function talkPanel(){
+  if(!S.talk) return "";
+  return `<div class="scrim on" data-close-talk></div>
+  <aside class="drawer on" role="dialog" aria-label="Talk track" style="width:400px">
+    <div class="dhead">
+      <div class="top"><div><h3>Demo talk track</h3><div class="s">Six beats, about 9 minutes</div></div><button class="x" data-close-talk aria-label="Close">×</button></div>
+    </div>
+    <div class="dbody">
+      ${TALK_BEATS.map(b=>`<div class="beat"><span class="n">${b.n}</span><span><span class="w">${b.w}</span><span class="s" style="display:block">${b.s}</span></span></div>`).join("")}
+      <div class="dsec" style="border-bottom:none">
+        <h4>Close</h4>
+        <p style="font-size:13px;color:var(--muted);line-height:1.55;margin:0">"You are already paying for four systems that do not talk to each other, and none of them tell you who is stuck. This is one system, your brand, one hundred dollars a month. Do you want to start with your guest follow up or your groups?"</p>
+      </div>
+    </div>
+  </aside>`;
+}
+
+/* ============================ GIVING ============================ */
+function giftModal(){
+  if(!S.gift) return "";
+  if(S.giftSaved){
+    const g = S.giftSaved;
+    return `<div class="modalwrap"><div class="mscrim" data-close-gift></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Gift recorded" style="max-width:420px">
+        <div class="sent">
+          <div class="tick">&#10003;</div>
+          <h3>Gift recorded</h3>
+          <p>${money(g.amount)} ${g.method.toLowerCase()} from ${g.giver}, posted to ${g.fund}. It is on their giving record and their year end statement.</p>
+          <button class="btn" style="margin-top:18px" data-close-gift>Close</button>
+        </div>
+      </div></div>`;
+  }
+  const names = ["Loose cash, no giver","Anonymous check"].concat(PEOPLE.map(p2=>p2.n));
+  return `<div class="modalwrap"><div class="mscrim" data-close-gift></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Record a gift">
+      <div class="mh">
+        <div><h3>Record a gift</h3><div class="s">Cash, check, or anything that did not come through the app</div></div>
+        <button class="x" data-close-gift aria-label="Close">&times;</button>
+      </div>
+      <div class="mb">
+        <div class="field"><label for="g-giver">Who gave</label>
+          <select id="g-giver">${names.map(n=>`<option>${n}</option>`).join("")}</select></div>
+        <div class="field" id="f-amt"><label for="g-amt">Amount</label><input id="g-amt" type="number" min="1" step="0.01" placeholder="250.00"><span class="err">Enter an amount.</span></div>
+        <div class="field"><label for="g-method">Method</label>
+          <select id="g-method"><option>Check</option><option>Cash</option><option>Money order</option><option>Stock or other</option></select></div>
+        <div class="field"><label for="g-ref">Check or reference number</label><input id="g-ref" placeholder="Optional"></div>
+        <div class="field"><label for="g-fund">Fund</label>
+          <select id="g-fund">${FUNDS.map(f=>`<option>${f}</option>`).join("")}</select></div>
+        <div class="field"><label for="g-date">Date received</label><input id="g-date" type="date" value="2026-08-02"></div>
+        <div class="field"><label for="g-note">Note for the record</label><input id="g-note" placeholder="Sunday offering, counted by two people"></div>
+      </div>
+      <div class="mf">
+        <span class="note">Posts to the giver's record and their statement</span>
+        <button class="btn sec" data-close-gift>Cancel</button>
+        <button class="btn" data-save-gift>Record gift</button>
+      </div>
+    </div></div>`;
+}
+
+function saveGift(){
+  const v = id => document.getElementById(id).value;
+  const amount = Number(v("g-amt"));
+  if(!amount || amount<=0){ document.getElementById("f-amt").classList.add("bad"); return; }
+  const g = {giver:v("g-giver"), amount, method:v("g-method"), ref:v("g-ref"), fund:v("g-fund"), date:v("g-date"), note:v("g-note")};
+  MANUAL_GIFTS.unshift(g);
+  S.giftSaved = g; render();
+}
+
+function reportPicker(){
+  if(!S.reportPick) return "";
+  const opts = [
+    ["weekly","Weekly","Last 4 Sundays, week by week"],
+    ["monthly","Monthly","Last 6 months, month by month"],
+    ["ytd","Year to date","January 1 through today"]
+  ];
+  return `<div class="modalwrap"><div class="mscrim" data-close-rp></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Run a report" style="max-width:520px">
+      <div class="mh"><div><h3>Run a report</h3><div class="s">Pick a period. Every report includes cash and checks you recorded by hand.</div></div>
+        <button class="x" data-close-rp aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="periodpick">
+          ${opts.map(o=>`<button data-period="${o[0]}" aria-pressed="${S.reportPeriod===o[0]}"><div class="pt">${o[1]}</div><div class="ps">${o[2]}</div></button>`).join("")}
+        </div>
+        <div class="field"><label for="rp-fund">Fund</label>
+          <select id="rp-fund"><option>All funds</option>${FUNDS.map(f=>`<option>${f}</option>`).join("")}</select></div>
+      </div>
+      <div class="mf">
+        <span class="note">Exports to CSV for your bookkeeper</span>
+        <button class="btn sec" data-close-rp>Cancel</button>
+        <button class="btn" data-run-report>Run report</button>
+      </div>
+    </div></div>`;
+}
+
+function reportModal(){
+  if(!S.report) return "";
+  const r = S.report;
+  const max = Math.max(...r.buckets.map(b=>b.a));
+  const floor = Math.min(...r.buckets.map(b=>b.a))*0.55;
+  const mTotal = r.methods.reduce((t,m)=>t+m[1],0);
+  return `<div class="modalwrap"><div class="mscrim" data-close-report></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Giving report" style="max-width:620px">
+      <div class="mh"><div><h3>${r.title}</h3><div class="s">${r.range} · ${CHURCHES[S.church].name}</div></div>
+        <button class="x" data-close-report aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="rpt">
+          <div class="rptnums">
+            <div><div class="k">Total</div><div class="v">${money(r.total)}</div></div>
+            <div><div class="k">Givers</div><div class="v">${r.givers}</div></div>
+            <div><div class="k">Average</div><div class="v">${money(r.avg)}</div></div>
+            <div><div class="k">New givers</div><div class="v">${r.newG}</div></div>
+          </div>
+          <div>
+            <div class="eyebrow" style="margin-bottom:2px">By ${r.period==="weekly"?"week":"month"}</div>
+            <div class="bars">
+              ${r.buckets.map(b=>`<div class="col"><div class="bar2" style="height:${Math.max(6, Math.round((b.a-floor)/(max-floor)*100))}%"></div><div class="bl">${b.l}</div></div>`).join("")}
+            </div>
+          </div>
+          <div>
+            <div class="eyebrow" style="margin-bottom:8px">By fund</div>
+            <div class="brk">
+              ${r.funds.map(f=>`<div><div class="r"><span>${f[0]}</span><b class="mono">${money(f[1])}</b></div><div class="track"><i style="width:${Math.round(f[2]*100)}%"></i></div></div>`).join("")}
+            </div>
+          </div>
+          <div>
+            <div class="eyebrow" style="margin-bottom:8px">By method</div>
+            <div class="brk">
+              ${r.methods.map(m=>`<div><div class="r"><span>${m[0]}</span><b class="mono">${money(m[1])}</b></div><div class="track"><i style="width:${Math.round(m[1]/mTotal*100)}%"></i></div></div>`).join("")}
+            </div>
+          </div>
+          ${MANUAL_GIFTS.length?`<p style="font-size:12px;color:var(--muted);margin:0;line-height:1.5">Includes ${MANUAL_GIFTS.length} gift${MANUAL_GIFTS.length===1?"":"s"} recorded by hand this period, totaling ${money(manualTotal())}.</p>`:""}
+        </div>
+      </div>
+      <div class="mf">
+        <span class="note">Year end giving statements come from this same data</span>
+        <button class="btn sec" data-export-report>Export CSV</button>
+        <button class="btn" data-close-report>Done</button>
+      </div>
+    </div></div>`;
+}
+
+function exportReport(){
+  const r = S.report; if(!r) return;
+  const rows = [["Report", r.title],["Range", r.range],["Church", CHURCHES[S.church].name],[],
+    ["Total", r.total],["Givers", r.givers],["Average gift", r.avg],["New givers", r.newG],[],
+    ["Period","Amount"], ...r.buckets.map(b=>[b.l,b.a]), [],
+    ["Fund","Amount"], ...r.funds.map(f=>[f[0],f[1]]), [],
+    ["Method","Amount"], ...r.methods.map(m=>[m[0],m[1]])];
+  const csv = rows.map(row=>row.map(c=>`"${String(c??"").replace(/"/g,'""')}"`).join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv],{type:"text/csv"}));
+  const a = document.createElement("a");
+  a.href=url; a.download=`giving-${r.period}-2026.csv`; a.click();
+  URL.revokeObjectURL(url);
+  toast("CSV downloaded. Send it straight to your bookkeeper.");
+  render();
+}
+
+/* ============================ CHECK IN KIOSK ============================ */
+function openKiosk(){ S.kiosk = {step:"pin", pin:"", fam:null, picked:[], code:null}; render(); }
+function kioskReset(){ S.kiosk = {step:"pin", pin:"", fam:null, picked:[], code:null}; render(); }
+
+function kioskPin(d){
+  const k = S.kiosk;
+  if(d==="del"){ k.pin = k.pin.slice(0,-1); render(); return; }
+  if(d==="clear"){ k.pin=""; render(); return; }
+  if(k.pin.length>=4) return;
+  k.pin += d;
+  if(k.pin.length===4){
+    const fam = KIOSK_FAMILIES.find(f=>f.pin===k.pin);
+    if(fam){ k.fam = fam; k.picked = fam.kids.map(x=>x.id); k.step="pick"; }
+    else { k.step="none"; }
+  }
+  render();
+}
+
+function kioskCheckIn(){
+  const k = S.kiosk;
+  k.code = String(Math.floor(1000+Math.random()*9000));
+  k.step = "label";
+  const when = new Date().toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+  k.fam.kids.filter(c=>k.picked.includes(c.id)).forEach(c=>{
+    KIOSK_LOG.unshift({name:c.name, room:c.room, code:k.code, guardian:k.fam.guardian, alert:c.alert, when});
+  });
+  render();
+}
+
+function kioskView(){
+  const k = S.kiosk; if(!k) return "";
+  const c = CHURCHES[S.church];
+  const chrome = `<div class="brand">${c.logo || `<span style="font-weight:600">${c.name}</span>`}</div>
+    <button class="exit" data-kiosk-exit>Exit kiosk</button>`;
+
+  if(k.step==="pin"){
+    return `<div class="kiosk">${chrome}
+      <div class="kcard">
+        <div class="kh"><h2>Welcome. Let's check in.</h2><p>Enter the last four digits of your phone number.</p></div>
+        <div class="kb">
+          <div class="digits">${[0,1,2,3].map(i=>`<i class="${k.pin[i]?"on":""}">${k.pin[i]||""}</i>`).join("")}</div>
+          <div class="pad">
+            ${[1,2,3,4,5,6,7,8,9].map(n=>`<button data-pin="${n}">${n}</button>`).join("")}
+            <button class="util" data-pin="clear">Clear</button>
+            <button data-pin="0">0</button>
+            <button class="util" data-pin="del">Delete</button>
+          </div>
+          <button class="kbtn ghost" data-kiosk-new>First time here? Start a new family</button>
+        </div>
+      </div></div>`;
+  }
+
+  if(k.step==="none"){
+    return `<div class="kiosk">${chrome}
+      <div class="kcard">
+        <div class="kh"><h2>We did not find that number</h2><p>Check the digits, or start a new family and a volunteer will help you.</p></div>
+        <div class="kb">
+          <button class="kbtn" data-kiosk-again>Try again</button>
+          <button class="kbtn ghost" data-kiosk-new>Start a new family</button>
+        </div>
+      </div></div>`;
+  }
+
+  if(k.step==="new"){
+    return `<div class="kiosk">${chrome}
+      <div class="kcard">
+        <div class="kh"><h2>Welcome. We are glad you are here.</h2><p>A volunteer is on the way with a tablet to get your family set up. It takes about two minutes.</p></div>
+        <div class="kb">
+          <div class="label">
+            <div class="lt"><span class="ln">New family</span><span class="lc">${String(Math.floor(1000+Math.random()*9000))}</span></div>
+            <div class="lr">Guest services notified · someone is walking over now</div>
+          </div>
+          <button class="kbtn" data-kiosk-again>Back to start</button>
+        </div>
+      </div></div>`;
+  }
+
+  if(k.step==="pick"){
+    return `<div class="kiosk">${chrome}
+      <div class="kcard">
+        <div class="kh"><h2>Hi, ${k.fam.family} family</h2><p>Tap anyone who is checking in today.</p></div>
+        <div class="kb">
+          ${k.fam.kids.map(c2=>`
+            <button class="kidcard" data-kid="${c2.id}" aria-pressed="${k.picked.includes(c2.id)}">
+              <span class="kav">${initials(c2.name)}</span>
+              <span><span class="kn">${c2.name}</span><span class="kr">Age ${c2.age} · ${c2.room}${c2.alert?` · ${c2.alert}`:""}</span></span>
+              <span class="check">&#10003;</span>
+            </button>`).join("")}
+          <button class="kbtn" data-kiosk-go ${k.picked.length?"":"disabled"}>Check in ${k.picked.length} ${k.picked.length===1?"child":"children"}</button>
+          <button class="kbtn ghost" data-kiosk-again>Not us, start over</button>
+        </div>
+      </div></div>`;
+  }
+
+  if(k.step==="label"){
+    const kids = k.fam.kids.filter(x=>k.picked.includes(x.id));
+    return `<div class="kiosk">${chrome}
+      <div class="kcard">
+        <div class="kh"><h2>Checked in</h2><p>Take your pickup tag. Labels are printing now.</p></div>
+        <div class="kb">
+          ${kids.map(c3=>`
+            <div class="label">
+              <div class="lt"><span class="ln">${c3.name}</span><span class="lc">${k.code}</span></div>
+              <div class="lr">${c3.room} · ${k.fam.guardian}</div>
+              ${c3.alert?`<span class="pill warn la">${c3.alert}</span>`:""}
+            </div>`).join("")}
+          <p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:4px 0 0">
+            Nobody leaves with a child without code ${k.code}. Room leaders can text you from the app if they need you.
+          </p>
+          <button class="kbtn" data-kiosk-again>Done</button>
+        </div>
+      </div></div>`;
+  }
+  return "";
+}
+
+/* ============================ SERVICE EDITOR ============================ */
+function elementModal(){
+  if(!S.editEl) return "";
+  const sv = svc();
+  const isNew = S.editEl==="new";
+  const el = isNew ? {type:"Worship", title:"", owner:"", mins:5} : sv.elements.find(x=>String(x.id)===String(S.editEl));
+  if(!el) return "";
+  return `<div class="modalwrap"><div class="mscrim" data-close-el></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Edit element">
+      <div class="mh">
+        <div><h3>${isNew?"Add an element":"Edit element"}</h3><div class="s">${sv.date} · times after this recalculate automatically</div></div>
+        <button class="x" data-close-el aria-label="Close">&times;</button>
+      </div>
+      <div class="mb">
+        <div class="field"><label for="el-type">Type</label>
+          <select id="el-type">${ELEMENT_TYPES.map(t=>`<option ${t===el.type?"selected":""}>${t}</option>`).join("")}</select></div>
+        <div class="field" id="f-eltitle"><label for="el-title">What happens</label><input id="el-title" value="${el.title.replace(/"/g,"&quot;")}" placeholder="Worship set, 3 songs"><span class="err">Give this element a name.</span></div>
+        <div class="field"><label for="el-owner">Who owns it</label><input id="el-owner" value="${el.owner.replace(/"/g,"&quot;")}" placeholder="Worship: Hannah Doyle"></div>
+        <div class="field"><label for="el-mins">Minutes</label><input id="el-mins" type="number" min="1" max="120" value="${el.mins}"></div>
+      </div>
+      <div class="mf">
+        <span class="note">Everyone on the team sees this update in their app</span>
+        <button class="btn sec" data-close-el>Cancel</button>
+        <button class="btn" data-save-el="${isNew?"new":el.id}">Save</button>
+      </div>
+    </div></div>`;
+}
+
+function saveElement(){
+  const sv = svc();
+  const g = id => document.getElementById(id);
+  const title = (g("el-title").value||"").trim();
+  if(!title){ document.getElementById("f-eltitle").classList.add("bad"); return; }
+  const data = {type:g("el-type").value, title, owner:(g("el-owner").value||"").trim()||"Unassigned", mins:Math.max(1, Number(g("el-mins").value)||5)};
+  if(S.editEl==="new"){
+    sv.elements.push({id:Date.now(), ...data});
+  } else {
+    const el = sv.elements.find(x=>String(x.id)===String(S.editEl));
+    Object.assign(el, data);
+  }
+  S.editEl=null; toast("Plan updated. The team sees it now."); render();
+}
+
+function moveElement(id, dir){
+  const sv = svc(); const i = sv.elements.findIndex(x=>String(x.id)===String(id));
+  const j = i+dir; if(i<0||j<0||j>=sv.elements.length) return;
+  [sv.elements[i], sv.elements[j]] = [sv.elements[j], sv.elements[i]];
+  render();
+}
+
+function addService(){
+  const last = SERVICES[SERVICES.length-1];
+  const m = last.date.match(/([A-Za-z]+) (\d+)/);
+  const d = new Date(`${m[1]} ${m[2]}, 2026`); d.setDate(d.getDate()+7);
+  const date = d.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
+  const short = d.toLocaleDateString("en-US",{month:"short",day:"numeric"});
+  const id = "s"+(SERVICES.length+1);
+  SERVICES.push({id, date, short, series:"Untitled plan", start:"9:00", status:"Draft", filled:[0,21],
+    elements:[{id:Date.now(), type:"Welcome", title:"Countdown and welcome", owner:"Unassigned", mins:4}], songs:[]});
+  S.service=id; toast(`${short} added. Plan it now or copy last Sunday.`); render();
+}
+
+function copyLastPlan(){
+  const sv = svc(); const i = SERVICES.findIndex(x=>x.id===sv.id);
+  const src = SERVICES[i-1] || SERVICES[i+1];
+  if(!src){ toast("No other Sunday to copy from."); return; }
+  sv.elements = src.elements.map(e=>({...e, id:Date.now()+Math.random()}));
+  sv.songs = src.songs.map(g=>({...g}));
+  toast(`Copied the ${src.short} plan. Edit anything that changed.`); render();
+}
+
+function chartModal(){
+  if(!S.songModal) return "";
+  const [sid, kind] = S.songModal.split("|");
+  const sg = svc().songs.find(x=>x.id===sid); if(!sg) return "";
+  return `<div class="modalwrap"><div class="mscrim" data-close-song></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Open in SongSelect" style="max-width:420px">
+      <div class="mh"><div><h3>${kind}</h3><div class="s">${sg.title} · ${sg.author}</div></div>
+        <button class="x" data-close-song aria-label="Close">&times;</button></div>
+      <div class="mb">
+        <div class="kv"><span>Key for this Sunday</span><b>${sg.key}</b></div>
+        <div class="kv"><span>Tempo</span><b>${sg.bpm} bpm</b></div>
+        <div class="kv"><span>Format</span><b>${kind}</b></div>
+        <p style="font-size:12.5px;color:var(--muted);line-height:1.55;margin:6px 0 0">
+          Charts and sheet music open in SongSelect under your church's CCLI license, transposed to ${sg.key}.
+          Licensed music stays with CCLI. We pass your team straight to it and keep the key, the set, and the schedule in one place.
+        </p>
+      </div>
+      <div class="mf">
+        <span class="note">Worship team members see this in their app</span>
+        <button class="btn sec" data-close-song>Close</button>
+        <button class="btn" data-close-song>Open in SongSelect</button>
+      </div>
+    </div></div>`;
+}
+
+function sendChat(inputId, chanId, who){
+  const el = document.getElementById(inputId||"chatinput"); if(!el) return;
+  const txt = el.value.trim(); if(!txt) return;
+  const id = chanId || S.chan;
+  (CHAT[id] = CHAT[id]||[]).push({w:who||"Pastor Reed", t:"Just now", me:true, x:txt.replace(/</g,"&lt;")});
+  el.value=""; render();
+  const box = document.querySelector(S.view==="member"?".mbody .msgs":".msgs");
+  if(box) box.scrollTop = box.scrollHeight;
+}
+
+function toast(msg){ S.toast = msg; clearTimeout(window.__t); window.__t = setTimeout(()=>{S.toast=null; render();}, 2600); }
+function toastEl(){ return S.toast ? `<div class="toast">${S.toast}</div>` : ""; }
+
+/* ============================ SUPPORT MODAL ============================ */
+function supportModal(){
+  if(!S.support) return "";
+  const c = CHURCHES[S.church];
+  if(S.supportSent){
+    return `<div class="modalwrap"><div class="mscrim" data-close-support></div>
+      <div class="modal" role="dialog" aria-modal="true" aria-label="Request sent">
+        <div class="sent">
+          <div class="tick">&#10003;</div>
+          <h3>Request sent</h3>
+          <p>${SUPPORT.to} has your request. Expect a reply within one business day.</p>
+          <button class="btn" style="margin-top:18px" data-close-support>Close</button>
+        </div>
+      </div></div>`;
+  }
+  return `<div class="modalwrap"><div class="mscrim" data-close-support></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Request support">
+      <div class="mh">
+        <div><h3>Request support</h3><div class="s">Send this to your support team. Someone replies within one business day.</div></div>
+        <button class="x" data-close-support aria-label="Close">&times;</button>
+      </div>
+      <div class="mb">
+        <div class="field" id="f-name"><label for="sup-name">Your name</label><input id="sup-name" autocomplete="name"><span class="err">Add your name.</span></div>
+        <div class="field"><label for="sup-org">Church or organization</label><input id="sup-org" value="${c.name}"></div>
+        <div class="field" id="f-email"><label for="sup-email">Email for the reply</label><input id="sup-email" type="email" autocomplete="email"><span class="err">Add an email we can reply to.</span></div>
+        <div class="field"><label for="sup-urgency">How urgent</label>
+          <select id="sup-urgency">
+            <option>Question, no rush</option>
+            <option>Needed this week</option>
+            <option>Blocking us right now</option>
+          </select>
+        </div>
+        <div class="field" id="f-msg"><label for="sup-msg">What do you need</label><textarea id="sup-msg" placeholder="Describe what is happening and what you expected."></textarea><span class="err">Tell us what you need.</span></div>
+      </div>
+      <div class="mf">
+        <span class="note">Goes to ${SUPPORT.to}</span>
+        <button class="btn sec" data-close-support>Cancel</button>
+        <button class="btn" data-send-support>Send request</button>
+      </div>
+    </div></div>`;
+}
+
+function sendSupport(){
+  const val = id => (document.getElementById(id)?.value || "").trim();
+  const name=val("sup-name"), org=val("sup-org"), email=val("sup-email"), urg=val("sup-urgency"), msg=val("sup-msg");
+  let ok = true;
+  const mark = (wrap, bad) => { const el=document.getElementById(wrap); if(el) el.classList.toggle("bad", bad); if(bad) ok=false; };
+  mark("f-name", !name);
+  mark("f-email", !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
+  mark("f-msg", !msg);
+  if(!ok) return;
+
+  const subject = `Support request: ${org || "Discipleship Operating System"}`;
+  const body = `Name: ${name}\nChurch or organization: ${org}\nReply to: ${email}\nUrgency: ${urg}\n\n${msg}`;
+
+  const done = () => { S.supportSent = true; render(); };
+
+  if(SUPPORT.endpoint){
+    fetch(SUPPORT.endpoint, {
+      method:"POST",
+      headers:{"Content-Type":"application/json", "Accept":"application/json"},
+      body: JSON.stringify({to:SUPPORT.to, name, organization:org, email, urgency:urg, message:msg, subject})
+    }).then(done).catch(()=>{
+      window.location.href = `mailto:${SUPPORT.to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      done();
+    });
+  } else {
+    window.location.href = `mailto:${SUPPORT.to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    done();
+  }
+}
+
+/* ============================ DRAWER ============================ */
+function openPerson(id){
+  const p = PEOPLE.find(x=>x.id===id); if(!p) return;
+  $("drawer").innerHTML = `
+    <div class="dhead">
+      <div class="top">
+        <span class="av">${initials(p.n)}</span>
+        <div><h3>${p.n}</h3><div class="s">${STAGES[p.stage]} since ${p.since} · ${p.days} days</div></div>
+        <button class="x" data-close aria-label="Close">×</button>
+      </div>
+      <div class="journeymini">${STAGES.map((s,i)=>`<i class="${i<p.stage?"on":i===p.stage?"now":""}"></i>`).join("")}</div>
+    </div>
+    <div class="dbody">
+      ${p.flag?`<div class="dsec"><div class="alert"><div><div class="t">Stuck in ${STAGES[p.stage]}</div><div class="d">${p.flag}</div></div></div></div>`:""}
+      <div class="dsec">
+        <h4>The recommended next step</h4>
+        <div style="font-size:14px;font-weight:500">${p.next}</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="mini" style="border-color:var(--accent);color:var(--accent)">Assign to a person</button>
+          <button class="mini">Send it now</button>
+        </div>
+      </div>
+      <div class="dsec">
+        <h4>Snapshot</h4>
+        <div class="kv"><span>Family</span><b>${p.family}</b></div>
+        <div class="kv"><span>Giving</span><b>${p.give}</b></div>
+        <div class="kv"><span>Serving</span><b>${p.serve}</b></div>
+        <div class="kv"><span>Group</span><b>${p.group}</b></div>
+        <div class="kv"><span>Last contact</span><b>${p.last}</b></div>
+      </div>
+      <div class="dsec" style="border-bottom:none">
+        <h4>Timeline</h4>
+        <div class="tl">${p.tl.map(t=>`<div class="tli ${t.hi?"hi":""}"><div class="w">${t.w}</div><div class="d">${t.d}</div></div>`).join("")}</div>
+      </div>
+    </div>
+    <div class="dfoot">
+      <button class="btn" style="flex:1">Log a conversation</button>
+      <button class="btn sec" data-close>Close</button>
+    </div>`;
+  $("drawer").classList.add("on"); $("scrim").classList.add("on");
+  const x = $("drawer").querySelector("[data-close]"); if(x) x.focus();
+}
+function closeDrawer(){ $("drawer").classList.remove("on"); $("scrim").classList.remove("on"); }
+
+/* ============================ RENDER ============================ */
+function render(){
+  setAccent();
+  app.innerHTML = (S.view==="staff" ? staffView() : memberView()) + talkPanel() + supportModal() + elementModal() + chartModal() + kioskView() + giftModal() + reportPicker() + reportModal() + resourceEditor() + planView() + readerView() + composeModal() + inviteModal() + newDMModal() + toastEl();
+  $("viewStaff").setAttribute("aria-selected", S.view==="staff");
+  $("viewMember").setAttribute("aria-selected", S.view==="member");
+  const q = $("q"); if(q && S.q){ q.focus(); q.setSelectionRange(q.value.length,q.value.length); }
+}
+
+document.addEventListener("click", e=>{
+  const t = e.target.closest("[data-tab],[data-stage],[data-person],[data-mtab],[data-close],[data-close-talk],[data-support],[data-close-support],[data-send-support],[data-color],[data-amt],[data-svc],[data-newsvc],[data-editel],[data-delel],[data-move],[data-save-el],[data-close-el],[data-copylast],[data-sendplan],[data-sendset],[data-sendreq],[data-addsong],[data-chart],[data-close-song],[data-chan],[data-send-chat],[data-compose],[data-compose-close],[data-compose-send],[data-invite],[data-invite-close],[data-invite-send],[data-pick],[data-newdm],[data-dm-close],[data-startdm],[data-mchat],[data-mchat-back],[data-mchat-new],[data-msend],[data-res],[data-plan],[data-plan-close],[data-read],[data-read-jump],[data-read-done],[data-reader-close],[data-res-edit],[data-sesscontent],[data-content-back],[data-content-save],[data-upload],[data-thumb-clear],[data-res-new],[data-res-close],[data-res-save],[data-res-del],[data-thumb],[data-sessadd],[data-sessdel],[data-sessmove],[data-gift-open],[data-close-gift],[data-save-gift],[data-report-open],[data-close-rp],[data-period],[data-run-report],[data-quickreport],[data-close-report],[data-export-report],[data-kiosk-open],[data-kiosk-exit],[data-kiosk-again],[data-kiosk-new],[data-kiosk-go],[data-pin],[data-kid],.toggle");
+  if(!t) return;
+  if(t.dataset.chan){ S.chan=t.dataset.chan; delete UNREAD[t.dataset.chan]; render(); return; }
+  if(t.hasAttribute("data-send-chat")){ sendChat(); return; }
+  if(t.hasAttribute("data-compose")){ S.compose=true; S.composeSent=null; render(); document.getElementById("cm-subj").focus(); return; }
+  if(t.hasAttribute("data-compose-close")){ S.compose=false; S.composeSent=null; render(); return; }
+  if(t.hasAttribute("data-compose-send")){ sendCompose(); return; }
+  if(t.dataset.invite){ S.invite=t.dataset.invite; S.pick=[]; render(); return; }
+  if(t.hasAttribute("data-invite-close")){ S.invite=null; S.pick=[]; render(); return; }
+  if(t.dataset.pick){ const n=t.dataset.pick; S.pick = S.pick.includes(n)?S.pick.filter(x=>x!==n):S.pick.concat(n); render(); return; }
+  if(t.hasAttribute("data-invite-send")){
+    const ch = CHANNELS.find(c=>c.id===S.invite);
+    ch.members += S.pick.length;
+    (CHAT[ch.id]=CHAT[ch.id]||[]).push({sys:true, x:`Pastor Reed added ${S.pick.join(", ")} to ${ch.name}`});
+    S.chan = ch.id; toast(`${S.pick.length} added to ${ch.name}.`);
+    S.invite=null; S.pick=[]; render(); return;
+  }
+  if(t.hasAttribute("data-newdm")){ S.newDM=true; render(); return; }
+  if(t.hasAttribute("data-dm-close")){ S.newDM=false; render(); return; }
+  if(t.dataset.startdm){
+    const n=t.dataset.startdm, id="dm-"+n.toLowerCase().replace(/[^a-z]/g,"").slice(0,10);
+    if(!DMS.find(d=>d.id===id)){ DMS.push({id, name:n}); CHAT[id]=[]; }
+    S.newDM=false; S.chan=id; if(S.view==="member") S.mchat=id; toast(`Chat started with ${n}.`); render(); return;
+  }
+  if(t.dataset.mchat){ S.mchat=t.dataset.mchat; delete UNREAD[t.dataset.mchat]; render(); return; }
+  if(t.hasAttribute("data-mchat-back")){ S.mchat=null; render(); return; }
+  if(t.hasAttribute("data-mchat-new")){ S.newDM=true; render(); return; }
+  if(t.hasAttribute("data-msend")){ sendChat("mchatinput", S.mchat, "Alicia Romero"); return; }
+  if(t.dataset.plan){ S.resView=t.dataset.plan; render(); return; }
+  if(t.hasAttribute("data-plan-close")){ S.resView=null; render(); return; }
+  if(t.dataset.read){ S.resRead=t.dataset.read; render(); return; }
+  if(t.hasAttribute("data-reader-close")){ S.resRead=null; render(); return; }
+  if(t.dataset.readJump!==undefined){
+    const [id] = S.resRead.split("|"); S.resRead = id+"|"+t.dataset.readJump; render(); return;
+  }
+  if(t.dataset.readDone!==undefined){
+    const [id, idx] = S.resRead.split("|"); const i=Number(idx);
+    const r = RESOURCES.find(x=>x.id===id); const done = doneSet(id);
+    if(!done.includes(i)) done.push(i);
+    if(i < r.sessions.length-1){ S.resRead = id+"|"+(i+1); }
+    else { S.resRead=null; S.resView=id; toast("Plan complete. Nice work."); }
+    render(); return;
+  }
+  if(t.dataset.resEdit){ const r=RESOURCES.find(x=>x.id===t.dataset.resEdit); S.resView=null; S.resEdit=r.id; S.resDraft=JSON.parse(JSON.stringify(r)); render(); return; }
+  if(t.dataset.sesscontent!==undefined){ resSync(); S.editSession=Number(t.dataset.sesscontent); render(); return; }
+  if(t.hasAttribute("data-content-back")){ S.editSession=null; render(); return; }
+  if(t.hasAttribute("data-content-save")){ saveContent(); return; }
+  if(t.hasAttribute("data-upload")){ resSync(); document.getElementById("res-upload").click(); return; }
+  if(t.hasAttribute("data-thumb-clear")){ resSync(); S.resDraft.custom=null; render(); return; }
+  if(t.hasAttribute("data-res-new")){ S.resEdit="new"; S.resDraft={title:"",type:"Reading plan",status:"Draft",thumb:0,desc:"",sessions:[{t:"Day 1: ",r:"",m:8}]}; render(); document.getElementById("res-title")?.focus(); return; }
+  if(t.dataset.res){ e.stopPropagation(); const r=RESOURCES.find(x=>x.id===t.dataset.res); S.resEdit=r.id; S.resDraft=JSON.parse(JSON.stringify(r)); render(); return; }
+  if(t.hasAttribute("data-res-close")){ S.resEdit=null; S.resDraft=null; render(); return; }
+  if(t.hasAttribute("data-res-save")){ saveResource(); return; }
+  if(t.hasAttribute("data-res-del")){ RESOURCES=RESOURCES.filter(x=>x.id!==S.resEdit); S.resEdit=null; S.resDraft=null; toast("Resource deleted."); render(); return; }
+  if(t.dataset.thumb!==undefined){ resSync(); S.resDraft.thumb=Number(t.dataset.thumb); render(); return; }
+  if(t.hasAttribute("data-sessadd")){ resSync(); S.resDraft.sessions.push({t:"",r:"",m:8}); render(); return; }
+  if(t.dataset.sessdel!==undefined){ resSync(); S.resDraft.sessions.splice(Number(t.dataset.sessdel),1); render(); return; }
+  if(t.dataset.sessmove!==undefined){
+    resSync(); const i=Number(t.dataset.sessmove), j=i+Number(t.dataset.dir), a=S.resDraft.sessions;
+    if(j>=0&&j<a.length){ [a[i],a[j]]=[a[j],a[i]]; render(); }
+    return;
+  }
+  if(t.hasAttribute("data-gift-open")){ S.gift=true; S.giftSaved=null; render(); document.getElementById("g-amt")?.focus(); return; }
+  if(t.hasAttribute("data-close-gift")){ S.gift=false; S.giftSaved=null; render(); return; }
+  if(t.hasAttribute("data-save-gift")){ saveGift(); return; }
+  if(t.hasAttribute("data-report-open")){ S.reportPick=true; render(); return; }
+  if(t.hasAttribute("data-close-rp")){ S.reportPick=false; render(); return; }
+  if(t.dataset.period){ S.reportPeriod=t.dataset.period; render(); return; }
+  if(t.hasAttribute("data-run-report")){ S.reportPick=false; S.report=buildReport(S.reportPeriod); render(); return; }
+  if(t.dataset.quickreport){ S.reportPeriod=t.dataset.quickreport; S.report=buildReport(t.dataset.quickreport); render(); return; }
+  if(t.hasAttribute("data-close-report")){ S.report=null; render(); return; }
+  if(t.hasAttribute("data-export-report")){ exportReport(); return; }
+  if(t.hasAttribute("data-kiosk-open")){ openKiosk(); return; }
+  if(t.hasAttribute("data-kiosk-exit")){ S.kiosk=null; render(); return; }
+  if(t.hasAttribute("data-kiosk-again")){ kioskReset(); return; }
+  if(t.hasAttribute("data-kiosk-new")){ S.kiosk.step="new"; render(); return; }
+  if(t.hasAttribute("data-kiosk-go")){ kioskCheckIn(); return; }
+  if(t.dataset.pin){ kioskPin(t.dataset.pin); return; }
+  if(t.dataset.kid){
+    const k=S.kiosk; const id=t.dataset.kid;
+    k.picked = k.picked.includes(id) ? k.picked.filter(x=>x!==id) : k.picked.concat(id);
+    render(); return;
+  }
+  if(t.dataset.svc){ S.service=t.dataset.svc; render(); return; }
+  if(t.hasAttribute("data-newsvc")){ addService(); return; }
+  if(t.dataset.editel){ S.editEl=t.dataset.editel; render(); document.getElementById("el-title")?.focus(); return; }
+  if(t.hasAttribute("data-close-el")){ S.editEl=null; render(); return; }
+  if(t.dataset.saveEl){ saveElement(); return; }
+  if(t.dataset.delel){ const sv=svc(); sv.elements=sv.elements.filter(x=>String(x.id)!==t.dataset.delel); toast("Element removed."); render(); return; }
+  if(t.dataset.move){ moveElement(t.dataset.move, Number(t.dataset.dir)); return; }
+  if(t.hasAttribute("data-copylast")){ copyLastPlan(); return; }
+  if(t.hasAttribute("data-sendplan")){ toast("Plan sent to 14 team members."); render(); return; }
+  if(t.hasAttribute("data-sendset")){ toast("Set sent. Charts open in SongSelect in each person's key."); render(); return; }
+  if(t.hasAttribute("data-sendreq")){ toast("Requests sent. Responses land in People."); render(); return; }
+  if(t.hasAttribute("data-addsong")){ toast("SongSelect search opens here in the live product."); render(); return; }
+  if(t.dataset.chart){ S.songModal=t.dataset.chart; render(); return; }
+  if(t.hasAttribute("data-close-song")){ S.songModal=null; render(); return; }
+  if(t.hasAttribute("data-support")){ S.support=true; S.supportSent=false; render(); document.getElementById("sup-name")?.focus(); return; }
+  if(t.hasAttribute("data-close-support")){ S.support=false; S.supportSent=false; render(); return; }
+  if(t.hasAttribute("data-send-support")){ sendSupport(); return; }
+  if(t.hasAttribute("data-close")){ closeDrawer(); return; }
+  if(t.hasAttribute("data-close-talk")){ S.talk=false; render(); return; }
+  if(t.dataset.tab){ S.tab=t.dataset.tab; S.stageFilter=null; render(); return; }
+  if(t.dataset.stage!==undefined){
+    const v = t.dataset.stage;
+    S.stageFilter = (v==="all") ? null : (S.stageFilter===+v ? null : +v);
+    if(S.tab!=="people" && v!=="all") S.tab="people";
+    render(); return;
+  }
+  if(t.dataset.person){ openPerson(+t.dataset.person); return; }
+  if(t.dataset.mtab){ S.memberTab=t.dataset.mtab; if(t.dataset.mtab!=="chat") S.mchat=null; render(); return; }
+  if(t.dataset.color){ CHURCHES[S.church].accent=t.dataset.color; render(); return; }
+  if(t.dataset.amt){ S.amount=+t.dataset.amt; render(); return; }
+  if(t.classList.contains("toggle")){ t.setAttribute("aria-pressed", t.getAttribute("aria-pressed")!=="true"); return; }
+});
+document.addEventListener("input", e=>{ if(e.target.id==="q"){ S.q=e.target.value; render(); } });
+document.addEventListener("change", e=>{
+  if(e.target.id==="res-upload"){
+    const f = e.target.files && e.target.files[0]; if(!f) return;
+    if(f.size > 4*1024*1024){ toast("That image is over 4 MB. Try a smaller one."); render(); return; }
+    const fr = new FileReader();
+    fr.onload = () => { resSync(); S.resDraft.custom = fr.result; toast("Cover image added."); render(); };
+    fr.readAsDataURL(f);
+    return;
+  }
+  const k = e.target.closest("[data-key]");
+  if(k){ const sg = svc().songs.find(x=>x.id===k.dataset.key); if(sg){ sg.key = k.value; toast(`${sg.title} moved to ${sg.key}. Charts follow the key.`); render(); } }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Enter" && e.target.id==="chatinput"){ sendChat(); return; }
+  if(e.key==="Enter" && e.target.id==="mchatinput"){ sendChat("mchatinput", S.mchat, "Alicia Romero"); return; }
+  if(e.key==="Escape"){
+    closeDrawer();
+    if(S.kiosk){S.kiosk=null;render();return;}
+    if(S.report){S.report=null;render();return;}
+    if(S.reportPick){S.reportPick=false;render();return;}
+    if(S.gift){S.gift=false;S.giftSaved=null;render();return;}
+    if(S.newDM){S.newDM=false;render();return;}
+    if(S.invite){S.invite=null;S.pick=[];render();return;}
+    if(S.compose){S.compose=false;S.composeSent=null;render();return;}
+    if(S.resRead){S.resRead=null;render();return;}
+    if(S.resView){S.resView=null;render();return;}
+    if(S.editSession!==null&&S.editSession!==undefined){S.editSession=null;render();return;}
+    if(S.resEdit){S.resEdit=null;S.resDraft=null;render();return;}
+    if(S.editEl){S.editEl=null;render();return;}
+    if(S.songModal){S.songModal=null;render();return;}
+    if(S.support){S.support=false;S.supportSent=false;render();return;}
+    if(S.talk){S.talk=false;render();}
+    return;
+  }
+  if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA") return;
+  if(S.kiosk && S.kiosk.step==="pin"){
+    if(/^[0-9]$/.test(e.key)){ kioskPin(e.key); return; }
+    if(e.key==="Backspace"){ kioskPin("del"); return; }
+    return;
+  }
+  if(e.key==="t"||e.key==="T"){ S.talk=!S.talk; render(); }           // hidden: talk track
+  if(e.key==="c"||e.key==="C"){ S.church=(S.church+1)%CHURCHES.length; render(); } // hidden: switch client brand
+});
+$("scrim").addEventListener("click", closeDrawer);
+$("viewStaff").addEventListener("click", ()=>{S.view="staff";render()});
+$("viewMember").addEventListener("click", ()=>{S.view="member";render()});
+
+render();
+</script>
+</body>
+</html>

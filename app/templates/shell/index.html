@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.proof_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">Increment 0 live</span>
+  </div>
+  <div class="bd">
+    <p>{{ content.proof_intro }}</p>
+    <div class="proof">
+      {% for title, detail in content.proof_points %}
+        <div class="row">
+          <div class="n">{{ "%02d"|format(loop.index) }}</div>
+          <div>
+            <div class="t">{{ title }}</div>
+            <div class="d">{{ detail }}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.roadmap_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill pending">1 of 16 shipped</span>
+  </div>
+  <div class="bd">
+    <p>{{ content.roadmap_intro }}</p>
+    <div class="road">
+      {% for number, name in increment_names.items() %}
+        <div class="item {% if number == 0 %}done{% endif %}">
+          <div class="num">{{ "%02d"|format(number) }}</div>
+          <div class="name">{{ name }}</div>
+          {% if number == 0 %}<span class="pill">Shipped</span>{% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ item.label }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ item.label }}{% endblock %}
+{% block subheading %}{{ content.placeholder_lead }}{% endblock %}
+
+{% block content %}
+<div class="empty">
+  <div class="t">{{ item.label }}</div>
+  <div class="d">
+    {{ content.placeholder_body.format(increment=item.increment, name=increment_name) }}
+  </div>
+</div>
+{% endblock %}

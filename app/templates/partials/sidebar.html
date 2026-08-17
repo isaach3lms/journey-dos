@@ -1,0 +1,31 @@
+{# Sidebar. Labels and grouping come from app/content.py, never from here. #}
+<nav class="sidebar" aria-label="Main">
+  <div class="church">
+    {% if palette.logo_reversed %}
+      <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+           alt="{{ church.name }}">
+    {% else %}
+      <div class="crest">{{ church.name[:2]|upper }}</div>
+    {% endif %}
+    <div class="city">{{ church.city }}</div>
+  </div>
+
+  <div class="navstrip">
+  {% for group in nav_groups %}
+    <div class="navlbl">{{ group }}</div>
+    {% for item in nav_items if item.group == group %}
+      <a class="nav" href="{{ url_for('shell.placeholder', key=item.key) if item.key != 'dashboard' else url_for('shell.index') }}"
+         {% if active == item.key %}aria-current="page"{% endif %}>
+        <span class="icwrap" aria-hidden="true">{{ icons[item.key]|safe }}</span>
+        <span class="lbl">{{ item.label }}</span>
+        {% if not item.ready %}<span class="inc" title="Arrives at increment {{ item.increment }}">{{ item.increment }}</span>{% endif %}
+      </a>
+    {% endfor %}
+  {% endfor %}
+  </div>
+
+  <div class="sidefoot">
+    {{ church.name }}<br>
+    Increment 0, foundation
+  </div>
+</nav>

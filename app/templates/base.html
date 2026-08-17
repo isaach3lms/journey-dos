@@ -1,0 +1,46 @@
+{#
+  Base layout.
+
+  This file contains no colors and no font names. Everything visual arrives
+  as CSS custom properties from app/brand.py, injected below. To reskin a
+  tenant, change its church row. Never edit this file to change how a church
+  looks.
+
+  The 500 page deliberately does not extend this template. See app/errors.py.
+#}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ church.name }}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{ palette.font_url }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+{# Generated CSS, not user text. Values are sanitized in brand.py, which is
+   what makes |safe safe here. Without it Jinja escapes the quotes in the
+   font stack and every typeface silently falls back to a serif. #}
+<style>:root{ {{ brand_css|safe }} }</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="shell">
+  {% include "partials/sidebar.html" %}
+
+  <main class="main" id="main">
+    <div class="topline">
+      <div>
+        <h1>{% block heading %}{% endblock %}</h1>
+        <p class="sub">{% block subheading %}{% endblock %}</p>
+      </div>
+    </div>
+    <div class="content">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

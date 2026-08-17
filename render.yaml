@@ -1,0 +1,67 @@
+# Render Blueprint for journey-dos.
+#
+# Three resources, one file:
+#   1. journey-dos-demo   the static client demo, unchanged, still free
+#   2. journey-dos-app    the Flask application
+#   3. journey-dos-db     Postgres
+#
+# Render reads this on every push. Creating services by hand in the dashboard
+# instead means the configuration lives in a browser tab nobody else can see.
+
+databases:
+  - name: journey-dos-db
+    databaseName: journey_dos
+    user: journey_dos
+    plan: basic-256mb          # See README before choosing free.
+    postgresMajorVersion: "16"
+
+services:
+  # ---------------------------------------------------------------------
+  # The approved client demo. Static, no build step, no runtime.
+  # ---------------------------------------------------------------------
+  - type: web
+    name: journey-dos-demo
+    runtime: static
+    staticPublishPath: ./public
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: X-Robots-Tag
+        value: noindex, nofollow
+
+  # ---------------------------------------------------------------------
+  # The application.
+  # ---------------------------------------------------------------------
+  - type: web
+    name: journey-dos-app
+    runtime: python
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # Migrations run after the build and before traffic cuts over, so a
+    # failed migration fails the deploy instead of half-migrating live users.
+    # preDeployCommand requires a paid instance type.
+    preDeployCommand: flask db upgrade
+    startCommand: gunicorn wsgi:app --workers 2 --threads 4 --timeout 60 --access-logfile -
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-dos-db
+          property: connectionString
+      # The apex the tenant subdomains hang off. Leave empty until the
+      # platform domain is bought, and reach tenants by custom domain in
+      # the meantime. See README, "The domain decision".
+      - key: PLATFORM_DOMAIN
+        value: ""
+      - key: DEFAULT_TENANT_SLUG
+        value: journey

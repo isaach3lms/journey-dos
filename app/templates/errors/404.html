@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ title }}{% endblock %}
+{% block subheading %}{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="bd">
+    <p>{{ body }}</p>
+    <a class="btn" href="{{ url_for('shell.index') }}">Go to the dashboard</a>
+  </div>
+</section>
+{% endblock %}

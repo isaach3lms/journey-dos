@@ -1,0 +1,32 @@
+{# Signed-out pages. Same brand tokens, no navigation, nothing that needs a
+   session. Deliberately separate from base.html, which assumes a user. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ church.name }}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{ palette.font_url }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<style>:root{ {{ brand_css|safe }} }</style>
+</head>
+<body class="authbody">
+<main class="authwrap">
+  <div class="authcard">
+    <div class="authbrand">
+      {% if palette.logo_reversed %}
+        <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+             alt="{{ church.name }}">
+      {% else %}
+        <div class="crest">{{ church.name[:2]|upper }}</div>
+      {% endif %}
+    </div>
+    <div class="authbody-inner">
+      {% block inner %}{% endblock %}
+    </div>
+  </div>
+</main>
+</body>
+</html>

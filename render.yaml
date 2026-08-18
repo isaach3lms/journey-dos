@@ -65,3 +65,50 @@ services:
         value: ""
       - key: DEFAULT_TENANT_SLUG
         value: journey
+      - key: MAIL_TRANSPORT
+        value: resend
+      # Set this in the dashboard, never in this file. A key committed to git
+      # is a rotated key. Use a sending-only key, not a full-access one.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: The Journey Church <no-reply@thejourneychurchsemo.com>
+
+  # ---------------------------------------------------------------------
+  # The outbox worker.
+  #
+  # A cron job on the same image, not a background thread in the web
+  # service. A thread dies with the process on every deploy and every
+  # restart, and takes whatever it had claimed with it. A separate
+  # invocation either runs or visibly does not.
+  # ---------------------------------------------------------------------
+  - type: cron
+    name: journey-dos-outbox
+    runtime: python
+    plan: starter
+    branch: main
+    schedule: "*/5 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask send-outbox && flask release-claims --minutes 15
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: journey-dos-app
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-dos-db
+          property: connectionString
+      - key: MAIL_TRANSPORT
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: The Journey Church <no-reply@thejourneychurchsemo.com>

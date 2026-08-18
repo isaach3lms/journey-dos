@@ -30,6 +30,8 @@ KIND_IMPORTED = "imported"
 # Increment 3.
 KIND_CONTACT = "contact"
 KIND_NEXT_STEP = "next_step"
+# Increment 4.
+KIND_EMAIL = "email"
 
 EVENT_KINDS = (
     KIND_CREATED,
@@ -38,6 +40,7 @@ EVENT_KINDS = (
     KIND_IMPORTED,
     KIND_CONTACT,
     KIND_NEXT_STEP,
+    KIND_EMAIL,
 )
 
 # How each kind reads in the timeline. Copy lives in a data structure, not in
@@ -49,6 +52,7 @@ KIND_LABELS = {
     KIND_IMPORTED: "Imported",
     KIND_CONTACT: "Contact",
     KIND_NEXT_STEP: "Next step",
+    KIND_EMAIL: "Email",
 }
 
 

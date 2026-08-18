@@ -200,6 +200,102 @@
 </section>
 
 <section class="card">
+  <div class="hd">
+    <h2>{{ email.heading }}</h2>
+    <div class="spacer"></div>
+    {% if person.has_opted_out %}
+      <span class="pill pending">{{ email.opted_out }}</span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% if person.email %}
+      <p>{{ email.hint }}</p>
+      <form method="post" action="{{ url_for('people.send_email', person_id=person.id) }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <select class="input select" name="category" aria-label="{{ email.category }}">
+            {% for category in categories %}
+              <option value="{{ category.code }}">
+                {{ category.label }}{% if category.is_transactional %} ({{ email.prefs_always|lower }}){% endif %}
+              </option>
+            {% endfor %}
+          </select>
+          <input class="input" type="text" name="subject"
+                 placeholder="{{ email.subject_placeholder }}"
+                 aria-label="{{ email.subject }}">
+        </div>
+        <textarea class="input" name="message_body" rows="3"
+                  placeholder="{{ email.body_placeholder }}"
+                  aria-label="{{ email.body }}"></textarea>
+        <button class="btn" type="submit">{{ email.send }}</button>
+      </form>
+    {% else %}
+      <p class="muted small">{{ email.no_address }}</p>
+    {% endif %}
+
+    {% if emails %}
+      <ol class="tl">
+        {% for message in emails %}
+          <li>
+            <div class="tlt">{{ message.subject }}</div>
+            <div class="tld muted">
+              {{ message.status_label }} &middot;
+              {{ (message.sent_at or message.queued_at).strftime("%B %-d, %Y") }}
+              {% if message.last_error %} &middot; {{ message.last_error[:90] }}{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted small">{{ email.history_none }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ email.prefs_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ email.prefs_hint }}</p>
+    <form method="post" action="{{ url_for('people.set_preferences', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <div class="prefgrid">
+        {% for category in categories %}
+          <div class="pref">
+            {% if category.is_transactional %}
+              <span class="tag">{{ email.prefs_always }}</span>
+              <span class="fl">
+                <span class="pn">{{ category.label }}</span>
+                <span class="pe">{{ category.description }}</span>
+              </span>
+            {% else %}
+              <label class="check">
+                <input type="checkbox" name="cat_{{ category.code }}"
+                       {% if person.allows(category.code) %}checked{% endif %}>
+                <span class="fl">
+                  <span class="pn">{{ category.label }}</span>
+                  <span class="pe">{{ category.description }}</span>
+                </span>
+              </label>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      <button class="btn" type="submit">{{ email.prefs_save }}</button>
+    </form>
+
+    <form method="post" action="{{ url_for('people.toggle_opt_out', person_id=person.id) }}" class="inline">
+      {{ csrf_field() }}
+      <button class="btn ghostbtn" type="submit">
+        {% if person.has_opted_out %}{{ email.opt_in }}{% else %}{{ email.opt_out }}{% endif %}
+      </button>
+      {% if person.has_opted_out %}
+        <span class="muted small">{{ email.opted_out_on.format(date=person.email_opt_out_at.strftime("%B %-d, %Y")) }}</span>
+      {% endif %}
+    </form>
+  </div>
+</section>
+
+<section class="card">
   <div class="hd"><h2>{{ content.timeline }}</h2></div>
   <div class="bd">
     {% if events %}

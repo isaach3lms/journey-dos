@@ -117,7 +117,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4}
 
 SHELL = {
     "title": "Foundation",
@@ -178,6 +178,18 @@ SHELL = {
             "Someone is flagged only when they are past their stage's expected "
             "time AND nobody has spoken to them in three weeks. Long-standing "
             "members never flag; staying is the point for them.",
+        ),
+        (
+            "Email is queued, never sent inside a click",
+            "A request that calls a mail provider is as slow and as reliable "
+            "as that provider. The outbox commits a row and a worker sends it, "
+            "so a failure is retried and recorded rather than lost.",
+        ),
+        (
+            "Opting out is checked when the message goes, not when it is written",
+            "Somebody can unsubscribe in the hour between a message being "
+            "queued and being sent. Receipts and account email still reach "
+            "them, because those are not marketing.",
         ),
         (
             "Logging a call clears the flag, a note does not",
@@ -371,6 +383,63 @@ STUCK = {
     "owner_assign": "Take ownership",
     "owner_clear": "Release",
     "owner_cleared": "Ownership released.",
+}
+
+
+EMAIL = {
+    "heading": "Send an email",
+    "hint": (
+        "Queued now, sent by the worker. If they have opted out of this kind "
+        "of message it is not sent, and the reason is recorded."
+    ),
+    "category": "What kind of message",
+    "subject": "Subject",
+    "subject_placeholder": "One line they will see in their inbox",
+    "body": "Message",
+    "body_placeholder": "Write it the way you would say it.",
+    "send": "Queue it",
+    "queued": "Queued for {name}. It sends on the next run of the worker.",
+    "duplicate": "That message is already queued.",
+    "cannot": "Not queued. {reason}",
+    "no_address": "No email address on file, so there is nothing to send to.",
+
+    "history": "Email history",
+    "history_none": "No email has been queued for this person.",
+    "queued_count": "{count} queued",
+
+    "prefs_heading": "What they get emailed about",
+    "prefs_hint": (
+        "Account, kids check-in, and giving receipts always send. Everything "
+        "else can be turned off, here or by the person themselves."
+    ),
+    "prefs_always": "Always sends",
+    "prefs_on": "On",
+    "prefs_off": "Off",
+    "prefs_save": "Save preferences",
+    "prefs_saved": "Preferences updated.",
+    "opted_out": "Unsubscribed from all optional email",
+    "opted_out_on": "Unsubscribed on {date}",
+    "opt_out": "Unsubscribe them",
+    "opt_in": "Resubscribe them",
+    "opt_out_done": "{name} is unsubscribed from optional email.",
+    "opt_in_done": "{name} will receive optional email again.",
+
+    # The public unsubscribe page. Nobody is signed in when they see this.
+    "unsub_title": "Unsubscribe",
+    "unsub_confirm": "Stop sending optional email to {email}?",
+    "unsub_button": "Yes, unsubscribe me",
+    "unsub_done_title": "You are unsubscribed",
+    "unsub_done": (
+        "You will not get announcements, digests, or invitations from "
+        "{church}. Receipts and anything to do with your account or your "
+        "children still send, because those are not marketing."
+    ),
+    "unsub_bad_link": "That link is not valid",
+    "unsub_bad_link_body": (
+        "It may have expired or been mistyped. Ask the church office and they "
+        "can update your preferences directly."
+    ),
+    "unsub_resubscribe": "Changed your mind? Ask the church to turn it back on.",
 }
 
 ERRORS = {

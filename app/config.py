@@ -67,6 +67,15 @@ class BaseConfig:
     # User._strongest_available_hash. Only TestingConfig overrides it.
     PASSWORD_HASH_METHOD = None
 
+    # Email. Resend over HTTPS on port 443, never SMTP: port 587 is blocked
+    # outbound on Render and most managed hosts, and finding that out at deploy
+    # time after building against SMTP is a rewrite, not a config change.
+    MAIL_TRANSPORT = os.environ.get("MAIL_TRANSPORT", "console")
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+    MAIL_FROM = os.environ.get("MAIL_FROM", "The Journey Church <no-reply@example.com>")
+    MAIL_TIMEOUT = 15
+    OUTBOX_BATCH_SIZE = 50
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
@@ -100,6 +109,7 @@ class TestingConfig(BaseConfig):
     WTF_CSRF_ENABLED = False
     # Only ever lowered here. See User._hash_method.
     PASSWORD_HASH_METHOD = "pbkdf2:sha256:1"
+    MAIL_TRANSPORT = "memory"
 
 
 class ProductionConfig(BaseConfig):
@@ -116,6 +126,14 @@ class ProductionConfig(BaseConfig):
                 "DATABASE_URL is not set. Refusing to boot in production. "
                 "Falling back to SQLite here would put every church's data on "
                 "an ephemeral disk that is wiped on the next deploy."
+            )
+        if app.config.get("MAIL_TRANSPORT") == "resend" and not app.config.get(
+            "RESEND_API_KEY"
+        ):
+            raise RuntimeError(
+                "MAIL_TRANSPORT is 'resend' but RESEND_API_KEY is empty. A "
+                "church that believes it sent a welcome email and did not is "
+                "worse off than one whose deploy refused to start."
             )
         if app.config["SECRET_KEY"] == "dev-only-not-for-production":
             raise RuntimeError(

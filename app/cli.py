@@ -618,3 +618,94 @@ a{{
 
         db.session.commit()
         click.echo(f"Rebuilt {changed} rows from the contact log.")
+
+    # -- increment 4 --------------------------------------------------------
+
+    @app.cli.command("send-outbox")
+    @click.option("--church", "church_slug", default=None)
+    @click.option("--limit", default=None, type=int)
+    def send_outbox(church_slug, limit):
+        """Send what is queued. This is the worker.
+
+        Run it on a schedule. On Render that is a Cron Job hitting the same
+        image, not a thread inside the web service: a thread dies with the
+        process and takes the queue's progress with it.
+        """
+        from app.mail import send_pending
+
+        church_id = None
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            church_id = church.id
+
+        counts = send_pending(
+            limit=limit or current_app.config.get("OUTBOX_BATCH_SIZE", 50),
+            church_id=church_id,
+        )
+        click.echo(
+            f"sent {counts['sent']}, "
+            f"opted out {counts['suppressed']}, "
+            f"retrying {counts['retrying']}, "
+            f"failed {counts['failed']}"
+        )
+
+    @app.cli.command("outbox-status")
+    @click.option("--church", "church_slug", default=None)
+    def outbox_status(church_slug):
+        """What is in the outbox, by status."""
+        from sqlalchemy import func as sa_func
+
+        from app.models import OutboxMessage
+
+        query = db.select(
+            OutboxMessage.status, sa_func.count(OutboxMessage.id)
+        ).group_by(OutboxMessage.status)
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            query = query.where(OutboxMessage.church_id == church.id)
+
+        rows = db.session.execute(query).all()
+        if not rows:
+            click.echo("The outbox is empty.")
+            return
+        for status, count in sorted(rows):
+            click.echo(f"  {status:12} {count}")
+
+        stuck = db.session.scalars(
+            db.select(OutboxMessage).where(OutboxMessage.status == "failed").limit(5)
+        ).all()
+        if stuck:
+            click.echo("\nGave up on these. They are kept, not deleted:")
+            for message in stuck:
+                click.echo(f"  {message.to_email:34} {(message.last_error or '')[:70]}")
+
+    @app.cli.command("release-claims")
+    @click.option("--minutes", default=15, help="Older than this many minutes.")
+    def release_claims(minutes):
+        """Return rows claimed by a worker that died before finishing.
+
+        A crash between claiming and sending leaves a row stamped with a token
+        and no worker to act on it. Without this it sits queued forever and
+        nobody is told.
+        """
+        from datetime import timedelta
+
+        from app.models import STATUS_QUEUED, OutboxMessage
+        from app.models.base import utcnow
+
+        cutoff = utcnow() - timedelta(minutes=minutes)
+        released = db.session.execute(
+            db.update(OutboxMessage)
+            .where(
+                OutboxMessage.status == STATUS_QUEUED,
+                OutboxMessage.claim_token.is_not(None),
+                OutboxMessage.claimed_at < cutoff,
+            )
+            .values(claim_token=None, claimed_at=None)
+        ).rowcount
+        db.session.commit()
+        click.echo(f"Released {released} abandoned claims.")

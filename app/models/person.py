@@ -147,8 +147,23 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     )
     owner_name: Mapped[Optional[str]] = mapped_column(String(120))
 
+    # A global opt-out. Set from the one-click unsubscribe link, and it
+    # outranks every per-category preference. Transactional mail still sends;
+    # see app/categories.py for why that is not a loophole.
+    email_opt_out_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    # The secret in an unsubscribe URL. Random and per person, so a link
+    # cannot be guessed from an id and one person cannot unsubscribe another.
+    # Generated lazily, because most people never need one.
+    unsubscribe_token: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
     is_child: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+
+    notification_preferences: Mapped[list["NotificationPreference"]] = relationship(  # noqa: F821
+        back_populates="person",
+        cascade="all, delete-orphan",
+    )
 
     contacts: Mapped[list["ContactLog"]] = relationship(  # noqa: F821
         back_populates="person",
@@ -387,3 +402,58 @@ class Person(TenantScoped, TimestampMixin, db.Model):
                 cls.last_contact_at >= utcnow() - timedelta(days=days),
             )
         ) or 0
+
+
+    # -- email permission ---------------------------------------------------
+
+    @property
+    def has_opted_out(self) -> bool:
+        return self.email_opt_out_at is not None
+
+    def ensure_unsubscribe_token(self) -> str:
+        """Mint the token on first use. Callers must commit."""
+        import secrets
+
+        if not self.unsubscribe_token:
+            self.unsubscribe_token = secrets.token_urlsafe(32)
+        return self.unsubscribe_token
+
+    def allows(self, category_code: str) -> bool:
+        """May this person be emailed about this category, right now?
+
+        Order matters. Transactional first, because a password reset has to
+        reach someone who unsubscribed from the newsletter. Then the global
+        opt-out, which outranks per-category settings. Then the stored
+        preference, then the category default.
+        """
+        from app.categories import default_on, is_transactional
+
+        if is_transactional(category_code):
+            return True
+        if self.has_opted_out:
+            return False
+        for preference in self.notification_preferences:
+            if preference.category == category_code:
+                return preference.allowed
+        return default_on(category_code)
+
+    def set_preference(self, category_code: str, allowed: bool) -> None:
+        from app.categories import CATEGORY_BY_CODE
+        from app.models.outbox import NotificationPreference
+
+        if category_code not in CATEGORY_BY_CODE:
+            raise ValueError(f"{category_code!r} is not a notification category.")
+
+        for preference in self.notification_preferences:
+            if preference.category == category_code:
+                preference.allowed = allowed
+                return
+
+        self.notification_preferences.append(
+            NotificationPreference(
+                church_id=self.church_id,
+                person_id=self.id,
+                category=category_code,
+                allowed=allowed,
+            )
+        )

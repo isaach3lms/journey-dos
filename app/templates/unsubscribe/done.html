@@ -1,0 +1,7 @@
+{% extends "public.html" %}
+{% block title %}{{ content.unsub_done_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.unsub_done_title }}</h1>
+  <p>{{ content.unsub_done.format(church=church.name) }}</p>
+  <p class="footnote">{{ content.unsub_resubscribe }}</p>
+{% endblock %}

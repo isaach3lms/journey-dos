@@ -22,8 +22,9 @@ from datetime import date
 
 from flask_login import current_user, login_required
 
-from app.content import PEOPLE, STUCK
+from app.content import EMAIL, PEOPLE, STUCK
 from app.extensions import db
+from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
     CONTACT_METHODS,
     KIND_CONTACT,
@@ -35,11 +36,13 @@ from app.models import (
     KIND_NOTE,
     KIND_STAGE_CHANGE,
     NextStep,
+    OutboxMessage,
     Person,
     PersonEvent,
     User,
 )
 from app.models.base import utcnow
+from app.mail import NotQueued, opt_in, opt_out, queue
 from app.security import min_role
 from app.stages import (
     CONTACT_WINDOW_DAYS,
@@ -123,6 +126,12 @@ def detail(person_id: int):
         recommended=recommended_next_step(person.stage),
         assignable=_assignable_users(),
         contact_methods=CONTACT_METHODS,
+        email=EMAIL,
+        categories=CATEGORIES,
+        optional_categories=OPTIONAL_CATEGORIES,
+        emails=db.session.scalars(
+            OutboxMessage.for_person(g.church.id, person.id)
+        ).all(),
         household_members=household_members,
         stages=stages_for(g.church),
         next_stage=next_stage(person.stage),
@@ -420,4 +429,93 @@ def set_owner(person_id: int):
     flash(
         STUCK["owner_set"].format(owner=owner.name, name=person.first_name), "notice"
     )
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+# ---------------------------------------------------------------------------
+# Increment 4: email
+# ---------------------------------------------------------------------------
+
+@bp.post("/<int:person_id>/email/")
+@login_required
+@min_role("leader")
+def send_email(person_id: int):
+    """Queue a message. Nothing is sent inside this request.
+
+    A web request that calls a third party API is exactly as slow and as
+    reliable as that API, and a failure after the commit loses the message
+    with nobody aware of it.
+    """
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    category = (request.form.get("category") or "").strip()
+    subject = (request.form.get("subject") or "").strip()
+    # Named `message_body` rather than `body`: the note form on this same page
+    # already uses `body`, and two fields with one name on one page is a trap
+    # for anything that addresses them by name.
+    body = (request.form.get("message_body") or "").strip()
+
+    try:
+        message = queue(
+            church_id=g.church.id,
+            category=category,
+            subject=subject,
+            body_text=body,
+            person=person,
+            actor=current_user,
+        )
+    except NotQueued as exc:
+        flash(EMAIL["cannot"].format(reason=str(exc)), "error")
+        return redirect(url_for("people.detail", person_id=person.id))
+
+    if message is None:
+        flash(EMAIL["duplicate"], "notice")
+    else:
+        # The unsubscribe token is minted now rather than at person creation,
+        # because most people never receive a message and an unused secret is
+        # a liability rather than an asset.
+        person.ensure_unsubscribe_token()
+        db.session.commit()
+        flash(EMAIL["queued"].format(name=person.first_name), "notice")
+
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+@bp.post("/<int:person_id>/preferences/")
+@login_required
+@min_role("leader")
+def set_preferences(person_id: int):
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    for category in OPTIONAL_CATEGORIES:
+        person.set_preference(
+            category.code, request.form.get(f"cat_{category.code}") == "on"
+        )
+    db.session.commit()
+
+    flash(EMAIL["prefs_saved"], "notice")
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+@bp.post("/<int:person_id>/optout/")
+@login_required
+@min_role("leader")
+def toggle_opt_out(person_id: int):
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    if person.has_opted_out:
+        opt_in(person)
+        message = EMAIL["opt_in_done"]
+    else:
+        opt_out(person, reason=f"Set by {current_user.name}")
+        message = EMAIL["opt_out_done"]
+    db.session.commit()
+
+    flash(message.format(name=person.first_name), "notice")
     return redirect(url_for("people.detail", person_id=person.id))

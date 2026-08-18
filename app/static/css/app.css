@@ -476,3 +476,15 @@ form.inline .select{min-width:170px}
 
 .dateinput{flex:none;min-width:150px}
 .filters form{margin:0}
+
+/* ---------- Notification preferences ---------- */
+.prefgrid{display:grid;gap:2px;margin-bottom:16px}
+.pref{
+  display:flex;align-items:flex-start;gap:11px;
+  padding:11px 0;border-top:1px solid var(--line-soft);
+}
+.pref:first-child{border-top:none}
+.pref .check{margin:0;align-items:flex-start}
+.pref .tag{flex:none;margin-top:2px}
+.pref .pn{font-weight:500;font-size:13.5px}
+.pref .pe{font-size:12px;color:var(--muted-2)}

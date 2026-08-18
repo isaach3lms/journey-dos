@@ -3,10 +3,10 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 3 complete.** Foundation, tenancy, identity,
-roles, the roster, and the stuck engine. 208 tests passing. Dashboard and
-People are real screens; the remaining nav items resolve to placeholders
-naming the increment they arrive in.
+**Status: increments 0 through 4 complete.** Foundation, tenancy, identity,
+roles, the roster, the stuck engine, and the outbox. 254 tests passing.
+Dashboard and People are real screens; the remaining nav items resolve to
+placeholders naming the increment they arrive in.
 
 ---
 
@@ -79,6 +79,9 @@ python -m pytest
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
 | `flask stuck --church x` | Who is flagged and why. The same answer the dashboard shows. |
 | `flask recompute-contact [--church x]` | Rebuild `last_contact_at` from the contact log. |
+| `flask send-outbox [--church x]` | Send what is queued. This is the worker. |
+| `flask outbox-status [--church x]` | What is in the outbox, by status. |
+| `flask release-claims --minutes 15` | Return rows claimed by a worker that died. |
 
 ---
 
@@ -344,6 +347,91 @@ imported person reads as never contacted and the engine flags most of the
 roster on day one. A church migrating off Planning Center has this date. Bring
 it across.
 
+
+---
+
+## The outbox
+
+### Nothing sends inside a web request
+
+A request that calls a mail provider is exactly as slow and as reliable as
+that provider, and a failure after the database has committed loses the message
+with nobody aware of it. Queuing means the request writes a row and returns.
+A worker does the sending, where a failure is visible, retryable, and recorded.
+
+The worker is a **cron job on the same image**, not a background thread in the
+web service. A thread dies with the process on every deploy and every restart,
+taking whatever it had claimed with it. `render.yaml` runs it every five
+minutes, followed by `release-claims`.
+
+### Resend over HTTPS, never SMTP
+
+Port 587 is blocked outbound on Render and most managed hosts. Finding that out
+at deploy time after building against SMTP is a rewrite, not a config change.
+
+Three transports behind one interface: `ResendTransport` in production,
+`ConsoleTransport` in development so the whole path can be exercised without a
+real key or a real recipient, and `MemoryTransport` in tests, which can be told
+to fail on demand. Retry handling needs a way to fail that does not involve
+the network.
+
+Production with `MAIL_TRANSPORT=resend` and no `RESEND_API_KEY` **refuses to
+boot**. A church that believes it sent a welcome email and did not is worse off
+than one whose deploy failed loudly.
+
+### Transactional mail ignores opt-out, and that is not a loophole
+
+`app/categories.py` declares `is_transactional` per category. Password resets,
+kids check-in codes, and giving receipts always send. Treating them as
+marketing means someone who unsubscribed from the weekly digest can no longer
+get back into their own account.
+
+Everything else can be turned off, per category or globally.
+
+### Suppression is checked at send time
+
+Someone can unsubscribe in the hour between a message being queued and being
+sent, and the answer that matters is the one at the moment of sending. A
+suppressed message is recorded as suppressed with its reason, not deleted.
+
+### Claiming is atomic on both databases
+
+A worker takes rows with a conditional UPDATE that stamps a random token, then
+reads back only what carries that token. Two workers running at once cannot
+claim the same row: the second UPDATE matches nothing. This behaves identically
+on SQLite and Postgres, unlike `SELECT ... FOR UPDATE SKIP LOCKED`.
+
+A worker that dies between claiming and sending leaves a stranded row.
+`flask release-claims` returns anything claimed more than fifteen minutes ago.
+
+### Failure handling
+
+A temporary failure goes back to the queue and is retried up to five times.
+A **permanent** failure, meaning a 4xx that is not 429, is not retried at all:
+sending to a rejected address repeatedly damages a sending reputation that
+every church on this platform shares.
+
+A message that runs out of attempts is kept as `failed` with its last error.
+Silently dropping mail is how a church finds out in March that nobody got the
+February newsletter.
+
+### The unsubscribe link
+
+The only route a signed-out stranger may use to change stored data. The token
+is 32 random bytes per person, minted the first time a message is queued rather
+than at person creation, because an unused secret is a liability. It is scoped
+to the church resolved from the host, so one tenant's link is inert on another.
+
+Confirming is a **POST**. Mail clients and security scanners fetch every link
+in a message, and a GET that unsubscribes would mean a corporate spam filter
+quietly opting people out of their own church's email.
+
+### The API key
+
+Set `RESEND_API_KEY` in the Render dashboard, never in `render.yaml`. Use a
+sending-only key, not a full-access one. A key committed to git is a rotated
+key.
+
 ---
 
 ## Deploying to Render
@@ -407,13 +495,13 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 4, the outbox and notification preferences. One email through Resend,
-queued, sent, and logged on the timeline, with opt-out honored. Per spec v3
-section D.1.
+Increment 5, the member app shell. The same person seen as staff and on a
+phone, Journey's logo on both, household PIN visible. Per spec v3 section D.1.
 
-Increment 4 also unlocks self-serve password reset, which the login page
-currently says arrives then.
+Self-serve password reset is now unblocked: the outbox exists, `account` is a
+transactional category, and the login page still says reset arrives at
+increment 4. Worth closing before or alongside increment 5.
 
 Three items in spec section F are still open and none of them block increment
-4: the revised Settings cost comparison, copy for three screens, and the
+5: the revised Settings cost comparison, copy for three screens, and the
 onboarding checklist owner.

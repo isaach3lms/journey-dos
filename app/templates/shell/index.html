@@ -8,6 +8,8 @@
   {% with content = people_content %}{% include "partials/rail.html" %}{% endwith %}
 {% endif %}
 
+{% if show_rail %}{% include "partials/flagged.html" %}{% endif %}
+
 <section class="card">
   <div class="hd">
     <h2>{{ content.proof_heading }}</h2>

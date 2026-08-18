@@ -132,8 +132,15 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     # The pastoral record, when one exists. Nullable because most staff
     # logins are also people on the roster but some are not, and most
     # people on the roster will never have a login.
+    # `use_alter` breaks a genuine cycle: user.person_id points at person, and
+    # person.owner_user_id points back at user. Without it SQLAlchemy cannot
+    # order CREATE or DROP for either table, and SQLite, which has no ALTER,
+    # gives up entirely. Marking one side as "add this constraint afterwards"
+    # is the standard resolution and costs nothing at run time.
     person_id: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("person.id", ondelete="SET NULL"), index=True
+        ForeignKey("person.id", ondelete="SET NULL", use_alter=True,
+                   name="fk_user_person_id_person"),
+        index=True,
     )
 
     is_active_account: Mapped[bool] = mapped_column(

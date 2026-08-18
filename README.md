@@ -3,10 +3,10 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0, 1, and 2 complete.** Foundation, tenancy, identity,
-roles, and the roster. 165 tests passing. People is a real screen; the
-remaining nav items resolve to placeholders naming the increment they arrive
-in.
+**Status: increments 0 through 3 complete.** Foundation, tenancy, identity,
+roles, the roster, and the stuck engine. 208 tests passing. Dashboard and
+People are real screens; the remaining nav items resolve to placeholders
+naming the increment they arrive in.
 
 ---
 
@@ -77,6 +77,8 @@ python -m pytest
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
+| `flask stuck --church x` | Who is flagged and why. The same answer the dashboard shows. |
+| `flask recompute-contact [--church x]` | Rebuild `last_contact_at` from the contact log. |
 
 ---
 
@@ -273,6 +275,75 @@ to work out which 12 are missing is worse than importing nothing.
 across 28 households, children without email addresses, and a stage
 distribution shaped like a plant rather than a mature church.
 
+
+---
+
+## The stuck engine
+
+### Two conditions, not one
+
+Someone is flagged only when **both** are true:
+
+1. They are past their stage's expected time, and
+2. Nobody has logged contact in `CONTACT_WINDOW_DAYS` (21).
+
+Either alone is not a problem. Silence for three weeks is normal for someone
+who is exactly where they should be. Time in a stage is meaningless without
+knowing whether anyone has tried.
+
+### Only transitional stages can flag
+
+Visitor, Guest, and Attender are places people should be moving out of. Member,
+Volunteer, Disciple, and Leader are places people arrive at, and their
+`expected_days` is `None`.
+
+This distinction is the difference between a useful flag and an ignored one.
+The first version of this engine put an expectation on all seven stages. Run
+against Journey's actual roster it flagged **39 of 54 people**, because a
+Member of three years read as overdue against a 365 day expectation. Nobody
+would open that list twice. With destinations excluded and real contact history
+imported, the same roster produces **5 flags**, and all five are people a
+pastor would genuinely want to call.
+
+### Computed, never stored
+
+`Person.is_stuck` is a property and `Person.stuck()` is the same logic in SQL.
+A stored flag would be wrong the moment someone logs a call, and a nightly job
+to fix that would mean a pastor sees yesterday's answer.
+`TestTheQueryMatchesTheProperty` asserts the two agree on every person, because
+a dashboard that disagrees with the record it links to is worse than no
+dashboard.
+
+The SQL is an OR over the three transitional stages rather than a CASE
+expression, because that shape is what the `(church_id, stage, stage_since)`
+index can actually serve.
+
+### Logging contact clears the flag. A note does not.
+
+This is the hard stop from the architecture rules, and the distinction is
+load-bearing. Writing "should call Marcus" in the timeline is not calling
+Marcus. A system that treats them the same stops flagging the people it exists
+to find, and does so silently.
+
+### `last_contact_at` is denormalized on purpose
+
+It duplicates `MAX(contact_log.occurred_at)`. The dashboard asks "who has
+nobody talked to" on every load, and answering it with a join and a group by
+means the database cannot use an index to skip anyone. With the column the
+whole question is a range scan.
+
+Denormalized data drifts, so `flask recompute-contact` rebuilds it from the
+log and two tests assert the rebuild is correct. It only ever moves forward:
+backfilling an older conversation must not make someone look more recently
+contacted than they are.
+
+### Importing contact history matters
+
+`import-people` accepts an optional `last_contact_on` column. Without it every
+imported person reads as never contacted and the engine flags most of the
+roster on day one. A church migrating off Planning Center has this date. Bring
+it across.
+
 ---
 
 ## Deploying to Render
@@ -336,14 +407,13 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 3, the stuck engine, next steps, and the contact log. "43 days as a
-Guest, no contact in 3 weeks." Assign it, log the call, watch the flag clear.
-Per spec v3 section D.1.
+Increment 4, the outbox and notification preferences. One email through Resend,
+queued, sent, and logged on the timeline, with opt-out honored. Per spec v3
+section D.1.
 
-`Stage.expected_days` in `app/stages.py` is already the threshold that engine
-reads, and `stage_since` is already written correctly, so increment 3 adds
-logic rather than a backfill.
+Increment 4 also unlocks self-serve password reset, which the login page
+currently says arrives then.
 
 Three items in spec section F are still open and none of them block increment
-3: the revised Settings cost comparison, copy for three screens, and the
+4: the revised Settings cost comparison, copy for three screens, and the
 onboarding checklist owner.

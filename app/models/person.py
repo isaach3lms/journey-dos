@@ -36,7 +36,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
 from app.models.base import TenantScoped, TimestampMixin, UTCDateTime, utcnow
-from app.stages import FIRST_STAGE, STAGE_CODES, stage_label, stage_order
+from app.stages import (
+    CONTACT_WINDOW_DAYS,
+    FIRST_STAGE,
+    STAGE_CODES,
+    expected_days,
+    stage_label,
+    stage_order,
+)
 
 _STAGE_LIST = ", ".join(f"'{code}'" for code in STAGE_CODES)
 
@@ -97,7 +104,8 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         UniqueConstraint("church_id", "email", name="uq_person_church_email"),
         Index("ix_person_church_stage", "church_id", "stage"),
         Index("ix_person_church_last_first", "church_id", "last_name", "first_name"),
-        Index("ix_person_church_stage_since", "church_id", "stage", "stage_since"),
+    Index("ix_person_church_stage_since", "church_id", "stage", "stage_since"),
+        Index("ix_person_church_contact", "church_id", "last_contact_at"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -127,8 +135,30 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     first_seen_on: Mapped[Optional[date]] = mapped_column(Date)
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Denormalized from contact_log. See app/models/contact.py for why, and
+    # `flask recompute-contact` for how it is rebuilt if it ever drifts.
+    last_contact_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    # The staff member or leader responsible for this person. Nullable, and
+    # the dashboard counts the nulls on purpose: a person nobody owns is the
+    # most common way someone quietly stops being anyone's problem.
+    owner_user_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("user.id", ondelete="SET NULL"), index=True
+    )
+    owner_name: Mapped[Optional[str]] = mapped_column(String(120))
+
     is_child: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+
+    contacts: Mapped[list["ContactLog"]] = relationship(  # noqa: F821
+        back_populates="person",
+        cascade="all, delete-orphan",
+        order_by="ContactLog.occurred_at.desc()",
+    )
+    next_steps: Mapped[list["NextStep"]] = relationship(  # noqa: F821
+        back_populates="person",
+        cascade="all, delete-orphan",
+    )
 
     events: Mapped[list["PersonEvent"]] = relationship(
         back_populates="person",
@@ -234,5 +264,126 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         return db.session.scalar(
             db.select(func.count(cls.id)).where(
                 cls.church_id == church_id, cls.is_archived.is_(False)
+            )
+        ) or 0
+
+
+    # -- the stuck engine ---------------------------------------------------
+    #
+    # Stuck is computed, never stored. A stored flag is wrong the moment
+    # somebody logs a phone call, and a nightly job to fix that would mean a
+    # pastor sees yesterday's answer. Computing it means the answer is always
+    # current, and expressing it in SQL means the dashboard asks the database
+    # for four rows rather than loading the roster and looping.
+
+    @property
+    def days_since_contact(self) -> int | None:
+        if self.last_contact_at is None:
+            return None
+        return max(0, (utcnow() - self.last_contact_at).days)
+
+    @property
+    def is_overdue_in_stage(self) -> bool:
+        """Been at a transitional stage longer than that stage expects.
+
+        Always False on a destination stage, which has no expectation to be
+        overdue against.
+        """
+        limit = expected_days(self.stage)
+        return limit is not None and self.days_in_stage > limit
+
+    @property
+    def is_out_of_contact(self) -> bool:
+        """Nobody has spoken to them inside the contact window."""
+        days = self.days_since_contact
+        return days is None or days > CONTACT_WINDOW_DAYS
+
+    @property
+    def is_stuck(self) -> bool:
+        """Both conditions, not either.
+
+        Time in a stage alone is not a problem: a Member who has been a Member
+        for three years is exactly where they should be. Silence alone is not a
+        problem either, on its own. The two together are what a pastor would
+        actually want to look at.
+        """
+        return self.is_overdue_in_stage and self.is_out_of_contact
+
+    @property
+    def stuck_reason(self) -> str | None:
+        if not self.is_stuck:
+            return None
+        days = self.days_since_contact
+        contact = "never contacted" if days is None else f"no contact in {days} days"
+        return f"{self.days_in_stage} days as a {self.stage_label}, {contact}"
+
+    @classmethod
+    def _stuck_clause(cls, now=None):
+        """The SQL behind `is_stuck`, as one OR of per-stage conditions.
+
+        Seven clauses rather than a CASE expression, because this shape is
+        what the `(church_id, stage, stage_since)` index can actually serve.
+        """
+        from datetime import timedelta
+
+        from app.stages import TRANSITIONAL_STAGES
+
+        now = now or utcnow()
+        contact_cutoff = now - timedelta(days=CONTACT_WINDOW_DAYS)
+
+        # Only transitional stages. A Member of three years is not stuck.
+        overdue = db.or_(
+            *[
+                db.and_(
+                    cls.stage == stage.code,
+                    cls.stage_since < now - timedelta(days=stage.expected_days),
+                )
+                for stage in TRANSITIONAL_STAGES
+            ]
+        )
+        silent = db.or_(
+            cls.last_contact_at.is_(None),
+            cls.last_contact_at < contact_cutoff,
+        )
+        return db.and_(overdue, silent)
+
+    @classmethod
+    def stuck(cls, church_id: int, limit: int | None = None):
+        query = (
+            cls.for_church(church_id)
+            .where(cls._stuck_clause())
+            .order_by(cls.stage_since)
+        )
+        return query.limit(limit) if limit else query
+
+    @classmethod
+    def stuck_count(cls, church_id: int) -> int:
+        return db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls._stuck_clause(),
+            )
+        ) or 0
+
+    @classmethod
+    def unowned_count(cls, church_id: int) -> int:
+        return db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.owner_user_id.is_(None),
+            )
+        ) or 0
+
+    @classmethod
+    def contacted_since(cls, church_id: int, days: int = 7) -> int:
+        from datetime import timedelta
+
+        return db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.last_contact_at >= utcnow() - timedelta(days=days),
             )
         ) or 0

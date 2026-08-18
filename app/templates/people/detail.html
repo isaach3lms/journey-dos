@@ -14,6 +14,13 @@
   {% endfor %}
 {% endwith %}
 
+{% if person.is_stuck %}
+  <div class="alert error stuckbanner" role="status">
+    <strong>{{ stuck.banner_title.format(stage=person.stage_label) }}</strong><br>
+    {{ person.stuck_reason }}
+  </div>
+{% endif %}
+
 <section class="card">
   <div class="hd"><h2>{{ content.snapshot }}</h2></div>
   <div class="bd">
@@ -40,6 +47,15 @@
         <dd>{{ person.first_seen_on.strftime("%B %-d, %Y") if person.first_seen_on else content.never_seen }}</dd></div>
       <div><dt>{{ content.col_stage }}</dt>
         <dd><span class="tag">{{ person.stage_label }}</span></dd></div>
+      <div><dt>{{ stuck.last_contact }}</dt>
+        <dd>
+          {% if person.days_since_contact is none %}{{ stuck.contact_never }}
+          {% elif person.days_since_contact == 0 %}{{ stuck.contact_today }}
+          {% elif person.days_since_contact == 1 %}{{ stuck.contact_yesterday }}
+          {% else %}{{ stuck.contact_days_ago.format(days=person.days_since_contact) }}{% endif %}
+        </dd></div>
+      <div><dt>{{ stuck.owner_heading }}</dt>
+        <dd>{{ person.owner_name or stuck.owner_none }}</dd></div>
     </dl>
   </div>
 </section>
@@ -79,6 +95,106 @@
                 placeholder="{{ content.note_placeholder }}"
                 aria-label="{{ content.note_heading }}"></textarea>
       <button class="btn" type="submit">{{ content.note_save }}</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ stuck.contact_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ stuck.contact_hint }}</p>
+    <form method="post" action="{{ url_for('people.log_contact', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="method" aria-label="{{ stuck.contact_method }}">
+          {% for method in contact_methods %}
+            <option value="{{ method }}">{{ method.replace('_', ' ')|title }}</option>
+          {% endfor %}
+        </select>
+        <input class="input" type="text" name="summary"
+               placeholder="{{ stuck.contact_placeholder }}"
+               aria-label="{{ stuck.contact_summary }}">
+        <button class="btn" type="submit">{{ stuck.contact_save }}</button>
+      </div>
+    </form>
+
+    {% if contacts %}
+      <ol class="tl">
+        {% for contact in contacts %}
+          <li>
+            <div class="tlt">{{ contact.method_label }}: {{ contact.summary }}</div>
+            <div class="tld muted">
+              {{ contact.occurred_at.strftime("%B %-d, %Y") }}
+              {% if contact.logged_by_name %} &middot; {{ contact.logged_by_name }}{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted small">{{ stuck.contact_none }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ stuck.step_heading }}</h2></div>
+  <div class="bd">
+    {% if open_steps %}
+      <ul class="steplist">
+        {% for step in open_steps %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ step.title }}</span>
+              <span class="pe">
+                {{ step.owner_name or stuck.step_unassigned }} &middot;
+                {% if step.due_on %}{{ stuck.step_due.format(date=step.due_on.strftime("%B %-d")) }}
+                {% else %}{{ stuck.step_no_due }}{% endif %}
+              </span>
+            </span>
+            {% if step.is_overdue %}<span class="pill pending">{{ stuck.step_overdue }}</span>{% endif %}
+            <form method="post" action="{{ url_for('people.close_step', person_id=person.id, step_id=step.id) }}" class="inline">
+              {{ csrf_field() }}
+              <input type="hidden" name="status" value="done">
+              <button class="btn ghostbtn" type="submit">{{ stuck.step_done }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ stuck.step_none }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('people.assign_step', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="title"
+               value="{{ recommended or '' }}"
+               aria-label="{{ stuck.step_title_label }}">
+        <select class="input select" name="owner_user_id" aria-label="{{ stuck.step_owner_label }}">
+          <option value="">{{ stuck.step_unassigned }}</option>
+          {% for user in assignable %}
+            <option value="{{ user.id }}">{{ user.name }}</option>
+          {% endfor %}
+        </select>
+        <input class="input dateinput" type="date" name="due_on" aria-label="{{ stuck.step_due_label }}">
+        <button class="btn" type="submit">{{ stuck.step_assign }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ stuck.owner_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('people.set_owner', person_id=person.id) }}" class="inline">
+      {{ csrf_field() }}
+      <select class="input select" name="owner_user_id" aria-label="{{ stuck.owner_heading }}">
+        <option value="">{{ stuck.owner_none }}</option>
+        {% for user in assignable %}
+          <option value="{{ user.id }}" {% if person.owner_user_id == user.id %}selected{% endif %}>{{ user.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn ghostbtn" type="submit">{{ stuck.owner_assign }}</button>
     </form>
   </div>
 </section>

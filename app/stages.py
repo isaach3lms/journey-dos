@@ -29,27 +29,52 @@ class Stage:
     order: int
     # What a person at this stage is, in one line a pastor would actually say.
     meaning: str
-    # How long someone can sit here before it is worth a look. Increment 3's
-    # stuck engine reads this; increment 2 only displays the elapsed time.
-    expected_days: int
+
+    # Is this a stage people are supposed to pass through, or one they are
+    # supposed to arrive at?
+    #
+    # This distinction is the whole difference between a useful flag and an
+    # ignored one. Running the first version of the stuck engine against
+    # Journey's roster flagged 39 of 54 people, because a Member of three
+    # years read as "overdue" against a 365 day expectation. But a Member of
+    # three years is not stuck. They are exactly where the church wants them.
+    # Only Visitor, Guest, and Attender are places someone should be moving
+    # out of, so only those three can produce a stage flag.
+    is_transitional: bool
+
+    # How long someone can sit in a transitional stage before it is worth a
+    # look. Meaningless, and therefore None, on a stage people arrive at.
+    expected_days: int | None
 
 
 STAGES: tuple[Stage, ...] = (
+    # Transitional. People should be moving out of these.
     Stage("visitor", "Visitor", 0,
-          "Has been here once. We may not know their name yet.", 21),
+          "Has been here once. We may not know their name yet.",
+          is_transitional=True, expected_days=21),
     Stage("guest", "Guest", 1,
-          "Coming back. Has given us a way to contact them.", 42),
+          "Coming back. Has given us a way to contact them.",
+          is_transitional=True, expected_days=42),
     Stage("attender", "Attender", 2,
-          "Here most Sundays. Not yet committed to anything else.", 90),
+          "Here most Sundays. Not yet committed to anything else.",
+          is_transitional=True, expected_days=90),
+
+    # Destinations. Staying here for years is the point, not a problem.
     Stage("member", "Member", 3,
-          "Has committed to this church publicly.", 365),
+          "Has committed to this church publicly.",
+          is_transitional=False, expected_days=None),
     Stage("volunteer", "Volunteer", 4,
-          "Serving on a team.", 365),
+          "Serving on a team.",
+          is_transitional=False, expected_days=None),
     Stage("disciple", "Disciple", 5,
-          "In a group and growing on purpose.", 365),
+          "In a group and growing on purpose.",
+          is_transitional=False, expected_days=None),
     Stage("leader", "Leader", 6,
-          "Leading others. Reproducing what they were given.", 730),
+          "Leading others. Reproducing what they were given.",
+          is_transitional=False, expected_days=None),
 )
+
+TRANSITIONAL_STAGES: tuple[Stage, ...] = tuple(s for s in STAGES if s.is_transitional)
 
 STAGE_CODES: tuple[str, ...] = tuple(stage.code for stage in STAGES)
 STAGE_BY_CODE: dict[str, Stage] = {stage.code: stage for stage in STAGES}
@@ -87,3 +112,36 @@ def next_stage(code: str) -> Stage | None:
 def is_forward(from_code: str, to_code: str) -> bool:
     """True when a move goes up the rail rather than down or sideways."""
     return stage_order(to_code) > stage_order(from_code)
+
+
+# ---------------------------------------------------------------------------
+# Increment 3: what "stuck" means
+# ---------------------------------------------------------------------------
+
+# How long a church can go without talking to someone before that itself is
+# the problem, regardless of stage. Separate from `expected_days` on purpose:
+# a Member who has been a Member for two years is not stuck, but a Member
+# nobody has spoken to since March might be.
+CONTACT_WINDOW_DAYS = 21
+
+# The step that usually comes next, by stage. A recommendation, not a rule:
+# staff assign whatever actually fits, and this is what the screen offers
+# first so the common case is one click instead of a blank field.
+NEXT_STEP_BY_STAGE = {
+    "visitor": "Send a personal thank you for visiting",
+    "guest": "Invite to the next Next Steps lunch",
+    "attender": "Invite into a group",
+    "member": "Ask them to serve on a team",
+    "volunteer": "Invite into a group, or to lead one",
+    "disciple": "Ask them to disciple someone else",
+    "leader": "Check in on who they are raising up",
+}
+
+
+def recommended_next_step(stage_code: str) -> str | None:
+    return NEXT_STEP_BY_STAGE.get(stage_code)
+
+
+def expected_days(stage_code: str) -> int | None:
+    stage = STAGE_BY_CODE.get(stage_code)
+    return stage.expected_days if stage else None

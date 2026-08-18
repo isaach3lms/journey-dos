@@ -1,55 +1,55 @@
-first_name,last_name,email,phone,stage,household,first_seen_on
-Marcus,Webb,marcus.webb@example.com,573-555-2735,member,Marcus and Dana Webb,2025-02-22
-Dana,Webb,dana.webb@example.com,573-555-8343,volunteer,Marcus and Dana Webb,2024-04-02
-Ellie,Webb,,,member,Marcus and Dana Webb,2025-06-11
-Nate,Webb,,,member,Marcus and Dana Webb,2025-06-24
-Chris,Vaughn,chris.vaughn@example.com,573-555-9319,attender,Chris and Alina Vaughn,2026-01-17
-Alina,Vaughn,alina.vaughn@example.com,573-555-5996,attender,Chris and Alina Vaughn,2025-12-31
-Josiah,Vaughn,,,attender,Chris and Alina Vaughn,2026-01-01
-Tyler,Brooks,tyler.brooks@example.com,573-555-9068,volunteer,Tyler and Megan Brooks,2024-04-05
-Megan,Brooks,megan.brooks@example.com,573-555-6676,disciple,Tyler and Megan Brooks,2023-10-21
-Rowan,Brooks,,,member,Tyler and Megan Brooks,2024-05-05
-Alicia,Romero,alicia.romero@example.com,573-555-5527,attender,Alicia and Mateo Romero,2026-04-21
-Mateo,Romero,,,member,Alicia and Mateo Romero,2025-05-20
-Rachel,Kim,rachel.kim@example.com,573-555-1128,leader,Rachel and Daniel Kim,2024-09-05
-Daniel,Kim,daniel.kim@example.com,573-555-8266,volunteer,Rachel and Daniel Kim,2025-03-23
-Sophie,Kim,,,member,Rachel and Daniel Kim,2025-10-09
-Dana,Whitfield,dana.whitfield@example.com,573-555-3745,member,Dana and Cole Whitfield,2025-10-20
-Cole,Whitfield,,,member,Dana and Cole Whitfield,2024-11-16
-Ivy,Whitfield,,,member,Dana and Cole Whitfield,2025-07-01
-Bo,Whitfield,,,member,Dana and Cole Whitfield,2024-05-23
-Priya,Anand,priya.anand@example.com,573-555-4484,disciple,Priya and Ravi Anand,2024-07-01
-Ravi,Anand,ravi.anand@example.com,573-555-7767,member,Priya and Ravi Anand,2024-05-13
-Grace,Sutton,grace.sutton@example.com,573-555-1102,volunteer,Grace Sutton,2024-08-23
-Hector,Delgado,hector.delgado@example.com,573-555-4479,attender,Hector and Marisol Delgado,2026-04-22
-Marisol,Delgado,marisol.delgado@example.com,573-555-4732,attender,Hector and Marisol Delgado,2026-06-12
-Jenna,Boyd,jenna.boyd@example.com,573-555-7723,guest,Jenna Boyd,2026-07-18
-Aaron,Feldman,aaron.feldman@example.com,573-555-6406,member,Aaron and Ruth Feldman,2026-01-06
-Ruth,Feldman,ruth.feldman@example.com,573-555-8573,volunteer,Aaron and Ruth Feldman,2025-04-30
-Micah,Feldman,,,member,Aaron and Ruth Feldman,2025-03-31
-Chidi,Okafor,chidi.okafor@example.com,573-555-9672,leader,Chidi and Ngozi Okafor,2022-05-12
-Ngozi,Okafor,ngozi.okafor@example.com,573-555-2548,disciple,Chidi and Ngozi Okafor,2025-09-20
-Amara,Okafor,,,member,Chidi and Ngozi Okafor,2024-03-10
-Luis,Reyes,luis.reyes@example.com,573-555-2948,attender,Luis and Camila Reyes,2026-04-21
-Camila,Reyes,camila.reyes@example.com,573-555-8599,guest,Luis and Camila Reyes,2026-06-29
-Bethany,Hartley,bethany.hartley@example.com,573-555-4278,volunteer,Bethany and Sam Hartley,2025-05-04
-Sam,Hartley,sam.hartley@example.com,573-555-1559,attender,Bethany and Sam Hartley,2026-03-14
-Piotr,Nowak,piotr.nowak@example.com,573-555-1300,member,Piotr and Ewa Nowak,2024-04-25
-Ewa,Nowak,ewa.nowak@example.com,573-555-2072,member,Piotr and Ewa Nowak,2025-01-24
-Reed,Stephens,reed.stephens@example.com,573-555-5194,leader,Reed and Julia Stephens,2024-11-19
-Julia,Stephens,julia.stephens@example.com,573-555-8234,leader,Reed and Julia Stephens,2023-05-10
-Hallie,Stephens,hallie.stephens@example.com,573-555-7475,volunteer,Reed and Julia Stephens,2024-06-28
-Tim,Carver,tim.carver@example.com,573-555-1406,guest,Tim Carver,2026-06-12
-Nina,Ibarra,nina.ibarra@example.com,573-555-9373,visitor,Nina Ibarra,2026-08-13
-Patrick,Quinn,patrick.quinn@example.com,573-555-6812,visitor,Patrick Quinn,2026-08-08
-Colleen,Ashford,colleen.ashford@example.com,573-555-4085,guest,Colleen Ashford,2026-06-28
-Thandi,Mbeki,thandi.mbeki@example.com,573-555-2809,attender,Thandi Mbeki,2026-06-15
-Joel,Larkin,joel.larkin@example.com,573-555-3416,visitor,Joel and Steph Larkin,2026-08-02
-Steph,Larkin,steph.larkin@example.com,573-555-4839,visitor,Joel and Steph Larkin,2026-08-07
-Wes,Prentice,wes.prentice@example.com,573-555-7302,attender,Wes Prentice,2026-02-05
-Hanna,Vogel,hanna.vogel@example.com,573-555-5965,guest,Hanna Vogel,2026-07-23
-Sean,Dunleavy,sean.dunleavy@example.com,573-555-5410,member,Sean and Maura Dunleavy,2024-11-03
-Maura,Dunleavy,maura.dunleavy@example.com,573-555-9972,disciple,Sean and Maura Dunleavy,2024-02-14
-Rafa,Espinoza,rafa.espinoza@example.com,573-555-8742,volunteer,Rafa Espinoza,2025-05-23
-Kate,Trammell,kate.trammell@example.com,573-555-8504,guest,Kate Trammell,2026-06-28
-Andre,Bright,andre.bright@example.com,573-555-6339,visitor,Andre Bright,2026-07-31
+first_name,last_name,email,phone,stage,household,first_seen_on,last_contact_on
+Marcus,Webb,marcus.webb@example.com,573-555-2735,member,Marcus and Dana Webb,2025-02-22,2026-08-04
+Dana,Webb,dana.webb@example.com,573-555-8343,volunteer,Marcus and Dana Webb,2024-04-02,2026-08-11
+Ellie,Webb,,,member,Marcus and Dana Webb,2025-06-11,
+Nate,Webb,,,member,Marcus and Dana Webb,2025-06-24,
+Chris,Vaughn,chris.vaughn@example.com,573-555-9319,attender,Chris and Alina Vaughn,2026-01-17,2026-06-24
+Alina,Vaughn,alina.vaughn@example.com,573-555-5996,attender,Chris and Alina Vaughn,2025-12-31,2026-07-30
+Josiah,Vaughn,,,attender,Chris and Alina Vaughn,2026-01-01,
+Tyler,Brooks,tyler.brooks@example.com,573-555-9068,volunteer,Tyler and Megan Brooks,2024-04-05,2026-08-07
+Megan,Brooks,megan.brooks@example.com,573-555-6676,disciple,Tyler and Megan Brooks,2023-10-21,2026-08-08
+Rowan,Brooks,,,member,Tyler and Megan Brooks,2024-05-05,
+Alicia,Romero,alicia.romero@example.com,573-555-5527,attender,Alicia and Mateo Romero,2026-04-21,2026-06-24
+Mateo,Romero,,,member,Alicia and Mateo Romero,2025-05-20,
+Rachel,Kim,rachel.kim@example.com,573-555-1128,leader,Rachel and Daniel Kim,2024-09-05,2026-07-29
+Daniel,Kim,daniel.kim@example.com,573-555-8266,volunteer,Rachel and Daniel Kim,2025-03-23,2026-07-24
+Sophie,Kim,,,member,Rachel and Daniel Kim,2025-10-09,
+Dana,Whitfield,dana.whitfield@example.com,573-555-3745,member,Dana and Cole Whitfield,2025-10-20,2026-08-05
+Cole,Whitfield,,,member,Dana and Cole Whitfield,2024-11-16,
+Ivy,Whitfield,,,member,Dana and Cole Whitfield,2025-07-01,
+Bo,Whitfield,,,member,Dana and Cole Whitfield,2024-05-23,
+Priya,Anand,priya.anand@example.com,573-555-4484,disciple,Priya and Ravi Anand,2024-07-01,2026-07-24
+Ravi,Anand,ravi.anand@example.com,573-555-7767,member,Priya and Ravi Anand,2024-05-13,2026-07-26
+Grace,Sutton,grace.sutton@example.com,573-555-1102,volunteer,Grace Sutton,2024-08-23,2026-07-20
+Hector,Delgado,hector.delgado@example.com,573-555-4479,attender,Hector and Marisol Delgado,2026-04-22,2026-07-30
+Marisol,Delgado,marisol.delgado@example.com,573-555-4732,attender,Hector and Marisol Delgado,2026-06-12,2026-08-04
+Jenna,Boyd,jenna.boyd@example.com,573-555-7723,guest,Jenna Boyd,2026-07-18,
+Aaron,Feldman,aaron.feldman@example.com,573-555-6406,member,Aaron and Ruth Feldman,2026-01-06,2026-07-21
+Ruth,Feldman,ruth.feldman@example.com,573-555-8573,volunteer,Aaron and Ruth Feldman,2025-04-30,2026-08-07
+Micah,Feldman,,,member,Aaron and Ruth Feldman,2025-03-31,
+Chidi,Okafor,chidi.okafor@example.com,573-555-9672,leader,Chidi and Ngozi Okafor,2022-05-12,2026-07-28
+Ngozi,Okafor,ngozi.okafor@example.com,573-555-2548,disciple,Chidi and Ngozi Okafor,2025-09-20,2026-08-06
+Amara,Okafor,,,member,Chidi and Ngozi Okafor,2024-03-10,
+Luis,Reyes,luis.reyes@example.com,573-555-2948,attender,Luis and Camila Reyes,2026-04-21,2026-08-09
+Camila,Reyes,camila.reyes@example.com,573-555-8599,guest,Luis and Camila Reyes,2026-06-29,
+Bethany,Hartley,bethany.hartley@example.com,573-555-4278,volunteer,Bethany and Sam Hartley,2025-05-04,2026-08-11
+Sam,Hartley,sam.hartley@example.com,573-555-1559,attender,Bethany and Sam Hartley,2026-03-14,2026-08-13
+Piotr,Nowak,piotr.nowak@example.com,573-555-1300,member,Piotr and Ewa Nowak,2024-04-25,2026-07-23
+Ewa,Nowak,ewa.nowak@example.com,573-555-2072,member,Piotr and Ewa Nowak,2025-01-24,2026-08-06
+Reed,Stephens,reed.stephens@example.com,573-555-5194,leader,Reed and Julia Stephens,2024-11-19,2026-07-31
+Julia,Stephens,julia.stephens@example.com,573-555-8234,leader,Reed and Julia Stephens,2023-05-10,2026-08-11
+Hallie,Stephens,hallie.stephens@example.com,573-555-7475,volunteer,Reed and Julia Stephens,2024-06-28,2026-07-23
+Tim,Carver,tim.carver@example.com,573-555-1406,guest,Tim Carver,2026-06-12,2026-08-15
+Nina,Ibarra,nina.ibarra@example.com,573-555-9373,visitor,Nina Ibarra,2026-08-13,2026-08-14
+Patrick,Quinn,patrick.quinn@example.com,573-555-6812,visitor,Patrick Quinn,2026-08-08,
+Colleen,Ashford,colleen.ashford@example.com,573-555-4085,guest,Colleen Ashford,2026-06-28,2026-08-10
+Thandi,Mbeki,thandi.mbeki@example.com,573-555-2809,attender,Thandi Mbeki,2026-06-15,2026-06-24
+Joel,Larkin,joel.larkin@example.com,573-555-3416,visitor,Joel and Steph Larkin,2026-08-02,
+Steph,Larkin,steph.larkin@example.com,573-555-4839,visitor,Joel and Steph Larkin,2026-08-07,2026-08-14
+Wes,Prentice,wes.prentice@example.com,573-555-7302,attender,Wes Prentice,2026-02-05,2026-06-24
+Hanna,Vogel,hanna.vogel@example.com,573-555-5965,guest,Hanna Vogel,2026-07-23,2026-07-09
+Sean,Dunleavy,sean.dunleavy@example.com,573-555-5410,member,Sean and Maura Dunleavy,2024-11-03,2026-07-30
+Maura,Dunleavy,maura.dunleavy@example.com,573-555-9972,disciple,Sean and Maura Dunleavy,2024-02-14,2026-07-24
+Rafa,Espinoza,rafa.espinoza@example.com,573-555-8742,volunteer,Rafa Espinoza,2025-05-23,2026-08-14
+Kate,Trammell,kate.trammell@example.com,573-555-8504,guest,Kate Trammell,2026-06-28,2026-08-10
+Andre,Bright,andre.bright@example.com,573-555-6339,visitor,Andre Bright,2026-07-31,2026-08-14

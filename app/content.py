@@ -117,7 +117,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2}
+SHIPPED_INCREMENTS = {0, 1, 2, 3}
 
 SHELL = {
     "title": "Foundation",
@@ -172,6 +172,18 @@ SHELL = {
             "Opening someone from another church returns a 404, not their "
             "record. Every query that touches a person carries the church in "
             "its WHERE clause rather than filtering afterwards.",
+        ),
+        (
+            "The flag needs two reasons, not one",
+            "Someone is flagged only when they are past their stage's expected "
+            "time AND nobody has spoken to them in three weeks. Long-standing "
+            "members never flag; staying is the point for them.",
+        ),
+        (
+            "Logging a call clears the flag, a note does not",
+            "Real contact is the hard stop. Writing that somebody should call "
+            "Marcus is not calling Marcus, and treating the two the same would "
+            "quietly stop the system flagging the people it exists to find.",
         ),
     ],
     "roadmap_heading": "What comes next",
@@ -288,6 +300,77 @@ PEOPLE = {
 
     "back_to_roster": "Back to the roster",
     "showing": "Showing {start} to {end} of {total}",
+}
+
+
+STUCK = {
+    "card_heading": "Needs a person, not an email",
+    "card_intro": (
+        "These people stopped moving and nobody has spoken to them. The system "
+        "caught it before anyone noticed on a Sunday."
+    ),
+    "card_empty": "Nobody is stuck. Everyone overdue has been contacted recently.",
+    "card_empty_hint": (
+        "A stage flag only fires when someone is past their stage's expected "
+        "time AND nobody has made contact in {window} days."
+    ),
+    "flag": "Stuck",
+    "see_all": "See all",
+
+    "banner_title": "Stuck in {stage}",
+    "banner_never": "Visited, but nobody has ever logged contact.",
+
+    "metric_stuck": "flagged as stuck",
+    "metric_contacted": "people contacted in the last 7 days",
+    "metric_unowned": "people with no owner",
+
+    # Contact log
+    "contact_heading": "Log a conversation",
+    "contact_hint": (
+        "Logging real contact is what clears a flag. A note does not, because "
+        "writing that someone should be called is not the same as calling "
+        "them."
+    ),
+    "contact_method": "How",
+    "contact_summary": "What happened",
+    "contact_placeholder": "Called after service. Coming to the lunch on the 10th.",
+    "contact_save": "Log it",
+    "contact_saved": "Logged. {name} is contacted as of today.",
+    "contact_empty": "Say what happened, even if it is one line.",
+    "contact_history": "Contact history",
+    "contact_none": "No contact logged yet.",
+    "contact_never": "Never contacted",
+    "contact_days_ago": "{days} days ago",
+    "contact_today": "Today",
+    "contact_yesterday": "Yesterday",
+    "last_contact": "Last contact",
+
+    # Next steps
+    "step_heading": "The next step",
+    "step_recommended": "Recommended: {step}",
+    "step_title_label": "What needs to happen",
+    "step_owner_label": "Who owns it",
+    "step_due_label": "By when",
+    "step_unassigned": "Nobody yet",
+    "step_assign": "Assign it",
+    "step_assigned": "Assigned to {owner}.",
+    "step_open": "Open next steps",
+    "step_none": "No next step assigned.",
+    "step_done": "Mark done",
+    "step_dropped": "Drop it",
+    "step_closed": "Closed. {title}",
+    "step_overdue": "Overdue",
+    "step_due": "Due {date}",
+    "step_no_due": "No date set",
+    "step_title_required": "A next step needs a description.",
+
+    # Ownership
+    "owner_heading": "Owner",
+    "owner_none": "Nobody owns this person",
+    "owner_set": "{owner} now owns {name}.",
+    "owner_assign": "Take ownership",
+    "owner_clear": "Release",
+    "owner_cleared": "Ownership released.",
 }
 
 ERRORS = {

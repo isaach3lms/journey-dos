@@ -27,8 +27,18 @@ KIND_CREATED = "created"
 KIND_STAGE_CHANGE = "stage_change"
 KIND_NOTE = "note"
 KIND_IMPORTED = "imported"
+# Increment 3.
+KIND_CONTACT = "contact"
+KIND_NEXT_STEP = "next_step"
 
-EVENT_KINDS = (KIND_CREATED, KIND_STAGE_CHANGE, KIND_NOTE, KIND_IMPORTED)
+EVENT_KINDS = (
+    KIND_CREATED,
+    KIND_STAGE_CHANGE,
+    KIND_NOTE,
+    KIND_IMPORTED,
+    KIND_CONTACT,
+    KIND_NEXT_STEP,
+)
 
 # How each kind reads in the timeline. Copy lives in a data structure, not in
 # the template, so rewording an event never touches markup.
@@ -37,6 +47,8 @@ KIND_LABELS = {
     KIND_STAGE_CHANGE: "Moved a stage",
     KIND_NOTE: "Note",
     KIND_IMPORTED: "Imported",
+    KIND_CONTACT: "Contact",
+    KIND_NEXT_STEP: "Next step",
 }
 
 

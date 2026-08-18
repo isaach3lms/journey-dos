@@ -361,6 +361,13 @@ a{{
 
         Expected columns, header row required:
           first_name, last_name, email, phone, stage, household, first_seen_on
+        Optional:
+          last_contact_on
+
+        `last_contact_on` matters more than it looks. Without it every imported
+        person reads as never contacted, and on day one the stuck engine flags
+        most of the roster. A church migrating off Planning Center has this
+        date; bring it across.
 
         Every row is validated before a single row is written. A file with one
         bad stage value fails entirely rather than importing 340 people and
@@ -417,6 +424,17 @@ a{{
                     problems.append(f"line {line}: {raw_date!r} is not a date, use YYYY-MM-DD")
                     continue
 
+            last_contact = None
+            raw_contact = (row.get("last_contact_on") or "").strip()
+            if raw_contact:
+                try:
+                    last_contact = _date.fromisoformat(raw_contact)
+                except ValueError:
+                    problems.append(
+                        f"line {line}: {raw_contact!r} is not a date, use YYYY-MM-DD"
+                    )
+                    continue
+
             staged.append(
                 {
                     "first_name": first,
@@ -426,6 +444,7 @@ a{{
                     "stage": stage,
                     "household": (row.get("household") or "").strip() or None,
                     "first_seen_on": first_seen,
+                    "last_contact_on": last_contact,
                 }
             )
 
@@ -459,6 +478,17 @@ a{{
                 existing.phone = record["phone"] or existing.phone
                 if household is not None:
                     existing.household_id = household.id
+                if record["last_contact_on"]:
+                    imported_contact = datetime.combine(
+                        record["last_contact_on"], time(12, 0), tzinfo=timezone.utc
+                    )
+                    # Only ever forward, so a re-import with stale dates cannot
+                    # make someone look less recently contacted than they are.
+                    if (
+                        existing.last_contact_at is None
+                        or imported_contact > existing.last_contact_at
+                    ):
+                        existing.last_contact_at = imported_contact
                 updated += 1
                 continue
 
@@ -483,6 +513,15 @@ a{{
                 first_seen_on=record["first_seen_on"],
                 household_id=household.id if household is not None else None,
                 **({"stage_since": stage_since} if stage_since else {}),
+                **(
+                    {
+                        "last_contact_at": datetime.combine(
+                            record["last_contact_on"], time(12, 0), tzinfo=timezone.utc
+                        )
+                    }
+                    if record["last_contact_on"]
+                    else {}
+                ),
             )
             db.session.add(person)
             db.session.flush()
@@ -517,3 +556,65 @@ a{{
             count = counts.get(stage.code, 0)
             share = f"{count / total * 100:4.1f}%" if total else "   -"
             click.echo(f"  {stage.label:11} {count:4}  {share}")
+
+    # -- increment 3 --------------------------------------------------------
+
+    @app.cli.command("stuck")
+    @click.option("--church", "church_slug", required=True)
+    def stuck(church_slug):
+        """Who is stuck, and why. The same answer the dashboard shows."""
+        from app.models import Person
+        from app.stages import CONTACT_WINDOW_DAYS
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        people = db.session.scalars(Person.stuck(church.id)).all()
+        if not people:
+            click.echo(
+                f"Nobody is stuck at {church.name}. Everyone past their stage's "
+                f"expected time has been contacted within {CONTACT_WINDOW_DAYS} days."
+            )
+            return
+
+        click.echo(f"{len(people)} flagged at {church.name}\n")
+        for person in people:
+            owner = person.owner_name or "no owner"
+            click.echo(f"  {person.full_name:26} {person.stuck_reason}  ({owner})")
+
+    @app.cli.command("recompute-contact")
+    @click.option("--church", "church_slug", default=None)
+    def recompute_contact(church_slug):
+        """Rebuild person.last_contact_at from the contact log.
+
+        The column is denormalized so the stuck query stays a range scan
+        instead of a join and a group by. Denormalized data drifts, so the
+        rebuild path exists and is cheap. Run it after any bulk import or
+        direct database edit.
+        """
+        from sqlalchemy import func as sa_func
+
+        from app.models import ContactLog, Person
+
+        query = db.select(Person)
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            query = query.where(Person.church_id == church.id)
+
+        changed = 0
+        for person in db.session.scalars(query):
+            latest = db.session.scalar(
+                db.select(sa_func.max(ContactLog.occurred_at)).where(
+                    ContactLog.church_id == person.church_id,
+                    ContactLog.person_id == person.id,
+                )
+            )
+            if person.last_contact_at != latest:
+                person.last_contact_at = latest
+                changed += 1
+
+        db.session.commit()
+        click.echo(f"Rebuilt {changed} rows from the contact log.")

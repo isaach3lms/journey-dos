@@ -7,6 +7,8 @@ and no per-tenant deploy.
 
 from __future__ import annotations
 
+from typing import Optional
+
 import re
 
 from sqlalchemy import String, Boolean, UniqueConstraint
@@ -30,23 +32,23 @@ class Church(TimestampMixin, db.Model):
     # Identity
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     slug: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
-    city: Mapped[str | None] = mapped_column(String(80))
+    city: Mapped[Optional[str]] = mapped_column(String(80))
 
     # Routing. `slug` resolves the platform subdomain. `custom_domain` is the
     # optional vanity host a church points at us later.
-    custom_domain: Mapped[str | None] = mapped_column(String(255), index=True)
+    custom_domain: Mapped[Optional[str]] = mapped_column(String(255), index=True)
 
     # Branding. These two columns are the entire theming surface. See
     # app/brand.py, which is the sole lever. Templates carry no colors.
     palette_key: Mapped[str] = mapped_column(
         String(40), nullable=False, default="between-sundays"
     )
-    accent_hex: Mapped[str | None] = mapped_column(String(7))
-    logo_reversed_path: Mapped[str | None] = mapped_column(String(255))
+    accent_hex: Mapped[Optional[str]] = mapped_column(String(7))
+    logo_reversed_path: Mapped[Optional[str]] = mapped_column(String(255))
 
     # App store presentation, shown on the Settings screen.
-    app_name: Mapped[str | None] = mapped_column(String(120))
-    app_domain: Mapped[str | None] = mapped_column(String(255))
+    app_name: Mapped[Optional[str]] = mapped_column(String(120))
+    app_domain: Mapped[Optional[str]] = mapped_column(String(255))
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

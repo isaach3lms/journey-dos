@@ -19,6 +19,8 @@ correct and invisible to the user.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from datetime import datetime, timedelta
 
 from flask_login import UserMixin
@@ -90,11 +92,11 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Boolean, nullable=False, default=True
     )
 
-    last_login_at: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
     )
-    locked_until: Mapped[datetime | None] = mapped_column(UTCDateTime)
+    locked_until: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
     def __repr__(self) -> str:
         return f"<User {self.email} {self.role} church={self.church_id}>"

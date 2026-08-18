@@ -19,6 +19,8 @@ correct and invisible to the user.
 
 from __future__ import annotations
 
+import hashlib
+
 from typing import Optional
 
 from datetime import datetime, timedelta
@@ -51,20 +53,32 @@ LOCKOUT_MINUTES = 15
 # Hashing a throwaway password when no user matches keeps the response time
 # for "no such account" indistinguishable from "wrong password", so the login
 # form cannot be used to discover who attends a church.
-def _hash_method() -> str:
-    """Production hashes with scrypt. Tests do not.
+def _strongest_available_hash() -> str:
+    """Pick the best password hash this interpreter can actually perform.
 
-    scrypt is deliberately expensive, which is correct for a password and
-    wrong for a test suite that creates a dozen users per test. The cost is a
-    config value so the strong default is never weakened by accident: only
-    TestingConfig lowers it.
+    Werkzeug defaults to scrypt, but hashlib.scrypt only exists when Python was
+    linked against an OpenSSL that provides it. Several macOS builds ship
+    against LibreSSL, where the attribute is simply absent and every call to
+    generate_password_hash raises AttributeError.
+
+    Hashes carry their own method, so a password hashed with PBKDF2 here still
+    verifies on a machine that has scrypt, and the reverse.
     """
+    if hasattr(hashlib, "scrypt"):
+        return "scrypt"
+    return "pbkdf2:sha256:600000"
+
+
+def _hash_method() -> str:
     try:
         from flask import current_app
 
-        return current_app.config.get("PASSWORD_HASH_METHOD", "scrypt")
+        configured = current_app.config.get("PASSWORD_HASH_METHOD")
+        if configured:
+            return configured
     except RuntimeError:
-        return "scrypt"
+        pass
+    return _strongest_available_hash()
 
 
 _TIMING_DECOY = generate_password_hash("timing-attack-decoy", method="pbkdf2:sha256:1")

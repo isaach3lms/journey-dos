@@ -63,6 +63,8 @@ class BaseConfig:
     # Session hardening. SESSION_COOKIE_DOMAIN is deliberately absent: setting
     # it would share one cookie across every tenant subdomain, which is a
     # cross-tenant session leak. app/security.py fails the boot if it appears.
+    PASSWORD_HASH_METHOD = None
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False

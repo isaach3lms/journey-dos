@@ -21,6 +21,12 @@ from __future__ import annotations
 
 import hashlib
 
+# SQLAlchemy evaluates the annotation inside `Mapped[...]` at class-definition
+# time, so `from __future__ import annotations` does not defer it the way it
+# defers ordinary function annotations. `str | None` therefore needs a Python
+# that can evaluate PEP 604 unions at runtime, which means 3.10 or newer.
+# `Optional[...]` resolves on every version, so the models do not depend on
+# which interpreter happens to be on the machine.
 from typing import Optional
 
 from datetime import datetime, timedelta
@@ -56,13 +62,20 @@ LOCKOUT_MINUTES = 15
 def _strongest_available_hash() -> str:
     """Pick the best password hash this interpreter can actually perform.
 
-    Werkzeug defaults to scrypt, but hashlib.scrypt only exists when Python was
-    linked against an OpenSSL that provides it. Several macOS builds ship
-    against LibreSSL, where the attribute is simply absent and every call to
-    generate_password_hash raises AttributeError.
+    Werkzeug defaults to scrypt, but `hashlib.scrypt` only exists when Python
+    was linked against an OpenSSL that provides it. Several macOS Python
+    builds ship against LibreSSL, where the attribute is simply absent and
+    every call to `generate_password_hash` raises AttributeError. Asking
+    hashlib what it can do, rather than assuming, means the app runs on the
+    machine it is on instead of the machine it was written on.
+
+    The fallback iteration count follows current OWASP guidance for
+    PBKDF2-HMAC-SHA256. It is slower to compute than scrypt is to attack, but
+    it is a real hash, not a downgrade to something weak.
 
     Hashes carry their own method, so a password hashed with PBKDF2 here still
-    verifies on a machine that has scrypt, and the reverse.
+    verifies on a machine that has scrypt, and the reverse. Nothing is locked
+    to the environment that created it.
     """
     if hasattr(hashlib, "scrypt"):
         return "scrypt"
@@ -70,6 +83,12 @@ def _strongest_available_hash() -> str:
 
 
 def _hash_method() -> str:
+    """Resolve the hash method for this request.
+
+    The cost is a config value so the strong default is never weakened by
+    accident: only TestingConfig lowers it, because a suite that creates a
+    dozen users per test should not spend its time in a KDF.
+    """
     try:
         from flask import current_app
 

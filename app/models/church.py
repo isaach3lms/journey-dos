@@ -7,6 +7,12 @@ and no per-tenant deploy.
 
 from __future__ import annotations
 
+# SQLAlchemy evaluates the annotation inside `Mapped[...]` at class-definition
+# time, so `from __future__ import annotations` does not defer it the way it
+# defers ordinary function annotations. `str | None` therefore needs a Python
+# that can evaluate PEP 604 unions at runtime, which means 3.10 or newer.
+# `Optional[...]` resolves on every version, so the models do not depend on
+# which interpreter happens to be on the machine.
 from typing import Optional
 
 import re

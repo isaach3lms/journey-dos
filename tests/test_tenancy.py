@@ -85,3 +85,43 @@ class TestResolutionInRequests:
         app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
         assert client.get("/healthz", headers={"Host": "unknown.test"}).status_code == 200
         assert client.get("/readyz", headers={"Host": "unknown.test"}).status_code == 200
+
+
+class TestProductionReachability:
+    """A deploy with no resolvable host 404s everything while looking healthy."""
+
+    def test_a_custom_domain_is_how_a_tenant_is_reached_without_a_platform_domain(
+        self, app, client, db
+    ):
+        from app.models import Church
+
+        app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
+        app.config["PLATFORM_DOMAIN"] = ""
+
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        church.custom_domain = "journey-dos-app.onrender.com"
+        db.session.commit()
+
+        r = client.get("/auth/login", headers={"Host": "journey-dos-app.onrender.com"})
+        assert r.status_code == 200
+        assert b"The Journey Church" in r.data
+
+    def test_one_host_cannot_point_at_two_churches(self, db):
+        from app.models import Church
+
+        a = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        b = db.session.scalar(db.select(Church).where(Church.slug == "riverbend"))
+        a.custom_domain = "shared.example.org"
+        db.session.commit()
+
+        b.custom_domain = "shared.example.org"
+        with pytest.raises(Exception):
+            db.session.commit()
+        db.session.rollback()
+
+    def test_the_health_check_passes_even_when_nothing_resolves(self, app, client):
+        """Which is exactly why the boot warning exists."""
+        app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
+        app.config["PLATFORM_DOMAIN"] = ""
+        assert client.get("/healthz", headers={"Host": "unknown.example"}).status_code == 200
+        assert client.get("/", headers={"Host": "unknown.example"}).status_code == 404

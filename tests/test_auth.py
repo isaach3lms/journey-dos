@@ -286,3 +286,36 @@ class TestCSRF:
         app.config["WTF_CSRF_ENABLED"] = True
         r = client.post("/auth/logout", headers={"Host": JOURNEY_HOST})
         assert r.status_code == 400
+
+
+class TestHashPortability:
+    """Werkzeug defaults to scrypt, which not every Python build can perform."""
+
+    def test_the_method_is_one_this_interpreter_can_actually_run(self):
+        import hashlib
+
+        from app.models.user import _strongest_available_hash
+
+        method = _strongest_available_hash()
+        if hasattr(hashlib, "scrypt"):
+            assert method == "scrypt"
+        else:
+            assert method.startswith("pbkdf2:sha256:")
+
+    def test_the_fallback_is_used_when_scrypt_is_missing(self, monkeypatch):
+        """Several macOS Pythons link against LibreSSL, where scrypt is absent."""
+        import hashlib
+
+        from app.models.user import _strongest_available_hash
+
+        monkeypatch.delattr(hashlib, "scrypt", raising=False)
+        assert _strongest_available_hash() == "pbkdf2:sha256:600000"
+
+    def test_a_hash_verifies_regardless_of_which_method_made_it(self):
+        """Hashes carry their method, so they are not locked to one machine."""
+        from werkzeug.security import check_password_hash, generate_password_hash
+
+        for method in ("pbkdf2:sha256:1", "pbkdf2:sha256:1000"):
+            digest = generate_password_hash("journey-local-2026", method=method)
+            assert check_password_hash(digest, "journey-local-2026")
+            assert not check_password_hash(digest, "wrong")

@@ -288,3 +288,64 @@ a{{
         user.locked_until = None
         db.session.commit()
         click.echo(f"Unlocked {email}.")
+
+    @app.cli.command("set-domain")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--domain", required=True,
+                  help="Bare host, no scheme and no path. e.g. app.example.org")
+    def set_domain(church_slug, domain):
+        """Point a hostname at a church.
+
+        Until a platform domain exists there are no tenant subdomains to read,
+        so production reaches a church by exact host. This is what makes the
+        Render URL resolve to Journey instead of returning 404.
+        """
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        host = domain.strip().lower()
+        for bad in ("http://", "https://", "/"):
+            if bad in host:
+                raise click.ClickException(
+                    f"{domain!r} is not a bare host. Drop the scheme and any path."
+                )
+
+        taken = Church.by_custom_domain(host)
+        if taken is not None and taken.id != church.id:
+            raise click.ClickException(
+                f"{host} already points at {taken.name}. One host, one church."
+            )
+
+        church.custom_domain = host
+        db.session.commit()
+        click.echo(f"{host} now resolves to {church.name}.")
+
+    @app.cli.command("routing-check")
+    def routing_check():
+        """Show exactly which hosts resolve to a church, and which do not."""
+        platform = app.config.get("PLATFORM_DOMAIN") or ""
+        churches = list(db.session.scalars(db.select(Church).order_by(Church.slug)))
+
+        click.echo(f"PLATFORM_DOMAIN: {platform or '(not set)'}")
+        click.echo(f"Query override:  {'on' if app.config.get('ALLOW_TENANT_QUERY_OVERRIDE') else 'off'}")
+        click.echo("")
+
+        reachable = 0
+        for church in churches:
+            hosts = []
+            if church.custom_domain:
+                hosts.append(church.custom_domain)
+            if platform:
+                hosts.append(f"{church.slug}.{platform}")
+            if hosts:
+                reachable += 1
+            click.echo(f"{church.slug:12} {' , '.join(hosts) or 'NO HOST RESOLVES TO THIS CHURCH'}")
+
+        if reachable == 0:
+            click.echo("")
+            click.echo(
+                "Nothing is reachable. Every request will 404. Fix with either:\n"
+                "  flask set-domain --church journey --domain <your-host>\n"
+                "or by setting PLATFORM_DOMAIN and adding wildcard DNS."
+            )

@@ -107,6 +107,31 @@ def create_app(config_name: str | None = None) -> Flask:
         response.headers.setdefault("X-Robots-Tag", "noindex, nofollow")
         return response
 
+    @app.before_request
+    def _warn_once_if_nothing_is_reachable():
+        """A production deploy with no resolvable host 404s every request.
+
+        The health check still passes, because it bypasses tenancy, so the
+        service looks green in the dashboard while being entirely unusable.
+        Say so in the log instead of leaving it to be discovered.
+        """
+        if app.config.get("ALLOW_TENANT_QUERY_OVERRIDE") or app.config.get("_ROUTING_CHECKED"):
+            return None
+        app.config["_ROUTING_CHECKED"] = True
+        if not app.config.get("PLATFORM_DOMAIN"):
+            from app.models import Church
+
+            has_domain = db.session.scalar(
+                db.select(Church).where(Church.custom_domain.is_not(None))
+            )
+            if has_domain is None:
+                app.logger.error(
+                    "No church is reachable. PLATFORM_DOMAIN is unset and no "
+                    "church has a custom_domain, so every request will 404. "
+                    "Run: flask set-domain --church <slug> --domain <host>"
+                )
+        return None
+
     @app.shell_context_processor
     def shell_context():
         from app.models import Church

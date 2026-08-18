@@ -4,12 +4,15 @@ Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
 **Status: increments 0 and 1 complete.** Foundation, tenancy, identity, and
-roles. 112 tests passing. No feature screens yet; every nav item resolves to a
+roles. 118 tests passing. No feature screens yet; every nav item resolves to a
 placeholder naming the increment it arrives in.
 
 ---
 
 ## Run it locally
+
+Python 3.12 is what production runs. Check yours with `python3 -V` before
+starting; anything older than 3.10 will behave differently from Render.
 
 ```bash
 cd ~/"coding files/journey-dos"
@@ -66,6 +69,8 @@ python -m pytest
 | `flask set-password --church x --email y` | Reset a password. This is the reset path until increment 4. |
 | `flask list-users [--church x]` | Every account, its role, and its last sign-in. |
 | `flask unlock-user --church x --email y` | Clear a lockout without changing the password. |
+| `flask set-domain --church x --domain host` | Point a hostname at a church. |
+| `flask routing-check` | Show which hosts resolve to which church. |
 
 ---
 
@@ -100,6 +105,14 @@ column a staff member can edit, so it is treated as untrusted input.
 because migrations do not import application code. `render_migration_item`
 renders it as `sa.DateTime(timezone=True)` instead. Identical DDL, and the
 migration still runs if that module is ever refactored.
+
+**`Mapped[str | None]` is evaluated at import, not deferred.** SQLAlchemy
+reads the annotation inside `Mapped[...]` at class-definition time, so
+`from __future__ import annotations` does not defer it the way it defers
+ordinary function annotations. On Python 3.9 that raises "Could not resolve all
+types within mapped annotation". Every mapped column now uses
+`Optional[...]`, which resolves on any version, so the models do not depend on
+which interpreter happens to be on the machine.
 
 **A test harness that holds one app context proves nothing about sessions.**
 The first version of `TestCrossTenantIsolation` passed when it should have
@@ -189,18 +202,58 @@ query override.
 
 ---
 
-## Deploying
+## Deploying to Render
 
-`render.yaml` creates all three resources. In Render: **New**, then
-**Blueprint**, then point at this repo.
+`render.yaml` creates all three resources: the static client demo, the Flask
+app, and Postgres. In Render choose **New**, then **Blueprint**, then point at
+this repo. Do not fill in build or start commands by hand; a value typed into
+the dashboard silently overrides this file and lives in a browser tab nobody
+else can see.
 
-Two things to check before you do:
+### The step that is easy to miss
 
-1. **`preDeployCommand` requires a paid instance type.** On free, run
-   `flask db upgrade` from the Render shell after the first deploy instead.
-2. **Verify the current Postgres free-tier terms before choosing a plan.**
-   Free databases have historically been deleted after a fixed window. A
-   database that disappears with a church's roster in it is not a survivable
+A fresh deploy resolves no tenant and therefore 404s every request, while the
+health check keeps passing because it bypasses tenancy. The service looks green
+and is unusable. There are two ways out and you need one of them:
+
+**Now, before a platform domain exists.** Point the Render URL at Journey:
+
+```bash
+flask set-domain --church journey --domain journey-dos-app.onrender.com
+```
+
+**Later, once you own a platform domain.** Set `PLATFORM_DOMAIN` in the
+blueprint, add wildcard DNS, and every church is reachable at
+`<slug>.<platform domain>` with no further per-church setup.
+
+`flask routing-check` prints exactly which hosts resolve to which church and
+says so plainly when the answer is none.
+
+### First deploy, in order
+
+Everything below runs in the Render **Shell** for `journey-dos-app`, not on
+your machine. Your local database is SQLite and has no bearing on production.
+
+```bash
+flask db upgrade          # only if preDeployCommand did not run
+flask seed-tenants
+flask set-domain --church journey --domain journey-dos-app.onrender.com
+flask routing-check
+flask create-user --church journey --email pastor@thejourneychurchsemo.com --name Reed --role staff
+flask list-users
+```
+
+Accounts are deliberately not in the repo, so production logins are created
+once, here, and never committed.
+
+### Two things to check before you start
+
+1. **`preDeployCommand` requires a paid instance type.** The blueprint
+   specifies `starter`. On free, run `flask db upgrade` from the shell after
+   the first deploy instead.
+2. **Verify the current Postgres free-tier retention terms before choosing a
+   plan.** Free databases have historically been deleted after a fixed window.
+   A database that disappears with a church's roster in it is not a survivable
    failure, which is why the blueprint specifies a paid plan.
 
 The client demo deploys as a separate free static site from `./public`, so the

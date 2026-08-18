@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+{% include "partials/rail.html" %}
+
+<section class="card">
+  <div class="bd">
+    <form class="filters" method="get">
+      <input class="input" type="search" name="q" value="{{ term }}"
+             placeholder="{{ content.search_placeholder }}"
+             aria-label="{{ content.search_placeholder }}">
+      <select class="input select" name="stage" aria-label="{{ content.col_stage }}">
+        <option value="">{{ content.all_stages }}</option>
+        {% for stage in stages %}
+          <option value="{{ stage.code }}" {% if active_stage == stage.code %}selected{% endif %}>
+            {{ stage.label }}
+          </option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Search</button>
+    </form>
+
+    {% if people %}
+      <div class="tablewrap">
+      <table class="roster">
+        <thead>
+          <tr>
+            <th>{{ content.col_person }}</th>
+            <th>{{ content.col_stage }}</th>
+            <th>{{ content.col_household }}</th>
+            <th class="ta-r">{{ content.col_time }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for person in people %}
+            <tr onclick="window.location='{{ url_for('people.detail', person_id=person.id) }}'">
+              <td>
+                <a class="personcell" href="{{ url_for('people.detail', person_id=person.id) }}">
+                  <span class="av">{{ person.initials }}</span>
+                  <span>
+                    <span class="pn">{{ person.full_name }}</span>
+                    <span class="pe">{{ person.email or content.no_email }}</span>
+                  </span>
+                </a>
+              </td>
+              <td><span class="tag">{{ person.stage_label }}</span></td>
+              <td class="muted">{{ person.household.name if person.household else "" }}</td>
+              <td class="ta-r muted mono">
+                {% if person.days_in_stage == 0 %}{{ content.today_in_stage }}
+                {% elif person.days_in_stage == 1 %}{{ content.one_day_in_stage }}
+                {% else %}{{ content.days_in_stage.format(days=person.days_in_stage) }}{% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+
+      {% if pagination.pages > 1 %}
+        <div class="pager">
+          <span class="muted">
+            {{ content.showing.format(
+                 start=(pagination.page - 1) * pagination.per_page + 1,
+                 end=(pagination.page - 1) * pagination.per_page + people|length,
+                 total=pagination.total) }}
+          </span>
+          <span class="spacer"></span>
+          {% if pagination.has_prev %}
+            <a class="ghost" href="{{ url_for('people.index', q=term, stage=active_stage, page=pagination.prev_num) }}">Previous</a>
+          {% endif %}
+          {% if pagination.has_next %}
+            <a class="ghost" href="{{ url_for('people.index', q=term, stage=active_stage, page=pagination.next_num) }}">Next</a>
+          {% endif %}
+        </div>
+      {% endif %}
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.no_results }}</div>
+        <div class="d">{{ content.no_results_hint }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -15,12 +15,12 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, g
+from flask import Flask, g, url_for
 from markupsafe import Markup
 
 from app.brand import brand_css_vars, palette_for
 from app.config import resolve_config
-from app.content import AUTH, ICONS, NAV_GROUPS, nav_for
+from app.content import AUTH, ICONS, NAV_ENDPOINTS, NAV_GROUPS, nav_for
 from app.errors import register_error_handlers
 from app.extensions import csrf, db, migrate
 from app.security import register_security
@@ -53,10 +53,12 @@ def create_app(config_name: str | None = None) -> Flask:
 
     from app.blueprints.auth import bp as auth_bp
     from app.blueprints.health import bp as health_bp
+    from app.blueprints.people import bp as people_bp
     from app.blueprints.shell import bp as shell_bp
 
     app.register_blueprint(health_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(people_bp)
     app.register_blueprint(shell_bp)
 
     # Order matters. Tenancy runs first so `g.church` exists before the
@@ -92,6 +94,10 @@ def create_app(config_name: str | None = None) -> Flask:
             "visible_nav": nav_for(current_user),
             "nav_groups": NAV_GROUPS,
             "icons": ICONS,
+            "nav_url": lambda item: url_for(
+                NAV_ENDPOINTS.get(item.key, "shell.placeholder"),
+                **({} if item.key in NAV_ENDPOINTS else {"key": item.key}),
+            ),
             "auth": AUTH,
             "csrf_field": lambda: Markup(
                 f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">'

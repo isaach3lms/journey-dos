@@ -1,0 +1,30 @@
+{# The Journey rail. Counts come from one grouped query, not seven. #}
+<section class="card rail">
+  <div class="hd">
+    <h2>{{ content.rail_heading }}</h2>
+    <div class="spacer"></div>
+    {% if active_stage %}
+      <a class="ghost" href="{{ url_for('people.index') }}">{{ content.clear_filter }}</a>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% if total == 0 %}
+      <p>{{ content.rail_empty }}</p>
+    {% else %}
+      <p>{{ content.rail_intro.format(total=total, church=church.name) }}</p>
+      <div class="stages">
+        {% for stage in stages %}
+          {% set count = counts.get(stage.code, 0) %}
+          {% set share = (count / total * 100) if total else 0 %}
+          <a class="stage" href="{{ url_for('people.index', stage=stage.code) }}"
+             {% if active_stage == stage.code %}aria-current="true"{% endif %}
+             title="{{ stage.meaning }}">
+            <div class="sname">{{ stage.label }}</div>
+            <div class="scount mono">{{ count }}</div>
+            <div class="bar"><i style="width: {{ share|round(1) }}%"></i></div>
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</section>

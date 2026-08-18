@@ -40,7 +40,7 @@ NAV_GROUPS = ["Lead", "Run", "Manage"]
 
 NAV_ITEMS: list[NavItem] = [
     NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE),
-    NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS),
+    NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY),
@@ -48,6 +48,14 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
     NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
 ]
+
+
+# Where a nav item points once it is real. Items absent from this map fall
+# through to the increment placeholder.
+NAV_ENDPOINTS = {
+    "dashboard": "shell.index",
+    "people": "people.index",
+}
 
 
 def nav_for(user) -> list[NavItem]:
@@ -109,11 +117,11 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1}
+SHIPPED_INCREMENTS = {0, 1, 2}
 
 SHELL = {
     "title": "Foundation",
-    "subtitle": "The shell, the tenant, the brand, and who you are.",
+    "subtitle": "The roster is live. Click any stage to see who is in it.",
     "proof_heading": "What this page proves",
     "proof_intro": (
         "Nothing here is hard coded to one church. This page is reading a "
@@ -153,6 +161,17 @@ SHELL = {
             "Staff, leaders, and members see different navigation from the "
             "same code. Hiding a link is presentation; the page itself checks "
             "the role again before it renders.",
+        ),
+        (
+            "The rail above is a live count",
+            "Every number comes from one grouped query against this church's "
+            "roster. Click a stage to see exactly who is standing on it.",
+        ),
+        (
+            "A person id is only a number",
+            "Opening someone from another church returns a 404, not their "
+            "record. Every query that touches a person carries the church in "
+            "its WHERE clause rather than filtering afterwards.",
         ),
     ],
     "roadmap_heading": "What comes next",
@@ -203,6 +222,72 @@ AUTH = {
         "ships. Until then a staff member resets passwords."
     ),
     "sign_out": "Sign out",
+}
+
+
+PEOPLE = {
+    "title": "People",
+    "subtitle": "Every person, and the step they are on.",
+
+    "rail_heading": "The Journey",
+    "rail_intro": (
+        "Where all {total} people at {church} are right now. "
+        "Click a stage to see who is in it."
+    ),
+    "rail_empty": (
+        "Nobody is on the roster yet. Import a CSV or add people one at a "
+        "time, and this rail fills in."
+    ),
+
+    "search_placeholder": "Search by name or email",
+    "all_stages": "All stages",
+    "clear_filter": "Clear",
+
+    "col_person": "Person",
+    "col_stage": "Stage",
+    "col_household": "Household",
+    "col_time": "Time in stage",
+
+    "no_results": "Nobody matches that.",
+    "no_results_hint": "Try a shorter search, or clear the stage filter.",
+
+    "days_in_stage": "{days} days",
+    "one_day_in_stage": "1 day",
+    "today_in_stage": "Today",
+
+    # Person detail
+    "snapshot": "Snapshot",
+    "timeline": "Timeline",
+    "household": "Household",
+    "no_household": "Not linked to a household",
+    "household_alone": "The only person in this household",
+    "contact": "Contact",
+    "no_email": "No email on file",
+    "no_phone": "No phone on file",
+    "first_seen": "First seen",
+    "never_seen": "Not recorded",
+    "empty_timeline": "Nothing recorded yet.",
+
+    "move_heading": "Move a stage",
+    "move_hint": (
+        "Moving someone restarts the clock on how long they have been where "
+        "they are."
+    ),
+    "advance_to": "Move to {stage}",
+    "at_end": "At the end of the rail.",
+
+    "stage_moved": "Moved from {frm} to {to}",
+    "stage_moved_detail": "Direction: {direction}",
+    "stage_flash": "{name} is now at {stage}.",
+
+    "note_heading": "Add a note",
+    "note_placeholder": "What happened, in a sentence a pastor would say.",
+    "note_save": "Save note",
+    "note_saved": "Note added to the timeline.",
+    "note_empty": "A note needs some text.",
+
+    "back_to_roster": "Back to the roster",
+    "showing": "Showing {start} to {end} of {total}",
 }
 
 ERRORS = {

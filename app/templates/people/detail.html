@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ person.full_name }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ person.full_name }}{% endblock %}
+{% block subheading %}
+  {{ person.stage_label }}{% if person.days_in_stage %} for {{ content.days_in_stage.format(days=person.days_in_stage) }}{% endif %}
+{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('people.index') }}">{{ content.back_to_roster }}</a>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="alert {{ category }}" role="alert">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="hd"><h2>{{ content.snapshot }}</h2></div>
+  <div class="bd">
+    <dl class="snap">
+      <div><dt>{{ content.contact }}</dt>
+        <dd>{{ person.email or content.no_email }}<br>
+            <span class="muted">{{ person.phone or content.no_phone }}</span></dd></div>
+      <div><dt>{{ content.household }}</dt>
+        <dd>
+          {% if person.household %}
+            {{ person.household.name }}
+            {% if household_members %}
+              <br><span class="muted">
+                {% for member in household_members %}
+                  <a href="{{ url_for('people.detail', person_id=member.id) }}">{{ member.full_name }}</a>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+              </span>
+            {% else %}
+              <br><span class="muted">{{ content.household_alone }}</span>
+            {% endif %}
+          {% else %}{{ content.no_household }}{% endif %}
+        </dd></div>
+      <div><dt>{{ content.first_seen }}</dt>
+        <dd>{{ person.first_seen_on.strftime("%B %-d, %Y") if person.first_seen_on else content.never_seen }}</dd></div>
+      <div><dt>{{ content.col_stage }}</dt>
+        <dd><span class="tag">{{ person.stage_label }}</span></dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.move_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.move_hint }}</p>
+    {% if next_stage %}
+      <form method="post" action="{{ url_for('people.move_stage', person_id=person.id) }}" class="inline">
+        {{ csrf_field() }}
+        <input type="hidden" name="stage" value="{{ next_stage.code }}">
+        <button class="btn" type="submit">{{ content.advance_to.format(stage=next_stage.label) }}</button>
+      </form>
+    {% else %}
+      <p class="muted">{{ content.at_end }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('people.move_stage', person_id=person.id) }}" class="inline">
+      {{ csrf_field() }}
+      <select class="input select" name="stage" aria-label="{{ content.move_heading }}">
+        {% for stage in stages %}
+          <option value="{{ stage.code }}" {% if stage.code == person.stage %}selected{% endif %}>{{ stage.label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn ghostbtn" type="submit">Move</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.note_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('people.add_note', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <textarea class="input" name="body" rows="3"
+                placeholder="{{ content.note_placeholder }}"
+                aria-label="{{ content.note_heading }}"></textarea>
+      <button class="btn" type="submit">{{ content.note_save }}</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.timeline }}</h2></div>
+  <div class="bd">
+    {% if events %}
+      <ol class="tl">
+        {% for event in events %}
+          <li>
+            <div class="tlt">{{ event.summary }}</div>
+            <div class="tld muted">
+              {{ event.occurred_at.strftime("%B %-d, %Y") }}
+              {% if event.actor_name %} &middot; {{ event.actor_name }}{% endif %}
+              &middot; {{ event.kind_label }}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted">{{ content.empty_timeline }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

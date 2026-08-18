@@ -32,7 +32,15 @@ from typing import Optional
 from datetime import datetime, timedelta
 
 from flask_login import UserMixin
-from sqlalchemy import Boolean, CheckConstraint, Index, Integer, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -120,6 +128,13 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     role: Mapped[str] = mapped_column(String(20), nullable=False, default="member")
+
+    # The pastoral record, when one exists. Nullable because most staff
+    # logins are also people on the roster but some are not, and most
+    # people on the roster will never have a login.
+    person_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("person.id", ondelete="SET NULL"), index=True
+    )
 
     is_active_account: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=True

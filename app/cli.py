@@ -349,3 +349,171 @@ a{{
                 "  flask set-domain --church journey --domain <your-host>\n"
                 "or by setting PLATFORM_DOMAIN and adding wildcard DNS."
             )
+
+    # -- people -------------------------------------------------------------
+
+    @app.cli.command("import-people")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--file", "path", required=True, type=click.Path(exists=True))
+    @click.option("--dry-run", is_flag=True, help="Report what would happen, write nothing.")
+    def import_people(church_slug, path, dry_run):
+        """Import a roster from CSV.
+
+        Expected columns, header row required:
+          first_name, last_name, email, phone, stage, household, first_seen_on
+
+        Every row is validated before a single row is written. A file with one
+        bad stage value fails entirely rather than importing 340 people and
+        leaving a church to work out which 12 are missing.
+        """
+        import csv
+        from datetime import date as _date
+        from datetime import datetime, time, timezone
+
+        from app.models import KIND_IMPORTED, Household, Person, PersonEvent
+        from app.stages import FIRST_STAGE, STAGE_CODES
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        with open(path, newline="", encoding="utf-8-sig") as handle:
+            rows = list(csv.DictReader(handle))
+
+        if not rows:
+            raise click.ClickException("That file has no rows.")
+
+        problems, staged = [], []
+        seen_emails = set()
+
+        for line, row in enumerate(rows, start=2):
+            first = (row.get("first_name") or "").strip()
+            last = (row.get("last_name") or "").strip()
+            if not first or not last:
+                problems.append(f"line {line}: needs both a first and last name")
+                continue
+
+            stage = (row.get("stage") or FIRST_STAGE).strip().lower()
+            if stage not in STAGE_CODES:
+                problems.append(
+                    f"line {line}: {stage!r} is not a stage. "
+                    f"Use one of: {', '.join(STAGE_CODES)}"
+                )
+                continue
+
+            email = (row.get("email") or "").strip().lower() or None
+            if email:
+                if email in seen_emails:
+                    problems.append(f"line {line}: {email} appears twice in this file")
+                    continue
+                seen_emails.add(email)
+
+            first_seen = None
+            raw_date = (row.get("first_seen_on") or "").strip()
+            if raw_date:
+                try:
+                    first_seen = _date.fromisoformat(raw_date)
+                except ValueError:
+                    problems.append(f"line {line}: {raw_date!r} is not a date, use YYYY-MM-DD")
+                    continue
+
+            staged.append(
+                {
+                    "first_name": first,
+                    "last_name": last,
+                    "email": email,
+                    "phone": (row.get("phone") or "").strip() or None,
+                    "stage": stage,
+                    "household": (row.get("household") or "").strip() or None,
+                    "first_seen_on": first_seen,
+                }
+            )
+
+        if problems:
+            click.echo(f"{len(problems)} problems. Nothing was written.\n")
+            for problem in problems[:25]:
+                click.echo(f"  {problem}")
+            if len(problems) > 25:
+                click.echo(f"  ... and {len(problems) - 25} more")
+            raise click.ClickException("Fix the file and run it again.")
+
+        created = updated = 0
+        for record in staged:
+            household = None
+            if record["household"]:
+                household = Household.find_or_create(church.id, record["household"])
+                db.session.flush()
+
+            existing = None
+            if record["email"]:
+                existing = db.session.scalar(
+                    db.select(Person).where(
+                        Person.church_id == church.id,
+                        Person.email == record["email"],
+                    )
+                )
+
+            if existing is not None:
+                existing.first_name = record["first_name"]
+                existing.last_name = record["last_name"]
+                existing.phone = record["phone"] or existing.phone
+                if household is not None:
+                    existing.household_id = household.id
+                updated += 1
+                continue
+
+            # An imported roster carries no stage history, so first_seen_on is
+            # the best available proxy for when someone entered the stage they
+            # are in now. Defaulting to the import timestamp instead would tell
+            # every pastor that all 54 of their people arrived this morning,
+            # and would make increment 3's stuck engine blind for months.
+            stage_since = None
+            if record["first_seen_on"]:
+                stage_since = datetime.combine(
+                    record["first_seen_on"], time(12, 0), tzinfo=timezone.utc
+                )
+
+            person = Person(
+                church_id=church.id,
+                first_name=record["first_name"],
+                last_name=record["last_name"],
+                email=record["email"],
+                phone=record["phone"],
+                stage=record["stage"],
+                first_seen_on=record["first_seen_on"],
+                household_id=household.id if household is not None else None,
+                **({"stage_since": stage_since} if stage_since else {}),
+            )
+            db.session.add(person)
+            db.session.flush()
+            PersonEvent.record(
+                person, KIND_IMPORTED, f"Imported at {person.stage_label}"
+            )
+            created += 1
+
+        if dry_run:
+            db.session.rollback()
+            click.echo(f"Dry run. Would create {created} and update {updated}. Nothing written.")
+            return
+
+        db.session.commit()
+        click.echo(f"Created {created}, updated {updated}, at {church.name}.")
+
+    @app.cli.command("people-summary")
+    @click.option("--church", "church_slug", required=True)
+    def people_summary(church_slug):
+        """Stage counts for one church, the same numbers the rail shows."""
+        from app.models import Person
+        from app.stages import stages_for
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        counts = Person.stage_counts(church.id)
+        total = Person.total_for_church(church.id)
+        click.echo(f"{church.name}: {total} people\n")
+        for stage in stages_for(church):
+            count = counts.get(stage.code, 0)
+            share = f"{count / total * 100:4.1f}%" if total else "   -"
+            click.echo(f"  {stage.label:11} {count:4}  {share}")

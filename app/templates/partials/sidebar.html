@@ -14,7 +14,7 @@
   {% for group in nav_groups if visible_nav|selectattr('group','equalto',group)|list %}
     <div class="navlbl">{{ group }}</div>
     {% for item in visible_nav if item.group == group %}
-      <a class="nav" href="{{ url_for('shell.placeholder', key=item.key) if item.key != 'dashboard' else url_for('shell.index') }}"
+      <a class="nav" href="{{ nav_url(item) }}"
          {% if active == item.key %}aria-current="page"{% endif %}>
         <span class="icwrap" aria-hidden="true">{{ icons[item.key]|safe }}</span>
         <span class="lbl">{{ item.label }}</span>

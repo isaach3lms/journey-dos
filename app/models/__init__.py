@@ -7,10 +7,27 @@ from app.models.base import (  # noqa: F401
     utcnow,
 )
 from app.models.church import Church  # noqa: F401
+from app.models.person import Household, Person  # noqa: F401
+from app.models.person_event import (  # noqa: F401
+    EVENT_KINDS,
+    KIND_CREATED,
+    KIND_IMPORTED,
+    KIND_NOTE,
+    KIND_STAGE_CHANGE,
+    PersonEvent,
+)
 from app.models.user import ROLES, User  # noqa: F401
 
 __all__ = [
     "Church",
+    "Household",
+    "Person",
+    "PersonEvent",
+    "EVENT_KINDS",
+    "KIND_CREATED",
+    "KIND_IMPORTED",
+    "KIND_NOTE",
+    "KIND_STAGE_CHANGE",
     "User",
     "ROLES",
     "TenantScoped",

@@ -4,6 +4,10 @@
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
 {% block content %}
+{% if show_rail %}
+  {% with content = people_content %}{% include "partials/rail.html" %}{% endwith %}
+{% endif %}
+
 <section class="card">
   <div class="hd">
     <h2>{{ content.proof_heading }}</h2>

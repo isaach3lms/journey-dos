@@ -3,9 +3,10 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 and 1 complete.** Foundation, tenancy, identity, and
-roles. 118 tests passing. No feature screens yet; every nav item resolves to a
-placeholder naming the increment it arrives in.
+**Status: increments 0, 1, and 2 complete.** Foundation, tenancy, identity,
+roles, and the roster. 165 tests passing. People is a real screen; the
+remaining nav items resolve to placeholders naming the increment they arrive
+in.
 
 ---
 
@@ -30,6 +31,9 @@ flask build-error-pages
 flask create-user --church journey --email pastor@thejourneychurchsemo.com --name "Pastor Reed" --role staff
 flask create-user --church journey --email dana@thejourneychurchsemo.com --name "Dana Webb" --role leader
 flask create-user --church journey --email alicia@thejourneychurchsemo.com --name "Alicia Romero" --role member
+
+# Journey's roster: 54 people across 28 households.
+flask import-people --church journey --file sample-data/journey-roster.csv
 
 flask run
 ```
@@ -71,6 +75,8 @@ python -m pytest
 | `flask unlock-user --church x --email y` | Clear a lockout without changing the password. |
 | `flask set-domain --church x --domain host` | Point a hostname at a church. |
 | `flask routing-check` | Show which hosts resolve to which church. |
+| `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
+| `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
 
 ---
 
@@ -90,6 +96,8 @@ These are not conventions. Each one has a test that fails the build.
 | A session from one church is refused at another | `User.get_id`, `load_user`; `test_auth.py::TestCrossTenantIsolation` |
 | A hidden nav link is not a permission | Route-level role check; `test_auth.py::test_hiding_a_link_is_not_the_enforcement` |
 | The roadmap card cannot claim an unbuilt increment is shipped | `SHIPPED_INCREMENTS`; `test_shell.py::TestRoadmapHonesty` |
+| No person is ever loaded by primary key alone | `Person.get_for_church`; `test_people.py::TestTenantIsolation` |
+| An import writes all rows or none | `flask import-people`; `test_people.py::TestImport` |
 
 ### Three rules that earned their tests the hard way
 
@@ -200,6 +208,71 @@ query override.
 | One service per church | $7/mo each | Breaks "adding a church is a row" |
 | Path prefix, `/journey/` | $0 | Works now, changes every URL later, reads as a shared app to a pastor |
 
+
+---
+
+## People, households, and stages
+
+### Stages are Python, not rows
+
+`app/stages.py` holds seven stages in order. `Person.stage` stores the code and
+a check constraint rejects anything else, so a typo in an import file fails at
+write time rather than producing a person at a stage that does not exist.
+
+Customizable stages are part of the pitch against Planning Center. When one
+church wants six stages with different names, this becomes a per-church table.
+That change is contained because every read already goes through
+`stages_for(church)`, which today ignores its argument. Nothing indexes into
+`STAGES` directly.
+
+### `stage_since` is the load-bearing column
+
+Increment 3's stuck engine measures time in the current stage. Two consequences
+that are easy to get wrong and expensive to fix later:
+
+- **A stage move resets it.** Otherwise someone who just advanced would
+  immediately read as stuck.
+- **Import sets it from `first_seen_on`, not from the import timestamp.**
+  Defaulting to "now" would tell a pastor that all 54 of his people arrived
+  this morning, and would leave the stuck engine blind for months.
+
+### Tenant isolation
+
+Every id in this increment arrives from a URL, and an id is only a number:
+nothing about it says which church it belongs to. There is no
+`db.session.get(Person, id)` anywhere in the codebase. `Person.get_for_church`
+takes both and puts the church in the WHERE clause, so the mistake is not
+available to make.
+
+Cross-church access returns **404, not 403**. A 403 confirms the id exists
+somewhere, which is itself a disclosure.
+
+`PersonEvent.record` takes the church from the person rather than as an
+argument, so an event cannot be filed against the wrong tenant by passing the
+wrong number.
+
+### Importing a roster
+
+```bash
+flask import-people --church journey --file sample-data/journey-roster.csv --dry-run
+flask import-people --church journey --file sample-data/journey-roster.csv
+flask people-summary --church journey
+```
+
+Columns, header row required:
+
+```
+first_name, last_name, email, phone, stage, household, first_seen_on
+```
+
+Every row is validated before a single row is written. A file with one bad
+stage value fails entirely, because importing 340 people and leaving a church
+to work out which 12 are missing is worse than importing nothing.
+
+`sample-data/journey-roster.csv` is a realistic church-plant roster: 54 people
+across 28 households, children without email addresses, and a stage
+distribution shaped like a plant rather than a mature church.
+
 ---
 
 ## Deploying to Render
@@ -263,10 +336,14 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 2, people, households, and stages. Journey's roster, the Journey rail
-with real counts, and the person drawer with a real timeline, per spec v3
-section D.1.
+Increment 3, the stuck engine, next steps, and the contact log. "43 days as a
+Guest, no contact in 3 weeks." Assign it, log the call, watch the flag clear.
+Per spec v3 section D.1.
+
+`Stage.expected_days` in `app/stages.py` is already the threshold that engine
+reads, and `stage_since` is already written correctly, so increment 3 adds
+logic rather than a backfill.
 
 Three items in spec section F are still open and none of them block increment
-2: the revised Settings cost comparison, copy for three screens, and the
+3: the revised Settings cost comparison, copy for three screens, and the
 onboarding checklist owner.

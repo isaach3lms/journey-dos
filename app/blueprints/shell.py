@@ -8,7 +8,9 @@ end to end without dead links.
 from flask import Blueprint, abort, g, render_template
 from flask_login import current_user, login_required
 
-from app.content import INCREMENT_NAMES, NAV_ITEMS, SHELL, SHIPPED_INCREMENTS
+from app.content import INCREMENT_NAMES, NAV_ITEMS, PEOPLE, SHELL, SHIPPED_INCREMENTS
+from app.models import Person
+from app.stages import stages_for
 
 bp = Blueprint("shell", __name__)
 
@@ -18,10 +20,20 @@ _BY_KEY = {item.key: item for item in NAV_ITEMS}
 @bp.get("/")
 @login_required
 def index():
+    # Members do not see the rail. It is a staff and leader view of everyone
+    # else, which is not a thing a member should be handed.
+    show_rail = current_user.at_least("leader")
+
     return render_template(
         "shell/index.html",
         church=g.church,
         content=SHELL,
+        people_content=PEOPLE,
+        show_rail=show_rail,
+        stages=stages_for(g.church) if show_rail else (),
+        counts=Person.stage_counts(g.church.id) if show_rail else {},
+        total=Person.total_for_church(g.church.id) if show_rail else 0,
+        active_stage=None,
         active="dashboard",
         increment_names=INCREMENT_NAMES,
         shipped=SHIPPED_INCREMENTS,

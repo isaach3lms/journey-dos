@@ -5,7 +5,7 @@ placeholder that names the increment it arrives in, so the shell can be walked
 end to end without dead links.
 """
 
-from flask import Blueprint, abort, g, render_template
+from flask import Blueprint, abort, g, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from app.content import INCREMENT_NAMES, NAV_ITEMS, PEOPLE, SHELL, SHIPPED_INCREMENTS, STUCK
@@ -21,6 +21,12 @@ _BY_KEY = {item.key: item for item in NAV_ITEMS}
 @bp.get("/")
 @login_required
 def index():
+    # A member has no business on the staff dashboard. Redirecting rather than
+    # rendering a stripped-down version means there is one dashboard to
+    # maintain instead of two that drift apart.
+    if current_user.role == "member":
+        return redirect(url_for("member.home"))
+
     # Members do not see the rail. It is a staff and leader view of everyone
     # else, which is not a thing a member should be handed.
     show_rail = current_user.at_least("leader")

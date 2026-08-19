@@ -169,12 +169,16 @@ class TestRoles:
                 "/resources/", "/messages/", "/settings/"} <= targets
 
     def test_a_member_does_not_see_staff_navigation(self, member):
-        targets = self._nav_targets(member.get("/", headers={"Host": JOURNEY_HOST}))
-        assert "/giving/" not in targets
-        assert "/settings/" not in targets
-        assert "/people/" not in targets
-        # But they do see what is theirs.
-        assert {"/", "/resources/", "/messages/"} <= targets
+        """Since increment 5 a member is redirected to the member app entirely,
+        so there is no staff sidebar to filter. The stronger assertion is that
+        the staff shell is not reachable at all."""
+        r = member.get("/", headers={"Host": JOURNEY_HOST})
+        assert r.status_code == 302
+        assert "/me/" in r.headers["Location"]
+
+        landed = member.get("/me/", headers={"Host": JOURNEY_HOST})
+        assert b'class="navstrip"' not in landed.data
+        assert b"/people/" not in landed.data
 
     def test_a_leader_sees_people_but_not_giving(self, leader):
         targets = self._nav_targets(leader.get("/", headers={"Host": JOURNEY_HOST}))

@@ -1,0 +1,57 @@
+{# The member app.
+
+   Phone-shaped on a desktop so staff can see exactly what a member sees, and
+   full-bleed on a phone where the frame would be absurd. One template, one
+   stylesheet, the same brand tokens as the staff view. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ church.name }}{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{{ palette.font_url }}" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+<style>:root{ {{ brand_css|safe }} }</style>
+</head>
+<body class="memberbody">
+
+{% if is_preview %}
+  <div class="previewbar">
+    {{ content.preview_note.format(name=person.first_name) }}
+    <a href="{{ url_for('shell.index') }}">{{ content.back_to_staff }}</a>
+  </div>
+{% endif %}
+
+<div class="phonewrap">
+  <div class="phone">
+    <header class="mhead">
+      {% if palette.logo_reversed %}
+        <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+             alt="{{ church.name }}">
+      {% else %}
+        <div class="crest">{{ church.name[:2]|upper }}</div>
+      {% endif %}
+    </header>
+
+    <main class="mbody">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+
+    <nav class="mtabs" aria-label="Member">
+      <a href="{{ url_for('member.home') }}"
+         {% if tab == 'home' %}aria-current="page"{% endif %}>{{ content.tab_home }}</a>
+      <a href="{{ url_for('member.you') }}"
+         {% if tab == 'you' %}aria-current="page"{% endif %}>{{ content.tab_you }}</a>
+    </nav>
+  </div>
+</div>
+
+</body>
+</html>

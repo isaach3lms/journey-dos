@@ -488,3 +488,102 @@ form.inline .select{min-width:170px}
 .pref .tag{flex:none;margin-top:2px}
 .pref .pn{font-weight:500;font-size:13.5px}
 .pref .pe{font-size:12px;color:var(--muted-2)}
+
+/* ============================================================
+   The member app.
+
+   Phone-shaped on a desktop so staff see exactly what a member
+   sees. Full-bleed below 700px, where a phone frame drawn on a
+   phone would be absurd.
+   ============================================================ */
+.memberbody{background:var(--bone);min-height:100vh}
+
+.previewbar{
+  background:var(--chrome);color:#fff;font-size:12.5px;
+  padding:9px 18px;display:flex;gap:12px;align-items:center;
+}
+.previewbar a{color:var(--gold);font-weight:500}
+
+.phonewrap{display:grid;place-items:start center;padding:26px 16px 40px}
+.phone{
+  width:100%;max-width:392px;
+  background:var(--white);
+  border:1px solid var(--line-soft);border-radius:26px;
+  box-shadow:var(--shadow-md);overflow:hidden;
+  display:flex;flex-direction:column;min-height:660px;
+}
+
+.mhead{background:var(--chrome);padding:16px 20px}
+.mhead .mark{width:124px;height:auto;display:block}
+.mhead .crest{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
+  font-family:var(--font-display);font-weight:700;font-size:12px;
+  background:var(--accent);color:#fff;
+}
+
+.mbody{flex:1;padding:20px 18px 24px;display:grid;gap:14px;align-content:start}
+
+.mgreet{font-size:21px;font-weight:600}
+.msub{font-size:12.5px;color:var(--muted);margin:3px 0 4px}
+
+.mcard{
+  background:var(--white);border:1px solid var(--line-soft);
+  border-radius:var(--r);padding:15px 16px;
+}
+.mcard.dark{background:var(--deep);border-color:transparent;color:#fff}
+.mcard.dark .mlbl{color:rgba(255,255,255,.5)}
+.mcard.dark .mnote{color:rgba(255,255,255,.62)}
+
+.mlbl{
+  font-size:10px;letter-spacing:.13em;text-transform:uppercase;
+  font-weight:600;color:var(--muted-2);margin-bottom:7px;
+}
+.mbig{font-family:var(--font-display);font-size:22px;font-weight:600;line-height:1.15}
+.mtitle{font-size:14.5px;font-weight:600}
+.mnote{font-size:12.5px;line-height:1.5;color:var(--muted);margin:6px 0 0}
+.mstep{padding:8px 0;border-top:1px solid var(--line-soft)}
+.mstep:first-of-type{border-top:none;padding-top:0}
+.mmeta{font-size:11.5px;color:var(--muted-2);margin-top:2px}
+
+/* Progress along the rail. Gold on the deep card, which is the one
+   surface where gold has the contrast to carry meaning. */
+.mrail{display:flex;gap:4px;margin-top:13px}
+.mrail i{flex:1;height:4px;border-radius:999px;background:rgba(255,255,255,.16)}
+.mrail i.done{background:rgba(246,193,75,.55)}
+.mrail i.now{background:var(--gold)}
+
+.mpin{
+  font-size:34px;font-weight:700;letter-spacing:.16em;
+  color:var(--deep);line-height:1.1;
+}
+
+.mrow{
+  display:flex;justify-content:space-between;gap:12px;
+  font-size:13px;padding:7px 0;border-top:1px solid var(--line-soft);
+}
+.mrow:first-of-type{border-top:none}
+.mrow span{color:var(--muted)}
+
+.mcheck{margin:0 0 10px;font-size:13px}
+.mcheck input:disabled + span{color:var(--muted-2)}
+.mbody form + form{margin-top:9px}
+
+.mtabs{
+  display:flex;border-top:1px solid var(--line-soft);background:var(--white);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.mtabs a{
+  flex:1;text-align:center;padding:13px 0;
+  font-size:12.5px;font-weight:500;color:var(--muted);
+}
+.mtabs a[aria-current="page"]{
+  color:var(--ink);font-weight:600;box-shadow:inset 0 2px 0 var(--gold);
+}
+
+@media (max-width:700px){
+  .phonewrap{padding:0}
+  .phone{
+    max-width:none;min-height:100vh;border:none;border-radius:0;box-shadow:none;
+  }
+  .mtabs{position:sticky;bottom:0}
+}

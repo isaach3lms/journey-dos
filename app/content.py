@@ -117,7 +117,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5}
 
 SHELL = {
     "title": "Foundation",
@@ -190,6 +190,12 @@ SHELL = {
             "Somebody can unsubscribe in the hour between a message being "
             "queued and being sent. Receipts and account email still reach "
             "them, because those are not marketing.",
+        ),
+        (
+            "One database, two readers",
+            "The member app and this dashboard read the same rows. A person "
+            "sees only their own record, because no route in the member app "
+            "accepts a person id at all.",
         ),
         (
             "Logging a call clears the flag, a note does not",
@@ -440,6 +446,73 @@ EMAIL = {
         "can update your preferences directly."
     ),
     "unsub_resubscribe": "Changed your mind? Ask the church to turn it back on.",
+}
+
+
+MEMBER = {
+    "app_name": "Home",
+    "tab_home": "Home",
+    "tab_you": "You",
+
+    "greeting_morning": "Good morning, {name}",
+    "greeting_afternoon": "Good afternoon, {name}",
+    "greeting_evening": "Good evening, {name}",
+    "since": "Day {days} with {church}",
+    "since_new": "Welcome to {church}",
+
+    "next_step_label": "Your next step",
+    "next_step_none": "Nothing on your list right now.",
+    "next_step_none_hint": "When there is a next step for you, it shows up here.",
+    "next_step_owner": "{owner} is following up",
+    "next_step_due": "By {date}",
+
+    "stage_label": "Where you are",
+    "stage_meaning": "{meaning}",
+
+    "household_label": "Your family",
+    "household_alone": "Just you on file",
+    "household_none": "We do not have your family on file yet.",
+
+    "pin_label": "Check-in code",
+    "pin_hint": (
+        "Use this at the kids check-in kiosk. It tells us which family you "
+        "are. It is not a password and it does not authorize a pickup."
+    ),
+    "pin_none": "No code yet. Ask the church office.",
+
+    "profile_label": "Your details",
+    "email_label": "Email",
+    "phone_label": "Phone",
+    "no_email": "No email on file",
+    "no_phone": "No phone on file",
+    "fix_details": (
+        "Something wrong? Tell the church office and they can correct it."
+    ),
+
+    "prefs_label": "Email you get",
+    "prefs_hint": (
+        "Receipts and anything about your account or your children always "
+        "send. Everything else is up to you."
+    ),
+    "prefs_always": "Always",
+    "prefs_save": "Save",
+    "prefs_saved": "Saved.",
+    "opted_out_note": "You are unsubscribed from optional email.",
+    "resubscribe": "Turn optional email back on",
+    "unsubscribe_all": "Turn all optional email off",
+
+    "sign_out": "Sign out",
+
+    # Shown to a login with no roster record behind it.
+    "unlinked_title": "We have your login, not your record yet",
+    "unlinked_body": (
+        "Your account works, but it is not connected to your record at the "
+        "church. Ask the office to link it and this page fills in."
+    ),
+
+    # Staff previewing the member app.
+    "preview_note": "You are looking at the member app as {name}.",
+    "back_to_staff": "Back to the staff view",
 }
 
 ERRORS = {

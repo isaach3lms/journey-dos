@@ -231,8 +231,22 @@ a{{
             raise click.ClickException(str(exc)) from exc
 
         db.session.add(user)
+        db.session.flush()
+
+        # A login with no pastoral record shows an empty member app. Linking
+        # on the way in avoids that for the common case where the church
+        # already has the person on the roster under the same address.
+        linked = user.link_person_by_email()
         db.session.commit()
+
         click.echo(f"Created {role} {email} at {church.name}.")
+        if linked:
+            click.echo(f"  Linked to the roster record for {user.person.full_name}.")
+        else:
+            click.echo(
+                "  No roster record with that address. Run `flask link-users` "
+                "after importing, or link by hand."
+            )
 
     @app.cli.command("set-password")
     @click.option("--church", "church_slug", required=True)
@@ -709,3 +723,91 @@ a{{
         ).rowcount
         db.session.commit()
         click.echo(f"Released {released} abandoned claims.")
+
+
+    # -- increment 5 --------------------------------------------------------
+
+    @app.cli.command("link-users")
+    @click.option("--church", "church_slug", default=None)
+    @click.option("--dry-run", is_flag=True)
+    def link_users(church_slug, dry_run):
+        """Attach logins to roster records by matching email address."""
+        from app.models import User
+
+        query = db.select(User).where(User.person_id.is_(None))
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            query = query.where(User.church_id == church.id)
+
+        linked, unmatched = 0, []
+        for user in db.session.scalars(query):
+            if user.link_person_by_email():
+                linked += 1
+            else:
+                unmatched.append(user.email)
+
+        if dry_run:
+            db.session.rollback()
+            click.echo(f"Dry run. Would link {linked}. Nothing written.")
+        else:
+            db.session.commit()
+            click.echo(f"Linked {linked} logins to roster records.")
+
+        if unmatched:
+            click.echo(f"\nNo roster record for {len(unmatched)}:")
+            for email in unmatched[:15]:
+                click.echo(f"  {email}")
+
+    @app.cli.command("assign-pins")
+    @click.option("--church", "church_slug", required=True)
+    def assign_pins(church_slug):
+        """Give every household without one a check-in PIN."""
+        from app.models import Household
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        households = db.session.scalars(
+            db.select(Household).where(
+                Household.church_id == church.id,
+                Household.checkin_pin.is_(None),
+            )
+        ).all()
+
+        for household in households:
+            household.ensure_checkin_pin()
+        db.session.commit()
+
+        total = db.session.scalar(
+            db.select(db.func.count(Household.id)).where(
+                Household.church_id == church.id
+            )
+        )
+        click.echo(f"Assigned {len(households)} PINs. {total} households on file.")
+
+    @app.cli.command("rotate-pin")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--household", "household_name", required=True)
+    def rotate_pin(church_slug, household_name):
+        """Rotate one household's PIN. For custody situations."""
+        from app.models import Household
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        household = db.session.scalar(
+            db.select(Household).where(
+                Household.church_id == church.id,
+                Household.name == household_name,
+            )
+        )
+        if household is None:
+            raise click.ClickException(f"No household named {household_name!r}.")
+
+        household.regenerate_checkin_pin()
+        db.session.commit()
+        click.echo(f"{household.name} now has a new check-in PIN.")

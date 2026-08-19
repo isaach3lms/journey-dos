@@ -3,10 +3,10 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 4 complete.** Foundation, tenancy, identity,
-roles, the roster, the stuck engine, and the outbox. 254 tests passing.
-Dashboard and People are real screens; the remaining nav items resolve to
-placeholders naming the increment they arrive in.
+**Status: increments 0 through 5 complete.** Foundation, tenancy, identity,
+roles, the roster, the stuck engine, the outbox, and the member app. 291 tests
+passing. Dashboard, People, and the member app are real screens; the remaining
+nav items resolve to placeholders naming the increment they arrive in.
 
 ---
 
@@ -82,6 +82,9 @@ python -m pytest
 | `flask send-outbox [--church x]` | Send what is queued. This is the worker. |
 | `flask outbox-status [--church x]` | What is in the outbox, by status. |
 | `flask release-claims --minutes 15` | Return rows claimed by a worker that died. |
+| `flask link-users [--church x]` | Attach logins to roster records by email. |
+| `flask assign-pins --church x` | Give every household a check-in PIN. |
+| `flask rotate-pin --church x --household "Name"` | Rotate one household's PIN. |
 
 ---
 
@@ -432,6 +435,75 @@ Set `RESEND_API_KEY` in the Render dashboard, never in `render.yaml`. Use a
 sending-only key, not a full-access one. A key committed to git is a rotated
 key.
 
+
+---
+
+## The member app
+
+`/me/` and `/me/you/`. The same database and the same brand tokens as the staff
+view, read by a different person.
+
+Phone-shaped on a desktop so staff can see exactly what a member sees, and
+full-bleed below 700px where a phone frame drawn on a phone would be absurd.
+One template, one stylesheet.
+
+### A member cannot see anyone else, structurally
+
+No route in the member blueprint accepts a person id. Not one. Every view loads
+`current_user.person` and nothing else, so there is no id to tamper with and no
+scoping check to forget. A test asserts this by walking the URL map and failing
+if any `member.*` rule has arguments.
+
+`User.person` is a tenant-scoped lookup rather than a SQLAlchemy relationship. A
+`person_id` pointing at another church would be a data error, and a relationship
+would happily load it.
+
+### Staff preview, not impersonation
+
+Staff and leaders can open the member app and see **their own** record, with a
+banner saying so. There is deliberately no way to view it as somebody else.
+Reading a member's private screen through their eyes would mean a staff account
+seeing a private view with no audit trail, and nothing in this increment needs
+it.
+
+Members are redirected from `/` to `/me/` rather than shown a stripped-down
+dashboard. One dashboard to maintain instead of two that drift apart.
+
+### The check-in PIN
+
+Per spec v3 section B, generated rather than derived from a phone number. With
+a uniqueness constraint and a retry loop, two households cannot share a code, so
+the disambiguation screen the phone-derived design required is not in the build
+at all.
+
+**The PIN is identification, not authorization.** It answers which family you
+are at a kiosk. It must never authorize a pickup; the pickup code, generated per
+household per session, is the actual control and arrives with Kids at increment
+11. Anyone tempted to reuse `checkin_pin` as a credential should read
+`app/checkin_pin.py` first.
+
+Blocked on generation: all repeats, all ascending and descending runs in both
+directions, and the church's own street number, which is on the building and on
+every piece of mail they send.
+
+Four digits is 10,000 codes less the blocklist. At Journey's projected 150 to
+250 households that is around 2 percent occupancy. The column is `VARCHAR(6)`
+so widening past 2,500 households is a config change, not a migration. Running
+out of attempts **raises** rather than returning a duplicate: two families with
+one code at a kiosk is a child-safety problem, not an inconvenience.
+
+The PIN is minted on first view of the You tab, not at household creation. Most
+households never open that screen, and an unused secret is one more thing to
+look after for no benefit.
+
+### Linking a login to a roster record
+
+A login and a pastoral record are separate rows. `flask create-user` attaches
+them by matching email on the way in, and `flask link-users` does it in bulk
+after an import. Matching on email is imperfect, which is why it is used only
+here: the worst case is a member seeing an empty Home screen until staff link
+them by hand.
+
 ---
 
 ## Deploying to Render
@@ -495,13 +567,13 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 5, the member app shell. The same person seen as staff and on a
-phone, Journey's logo on both, household PIN visible. Per spec v3 section D.1.
+Increment 6, resources, reader, and progress. Write a five day plan, publish it,
+read it on the phone, watch completion move. Per spec v3 section D.1.
 
-Self-serve password reset is now unblocked: the outbox exists, `account` is a
-transactional category, and the login page still says reset arrives at
-increment 4. Worth closing before or alongside increment 5.
+**Self-serve password reset is now overdue.** The outbox exists and `account`
+is a transactional category, so nothing blocks it, but the login page still
+tells people it arrives at increment 4. Either build it or change that copy.
 
 Three items in spec section F are still open and none of them block increment
-5: the revised Settings cost comparison, copy for three screens, and the
+6: the revised Settings cost comparison, copy for three screens, and the
 onboarding checklist owner.

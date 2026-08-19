@@ -1,0 +1,10 @@
+{% extends "public.html" %}
+{% block title %}{{ content.unlinked_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.unlinked_title }}</h1>
+  <p>{{ content.unlinked_body }}</p>
+  <form method="post" action="{{ url_for('auth.logout') }}">
+    {{ csrf_field() }}
+    <button class="btn wide" type="submit">{{ content.sign_out }}</button>
+  </form>
+{% endblock %}

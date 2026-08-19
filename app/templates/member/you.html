@@ -1,0 +1,76 @@
+{% extends "member/base.html" %}
+{% block title %}{{ content.tab_you }} | {{ church.name }}{% endblock %}
+
+{% block content %}
+<h1 class="mgreet">{{ person.full_name }}</h1>
+<p class="msub">{{ person.stage_label }} at {{ church.name }}</p>
+
+<section class="mcard">
+  <div class="mlbl">{{ content.pin_label }}</div>
+  {% if pin %}
+    {# Permanently visible, per spec v3 B.2: the member app is the first of
+       four places a generated PIN reaches the parent who did not choose it. #}
+    <div class="mpin mono">{{ pin }}</div>
+    <p class="mnote">{{ content.pin_hint }}</p>
+  {% else %}
+    <p class="mnote">{{ content.pin_none }}</p>
+  {% endif %}
+</section>
+
+<section class="mcard">
+  <div class="mlbl">{{ content.household_label }}</div>
+  {% if person.household %}
+    <div class="mtitle">{{ person.household.name }}</div>
+    {% if household_members %}
+      <p class="mnote">
+        {% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+      </p>
+    {% else %}
+      <p class="mnote">{{ content.household_alone }}</p>
+    {% endif %}
+  {% else %}
+    <p class="mnote">{{ content.household_none }}</p>
+  {% endif %}
+</section>
+
+<section class="mcard">
+  <div class="mlbl">{{ content.profile_label }}</div>
+  <div class="mrow"><span>{{ content.email_label }}</span><b>{{ person.email or content.no_email }}</b></div>
+  <div class="mrow"><span>{{ content.phone_label }}</span><b>{{ person.phone or content.no_phone }}</b></div>
+  <p class="mnote">{{ content.fix_details }}</p>
+</section>
+
+<section class="mcard">
+  <div class="mlbl">{{ content.prefs_label }}</div>
+  <p class="mnote">{{ content.prefs_hint }}</p>
+
+  {% if person.has_opted_out %}
+    <p class="mnote"><b>{{ content.opted_out_note }}</b></p>
+  {% endif %}
+
+  <form method="post" action="{{ url_for('member.set_preferences') }}">
+    {{ csrf_field() }}
+    {% for category in optional_categories %}
+      <label class="check mcheck">
+        <input type="checkbox" name="cat_{{ category.code }}"
+               {% if person.allows(category.code) %}checked{% endif %}
+               {% if person.has_opted_out %}disabled{% endif %}>
+        <span>{{ category.label }}</span>
+      </label>
+    {% endfor %}
+    <button class="btn wide" type="submit">{{ content.prefs_save }}</button>
+  </form>
+
+  <form method="post" action="{{ url_for('member.toggle_opt_out') }}">
+    {{ csrf_field() }}
+    <button class="btn ghostbtn wide" type="submit">
+      {% if person.has_opted_out %}{{ content.resubscribe }}{% else %}{{ content.unsubscribe_all }}{% endif %}
+    </button>
+  </form>
+</section>
+
+<form method="post" action="{{ url_for('auth.logout') }}">
+  {{ csrf_field() }}
+  <button class="btn ghostbtn wide" type="submit">{{ content.sign_out }}</button>
+</form>
+{% endblock %}

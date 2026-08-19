@@ -53,11 +53,20 @@ class Household(TenantScoped, TimestampMixin, db.Model):
 
     __tablename__ = "household"
     __table_args__ = (
+        # One code per household per church. This constraint is what makes the
+        # generator's retry loop correct rather than hopeful.
+        UniqueConstraint("church_id", "checkin_pin", name="uq_household_checkin_pin"),
         Index("ix_household_church_name", "church_id", "name"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
+
+    # Kiosk check-in code. Identification, not authorization: it answers which
+    # family you are, never whether you may collect a child. See
+    # app/checkin_pin.py. VARCHAR(6) so widening past four digits is a config
+    # change rather than a migration.
+    checkin_pin: Mapped[Optional[str]] = mapped_column(String(6), index=True)
 
     address_line: Mapped[Optional[str]] = mapped_column(String(200))
     city: Mapped[Optional[str]] = mapped_column(String(80))
@@ -76,6 +85,34 @@ class Household(TenantScoped, TimestampMixin, db.Model):
         return db.session.scalar(
             db.select(cls).where(cls.id == household_id, cls.church_id == church_id)
         )
+
+    def ensure_checkin_pin(self) -> str:
+        """Assign a PIN if this household has none. Callers must commit."""
+        from app.checkin_pin import generate_pin
+
+        if self.checkin_pin:
+            return self.checkin_pin
+
+        def is_taken(code: str) -> bool:
+            return db.session.scalar(
+                db.select(Household.id).where(
+                    Household.church_id == self.church_id,
+                    Household.checkin_pin == code,
+                )
+            ) is not None
+
+        self.checkin_pin = generate_pin(is_taken)
+        return self.checkin_pin
+
+    def regenerate_checkin_pin(self) -> str:
+        """Rotate the code.
+
+        Needed for custody situations and for a family who believe their code
+        is known to someone it should not be. Audit logging arrives with the
+        audit surface at increment 15.
+        """
+        self.checkin_pin = None
+        return self.ensure_checkin_pin()
 
     @classmethod
     def find_or_create(cls, church_id: int, name: str) -> "Household":
@@ -457,3 +494,4 @@ class Person(TenantScoped, TimestampMixin, db.Model):
                 allowed=allowed,
             )
         )
+

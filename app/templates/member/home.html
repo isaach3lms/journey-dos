@@ -1,0 +1,39 @@
+{% extends "member/base.html" %}
+{% block title %}{{ content.tab_home }} | {{ church.name }}{% endblock %}
+
+{% block content %}
+<h1 class="mgreet">{{ greeting }}</h1>
+<p class="msub">
+  {% if days %}{{ content.since.format(days=days, church=church.name) }}
+  {% else %}{{ content.since_new.format(church=church.name) }}{% endif %}
+</p>
+
+<section class="mcard dark">
+  <div class="mlbl">{{ content.stage_label }}</div>
+  <div class="mbig">{{ person.stage_label }}</div>
+  {% if stage %}<p class="mnote">{{ stage.meaning }}</p>{% endif %}
+  <div class="mrail" aria-hidden="true">
+    {% for s in stages %}
+      <i class="{% if s.order < person.stage_order %}done{% elif s.order == person.stage_order %}now{% endif %}"></i>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="mcard">
+  <div class="mlbl">{{ content.next_step_label }}</div>
+  {% if open_steps %}
+    {% for step in open_steps %}
+      <div class="mstep">
+        <div class="mtitle">{{ step.title }}</div>
+        <div class="mmeta">
+          {% if step.owner_name %}{{ content.next_step_owner.format(owner=step.owner_name) }}{% endif %}
+          {% if step.due_on %} &middot; {{ content.next_step_due.format(date=step.due_on.strftime("%B %-d")) }}{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <div class="mtitle">{{ content.next_step_none }}</div>
+    <p class="mnote">{{ content.next_step_none_hint }}</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -240,3 +240,44 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
                 cls.email == email.strip().lower(),
             )
         )
+
+
+    # -- the link to the pastoral record ------------------------------------
+
+    @property
+    def person(self):
+        """This user's Person row, or None.
+
+        Deliberately a lookup rather than a relationship. A `person_id` from
+        another church would be a data error, and a relationship would happily
+        load it; this goes through the tenant-scoped accessor so it cannot.
+        """
+        if not self.person_id:
+            return None
+        from app.models.person import Person
+
+        return Person.get_for_church(self.church_id, self.person_id)
+
+    def link_person_by_email(self) -> bool:
+        """Attach the roster record with the same address, if there is one.
+
+        Matching on email is imperfect and deliberately not automatic anywhere
+        a mistake would be costly. Here the worst case is that a member sees an
+        empty Home screen until staff link them by hand, which is recoverable.
+        """
+        from app.models.person import Person
+
+        if self.person_id:
+            return False
+
+        match = db.session.scalar(
+            db.select(Person).where(
+                Person.church_id == self.church_id,
+                Person.email == self.email,
+                Person.is_archived.is_(False),
+            )
+        )
+        if match is None:
+            return False
+        self.person_id = match.id
+        return True

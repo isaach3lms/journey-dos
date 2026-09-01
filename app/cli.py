@@ -187,6 +187,22 @@ a{{
         target.write_text(html, encoding="utf-8")
         click.echo(f"Wrote {target} using the {palette_key} palette.")
 
+        unconfigured = html.replace(
+            f"<title>{ERRORS['500_title']}</title>",
+            f"<title>{ERRORS['unconfigured_title']}</title>",
+        ).replace(
+            f"<h1>{ERRORS['500_title']}</h1>",
+            f"<h1>{ERRORS['unconfigured_title']}</h1>",
+        ).replace(
+            f"<p>{ERRORS['500_body']}</p>",
+            f"<p>{ERRORS['unconfigured_body']}</p>"
+            f"<p>{ERRORS['unconfigured_fix']}</p>",
+        ).replace('<a href="/">Go back</a>', "")
+
+        target = Path(current_app.static_folder) / "unconfigured.html"
+        target.write_text(unconfigured, encoding="utf-8")
+        click.echo(f"Wrote {target}.")
+
     @app.cli.command("check-contrast")
     def check_contrast():
         """Report the contrast of every palette against white text."""

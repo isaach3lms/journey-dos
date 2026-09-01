@@ -22,6 +22,7 @@ from werkzeug.exceptions import HTTPException
 from app.content import AUTH, ERRORS
 
 STATIC_500 = "500.html"
+STATIC_UNCONFIGURED = "unconfigured.html"
 
 
 def _static_error_page(filename: str, status: int):
@@ -42,9 +43,13 @@ def register_error_handlers(app) -> None:
 
     @app.errorhandler(404)
     def not_found(error):
-        # A 404 raised before tenant resolution has no brand to render with.
+        # No tenant resolved, so there is no brand to render with and no
+        # crash to report. Serving the 500 page here told an operator that
+        # something broke when in fact nothing had: the host simply is not
+        # mapped to a church yet. That misdiagnosis cost real time, so this
+        # case gets its own page that names the actual fix.
         if getattr(g, "church", None) is None:
-            return _static_error_page(STATIC_500, 404)
+            return _static_error_page(STATIC_UNCONFIGURED, 404)
         description = getattr(error, "description", None) or ERRORS["404_body"]
         return (
             render_template(

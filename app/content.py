@@ -516,6 +516,20 @@ MEMBER = {
 }
 
 ERRORS = {
+    # Shown when the host resolves to no church at all. Distinct from a 500 on
+    # purpose: this is a configuration answer, not a crash, and telling an
+    # operator "something broke on our end" sends them to read tracebacks that
+    # do not exist.
+    "unconfigured_title": "No church is set up at this address",
+    "unconfigured_body": (
+        "The application is running and the database is reachable. No church "
+        "is mapped to this hostname yet, so there is nothing to show."
+    ),
+    "unconfigured_fix": (
+        "If you are setting this up: open a shell on this service and run "
+        "flask routing-check to see what resolves, then "
+        "flask set-domain --church <slug> --domain <this hostname>."
+    ),
     "404_title": "Nothing at this address",
     "404_body": (
         "No church is configured for this address, or the page has moved. "

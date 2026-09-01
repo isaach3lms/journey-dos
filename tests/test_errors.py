@@ -66,3 +66,38 @@ class TestErrorHandling:
 
         r = client.get("/forbidden?tenant=journey", headers={"Host": "localhost"})
         assert r.status_code == 403
+
+
+class TestUnconfiguredTenant:
+    """A host with no church is a configuration answer, not a crash."""
+
+    def test_it_does_not_claim_something_broke(self, app, client):
+        app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
+        app.config["PLATFORM_DOMAIN"] = ""
+
+        r = client.get("/", headers={"Host": "not-mapped.example.com"})
+        assert r.status_code == 404
+        assert b"Something broke on our end" not in r.data
+        assert b"No church is set up at this address" in r.data
+
+    def test_it_names_the_command_that_fixes_it(self, app, client):
+        app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
+        app.config["PLATFORM_DOMAIN"] = ""
+
+        r = client.get("/", headers={"Host": "not-mapped.example.com"})
+        assert b"set-domain" in r.data
+        assert b"routing-check" in r.data
+
+    def test_the_page_needs_no_database(self):
+        from pathlib import Path
+
+        body = (
+            Path(__file__).resolve().parent.parent
+            / "app" / "static" / "unconfigured.html"
+        ).read_text(encoding="utf-8")
+        assert "{%" not in body and "{{" not in body
+
+    def test_a_real_404_inside_a_church_is_unaffected(self, staff):
+        r = staff.get("/nope/", headers={"Host": "journey.dos.test"})
+        assert r.status_code == 404
+        assert b"No church is set up" not in r.data

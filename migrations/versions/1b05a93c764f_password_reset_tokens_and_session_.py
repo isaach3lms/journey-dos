@@ -39,7 +39,24 @@ def upgrade():
         batch_op.create_index('ix_reset_token_hash', ['token_hash'], unique=False)
 
     with op.batch_alter_table('user', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('session_version', sa.Integer(), nullable=False))
+        # server_default is required, not cosmetic.
+        #
+        # `user` already has rows in production. ADD COLUMN ... NOT NULL with
+        # no default asks Postgres to put a null in every existing row, and it
+        # refuses. The Python-side `default=1` on the model does not help: it
+        # runs in SQLAlchemy when a new object is created, and never touches
+        # rows that already exist.
+        #
+        # Locally this passed because the development database is rebuilt from
+        # empty, where a table with no rows cannot violate the constraint.
+        batch_op.add_column(
+            sa.Column(
+                'session_version',
+                sa.Integer(),
+                nullable=False,
+                server_default=sa.text('1'),
+            )
+        )
 
     # ### end Alembic commands ###
 

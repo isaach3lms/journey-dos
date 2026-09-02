@@ -40,6 +40,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -151,7 +152,9 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     # so every cookie minted under the old password stops resolving. Without
     # it, someone who reset their password because a device was stolen would
     # find the thief still signed in on that device.
-    session_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    session_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
 
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(

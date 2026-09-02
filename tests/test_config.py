@@ -55,3 +55,34 @@ class TestProductionHardFail:
             }
 
         ProductionConfig.init_app(FakeApp())
+
+
+class TestMigrationsAreSafeOnPopulatedTables:
+    """Local migrations run against an empty database. Production does not.
+
+    A NOT NULL column added with no server default succeeds on an empty table
+    and fails on one with rows, so this class of bug is invisible in
+    development and fatal at deploy time. That happened once.
+    """
+
+    def test_every_not_null_column_added_to_an_existing_table_has_a_default(self):
+        import re
+        from pathlib import Path
+
+        versions = Path(__file__).resolve().parent.parent / "migrations" / "versions"
+        offenders = []
+
+        for path in sorted(versions.glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            # add_column means the table already exists; create_table does not.
+            for match in re.finditer(
+                r"add_column\(\s*sa\.Column\((.*?)\)\s*\)", source, re.S
+            ):
+                column = match.group(1)
+                if "nullable=False" in column and "server_default" not in column:
+                    offenders.append(f"{path.name}: {column[:90]}")
+
+        assert not offenders, (
+            "These add a NOT NULL column to a table that already has rows, "
+            "with nothing to put in them:\n" + "\n".join(offenders)
+        )

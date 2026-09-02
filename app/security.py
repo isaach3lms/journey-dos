@@ -51,8 +51,12 @@ def load_user(composite_id: str):
         return None
 
     try:
-        church_id_str, user_id_str = str(composite_id).split(":", 1)
-        church_id, user_id = int(church_id_str), int(user_id_str)
+        church_id_str, user_id_str, version_str = str(composite_id).split(":", 2)
+        church_id, user_id, version = (
+            int(church_id_str),
+            int(user_id_str),
+            int(version_str),
+        )
     except (ValueError, AttributeError):
         # An old-format or tampered cookie. Sign them out rather than guess.
         return None
@@ -69,6 +73,10 @@ def load_user(composite_id: str):
     if user is None or user.church_id != church.id:
         return None
     if not user.is_active:
+        return None
+    if user.session_version != version:
+        # The password changed after this cookie was issued. Everything minted
+        # under the old one stops working, on every device.
         return None
     return user
 

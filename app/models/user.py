@@ -147,6 +147,12 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Boolean, nullable=False, default=True
     )
 
+    # Bumped whenever the password changes. It is part of the session cookie,
+    # so every cookie minted under the old password stops resolving. Without
+    # it, someone who reset their password because a device was stolen would
+    # find the thief still signed in on that device.
+    session_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
@@ -171,8 +177,11 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         session minted on one church's host be replayed on another's, because
         the loader would have no way to tell the difference. Carrying the
         church id makes that mismatch detectable, and `load_user` rejects it.
+
+        The session version is here for the same reason: it is the only thing
+        that lets a password change invalidate sessions that already exist.
         """
-        return f"{self.church_id}:{self.id}"
+        return f"{self.church_id}:{self.id}:{self.session_version}"
 
     # -- passwords ----------------------------------------------------------
 
@@ -186,6 +195,9 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         self.password_hash = generate_password_hash(raw, method=_hash_method())
         self.failed_login_count = 0
         self.locked_until = None
+        # Every existing session is now invalid. This is what makes a reset
+        # useful to somebody whose device was taken.
+        self.session_version = (self.session_version or 1) + 1
 
     def check_password(self, raw: str) -> bool:
         return check_password_hash(self.password_hash, raw or "")

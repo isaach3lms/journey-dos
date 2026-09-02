@@ -827,3 +827,18 @@ a{{
         household.regenerate_checkin_pin()
         db.session.commit()
         click.echo(f"{household.name} now has a new check-in PIN.")
+
+    @app.cli.command("purge-reset-tokens")
+    @click.option("--days", default=7, help="Delete tokens older than this.")
+    def purge_reset_tokens(days):
+        """Delete spent and expired reset tokens.
+
+        They are hashed, so keeping them is not dangerous, but a table that
+        only grows is a table nobody notices until it is a problem. Add this to
+        the outbox cron if you want it automatic.
+        """
+        from app.models import PasswordResetToken
+
+        removed = PasswordResetToken.purge_expired(older_than_days=days)
+        db.session.commit()
+        click.echo(f"Removed {removed} tokens older than {days} days.")

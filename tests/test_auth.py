@@ -135,9 +135,9 @@ class TestCrossTenantIsolation:
             assert load_user("not-a-composite-id") is None
             assert load_user("99999:1") is None
 
-    def test_get_id_carries_the_church(self, db):
+    def test_get_id_carries_the_church_and_the_session_version(self, db):
         user = db.session.scalar(db.select(User).where(User.email == STAFF))
-        assert user.get_id() == f"{user.church_id}:{user.id}"
+        assert user.get_id() == f"{user.church_id}:{user.id}:{user.session_version}"
 
     def test_the_session_cookie_is_not_shared_across_subdomains(self, app):
         """The third leg of the defense, after get_id and load_user."""

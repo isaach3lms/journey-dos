@@ -3,9 +3,9 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 6 complete.** Foundation, tenancy, identity,
-roles, the roster, the stuck engine, the outbox, the member app, and resources.
-345 tests passing. Dashboard, People, Resources, and the member app are real
+**Status: increments 0 through 6 complete, plus self-serve password reset.**
+Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
+the member app, and resources. 370 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -86,6 +86,7 @@ python -m pytest
 | `flask link-users [--church x]` | Attach logins to roster records by email. |
 | `flask assign-pins --church x` | Give every household a check-in PIN. |
 | `flask rotate-pin --church x --household "Name"` | Rotate one household's PIN. |
+| `flask purge-reset-tokens --days 7` | Delete spent and expired reset tokens. |
 
 ---
 
@@ -560,6 +561,59 @@ row would inflate every count that reads the table.
 `started_counts` is one grouped query for every resource, so a screen with
 twenty plans is still two queries rather than twenty-one.
 
+
+---
+
+## Password reset
+
+`/auth/forgot` and `/auth/reset/<token>`. Both public, because somebody who
+cannot sign in cannot be asked to sign in first. Both scoped to the church
+resolved from the host, so a token minted at one tenant is inert at another.
+
+### The token is never stored
+
+Only a SHA-256 of it. A reset table full of usable links is one database read
+away from every account, and database reads leak in ways password hashes are
+built to survive: backups, log shipping, a read replica, a support query pasted
+into a chat. A stolen table yields nothing.
+
+Plain SHA-256 rather than a KDF is correct here and only here. The token is 32
+bytes of `secrets` output, so there is no dictionary to attack and nothing a
+slow hash would buy. A user-chosen password is the opposite case, which is why
+`User.set_password` uses scrypt.
+
+### Single use, one hour, and requesting again retires the old one
+
+A reset link otherwise sits in an inbox forever, and inboxes get compromised
+long after the reset was legitimate. Somebody who clicks the button three times
+because nothing seemed to happen should not end up with three live keys.
+
+### The form cannot be used to find out who attends
+
+Unknown address, deactivated account, and a real one all return the same
+message and the same status. Only the real one queues an email.
+
+Five requests per address per hour, so the form cannot bombard somebody's inbox
+from a church they do not attend.
+
+### A reset signs out every other device
+
+`User.session_version` is part of the session cookie, and `set_password` bumps
+it. Every cookie minted under the old password stops resolving, everywhere.
+
+Without this, somebody resetting their password *because a device was stolen*
+would find the thief still signed in on that device. It is the single most
+common reason a person resets a password, and the least commonly handled.
+
+A reset also clears a lockout, since being locked out is the other reason
+somebody arrives at this form.
+
+### It reaches people who unsubscribed
+
+The email goes out under the `account` category, which is transactional. That
+is the whole reason `is_transactional` exists in `app/categories.py`: without
+it, leaving the newsletter would lock somebody out of their own account.
+
 ---
 
 ## Deploying to Render
@@ -627,7 +681,8 @@ Increment 7, the Tithely link-out. Half a day: the Giving nav item opens the
 church's Tithely admin, and the member Give tab opens their giving form. One
 config field on the church record.
 
-**Self-serve password reset is still overdue.** The outbox exists and `account`
+Self-serve password reset shipped alongside increment 6 and is documented
+above. The outbox exists and `account`
 is a transactional category, so nothing blocks it, but the login page still
 tells people it arrives at increment 4. Either build it or change that copy.
 

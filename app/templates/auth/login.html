@@ -60,7 +60,9 @@
         {{ form.submit(class="btn wide") }}
       </form>
 
-      <p class="footnote">{{ content.no_reset_yet }}</p>
+      <p class="footnote">
+        <a href="{{ url_for('auth.forgot') }}">{{ content.forgot_link }}</a>
+      </p>
     </div>
   </div>
 </main>

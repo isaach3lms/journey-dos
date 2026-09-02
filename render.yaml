@@ -89,7 +89,7 @@ services:
     branch: main
     schedule: "*/5 * * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: flask send-outbox && flask release-claims --minutes 15
+    startCommand: flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens
     envVars:
       - key: FLASK_ENV
         value: production

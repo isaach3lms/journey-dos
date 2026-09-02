@@ -248,9 +248,50 @@ AUTH = {
         "ask a staff member at your church to change your access."
     ),
 
-    "no_reset_yet": (
-        "Password reset by email arrives at increment 4, when the outbox "
-        "ships. Until then a staff member resets passwords."
+    "forgot_link": "Forgot your password?",
+
+    # Request a reset
+    "forgot_title": "Reset your password",
+    "forgot_subtitle": "We will email you a link. It works once and lasts an hour.",
+    "forgot_submit": "Send the link",
+    "forgot_back": "Back to sign in",
+    # One message whether or not the address has an account. Anything else
+    # turns this form into a way to find out who attends the church.
+    "forgot_sent": (
+        "If that address has an account here, a reset link is on its way. "
+        "Check your inbox, and your spam folder if it is not there."
+    ),
+
+    # Set a new one
+    "reset_title": "Choose a new password",
+    "reset_subtitle": "At least 12 characters. Length helps more than symbols do.",
+    "reset_password": "New password",
+    "reset_confirm": "Type it again",
+    "reset_submit": "Save it and sign in",
+    "reset_mismatch": "Those two do not match.",
+    "reset_done": "Password changed. You are signed in.",
+    "reset_signed_out_elsewhere": (
+        "Anywhere else you were signed in has been signed out."
+    ),
+
+    "reset_bad_link_title": "That link will not work",
+    "reset_bad_link": (
+        "Reset links last an hour and work once. This one has expired, has "
+        "already been used, or was mistyped. Ask for a new one."
+    ),
+    "reset_try_again": "Send a new link",
+
+    # The email itself
+    "reset_email_subject": "Reset your {church} password",
+    "reset_email_body": (
+        "Hello {name},\n\n"
+        "Somebody asked to reset the password for your {church} account. "
+        "Open this link to choose a new one:\n\n"
+        "{link}\n\n"
+        "The link works once and expires in {minutes} minutes.\n\n"
+        "If this was not you, nothing has changed and you can ignore this "
+        "message. Your current password still works.\n\n"
+        "{church}"
     ),
     "sign_out": "Sign out",
 }

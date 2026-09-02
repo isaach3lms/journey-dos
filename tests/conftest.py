@@ -92,7 +92,15 @@ def client(app):
 
 @pytest.fixture
 def db(app):
-    """An application context for tests that query directly."""
+    """An application context for tests that query directly.
+
+    Careful: this holds one application context open for the whole test, so
+    every request the test client makes reuses the same `g`. Flask-Login
+    caches the signed-in user there, which means a test using *two* clients
+    will find the second one inheriting the first one's identity. Any test
+    about sessions across clients should skip this fixture and open its own
+    `app.app_context()` around the queries it needs.
+    """
     with app.app_context():
         yield _db
 

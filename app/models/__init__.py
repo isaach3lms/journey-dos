@@ -26,6 +26,7 @@ from app.models.outbox import (  # noqa: F401
     NotificationPreference,
     OutboxMessage,
 )
+from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
 from app.models.resource import (  # noqa: F401
     RESOURCE_KINDS,
@@ -59,6 +60,7 @@ __all__ = [
     "NextStep",
     "OutboxMessage",
     "NotificationPreference",
+    "PasswordResetToken",
     "Resource",
     "ResourceSession",
     "SessionCompletion",

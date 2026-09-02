@@ -43,7 +43,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("groups", "Groups", "Lead", 9, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS, ready=True),
-    NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
+    NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS, ready=True),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
     NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
     NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
@@ -60,6 +60,7 @@ NAV_ENDPOINTS = {
     "giving": "giving.index",
     "groups": "groups.index",
     "services": "services.index",
+    "kids": "kids.index",
 }
 
 
@@ -125,7 +126,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11}
 
 SHELL = {
     "title": "Foundation",
@@ -878,6 +879,105 @@ SERVICES = {
     "member_declined": "Thanks for letting us know.",
     "member_change": "Change your answer",
     "member_plan": "The plan",
+}
+
+
+KIDS = {
+    "title": "Kids",
+    "subtitle": "Who is in the room, and who took them home.",
+
+    "open_heading": "Open a session",
+    "session_name": "What is it",
+    "session_placeholder": "Sunday 9:30",
+    "session_when": "When",
+    "open_it": "Open it",
+    "opened": "{name} is open. The kiosk is live.",
+    "bad_time": "That does not look like a date and time.",
+
+    "no_open_session": "No session is open.",
+    "no_open_session_hint": (
+        "Open one before a Sunday and the kiosk starts accepting families."
+    ),
+    "close": "Close the session",
+    "closed": "{name} closed.",
+    "reopen": "Reopen it",
+    "close_warning": (
+        "{count} children are still in a room. Closing the session does not "
+        "check them out, and it should not: staff need to see them."
+    ),
+    "still_in": "{count} still in a room",
+    "collected": "{count} collected",
+
+    "present_heading": "In the rooms",
+    "present_empty": "Nobody checked in yet.",
+    "checked_in_at": "In at {time}",
+    "collected_by": "Collected by {name} at {time}",
+    "collected_unknown": "Collected at {time}",
+
+    "open_kiosk": "Open the kiosk",
+    "kiosk_exit": "Exit kiosk",
+
+    # Kiosk
+    "kiosk_welcome": "Welcome. Let's check in.",
+    "kiosk_prompt": "Enter your family's check-in code.",
+    "kiosk_clear": "Clear",
+    "kiosk_delete": "Delete",
+    "kiosk_forgot": "Forgot your code?",
+    "kiosk_new_family": "First time here? Start a new family",
+    "kiosk_unknown": "We do not recognise that code. Try again, or ask a volunteer.",
+    "kiosk_too_many": (
+        "Too many tries. Ask a volunteer at the desk and they will check you in."
+    ),
+    "kiosk_closed": "Check-in is not open right now.",
+
+    "family_heading": "Who is here today?",
+    "family_hint": "Tap everyone you are checking in, then check them in.",
+    "family_none": "Nobody on this household is set up for kids check-in.",
+    "family_already": "Already checked in",
+    "check_in": "Check them in",
+    "check_in_none": "Pick at least one person.",
+
+    "label_heading": "Checked in",
+    "label_code": "Pickup code",
+    "label_hint": (
+        "Show this code when you collect them. It is only good for today. "
+        "Your check-in code stays the same and is not a pickup code."
+    ),
+    "label_children": "Checked in: {names}",
+    "label_done": "Done",
+
+    # Forgot the code
+    "forgot_heading": "We will send you your code",
+    "forgot_hint": "Type the email address the church has for you.",
+    "forgot_email": "Email address",
+    "forgot_send": "Send it",
+    # One message either way, so the kiosk cannot be used to find out who
+    # attends by typing addresses at it.
+    "forgot_sent": (
+        "If we have that address on file, your check-in code is on its way."
+    ),
+    "forgot_back": "Back",
+    "forgot_email_subject": "Your {church} check-in code",
+    "forgot_email_body": (
+        "Hello {name},\n\n"
+        "Your family's check-in code at {church} is {pin}.\n\n"
+        "Use it at the kids check-in kiosk. It tells us which family you are. "
+        "It is not a password and it does not authorize a pickup: the pickup "
+        "code is printed when you check in and changes every week.\n\n"
+        "{church}"
+    ),
+
+    # Check-out
+    "checkout_heading": "Collect a child",
+    "checkout_prompt": "Enter the pickup code from the check-in.",
+    "checkout_find": "Find them",
+    "checkout_unknown": "No children are checked in under that code.",
+    "checkout_who": "Who is collecting?",
+    "checkout_who_hint": "The name of the adult taking them. Write what is true.",
+    "checkout_confirm": "Check them out",
+    "checkout_done": "{names} checked out.",
+    "checkout_already": "Already collected.",
+    "checkout_none": "Pick at least one child.",
 }
 
 ERRORS = {

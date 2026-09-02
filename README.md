@@ -3,12 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7, 9, and 10 complete, plus self-serve
+**Status: increments 0 through 7 and 9 through 11 complete, plus self-serve
 password reset.** Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
-the member app, resources, the giving link-out, groups, and services. 503
-tests passing. Dashboard, People, Resources, and the member app are real
+the member app, resources, the giving link-out, groups, services, and kids
+check-in. 542 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -784,6 +784,66 @@ assignment belongs to the signed-in person before writing. Without it a name
 lands on a plan that never agreed to it, and a worship leader finds out on
 Sunday morning.
 
+
+---
+
+## Kids check-in
+
+### Two codes, two jobs, never interchangeable
+
+**The household PIN identifies.** Which family are you. Permanent, printed on
+a label, visible in the member app, four digits.
+
+**The pickup code authorizes.** May this person collect this child. Generated
+fresh for one household for one session, shared across siblings so a parent
+carries one code and not three, four letters.
+
+A permanent code cannot authorize a pickup. If it could, anyone who ever saw a
+label, a phone screen, or a sticker on a coat could collect a child weeks
+later. Tests assert both directions: a PIN finds nobody at check-out, and a
+pickup code opens no family at the kiosk.
+
+Letters, not digits, and no I, O, S, or Z. On a printed label at arm's length
+those read as 1, 0, 5, and 2, and a four-digit PIN sitting beside a four-digit
+pickup code gets confused by a tired volunteer at 11am. The confusion would run
+in the dangerous direction.
+
+### A check-in system with no check-out record is a headcount
+
+The demo omitted the check-out write path. Every `Checkin` row here answers
+three questions afterwards: who was present, who collected them, when.
+
+- **`collected_by` is free text.** It is often a grandparent who is not on the
+  roster, and a name written down beats a dropdown that cannot express the
+  truth.
+- **Checking out twice never overwrites the first record.** The first
+  collection is the one that happened.
+- **Closing a session does not check anyone out.** A child still in a room at
+  the end of a service is exactly what staff need to see, not something to
+  tidy away.
+- **Ids alone cannot check a child out.** The route re-derives what a code
+  covers rather than trusting posted ids, or a request could collect a child
+  whose code the person at the desk never had.
+
+### The kiosk requires a signed-in volunteer
+
+A tablet in a lobby accepting PIN attempts from anyone who walks past will
+eventually enumerate every household code in the church. A volunteer signs the
+tablet in once on a Sunday morning; the families using it never see a login.
+Attempts are also rate limited per browser session, so an unattended tablet
+still cannot be walked through the code space.
+
+### Forgot the code
+
+Spec section B.2 says text it. There is no SMS provider in this system yet, and
+adding one means a second vendor, a second set of credentials, and a second
+thing to rotate. This emails it instead, through the outbox that already
+exists, under the transactional `kids_checkin` category so it reaches a parent
+who unsubscribed from everything else.
+
+The kiosk answers identically whether or not the address is on file. A kiosk
+that says "no such address" is a device for finding out who attends.
+
 ---
 
 ## Deploying to Render
@@ -847,15 +907,14 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 11, kids check-in. The household PINs already exist from increment 5,
-so this is the kiosk, the pickup code, and the check-out write path the demo
-omits. A check-in system with no check-out record is a headcount, not a safety
-system.
+Increment 12, messaging. Church-wide announcement, invite-only room, direct
+message, staff and member views.
 
-Two screens still need copy in the demo's voice before it ships: the kiosk
-"I forgot my code" flow, per spec section F item 2a.
+Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
+item 2a is closed: the kiosk "I forgot my code" flow shipped with this
+increment.
 
-Increment 8, the Bible, is deferred until YouVersion answers.
+SMS remains unbuilt. Anywhere the spec says "text", this emails instead.
 
 **Send the YouVersion email before starting it.** Spec v3 section C.5 has the
 paragraph verbatim. It ships on the WEB fallback regardless, but a wrong

@@ -26,6 +26,7 @@ from app.models.outbox import (  # noqa: F401
     NotificationPreference,
     OutboxMessage,
 )
+from app.models.kids import Checkin, CheckinSession  # noqa: F401
 from app.models.group import (  # noqa: F401
     GROUP_ROLES,
     ROLE_LEADER,
@@ -103,6 +104,8 @@ __all__ = [
     "ITEM_SONG",
     "ITEM_ELEMENT",
     "ITEM_KINDS",
+    "Checkin",
+    "CheckinSession",
     "Group",
     "GroupMembership",
     "GroupMeeting",

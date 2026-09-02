@@ -47,8 +47,27 @@ class TestRoadmapHonesty:
 
         assert SHIPPED_INCREMENTS <= set(INCREMENT_NAMES)
         # Bump this deliberately when an increment lands, not incidentally.
-        assert SHIPPED_INCREMENTS == {0, 1, 2, 3, 4, 5, 6, 7, 9}
+        assert SHIPPED_INCREMENTS == {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}
 
     def test_the_progress_pill_counts_the_shipped_set(self, staff):
         r = staff.get("/", headers={"Host": "journey.dos.test"})
-        assert b"9 of 16 shipped" in r.data
+        assert b"10 of 16 shipped" in r.data
+
+
+class TestNavIcons:
+    """A nav item with no icon renders an empty span and looks broken."""
+
+    def test_every_nav_item_has_an_icon(self):
+        from app.content import ICONS, NAV_ITEMS
+
+        missing = [item.key for item in NAV_ITEMS if item.key not in ICONS]
+        assert not missing, f"No icon for: {missing}"
+
+    def test_every_icon_is_an_svg_using_currentcolor(self):
+        from app.content import ICONS
+
+        for key, svg in ICONS.items():
+            assert svg.strip().startswith("<svg"), key
+            # currentColor keeps icons free of brand information, so they work
+            # on the dark sidebar and anywhere else without a second copy.
+            assert "currentColor" in svg, key

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}{{ service.name }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ service.starts_at|church_time("%A, %B %-d") }}{% endblock %}
+{% block subheading %}
+  {{ service.name }} at {{ service.starts_at|church_time("%-I:%M%p") }}
+  {% if service.total_minutes %} &middot; {{ content.runtime.format(minutes=service.total_minutes) }}{% endif %}
+{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('services.index') }}">{{ content.title }}</a>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="hd"><h2>{{ content.plan_heading }}</h2></div>
+  <div class="bd">
+    {% if service.items %}
+      <ul class="flaglist">
+        {% for item in service.items %}
+          <li>
+            <span class="av">{{ item.position }}</span>
+            <span class="fl">
+              <span class="pn">{{ item.title }}</span>
+              <span class="pe">
+                {% if item.key %}
+                  {{ content.key_label }} {{ item.key }}
+                  {% for option in item.capo_options[:2] %}
+                    &middot; {{ content.capo.format(capo=option.capo, shape=option.shape) }}
+                  {% endfor %}
+                {% elif item.kind == 'song' %}{{ content.no_key }}{% endif %}
+                {% if item.minutes %} &middot; {{ item.minutes }} min{% endif %}
+                {% if item.notes %} &middot; {{ item.notes }}{% endif %}
+              </span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.item_delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.plan_empty }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="kind" value="song">
+      <div class="filters">
+        <select class="input select" name="song_id" aria-label="{{ content.add_song }}">
+          {% for song in songs %}
+            <option value="{{ song.id }}">{{ song.title }}{% if song.default_key %} ({{ song.default_key }}){% endif %}</option>
+          {% endfor %}
+        </select>
+        <select class="input select" name="key_override" aria-label="{{ content.key_label }}">
+          <option value="">{{ content.key_default }}</option>
+          {% for key in keys %}<option value="{{ key }}">{{ key }}</option>{% endfor %}
+        </select>
+        <input class="input dateinput" type="number" name="minutes" min="1" max="120" placeholder="{{ content.minutes }}" aria-label="{{ content.minutes }}">
+        <button class="btn" type="submit">{{ content.add_song }}</button>
+      </div>
+    </form>
+
+    <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="kind" value="element">
+      <div class="filters">
+        <input class="input" type="text" name="title" placeholder="{{ content.element_placeholder }}" aria-label="{{ content.element_title }}">
+        <input class="input dateinput" type="number" name="minutes" min="1" max="120" placeholder="{{ content.minutes }}" aria-label="{{ content.minutes }}">
+        <button class="btn ghostbtn" type="submit">{{ content.add_element }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.who_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">{{ content.team_status.format(accepted=service.accepted_count, waiting=service.waiting_count, declined=service.declined_count) }}</span>
+  </div>
+  <div class="bd">
+    {% if service.assignments %}
+      <ul class="flaglist">
+        {% for assignment in service.assignments %}
+          <li>
+            <span class="av">{{ assignment.person.initials }}</span>
+            <span class="fl">
+              <span class="pn">{{ assignment.person.full_name }}</span>
+              <span class="pe">{{ assignment.role_name }} &middot; {{ assignment.status_label }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('services.unassign', service_id=service.id, assignment_id=assignment.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.unassign }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.who_empty }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('services.assign', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="person_id" aria-label="{{ content.assign }}">
+          {% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}
+        </select>
+        <select class="input select" name="position_id" aria-label="Position">
+          <option value="">Serving</option>
+          {% for team in teams %}
+            {% for position in team.positions %}
+              <option value="{{ position.id }}">{{ team.name }}: {{ position.name }}</option>
+            {% endfor %}
+          {% endfor %}
+        </select>
+        <button class="btn" type="submit">{{ content.assign }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.send_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.send_hint }}</p>
+    {% if service.plan_sent_at %}
+      <p class="muted small">{{ content.sent_on.format(date=service.plan_sent_at|church_time("%B %-d at %-I:%M%p")) }}</p>
+    {% endif %}
+    <form method="post" action="{{ url_for('services.send_plan', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <button class="btn" type="submit">
+        {% if service.plan_sent_at %}{{ content.resend }}{% else %}{{ content.send }}{% endif %}
+      </button>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -3,11 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 and 9 complete, plus self-serve password
-reset.** Increment 8, the Bible, is deferred pending the YouVersion answer.
+**Status: increments 0 through 7, 9, and 10 complete, plus self-serve
+password reset.** Increment 8, the Bible, is deferred pending the YouVersion
+answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
-the member app, resources, the giving link-out, and groups. 441 tests
-passing. Dashboard, People, Resources, and the member app are real
+the member app, resources, the giving link-out, groups, and services. 503
+tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -714,6 +715,75 @@ yes last Tuesday" is not useful, "she is coming" is.
 `Group.people_in_a_group` is the query behind "Members in a group" on the
 health card, which until now had no data under it.
 
+
+---
+
+## Services, songs, and teams
+
+### No lyrics, no chord charts, ever
+
+Reproducing either requires a CCLI SongSelect licence that the **church** holds,
+not the vendor. A platform storing lyrics for every tenant is reproducing
+copyrighted work at scale on behalf of people whose licences it cannot verify.
+
+This system stores what a plan actually needs: title, author, the church's own
+CCLI number, and a key. The words stay wherever the church already licenses
+them. A test asserts the `song` table has no column whose name contains
+`lyrics`, `chords`, `chart`, or `sheet`.
+
+### Keys are not arithmetic
+
+`app/music.py` is pure logic with a right answer, which is why it carries the
+heaviest tests in the increment.
+
+**Spelling matters.** A♯ and B♭ are the same pitch and are not the same key. A
+band handed "A# major" stops and asks, because that key signature has ten
+sharps including double sharps. The conventional spelling differs between major
+and minor, so both tables exist: `Bbm` not `A#m`, but `C#m` not `Dbm`.
+
+**Intervals take the shorter way.** `interval_between("C", "G")` returns -5, not
++7. A band told "down a fourth" reaches for something different from "up a
+fifth" even though the pitch is identical.
+
+**Capos are the point.** A volunteer guitarist who owns five chord shapes can
+play anything if told "capo 3, play G". Handing them "Bb" alone is technically
+complete and practically useless.
+
+**Lowercase does not mean minor.** Classical notation says "a" is A minor, and
+the first version of this module honored that. It is wrong for this audience: a
+volunteer typing "g" means G major essentially always, and silently recording G
+minor would hand a band the wrong key with nothing on screen to reveal it.
+Minor has to be said out loud.
+
+### Three ideas kept apart
+
+- A **Team** is people who serve together. Worship, Kids.
+- A **TeamPosition** is a job on it. Acoustic, Drums.
+- An **Assignment** is one person, one position, one service, one answer.
+
+`position_name` is copied onto the assignment rather than looked up later, so a
+renamed or deleted position cannot turn "Drums, 12 March" into "None, 12 March".
+
+### Sending the plan
+
+Queued through the outbox, never sent inside the request. Deduped per person
+per service **per calendar day**: a double-clicked button emails a volunteer
+once, and a genuine resend next week after the plan changed still goes out.
+
+Keying the dedupe on `plan_sent_at` was the first attempt and defeats the first
+case, because the first send writes that field before the second request reads
+it.
+
+Sent under the `group` category, which is opt-out-able but not marketing:
+somebody who left the newsletter still needs to know they are playing on Sunday.
+
+### Nobody answers for anybody else
+
+An assignment names a person, so `member.respond_to_assignment` checks the
+assignment belongs to the signed-in person before writing. Without it a name
+lands on a plan that never agreed to it, and a worship leader finds out on
+Sunday morning.
+
 ---
 
 ## Deploying to Render
@@ -777,9 +847,13 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 10, services, songs, and teams. The largest increment in the plan by
-some distance: plan four Sundays out, transpose a song, send the plan, a
-volunteer accepts on their phone. Treat it as its own project.
+Increment 11, kids check-in. The household PINs already exist from increment 5,
+so this is the kiosk, the pickup code, and the check-out write path the demo
+omits. A check-in system with no check-out record is a headcount, not a safety
+system.
+
+Two screens still need copy in the demo's voice before it ships: the kiosk
+"I forgot my code" flow, per spec section F item 2a.
 
 Increment 8, the Bible, is deferred until YouVersion answers.
 

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ content.teams_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.teams_title }}{% endblock %}
+{% block subheading %}{{ content.teams_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('services.index') }}">{{ content.title }}</a>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="bd">
+    <div class="metrics">
+      <div><span class="mono mv">{{ serving }}</span> people are on a team</div>
+      <div><span class="mono mv">{{ teams|length }}</span> teams</div>
+    </div>
+    <form method="post" action="{{ url_for('services.add_team') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="name" placeholder="{{ content.team_name_placeholder }}" aria-label="{{ content.team_name }}">
+        <button class="btn" type="submit">{{ content.team_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% for team in teams %}
+  <section class="card">
+    <div class="hd"><h2>{{ team.name }}</h2></div>
+    <div class="bd">
+      <div class="mlbl">Positions</div>
+      {% if team.positions %}
+        <p>{% for position in team.positions %}<span class="tag">{{ position.name }}</span> {% endfor %}</p>
+      {% else %}
+        <p class="muted small">{{ content.positions_empty }}</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('services.add_position', team_id=team.id) }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <input class="input" type="text" name="name" placeholder="{{ content.position_placeholder }}" aria-label="{{ content.position_add }}">
+          <button class="btn ghostbtn" type="submit">{{ content.position_add }}</button>
+        </div>
+      </form>
+
+      <div class="mlbl">People</div>
+      {% if team.members %}
+        <ul class="flaglist">
+          {% for membership in team.members %}
+            <li>
+              <span class="av">{{ membership.person.initials }}</span>
+              <span class="fl"><span class="pn">{{ membership.person.full_name }}</span></span>
+              <form method="post" class="inline"
+                    action="{{ url_for('services.remove_team_member', team_id=team.id, membership_id=membership.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn" type="submit">Remove</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">{{ content.members_empty }}</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('services.add_team_member', team_id=team.id) }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <select class="input select" name="person_id" aria-label="{{ content.member_add }}">
+            {% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}
+          </select>
+          <button class="btn ghostbtn" type="submit">{{ content.member_add }}</button>
+        </div>
+      </form>
+    </div>
+  </section>
+{% else %}
+  <section class="card">
+    <div class="bd">
+      <div class="empty">
+        <div class="t">{{ content.teams_empty }}</div>
+        <div class="d">{{ content.teams_empty_hint }}</div>
+      </div>
+    </div>
+  </section>
+{% endfor %}
+{% endblock %}

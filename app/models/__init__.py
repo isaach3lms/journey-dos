@@ -41,6 +41,22 @@ from app.models.group import (  # noqa: F401
 )
 from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
+from app.models.service import (  # noqa: F401
+    ACCEPTED,
+    ASSIGNMENT_STATUSES,
+    DECLINED,
+    INVITED,
+    ITEM_ELEMENT,
+    ITEM_KINDS,
+    ITEM_SONG,
+    Service,
+    ServiceAssignment,
+    ServiceItem,
+    Song,
+    Team,
+    TeamMembership,
+    TeamPosition,
+)
 from app.models.resource import (  # noqa: F401
     RESOURCE_KINDS,
     RESOURCE_STATUSES,
@@ -74,6 +90,19 @@ __all__ = [
     "OutboxMessage",
     "NotificationPreference",
     "PasswordResetToken",
+    "Service",
+    "ServiceItem",
+    "ServiceAssignment",
+    "Song",
+    "Team",
+    "TeamPosition",
+    "TeamMembership",
+    "INVITED",
+    "ACCEPTED",
+    "DECLINED",
+    "ITEM_SONG",
+    "ITEM_ELEMENT",
+    "ITEM_KINDS",
     "Group",
     "GroupMembership",
     "GroupMeeting",

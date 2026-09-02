@@ -42,7 +42,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE),
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("groups", "Groups", "Lead", 9, "people", STAFF_AND_LEADERS, ready=True),
-    NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
+    NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS, ready=True),
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
     NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
@@ -59,6 +59,7 @@ NAV_ENDPOINTS = {
     "resources": "resources.index",
     "giving": "giving.index",
     "groups": "groups.index",
+    "services": "services.index",
 }
 
 
@@ -96,6 +97,9 @@ ICONS: dict[str, str] = {
     "dashboard": (
         '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>'
     ),
+    "groups": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+    ),
     "people": (
         '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16 5.5a3 3 0 010 5.6"/><path d="M18 14.5c2 .8 3 2.6 3 5"/></svg>'
     ),
@@ -121,7 +125,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10}
 
 SHELL = {
     "title": "Foundation",
@@ -500,6 +504,7 @@ MEMBER = {
     "tab_read": "Read",
     "tab_give": "Give",
     "tab_groups": "Groups",
+    "tab_serve": "Serve",
     "tab_you": "You",
 
     "greeting_morning": "Good morning, {name}",
@@ -750,6 +755,129 @@ GROUPS = {
     "rsvp_going": "Going",
     "rsvp_maybe": "Maybe",
     "rsvp_not_going": "Can't make it",
+}
+
+
+SERVICES = {
+    "title": "Services",
+    "subtitle": "Plan the Sunday, ask the people, send it.",
+
+    "new_heading": "Plan a service",
+    "name": "What is it",
+    "name_placeholder": "Sunday",
+    "when": "When",
+    "create": "Add it",
+    "created": "{name} added. Build the plan.",
+    "bad_time": "That does not look like a date and time.",
+
+    "upcoming": "Coming up",
+    "past": "Recent",
+    "empty": "Nothing planned yet.",
+    "empty_hint": "Put the next four Sundays on the calendar and build them out.",
+    "runtime": "{minutes} minutes",
+    "team_status": "{accepted} in, {waiting} waiting, {declined} out",
+
+    # Plan editor
+    "plan_heading": "The running order",
+    "plan_empty": "Nothing in the plan yet.",
+    "add_element": "Add an element",
+    "add_song": "Add a song",
+    "element_title": "What happens",
+    "element_placeholder": "Welcome and announcements",
+    "minutes": "Minutes",
+    "item_notes": "Notes",
+    "item_delete": "Remove",
+    "item_added": "Added to the plan.",
+    "item_removed": "Removed.",
+    "item_title_required": "Every item needs a name.",
+    "song_required": "Pick a song.",
+    "key_label": "Key",
+    "key_default": "Song default",
+    "key_bad": "{key} is not a key. Try G, Bb, F#m, or Am.",
+    "capo": "capo {capo}, play {shape}",
+    "no_key": "No key set",
+
+    # Songs
+    "songs_title": "Songs",
+    "songs_subtitle": "Titles, keys, and your CCLI numbers. Not the words.",
+    "songs_why": (
+        "We do not store lyrics or chord charts. Reproducing those needs the "
+        "CCLI licence your church holds, so the words stay where you already "
+        "license them. The number here points at your copy."
+    ),
+    "song_title": "Title",
+    "song_author": "Author",
+    "song_ccli": "CCLI number",
+    "song_key": "Usual key",
+    "song_tempo": "BPM",
+    "song_add": "Add the song",
+    "song_added": "{title} added.",
+    "song_used": "used {count} times",
+    "song_unused": "not used yet",
+    "songs_empty": "No songs yet.",
+    "songs_empty_hint": "Add the ones you actually sing. Ten is a good start.",
+
+    # Teams
+    "teams_title": "Teams",
+    "teams_subtitle": "Who serves, and what they do.",
+    "team_name": "Team name",
+    "team_name_placeholder": "Worship",
+    "team_add": "Add the team",
+    "team_added": "{name} added. Add the positions people fill.",
+    "position_add": "Add a position",
+    "position_placeholder": "Acoustic",
+    "position_added": "{name} added.",
+    "positions_empty": "No positions yet.",
+    "members_empty": "Nobody on this team yet.",
+    "teams_empty": "No teams yet.",
+    "teams_empty_hint": "Worship, Kids, Hospitality, Tech. Whatever you actually run.",
+    "member_add": "Add someone",
+    "member_added": "{name} is on {team}.",
+    "member_removed": "{name} removed from the team.",
+    "already_on": "{name} is already on this team.",
+
+    # Assignments
+    "who_heading": "Who is serving",
+    "who_empty": "Nobody asked yet.",
+    "assign": "Ask them",
+    "assigned": "{name} asked to play {position}.",
+    "already_asked": "{name} has already been asked for that.",
+    "unassign": "Remove",
+    "unassigned": "Removed from the plan.",
+
+    "send_heading": "Send the plan",
+    "send_hint": (
+        "Emails everyone on the plan the running order and what you have asked "
+        "them to do. Anyone who has already answered still gets it."
+    ),
+    "send": "Send it",
+    "sent": "Queued for {count} people. It goes out on the next worker run.",
+    "send_nobody": "Nobody is on this plan yet.",
+    "resend": "Send it again",
+    "sent_on": "Sent {date}",
+
+    "email_subject": "{service} plan, {date}",
+    "email_body": (
+        "Hello {name},\n\n"
+        "You are on the plan for {service}, {date}.\n\n"
+        "You are down for: {position}\n\n"
+        "Running order:\n{plan}\n"
+        "\nOpen the app to accept or let us know you cannot make it.\n\n"
+        "{church}"
+    ),
+
+    # Member side
+    "member_tab": "Serve",
+    "member_heading": "Serving",
+    "member_none": "You are not on a plan right now.",
+    "member_none_hint": "When someone asks you to serve, it turns up here.",
+    "member_asked": "You have been asked to serve",
+    "member_accept": "I can do it",
+    "member_decline": "I cannot make it",
+    "member_accepted": "You are down for {position}.",
+    "member_declined": "Thanks for letting us know.",
+    "member_change": "Change your answer",
+    "member_plan": "The plan",
 }
 
 ERRORS = {

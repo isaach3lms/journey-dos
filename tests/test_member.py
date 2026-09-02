@@ -334,7 +334,11 @@ class TestNoWayToSeeSomeoneElse:
     # Ids naming shared church content, never a person. Each is checked
     # against the tenant, and meeting_id is additionally checked against
     # group membership before an RSVP is accepted.
-    CONTENT_IDS = {"resource_id", "session_id", "meeting_id"}
+    # Ids naming shared church content, never a person directly. Each is
+    # checked against the tenant, and the two that imply a person, meeting_id
+    # and assignment_id, are additionally checked to belong to this person
+    # before anything is written.
+    CONTENT_IDS = {"resource_id", "session_id", "meeting_id", "assignment_id"}
 
     def test_no_member_route_accepts_a_person_id(self, app):
         for rule in app.url_map.iter_rules():
@@ -350,6 +354,35 @@ class TestNoWayToSeeSomeoneElse:
                 continue
             unexpected = rule.arguments - self.CONTENT_IDS
             assert not unexpected, f"{rule} accepts unexpected {unexpected}"
+
+    def test_an_assignment_id_is_checked_to_be_this_person(self, db, linked_member, member):
+        """The id names an assignment, and an assignment names a person."""
+        from app.models import Church, Person, Service, ServiceAssignment
+        from app.models.base import utcnow
+        from datetime import timedelta
+
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        other = Person(
+            church_id=church.id, first_name="Someone", last_name="Else", stage="member"
+        )
+        service = Service(
+            church_id=church.id, name="Sunday", starts_at=utcnow() + timedelta(days=3)
+        )
+        db.session.add_all([other, service])
+        db.session.flush()
+        assignment = ServiceAssignment(
+            church_id=church.id, service_id=service.id,
+            person_id=other.id, position_name="Drums", status="invited",
+        )
+        db.session.add(assignment)
+        db.session.commit()
+
+        r = member.post(
+            f"/me/serve/{assignment.id}/",
+            data={"answer": "accepted"},
+            headers={"Host": JOURNEY_HOST},
+        )
+        assert r.status_code == 403
 
     def test_a_resource_id_is_checked_against_the_tenant(self, db, linked_member, member):
         from app.models import Church, Resource

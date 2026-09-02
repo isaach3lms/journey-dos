@@ -30,7 +30,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import GIVING, GROUPS, MEMBER, RESOURCES
+from app.content import GIVING, GROUPS, MEMBER, RESOURCES, SERVICES
 from app.extensions import db
 from app.mail import opt_in, opt_out
 from app.models import (
@@ -43,6 +43,7 @@ from app.models import (
     ResourceSession,
     SessionCompletion,
 )
+from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
 from app.stages import STAGE_BY_CODE, stages_for
 
 bp = Blueprint("member", __name__, url_prefix="/me")
@@ -341,3 +342,58 @@ def rsvp(meeting_id: int):
 
     flash(GROUPS["rsvp_saved"].format(response=response.replace("_", " ")), "notice")
     return redirect(url_for("member.groups"))
+
+
+# ---------------------------------------------------------------------------
+# Increment 10: serving
+# ---------------------------------------------------------------------------
+
+@bp.get("/serve/")
+@login_required
+def serve():
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    assignments = db.session.scalars(
+        ServiceAssignment.upcoming_for_person(g.church.id, person.id)
+    ).all()
+    return render_template(
+        "member/serve.html",
+        assignments=assignments,
+        svc=SERVICES,
+        tab="serve",
+        **_base_context(person),
+    )
+
+
+@bp.post("/serve/<int:assignment_id>/")
+@login_required
+def respond_to_assignment(assignment_id: int):
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.serve"))
+
+    assignment = ServiceAssignment.get_for_church(g.church.id, assignment_id)
+    if assignment is None:
+        abort(404)
+
+    # Answering for somebody else would put a name on a plan that never agreed
+    # to it, and a worship leader would find out on Sunday morning.
+    if assignment.person_id != person.id:
+        abort(403)
+
+    answer = (request.form.get("answer") or "").strip()
+    if answer not in (ACCEPTED, DECLINED):
+        abort(400)
+
+    assignment.respond(answer)
+    db.session.commit()
+
+    flash(
+        SERVICES["member_accepted"].format(position=assignment.role_name)
+        if answer == ACCEPTED
+        else SERVICES["member_declined"],
+        "notice",
+    )
+    return redirect(url_for("member.serve"))

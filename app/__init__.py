@@ -55,6 +55,7 @@ def create_app(config_name: str | None = None) -> Flask:
     from app.blueprints.giving import bp as giving_bp
     from app.blueprints.groups import bp as groups_bp
     from app.blueprints.kids import bp as kids_bp
+    from app.blueprints.messages import bp as messages_bp
     from app.blueprints.health import bp as health_bp
     from app.blueprints.member import bp as member_bp
     from app.blueprints.people import bp as people_bp
@@ -72,6 +73,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(groups_bp)
     app.register_blueprint(services_bp)
     app.register_blueprint(kids_bp)
+    app.register_blueprint(messages_bp)
     app.register_blueprint(unsubscribe_bp)
     app.register_blueprint(shell_bp)
 

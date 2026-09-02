@@ -30,7 +30,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import GIVING, GROUPS, MEMBER, RESOURCES, SERVICES
+from app.content import GIVING, GROUPS, MEMBER, MESSAGES, RESOURCES, SERVICES
 from app.extensions import db
 from app.mail import opt_in, opt_out
 from app.models import (
@@ -43,6 +43,7 @@ from app.models import (
     ResourceSession,
     SessionCompletion,
 )
+from app.models.message import Conversation, Message
 from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
 from app.stages import STAGE_BY_CODE, stages_for
 
@@ -397,3 +398,85 @@ def respond_to_assignment(assignment_id: int):
         "notice",
     )
     return redirect(url_for("member.serve"))
+
+
+# ---------------------------------------------------------------------------
+# Increment 12: messages
+#
+# Authorization lives on the conversation, not here. `can_read` and `can_post`
+# are the same methods the staff blueprint calls, so the two views cannot
+# disagree about who may see what.
+# ---------------------------------------------------------------------------
+
+@bp.get("/chat/")
+@login_required
+def chat():
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    conversations = db.session.scalars(
+        Conversation.visible_to(g.church.id, person.id)
+    ).all()
+    return render_template(
+        "member/chat.html",
+        conversations=conversations,
+        unread={c.id: c.unread_for(person.id) for c in conversations},
+        msg=MESSAGES,
+        tab="chat",
+        **_base_context(person),
+    )
+
+
+@bp.get("/chat/<int:conversation_id>/")
+@login_required
+def chat_thread(conversation_id: int):
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    conversation = Conversation.get_for_church(g.church.id, conversation_id)
+    if conversation is None:
+        abort(404)
+    # 404 rather than 403. Telling somebody a private room exists is itself a
+    # disclosure about who is talking to whom.
+    if not conversation.can_read(person.id):
+        abort(404)
+
+    membership = conversation.membership_for(person.id)
+    if membership is not None:
+        membership.mark_read()
+        db.session.commit()
+
+    return render_template(
+        "member/thread.html",
+        conversation=conversation,
+        can_post=conversation.can_post(person.id, is_staff=current_user.is_staff),
+        msg=MESSAGES,
+        tab="chat",
+        **_base_context(person),
+    )
+
+
+@bp.post("/chat/<int:conversation_id>/")
+@login_required
+def chat_post(conversation_id: int):
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.chat"))
+
+    conversation = Conversation.get_for_church(g.church.id, conversation_id)
+    if conversation is None or not conversation.can_read(person.id):
+        abort(404)
+    if not conversation.can_post(person.id, is_staff=current_user.is_staff):
+        abort(403)
+
+    body = (request.form.get("body") or "").strip()
+    if not body:
+        flash(MESSAGES["post_empty"], "error")
+        return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
+    Message.post(conversation, person, body[:4000])
+    db.session.commit()
+
+    return redirect(url_for("member.chat_thread", conversation_id=conversation.id))

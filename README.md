@@ -3,12 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 and 9 through 11 complete, plus self-serve
+**Status: increments 0 through 7 and 9 through 12 complete, plus self-serve
 password reset.** Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
-the member app, resources, the giving link-out, groups, services, and kids
-check-in. 542 tests passing. Dashboard, People, Resources, and the member app are real
+the member app, resources, the giving link-out, groups, services, kids
+check-in, and messaging. 586 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -844,6 +844,58 @@ who unsubscribed from everything else.
 The kiosk answers identically whether or not the address is on file. A kiosk
 that says "no such address" is a device for finding out who attends.
 
+
+---
+
+## Messaging
+
+Three kinds of conversation, and the differences are authorization rules rather
+than cosmetics.
+
+**Announcement.** Church-wide, staff post, everyone reads. There are **no
+membership rows**: visibility is "anyone at this church". Writing a row per
+person to say "everyone", then maintaining it as people join and leave, is a
+synchronization problem with no upside.
+
+Only staff post. A church-wide broadcast anyone can reply to stops being an
+announcement and becomes a room nobody chose to join.
+
+**Room.** Invite only. Membership is the authorization, as it is for groups.
+
+**Direct.** Exactly two people, canonicalized as `min:max` on the conversation,
+so two people cannot end up with parallel threads depending on who wrote first.
+
+### A private room 404s, it does not 403
+
+Telling somebody a room exists is itself a disclosure about who is talking to
+whom. `can_read` and `can_post` are model methods, called by both the staff
+blueprint and the member blueprint, so the two views cannot drift into
+disagreeing about who may do what.
+
+### Messages are soft deleted
+
+A church needs an account of what was said in its own rooms. A hard delete lets
+a leader erase a conversation somebody later needs to reference, and leaves a
+gap nobody can see. This clears the words, keeps the row, and shows a visible
+hole.
+
+`author_name` is copied onto the message, so a thread still reads correctly
+after somebody is archived. "Marcus said" should not become "someone said".
+
+### A chat renderer, not the document one
+
+`render_message` escapes and preserves line breaks and nothing else. A person
+typing "- 5" in a conversation means minus five, not a bullet, and "# 1" means
+number one. Applying document formatting to chat rewrites what people said.
+
+### Announcements can also go by email
+
+Optional per post, under the opt-out-able `announcement` category. Somebody who
+turned church announcements off still sees it in the app; they just do not get
+a second copy in their inbox, which is exactly what they asked for.
+
+Room posts never email the church. That is checked, not assumed.
+
 ---
 
 ## Deploying to Render
@@ -907,8 +959,15 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 12, messaging. Church-wide announcement, invite-only room, direct
-message, staff and member views.
+Increment 13, the Tithely read-only sync. Giving appears on a person's record
+and the "Giving that stopped" card goes live, which is the sharpest single
+claim in the whole pitch: lapsed giving is a discipleship signal before it is a
+budget problem.
+
+**This one has an external dependency.** Tithely API access is request-based
+with no published turnaround. If it has not been applied for, do that before
+starting. The increment ships a CSV importer against the same mirror tables
+either way, so approval is an upgrade rather than a prerequisite.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

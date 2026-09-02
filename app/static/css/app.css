@@ -655,3 +655,13 @@ form.inline .select{min-width:170px}
   color:var(--deep);background:var(--mist);
   border-radius:var(--r);padding:20px 12px;margin:6px 0 18px;
 }
+
+/* ---------- Message threads ---------- */
+.thread{list-style:none;margin:0 0 14px;padding:0}
+.thread li{padding:12px 0;border-top:1px solid var(--line-soft)}
+.thread li:first-child{border-top:none}
+.mfrom{font-size:12px;font-weight:600;margin-bottom:4px}
+.mfrom .muted{font-weight:400;margin-left:7px}
+.mbody p{font-size:14px;line-height:1.55;margin:0 0 8px}
+.mbody p:last-child{margin-bottom:0}
+.thread form.inline{margin-top:6px}

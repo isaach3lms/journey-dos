@@ -46,7 +46,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS, ready=True),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
     NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
-    NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
+    NavItem("messages", "Messages", "Manage", 12, "msg", STAFF_AND_LEADERS, ready=True),
     NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
 ]
 
@@ -61,6 +61,7 @@ NAV_ENDPOINTS = {
     "groups": "groups.index",
     "services": "services.index",
     "kids": "kids.index",
+    "messages": "messages.index",
 }
 
 
@@ -126,7 +127,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12}
 
 SHELL = {
     "title": "Foundation",
@@ -506,6 +507,7 @@ MEMBER = {
     "tab_give": "Give",
     "tab_groups": "Groups",
     "tab_serve": "Serve",
+    "tab_chat": "Chat",
     "tab_you": "You",
 
     "greeting_morning": "Good morning, {name}",
@@ -978,6 +980,79 @@ KIDS = {
     "checkout_done": "{names} checked out.",
     "checkout_already": "Already collected.",
     "checkout_none": "Pick at least one child.",
+}
+
+
+MESSAGES = {
+    "title": "Messages",
+    "subtitle": "Announcements, rooms, and direct conversations.",
+
+    "new_heading": "Start something",
+    "new_title": "What is it called",
+    "new_title_placeholder": "Worship team",
+    "new_kind": "Who can see it",
+    "kind_announcement": "Everyone at the church",
+    "kind_room": "Only people you invite",
+    "create": "Create it",
+    "created": "{title} created.",
+    "title_required": "It needs a name.",
+
+    "announcement_note": (
+        "Everyone at {church} sees this. Only staff can post to it, so a "
+        "church-wide message does not turn into a room nobody chose to join."
+    ),
+    "room_note": "Only the people you add can see this.",
+
+    "empty": "No conversations yet.",
+    "empty_hint": "Start an announcement everyone sees, or a room for one team.",
+    "members": "{count} people",
+    "no_messages": "Nothing said yet.",
+    "last_message": "Last message {when}",
+    "unread": "{count} unread",
+
+    "post_placeholder": "Write something.",
+    "post": "Send",
+    "post_empty": "Say something first.",
+    "post_forbidden": "You cannot post here.",
+    "posted": "Sent.",
+
+    "member_add": "Add someone",
+    "member_added": "{name} added.",
+    "member_remove": "Remove",
+    "member_removed": "{name} removed.",
+    "members_empty": "Nobody added yet.",
+    "already_in": "{name} is already in this room.",
+
+    "delete": "Delete",
+    "deleted": "Message removed.",
+    "deleted_placeholder": "This message was removed.",
+    "delete_note": (
+        "Deleting clears the words and keeps the record. The church can still "
+        "see that something was said and removed."
+    ),
+
+    "archive": "Archive",
+    "archived": "{title} archived.",
+    "archived_note": "Archived. Nobody can post here now.",
+
+    "email_it": "Email it too",
+    "email_hint": (
+        "Also sends this as an email to everyone who has not turned off church "
+        "announcements."
+    ),
+    "emailed": "Queued for {count} people.",
+    "email_subject": "{church}: {title}",
+
+    # Member side
+    "member_tab": "Chat",
+    "member_heading": "Messages",
+    "member_none": "Nothing here yet.",
+    "member_none_hint": "Announcements and any rooms you are in show up here.",
+    "member_readonly": "Only staff post here.",
+    "member_back": "All messages",
+    "direct_start": "Message someone",
+    "direct_started": "Talking to {name}.",
+    "direct_self": "You cannot start a conversation with yourself.",
 }
 
 ERRORS = {

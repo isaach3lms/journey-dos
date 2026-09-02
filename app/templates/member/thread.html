@@ -1,0 +1,35 @@
+{% extends "member/base.html" %}
+{% block title %}{{ conversation.title }} | {{ church.name }}{% endblock %}
+{% block content %}
+<a class="mback" href="{{ url_for('member.chat') }}">{{ msg.member_back }}</a>
+<h1 class="mgreet">{{ conversation.title }}</h1>
+<p class="msub">{{ conversation.kind_label }}</p>
+
+<section class="mcard">
+  {% if conversation.visible_messages %}
+    <ol class="thread">
+      {% for message in conversation.visible_messages %}
+        <li>
+          <div class="mfrom">
+            {{ message.author_name or "Someone" }}
+            <span class="muted">{{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+          </div>
+          <div class="mbody">{{ message.rendered }}</div>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="mnote">{{ msg.no_messages }}</p>
+  {% endif %}
+</section>
+
+{% if can_post %}
+  <form method="post" action="{{ url_for('member.chat_post', conversation_id=conversation.id) }}">
+    {{ csrf_field() }}
+    <textarea class="input" name="body" rows="3" placeholder="{{ msg.post_placeholder }}" aria-label="{{ msg.post }}"></textarea>
+    <button class="btn wide" type="submit">{{ msg.post }}</button>
+  </form>
+{% else %}
+  <p class="mnote">{{ msg.member_readonly }}</p>
+{% endif %}
+{% endblock %}

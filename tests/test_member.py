@@ -338,7 +338,10 @@ class TestNoWayToSeeSomeoneElse:
     # checked against the tenant, and the two that imply a person, meeting_id
     # and assignment_id, are additionally checked to belong to this person
     # before anything is written.
-    CONTENT_IDS = {"resource_id", "session_id", "meeting_id", "assignment_id"}
+    CONTENT_IDS = {
+        "resource_id", "session_id", "meeting_id", "assignment_id",
+        "conversation_id",
+    }
 
     def test_no_member_route_accepts_a_person_id(self, app):
         for rule in app.url_map.iter_rules():
@@ -354,6 +357,23 @@ class TestNoWayToSeeSomeoneElse:
                 continue
             unexpected = rule.arguments - self.CONTENT_IDS
             assert not unexpected, f"{rule} accepts unexpected {unexpected}"
+
+    def test_a_conversation_id_is_checked_against_readability(
+        self, db, linked_member, member
+    ):
+        """A private room must 404, not 403: telling somebody a room exists is
+        a disclosure about who is talking to whom."""
+        from app.models import Church, Conversation
+
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        private = Conversation(church_id=church.id, kind="room", title="Not yours")
+        db.session.add(private)
+        db.session.commit()
+
+        r = member.get(
+            f"/me/chat/{private.id}/", headers={"Host": JOURNEY_HOST}
+        )
+        assert r.status_code == 404
 
     def test_an_assignment_id_is_checked_to_be_this_person(self, db, linked_member, member):
         """The id names an assignment, and an assignment names a person."""

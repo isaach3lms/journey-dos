@@ -27,6 +27,15 @@ from app.models.outbox import (  # noqa: F401
     OutboxMessage,
 )
 from app.models.kids import Checkin, CheckinSession  # noqa: F401
+from app.models.message import (  # noqa: F401
+    CONVERSATION_KINDS,
+    KIND_ANNOUNCEMENT,
+    KIND_DIRECT,
+    KIND_ROOM,
+    Conversation,
+    ConversationMember,
+    Message,
+)
 from app.models.group import (  # noqa: F401
     GROUP_ROLES,
     ROLE_LEADER,
@@ -104,6 +113,13 @@ __all__ = [
     "ITEM_SONG",
     "ITEM_ELEMENT",
     "ITEM_KINDS",
+    "Conversation",
+    "ConversationMember",
+    "Message",
+    "CONVERSATION_KINDS",
+    "KIND_ANNOUNCEMENT",
+    "KIND_ROOM",
+    "KIND_DIRECT",
     "Checkin",
     "CheckinSession",
     "Group",

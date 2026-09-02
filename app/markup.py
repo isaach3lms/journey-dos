@@ -103,3 +103,26 @@ def plain(source: str | None, limit: int = 180) -> str:
     text = re.sub(r"[#>*\-]", "", source).replace("\n", " ")
     text = re.sub(r"\s+", " ", text).strip()
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "\u2026"
+
+
+def render_message(source: str | None) -> Markup:
+    """A chat message: escaped, with line breaks preserved and nothing else.
+
+    Deliberately not the full `render` grammar. A person typing "- 5" in a
+    conversation means minus five, not a bullet, and "# 1" means number one.
+    Applying document formatting to chat rewrites what people said.
+
+    Escaping still happens first, for the same reason it does everywhere else:
+    the author is a member of the church, which is not the same as trusted.
+    """
+    if not source:
+        return Markup("")
+
+    safe = str(escape(source[:4000])).replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs = [block.strip() for block in safe.split("\n\n") if block.strip()]
+    return Markup(
+        "".join(
+            "<p>" + "<br>".join(line for line in block.split("\n")) + "</p>"
+            for block in paragraphs
+        )
+    )

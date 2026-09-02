@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="hd"><h2>{{ content.new_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('messages.create') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="title" placeholder="{{ content.new_title_placeholder }}" aria-label="{{ content.new_title }}">
+        <select class="input select" name="kind" aria-label="{{ content.new_kind }}">
+          <option value="room">{{ content.kind_room }}</option>
+          <option value="announcement">{{ content.kind_announcement }}</option>
+        </select>
+        <button class="btn" type="submit">{{ content.create }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="bd">
+    {% if conversations %}
+      <ul class="flaglist">
+        {% for conversation in conversations %}
+          <li>
+            <a href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">
+              <span class="fl">
+                <span class="pn">{{ conversation.title }}</span>
+                <span class="pe">
+                  {{ conversation.kind_label }}
+                  {% if not conversation.is_announcement %} &middot; {{ content.members.format(count=conversation.member_count) }}{% endif %}
+                  {% if conversation.last_message_at %}
+                    &middot; {{ content.last_message.format(when=conversation.last_message_at|church_time("%b %-d, %-I:%M%p")) }}
+                  {% else %} &middot; {{ content.no_messages }}{% endif %}
+                </span>
+              </span>
+              <span class="pill {% if conversation.is_announcement %}{% else %}pending{% endif %}">{{ conversation.kind_label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.empty }}</div>
+        <div class="d">{{ content.empty_hint }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -30,10 +30,19 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import GIVING, MEMBER, RESOURCES
+from app.content import GIVING, GROUPS, MEMBER, RESOURCES
 from app.extensions import db
 from app.mail import opt_in, opt_out
-from app.models import NextStep, Resource, ResourceSession, SessionCompletion
+from app.models import (
+    RSVP_CHOICES,
+    Group,
+    GroupMeeting,
+    MeetingRSVP,
+    NextStep,
+    Resource,
+    ResourceSession,
+    SessionCompletion,
+)
 from app.stages import STAGE_BY_CODE, stages_for
 
 bp = Blueprint("member", __name__, url_prefix="/me")
@@ -278,3 +287,57 @@ def give():
     return render_template(
         "member/give.html", give=GIVING, tab="give", **_base_context(person)
     )
+
+
+# ---------------------------------------------------------------------------
+# Increment 9: groups
+#
+# A member sees the groups they belong to. There is no route here that lists
+# other people's groups or lets someone RSVP on another person's behalf: the
+# person is always `current_user.person`.
+# ---------------------------------------------------------------------------
+
+@bp.get("/groups/")
+@login_required
+def groups():
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    mine = db.session.scalars(Group.for_person(g.church.id, person.id)).all()
+    return render_template(
+        "member/groups.html",
+        groups=mine,
+        grp=GROUPS,
+        rsvp_choices=RSVP_CHOICES,
+        tab="groups",
+        **_base_context(person),
+    )
+
+
+@bp.post("/groups/<int:meeting_id>/rsvp/")
+@login_required
+def rsvp(meeting_id: int):
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.groups"))
+
+    meeting = GroupMeeting.get_for_church(g.church.id, meeting_id)
+    if meeting is None:
+        abort(404)
+
+    # Belonging to the group is the authorization. Without this check anyone
+    # signed in could answer for a meeting they were never invited to, and the
+    # "9 going" count a leader plans around would be wrong.
+    if not meeting.group.has_person(person.id):
+        abort(403)
+
+    response = (request.form.get("response") or "").strip()
+    if response not in RSVP_CHOICES:
+        abort(400)
+
+    MeetingRSVP.set(g.church.id, meeting, person.id, response)
+    db.session.commit()
+
+    flash(GROUPS["rsvp_saved"].format(response=response.replace("_", " ")), "notice")
+    return redirect(url_for("member.groups"))

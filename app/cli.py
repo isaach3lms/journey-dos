@@ -30,6 +30,7 @@ SEED_TENANTS = [
         "name": "The Journey Church",
         "city": "Jackson, MO",
         "palette_key": "journey",
+        "timezone": "America/Chicago",
         "accent_hex": "#485B38",
         "logo_reversed_path": "img/journey-logo-white.png",
         "app_name": "The Journey Church",
@@ -41,6 +42,7 @@ SEED_TENANTS = [
         "name": "Riverbend Fellowship",
         "city": "Aurora, IL",
         "palette_key": "between-sundays",
+        "timezone": "America/Chicago",
         "accent_hex": None,
         "logo_reversed_path": None,
         "app_name": "Riverbend Church",
@@ -842,3 +844,30 @@ a{{
         removed = PasswordResetToken.purge_expired(older_than_days=days)
         db.session.commit()
         click.echo(f"Removed {removed} tokens older than {days} days.")
+
+
+    @app.cli.command("set-timezone")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--timezone", "tz_name", required=True,
+                  help="IANA name, e.g. America/Chicago.")
+    def set_timezone(church_slug, tz_name):
+        """Set the zone meeting times are read in.
+
+        A wrong value here is silent: nothing errors, and a group turns up an
+        hour late. Onboarding should set it deliberately.
+        """
+        from app.timeutil import COMMON_TIMEZONES, is_valid_timezone
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        if not is_valid_timezone(tz_name):
+            raise click.ClickException(
+                f"{tz_name!r} is not a timezone. Common ones: "
+                + ", ".join(COMMON_TIMEZONES)
+            )
+
+        church.timezone = tz_name
+        db.session.commit()
+        click.echo(f"{church.name} now reads meeting times in {tz_name}.")

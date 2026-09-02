@@ -3,9 +3,11 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 complete, plus self-serve password reset.**
+**Status: increments 0 through 7 and 9 complete, plus self-serve password
+reset.** Increment 8, the Bible, is deferred pending the YouVersion answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
-the member app, resources, and the giving link-out. 406 tests passing. Dashboard, People, Resources, and the member app are real
+the member app, resources, the giving link-out, and groups. 441 tests
+passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -75,6 +77,7 @@ python -m pytest
 | `flask list-users [--church x]` | Every account, its role, and its last sign-in. |
 | `flask unlock-user --church x --email y` | Clear a lockout without changing the password. |
 | `flask set-domain --church x --domain host` | Point a hostname at a church. |
+| `flask set-timezone --church x --timezone America/Chicago` | Zone meeting times are read in. |
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
@@ -656,6 +659,61 @@ Every rendered link carries `rel="noopener noreferrer"`. Without it, a
 
 No giving URL, no tab. A tab that leads to an apology is worse than no tab.
 
+
+---
+
+## Groups, and the first wall-clock time
+
+### Group leadership is not a login role
+
+A group leader is a `GroupMembership` with `role='leader'`. A `User` with the
+login role `leader` is a different thing entirely, and conflating them would be
+a quiet authorization bug: the woman who hosts the Wednesday women's group
+leads *that room* and has no business in the church-wide roster, while a staff
+member with the `leader` login may lead no group at all.
+
+Tests assert both directions: leading a group opens neither the roster nor the
+groups admin.
+
+### Meetings are the first thing that has to be read, not just compared
+
+Everything until now stored aware UTC and only ever compared it. A duration is
+the same length in any zone, so nothing cared where the church was.
+
+"Wednesday 7:00pm" is not a moment in time, it is a moment in a place. A group
+in Jackson reading 6:00pm because the server runs on UTC has people arriving an
+hour late.
+
+So `church.timezone` is now a real column, and `app/timeutil.py` is the only
+place a conversion happens: stored as UTC, converted at the edge where it is
+displayed. A staff member types a wall-clock time and it round-trips.
+
+Two deliberate choices:
+
+- **A bad timezone value falls back rather than raising.** It shows the wrong
+  hour, which is visible and fixable. An exception takes the page down.
+- **A naive datetime is assumed UTC, never local.** Guessing local would shift
+  every stored time silently, which is the worst possible failure mode for
+  this.
+
+`flask set-timezone` sets it, and validates the name. Onboarding should run it
+deliberately, because a wrong value here produces no error at all.
+
+### RSVPs need authorization, not just a valid id
+
+Belonging to the group is what permits an answer. Without that check anyone
+signed in could RSVP to a meeting they were never invited to, and the "9 going"
+a leader plans catering around would mean nothing.
+
+An RSVP updates rather than appends, unlike a session completion. A completion
+is a fact about a moment and stays; an RSVP is a current intention. "She said
+yes last Tuesday" is not useful, "she is coming" is.
+
+### The dashboard ratio now has something behind it
+
+`Group.people_in_a_group` is the query behind "Members in a group" on the
+health card, which until now had no data under it.
+
 ---
 
 ## Deploying to Render
@@ -719,8 +777,11 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 8, the Bible: NIV through the church's own YouVersion Platform
-registration, with the World English Bible as an always-available fallback.
+Increment 10, services, songs, and teams. The largest increment in the plan by
+some distance: plan four Sundays out, transpose a song, send the plan, a
+volunteer accepts on their phone. Treat it as its own project.
+
+Increment 8, the Bible, is deferred until YouVersion answers.
 
 **Send the YouVersion email before starting it.** Spec v3 section C.5 has the
 paragraph verbatim. It ships on the WEB fallback regardless, but a wrong

@@ -41,6 +41,7 @@ NAV_GROUPS = ["Lead", "Run", "Manage"]
 NAV_ITEMS: list[NavItem] = [
     NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE),
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
+    NavItem("groups", "Groups", "Lead", 9, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
@@ -57,6 +58,7 @@ NAV_ENDPOINTS = {
     "people": "people.index",
     "resources": "resources.index",
     "giving": "giving.index",
+    "groups": "groups.index",
 }
 
 
@@ -119,7 +121,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9}
 
 SHELL = {
     "title": "Foundation",
@@ -497,6 +499,7 @@ MEMBER = {
     "tab_home": "Home",
     "tab_read": "Read",
     "tab_give": "Give",
+    "tab_groups": "Groups",
     "tab_you": "You",
 
     "greeting_morning": "Good morning, {name}",
@@ -684,6 +687,69 @@ GIVING = {
     "member_button": "Go to the giving page",
     "member_none": "Your church has not set up online giving here yet.",
     "member_none_hint": "Ask the church office how they would like you to give.",
+}
+
+
+GROUPS = {
+    "title": "Groups",
+    "subtitle": "Who is meeting, and who is in the room.",
+
+    "new_heading": "Start a group",
+    "name": "What is it called",
+    "name_placeholder": "Wednesday Women",
+    "pattern": "When it meets",
+    "pattern_placeholder": "Wednesdays 7:00pm",
+    "location": "Where",
+    "location_placeholder": "The Hollands' house",
+    "create": "Create it",
+    "created": "{name} created. Add people to it.",
+    "name_required": "It needs a name.",
+
+    "empty": "No groups yet.",
+    "empty_hint": "Start one, add a few people, and put the next meeting on it.",
+    "members": "{count} people",
+    "one_member": "1 person",
+    "no_members": "Nobody in it yet",
+    "led_by": "Led by {names}",
+    "no_leader": "No leader named",
+
+    "roster_heading": "Who is in it",
+    "add_person": "Add someone",
+    "add_person_placeholder": "Search the roster",
+    "add": "Add",
+    "added": "{name} added to {group}.",
+    "already_in": "{name} is already in this group.",
+    "remove": "Remove",
+    "removed": "{name} removed.",
+    "make_leader": "Make leader",
+    "make_member": "Make member",
+    "role_changed": "{name} is now a {role} of this group.",
+    "roster_empty": "Nobody has been added yet.",
+
+    "meetings_heading": "Meetings",
+    "meeting_when": "When",
+    "meeting_add": "Put a meeting on the calendar",
+    "meeting_saved": "Meeting added.",
+    "meeting_bad_time": "That does not look like a date and time.",
+    "meeting_none": "No meetings scheduled.",
+    "meeting_past": "Past",
+    "going_count": "{count} going",
+    "going_none": "Nobody has answered yet",
+    "meeting_delete": "Remove",
+    "meeting_deleted": "Meeting removed.",
+
+    # Member side
+    "member_tab": "Groups",
+    "member_heading": "Your groups",
+    "member_none": "You are not in a group yet.",
+    "member_none_hint": "Ask a staff member about joining one.",
+    "member_next": "Next meeting",
+    "member_no_meeting": "Nothing on the calendar yet.",
+    "rsvp_prompt": "Can you make it?",
+    "rsvp_saved": "Thanks. We have you down as {response}.",
+    "rsvp_going": "Going",
+    "rsvp_maybe": "Maybe",
+    "rsvp_not_going": "Can't make it",
 }
 
 ERRORS = {

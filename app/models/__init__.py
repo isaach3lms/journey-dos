@@ -26,6 +26,19 @@ from app.models.outbox import (  # noqa: F401
     NotificationPreference,
     OutboxMessage,
 )
+from app.models.group import (  # noqa: F401
+    GROUP_ROLES,
+    ROLE_LEADER,
+    ROLE_MEMBER,
+    RSVP_CHOICES,
+    RSVP_GOING,
+    RSVP_MAYBE,
+    RSVP_NOT_GOING,
+    Group,
+    GroupMeeting,
+    GroupMembership,
+    MeetingRSVP,
+)
 from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
 from app.models.resource import (  # noqa: F401
@@ -61,6 +74,17 @@ __all__ = [
     "OutboxMessage",
     "NotificationPreference",
     "PasswordResetToken",
+    "Group",
+    "GroupMembership",
+    "GroupMeeting",
+    "MeetingRSVP",
+    "RSVP_CHOICES",
+    "RSVP_GOING",
+    "RSVP_MAYBE",
+    "RSVP_NOT_GOING",
+    "GROUP_ROLES",
+    "ROLE_LEADER",
+    "ROLE_MEMBER",
     "Resource",
     "ResourceSession",
     "SessionCompletion",

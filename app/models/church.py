@@ -62,6 +62,10 @@ class Church(TimestampMixin, db.Model):
     giving_admin_url: Mapped[Optional[str]] = mapped_column(String(500))
     giving_form_url: Mapped[Optional[str]] = mapped_column(String(500))
 
+    # Wall-clock time for meetings. See app/timeutil.py. A wrong value here
+    # is silent, so onboarding sets it rather than the system guessing.
+    timezone: Mapped[Optional[str]] = mapped_column(String(64))
+
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:

@@ -331,7 +331,10 @@ class TestNoWayToSeeSomeoneElse:
     # id that identifies a *person*. A resource id names church-wide published
     # content and is checked against both the tenant and the published status.
     PERSONISH = {"person_id", "user_id", "household_id", "member_id", "token"}
-    CONTENT_IDS = {"resource_id", "session_id"}
+    # Ids naming shared church content, never a person. Each is checked
+    # against the tenant, and meeting_id is additionally checked against
+    # group membership before an RSVP is accepted.
+    CONTENT_IDS = {"resource_id", "session_id", "meeting_id"}
 
     def test_no_member_route_accepts_a_person_id(self, app):
         for rule in app.url_map.iter_rules():

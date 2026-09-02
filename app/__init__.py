@@ -53,6 +53,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
     from app.blueprints.auth import bp as auth_bp
     from app.blueprints.giving import bp as giving_bp
+    from app.blueprints.groups import bp as groups_bp
     from app.blueprints.health import bp as health_bp
     from app.blueprints.member import bp as member_bp
     from app.blueprints.people import bp as people_bp
@@ -66,6 +67,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(member_bp)
     app.register_blueprint(resources_bp)
     app.register_blueprint(giving_bp)
+    app.register_blueprint(groups_bp)
     app.register_blueprint(unsubscribe_bp)
     app.register_blueprint(shell_bp)
 
@@ -111,6 +113,13 @@ def create_app(config_name: str | None = None) -> Flask:
                 f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">'
             ),
         }
+
+    @app.template_filter("church_time")
+    def church_time(value, fmt="%A %-I:%M%p"):
+        """Render a stored UTC datetime in the church's own zone."""
+        from app.timeutil import format_local
+
+        return format_local(value, getattr(g, "church", None), fmt)
 
     @app.after_request
     def security_headers(response):

@@ -30,7 +30,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import MEMBER, RESOURCES
+from app.content import GIVING, MEMBER, RESOURCES
 from app.extensions import db
 from app.mail import opt_in, opt_out
 from app.models import NextStep, Resource, ResourceSession, SessionCompletion
@@ -264,4 +264,17 @@ def toggle_session(resource_id: int, session_id: int):
 
     return redirect(
         url_for("member.read_session", resource_id=resource.id, session_id=session.id)
+    )
+
+
+@bp.get("/give/")
+@login_required
+def give():
+    """A link out to the church's own giving page. No money moves through here."""
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    return render_template(
+        "member/give.html", give=GIVING, tab="give", **_base_context(person)
     )

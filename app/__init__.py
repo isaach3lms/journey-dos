@@ -52,6 +52,7 @@ def create_app(config_name: str | None = None) -> Flask:
     from app import models  # noqa: F401
 
     from app.blueprints.auth import bp as auth_bp
+    from app.blueprints.giving import bp as giving_bp
     from app.blueprints.health import bp as health_bp
     from app.blueprints.member import bp as member_bp
     from app.blueprints.people import bp as people_bp
@@ -64,6 +65,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(people_bp)
     app.register_blueprint(member_bp)
     app.register_blueprint(resources_bp)
+    app.register_blueprint(giving_bp)
     app.register_blueprint(unsubscribe_bp)
     app.register_blueprint(shell_bp)
 

@@ -49,6 +49,10 @@
          {% if tab == 'home' %}aria-current="page"{% endif %}>{{ content.tab_home }}</a>
       <a href="{{ url_for('member.reading') }}"
          {% if tab == 'read' %}aria-current="page"{% endif %}>{{ content.tab_read }}</a>
+      {% if church.giving_form_url %}
+        <a href="{{ url_for('member.give') }}"
+           {% if tab == 'give' %}aria-current="page"{% endif %}>{{ content.tab_give }}</a>
+      {% endif %}
       <a href="{{ url_for('member.you') }}"
          {% if tab == 'you' %}aria-current="page"{% endif %}>{{ content.tab_you }}</a>
     </nav>

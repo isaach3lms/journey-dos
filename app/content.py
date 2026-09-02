@@ -43,7 +43,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
-    NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY),
+    NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
     NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
     NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
     NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
@@ -56,6 +56,7 @@ NAV_ENDPOINTS = {
     "dashboard": "shell.index",
     "people": "people.index",
     "resources": "resources.index",
+    "giving": "giving.index",
 }
 
 
@@ -118,7 +119,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7}
 
 SHELL = {
     "title": "Foundation",
@@ -495,6 +496,7 @@ MEMBER = {
     "app_name": "Home",
     "tab_home": "Home",
     "tab_read": "Read",
+    "tab_give": "Give",
     "tab_you": "You",
 
     "greeting_morning": "Good morning, {name}",
@@ -635,6 +637,53 @@ RESOURCES = {
     "member_back": "Back to the plan",
     "member_complete": "You finished it. Well done.",
     "member_question": "Sit with this",
+}
+
+
+GIVING = {
+    "title": "Giving",
+    "subtitle": "You keep the platform you already use.",
+
+    "explain": (
+        "We do not move your money and we never see a card number. {provider} "
+        "keeps your donor history, your rates, and your recurring givers "
+        "exactly as they are. This screen opens it, and the app sends your "
+        "people to your giving page."
+    ),
+    "why": (
+        "Reading giving back into a person's record so the system can tell you "
+        "when someone quietly stops arrives at increment 13."
+    ),
+
+    "open_admin": "Open {provider}",
+    "open_admin_hint": "Opens in a new tab. Sign in there as you normally would.",
+    "not_configured": "No giving link set up yet.",
+    "not_configured_hint": (
+        "Paste the two addresses below and the Giving nav and the member Give "
+        "tab both start working."
+    ),
+
+    "setup_heading": "Where your giving lives",
+    "provider_label": "Platform",
+    "admin_label": "Your admin dashboard",
+    "admin_placeholder": "https://tithe.ly/...",
+    "admin_help": "The page you sign in to when you check giving.",
+    "form_label": "Your giving page",
+    "form_placeholder": "https://tithe.ly/give_new/www/#/tithely/give-one-time/...",
+    "form_help": "The page your people land on when they tap Give.",
+    "save": "Save the links",
+    "saved": "Saved. Giving is live for staff and members.",
+    "cleared": "Giving links cleared.",
+
+    # Member side
+    "member_tab": "Give",
+    "member_heading": "Give",
+    "member_intro": (
+        "Giving happens on {church}'s own giving page. It opens in a new tab."
+    ),
+    "member_button": "Go to the giving page",
+    "member_none": "Your church has not set up online giving here yet.",
+    "member_none_hint": "Ask the church office how they would like you to give.",
 }
 
 ERRORS = {

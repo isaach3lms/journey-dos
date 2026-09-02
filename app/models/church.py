@@ -56,6 +56,12 @@ class Church(TimestampMixin, db.Model):
     app_name: Mapped[Optional[str]] = mapped_column(String(120))
     app_domain: Mapped[Optional[str]] = mapped_column(String(255))
 
+    # Giving. This system never touches a card number: it links out to the
+    # platform the church already uses. See app/giving.py and spec v3 A.3.
+    giving_provider: Mapped[Optional[str]] = mapped_column(String(30))
+    giving_admin_url: Mapped[Optional[str]] = mapped_column(String(500))
+    giving_form_url: Mapped[Optional[str]] = mapped_column(String(500))
+
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:
@@ -102,3 +108,14 @@ class Church(TimestampMixin, db.Model):
     @property
     def display_app_domain(self) -> str:
         return self.app_domain or self.custom_domain or f"{self.slug}.example.org"
+
+
+    @property
+    def giving_is_configured(self) -> bool:
+        return bool(self.giving_form_url or self.giving_admin_url)
+
+    @property
+    def giving_provider_label(self) -> str:
+        from app.giving import PROVIDER_TITHELY, provider_label
+
+        return provider_label(self.giving_provider or PROVIDER_TITHELY)

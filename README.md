@@ -3,9 +3,9 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 6 complete, plus self-serve password reset.**
+**Status: increments 0 through 7 complete, plus self-serve password reset.**
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
-the member app, and resources. 370 tests passing. Dashboard, People, Resources, and the member app are real
+the member app, resources, and the giving link-out. 406 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -614,6 +614,48 @@ The email goes out under the `account` category, which is transactional. That
 is the whole reason `is_transactional` exists in `app/categories.py`: without
 it, leaving the newsletter would lock somebody out of their own account.
 
+
+---
+
+## Giving
+
+A link-out, not a payment integration. Per spec v3 section A, this decision
+does three things at once:
+
+- **Deletes the hardest objection in the sale.** No treasurer migrates donor
+  history, re-enrolls a recurring giver, or issues statements from two systems
+  in one year. The pitch is "keep Tithely, keep your rates, we plug into it."
+- **Removes PCI scope entirely.** This application never touches a card number,
+  so it is not a payment environment.
+- **Cuts roughly a fifth of the build.** Funds, batches, processor webhooks,
+  statement generation, and refunds are all out of scope.
+
+Two nullable URLs on the church row, exactly as spec A.3 describes. The
+credential table with encrypted API keys arrives at increment 13 with the
+read-only sync.
+
+### The URLs are validated, not trusted
+
+A staff member types them and a congregation clicks them, so
+`app/giving.py` is doing security work:
+
+- **Scheme must be https.** `javascript:` in an href executes in the clicking
+  member's browser with their session.
+- **Host must be on an allowlist**, matched exactly or as a subdomain.
+  `endswith` alone would accept `nottithe.ly`, which is the whole trick.
+- **Userinfo is rejected.** `https://tithe.ly@evil.example.com` reads as
+  Tithely to a person and resolves somewhere else entirely.
+- **Both links validate before either saves**, so a half-configured church
+  cannot exist.
+
+Every rendered link carries `rel="noopener noreferrer"`. Without it, a
+`target="_blank"` page gets scripting access to the opener through
+`window.opener`.
+
+### The member Give tab appears only when it works
+
+No giving URL, no tab. A tab that leads to an apology is worse than no tab.
+
 ---
 
 ## Deploying to Render
@@ -677,9 +719,14 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 7, the Tithely link-out. Half a day: the Giving nav item opens the
-church's Tithely admin, and the member Give tab opens their giving form. One
-config field on the church record.
+Increment 8, the Bible: NIV through the church's own YouVersion Platform
+registration, with the World English Bible as an always-available fallback.
+
+**Send the YouVersion email before starting it.** Spec v3 section C.5 has the
+paragraph verbatim. It ships on the WEB fallback regardless, but a wrong
+assumption about the non-commercial terms affects every client ever onboarded,
+not one module, and the answer is worth having in writing before promising a
+pastor the translation he preaches from.
 
 Self-serve password reset shipped alongside increment 6 and is documented
 above. The outbox exists and `account`

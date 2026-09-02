@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="bd">
+    <p>{{ content.explain.format(provider=church.giving_provider_label) }}</p>
+    {% if church.giving_admin_url %}
+      {# noopener is not optional on target=_blank: without it the opened page
+         gets scripting access to this one through window.opener. #}
+      <a class="btn" href="{{ church.giving_admin_url }}"
+         target="_blank" rel="noopener noreferrer">
+        {{ content.open_admin.format(provider=church.giving_provider_label) }}
+      </a>
+      <p class="muted small">{{ content.open_admin_hint }}</p>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.not_configured }}</div>
+        <div class="d">{{ content.not_configured_hint }}</div>
+      </div>
+    {% endif %}
+    <p class="muted small">{{ content.why }}</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.setup_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('giving.configure') }}">
+      {{ csrf_field() }}
+
+      <div class="field">
+        <label for="provider">{{ content.provider_label }}</label>
+        <select class="input select" id="provider" name="provider">
+          {% for provider in providers %}
+            <option value="{{ provider }}"
+              {% if church.giving_provider == provider %}selected{% endif %}>
+              {{ provider|title }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="admin_url">{{ content.admin_label }}</label>
+        <input class="input" id="admin_url" type="url" name="admin_url"
+               value="{{ church.giving_admin_url or '' }}"
+               placeholder="{{ content.admin_placeholder }}">
+        <div class="fieldhelp">{{ content.admin_help }}</div>
+      </div>
+
+      <div class="field">
+        <label for="form_url">{{ content.form_label }}</label>
+        <input class="input" id="form_url" type="url" name="form_url"
+               value="{{ church.giving_form_url or '' }}"
+               placeholder="{{ content.form_placeholder }}">
+        <div class="fieldhelp">{{ content.form_help }}</div>
+      </div>
+
+      <button class="btn" type="submit">{{ content.save }}</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

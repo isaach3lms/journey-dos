@@ -17,14 +17,23 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, flash, g, redirect, render_template, request, url_for
+from flask import (
+    Blueprint,
+    abort,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    url_for,
+)
 from flask_login import current_user, login_required
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import MEMBER
+from app.content import MEMBER, RESOURCES
 from app.extensions import db
 from app.mail import opt_in, opt_out
-from app.models import NextStep
+from app.models import NextStep, Resource, ResourceSession, SessionCompletion
 from app.stages import STAGE_BY_CODE, stages_for
 
 bp = Blueprint("member", __name__, url_prefix="/me")
@@ -145,3 +154,114 @@ def toggle_opt_out():
     db.session.commit()
 
     return redirect(url_for("member.you"))
+
+
+# ---------------------------------------------------------------------------
+# Increment 6: reading
+#
+# These routes take a resource id, which every other route in this blueprint
+# deliberately avoids. That is safe because a resource is church-wide content
+# rather than one person's record: the id identifies something published to
+# everyone, and `published_for_member` refuses drafts and other tenants. A
+# person id would identify somebody, which is why none of these accept one.
+# ---------------------------------------------------------------------------
+
+@bp.get("/read/")
+@login_required
+def reading():
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    resources = db.session.scalars(
+        Resource.for_church(g.church.id, published_only=True)
+    ).all()
+
+    progress = {}
+    for resource in resources:
+        done = SessionCompletion.completed_session_ids(
+            g.church.id, person.id, resource.id
+        )
+        progress[resource.id] = len(done)
+
+    return render_template(
+        "member/reading.html",
+        resources=resources,
+        progress=progress,
+        res=RESOURCES,
+        tab="read",
+        **_base_context(person),
+    )
+
+
+@bp.get("/read/<int:resource_id>/")
+@login_required
+def read_resource(resource_id: int):
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    resource = Resource.published_for_member(g.church.id, resource_id)
+    if resource is None:
+        abort(404)
+
+    done = SessionCompletion.completed_session_ids(g.church.id, person.id, resource.id)
+    return render_template(
+        "member/plan.html",
+        resource=resource,
+        done=done,
+        res=RESOURCES,
+        tab="read",
+        **_base_context(person),
+    )
+
+
+@bp.get("/read/<int:resource_id>/<int:session_id>/")
+@login_required
+def read_session(resource_id: int, session_id: int):
+    person = current_user.person
+    if person is None:
+        return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    resource = Resource.published_for_member(g.church.id, resource_id)
+    session = ResourceSession.get_for_church(g.church.id, session_id)
+    if resource is None or session is None or session.resource_id != resource.id:
+        abort(404)
+
+    done = SessionCompletion.completed_session_ids(g.church.id, person.id, resource.id)
+    following = [s for s in resource.sessions if s.position > session.position]
+
+    return render_template(
+        "member/session.html",
+        resource=resource,
+        session=session,
+        is_done=session.id in done,
+        next_session=following[0] if following else None,
+        done_count=len(done),
+        res=RESOURCES,
+        tab="read",
+        **_base_context(person),
+    )
+
+
+@bp.post("/read/<int:resource_id>/<int:session_id>/done/")
+@login_required
+def toggle_session(resource_id: int, session_id: int):
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.reading"))
+
+    resource = Resource.published_for_member(g.church.id, resource_id)
+    session = ResourceSession.get_for_church(g.church.id, session_id)
+    if resource is None or session is None or session.resource_id != resource.id:
+        abort(404)
+
+    if request.form.get("undo") == "1":
+        SessionCompletion.unmark(g.church.id, person.id, session.id)
+    else:
+        SessionCompletion.mark(g.church.id, person.id, session)
+    db.session.commit()
+
+    return redirect(
+        url_for("member.read_session", resource_id=resource.id, session_id=session.id)
+    )

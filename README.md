@@ -3,10 +3,11 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 5 complete.** Foundation, tenancy, identity,
-roles, the roster, the stuck engine, the outbox, and the member app. 291 tests
-passing. Dashboard, People, and the member app are real screens; the remaining
-nav items resolve to placeholders naming the increment they arrive in.
+**Status: increments 0 through 6 complete.** Foundation, tenancy, identity,
+roles, the roster, the stuck engine, the outbox, the member app, and resources.
+345 tests passing. Dashboard, People, Resources, and the member app are real
+screens; the remaining nav items resolve to placeholders naming the increment
+they arrive in.
 
 ---
 
@@ -504,6 +505,61 @@ after an import. Matching on email is imperfect, which is why it is used only
 here: the worst case is a member seeing an empty Home screen until staff link
 them by hand.
 
+
+---
+
+## Resources and the reader
+
+### This content is tenant data, not Python
+
+Stages and notification categories live in Python because they are shape: the
+same seven stages for everyone until a church asks otherwise. A five day plan
+on Psalm 139 is something The Journey Church wrote and owns, so it lives in
+rows, on their side of the tenant boundary, and appears in their app under
+their name with no other brand on it.
+
+### The renderer escapes before it formats
+
+Everything a pastor types is displayed in somebody else's browser, which makes
+it untrusted input even though the author is trusted. A leader account is one
+weak password away from an outsider, and stored script in a member's browser is
+far worse than a bold tag that fails to render.
+
+`app/markup.py` escapes the whole string first, then re-introduces a fixed
+grammar: paragraphs, `#` headings, `>` blockquotes for scripture, `-` lists,
+`**bold**`, `*italic*`. Because escaping runs first, the formatting patterns can
+only ever match literal text the author typed.
+
+Deliberately **not** Markdown. A Markdown library accepts raw HTML by default,
+supports link targets that can carry `javascript:`, and brings a dependency
+whose CVEs become this application's problem. There is no link syntax at all,
+so there is nothing to abuse.
+
+### Publishing
+
+A resource starts as a draft and is **invisible** to members, not merely
+unlinked: `published_for_member` refuses drafts, so guessing an id reveals
+nothing.
+
+Publishing an empty resource is refused. A member tapping into a published plan
+with no days would see a blank screen and conclude the app is broken. Blocking
+it is one line; explaining it to a pastor afterwards is not.
+
+Archiving rather than deleting, because people have completions against it and
+deleting would erase a record of what they actually read.
+
+### Progress
+
+One row per person per session completed. Absence means not done.
+
+Append-only on purpose: a completion is a fact about a moment, and it survives
+the plan being edited afterwards, which a boolean on a join row would not.
+`mark` is idempotent, because a double tap on a phone is normal and a second
+row would inflate every count that reads the table.
+
+`started_counts` is one grouped query for every resource, so a screen with
+twenty plans is still two queries rather than twenty-one.
+
 ---
 
 ## Deploying to Render
@@ -567,10 +623,11 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 6, resources, reader, and progress. Write a five day plan, publish it,
-read it on the phone, watch completion move. Per spec v3 section D.1.
+Increment 7, the Tithely link-out. Half a day: the Giving nav item opens the
+church's Tithely admin, and the member Give tab opens their giving form. One
+config field on the church record.
 
-**Self-serve password reset is now overdue.** The outbox exists and `account`
+**Self-serve password reset is still overdue.** The outbox exists and `account`
 is a transactional category, so nothing blocks it, but the login page still
 tells people it arrives at increment 4. Either build it or change that copy.
 

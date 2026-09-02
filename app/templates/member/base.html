@@ -47,6 +47,8 @@
     <nav class="mtabs" aria-label="Member">
       <a href="{{ url_for('member.home') }}"
          {% if tab == 'home' %}aria-current="page"{% endif %}>{{ content.tab_home }}</a>
+      <a href="{{ url_for('member.reading') }}"
+         {% if tab == 'read' %}aria-current="page"{% endif %}>{{ content.tab_read }}</a>
       <a href="{{ url_for('member.you') }}"
          {% if tab == 'you' %}aria-current="page"{% endif %}>{{ content.tab_you }}</a>
     </nav>

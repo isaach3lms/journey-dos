@@ -100,3 +100,25 @@ class TestTemplatesCarryNoColors:
         # White is allowed on dark chrome; it is white by definition, not by brand.
         found = {h.lower() for h in self.HEX.findall(css)}
         assert found <= {"#fff", "#ffffff"}, f"Unexpected color literals: {found}"
+
+
+class TestBrandAssetsArePresent:
+    """A missing logo file is invisible until someone looks at a screen.
+
+    Every template referencing it renders fine, every test asserting on markup
+    passes, and the page shows a broken image icon. This one was lost in a
+    packaging step and shipped.
+    """
+
+    def test_every_palette_logo_file_exists(self):
+        from pathlib import Path
+
+        from app.brand import PALETTES
+
+        static = Path(__file__).resolve().parent.parent / "app" / "static"
+        for key, palette in PALETTES.items():
+            if not palette.logo_reversed:
+                continue
+            path = static / palette.logo_reversed
+            assert path.exists(), f"{key} references a missing file: {path}"
+            assert path.stat().st_size > 0, f"{key} logo is empty: {path}"

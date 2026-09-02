@@ -1,0 +1,37 @@
+{% extends "member/base.html" %}
+{% block title %}{{ session.title }} | {{ church.name }}{% endblock %}
+{% block content %}
+<a class="mback" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">{{ res.member_back }}</a>
+
+<div class="mlbl">{{ res.member_day_of.format(position=session.position, total=resource.session_count) }}</div>
+<h1 class="mgreet">{{ session.title }}</h1>
+{% if session.passage_ref %}<p class="msub">{{ session.passage_ref }}</p>{% endif %}
+
+<section class="mcard mread">
+  {# Rendered by app/markup.py, which escapes before it formats. #}
+  {{ session.rendered_body }}
+</section>
+
+{% if session.question %}
+  <section class="mcard dark">
+    <div class="mlbl">{{ res.member_question }}</div>
+    <div class="mtitle">{{ session.question }}</div>
+  </section>
+{% endif %}
+
+<form method="post"
+      action="{{ url_for('member.toggle_session', resource_id=resource.id, session_id=session.id) }}">
+  {{ csrf_field() }}
+  {% if is_done %}<input type="hidden" name="undo" value="1">{% endif %}
+  <button class="btn wide {% if is_done %}ghostbtn{% endif %}" type="submit">
+    {% if is_done %}{{ res.member_unmark }}{% else %}{{ res.member_mark }}{% endif %}
+  </button>
+</form>
+
+{% if next_session %}
+  <a class="btn ghostbtn wide center"
+     href="{{ url_for('member.read_session', resource_id=resource.id, session_id=next_session.id) }}">
+    {{ res.member_next }}
+  </a>
+{% endif %}
+{% endblock %}

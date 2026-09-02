@@ -325,10 +325,41 @@ class TestMemberApp:
 class TestNoWayToSeeSomeoneElse:
     """There is no route here that takes a person id, by design."""
 
-    def test_no_member_route_accepts_an_id(self, app):
+    # Increment 5 asserted that no member route took any argument at all.
+    # Increment 6 added reading, which needs a resource id, so the invariant is
+    # restated in the form that actually matters: no member route may accept an
+    # id that identifies a *person*. A resource id names church-wide published
+    # content and is checked against both the tenant and the published status.
+    PERSONISH = {"person_id", "user_id", "household_id", "member_id", "token"}
+    CONTENT_IDS = {"resource_id", "session_id"}
+
+    def test_no_member_route_accepts_a_person_id(self, app):
         for rule in app.url_map.iter_rules():
-            if rule.endpoint.startswith("member."):
-                assert not rule.arguments, f"{rule} accepts {rule.arguments}"
+            if not rule.endpoint.startswith("member."):
+                continue
+            leaked = rule.arguments & self.PERSONISH
+            assert not leaked, f"{rule} accepts {leaked}, which identifies a person"
+
+    def test_member_routes_take_only_content_ids(self, app):
+        """A new argument here should be a deliberate decision, not a drift."""
+        for rule in app.url_map.iter_rules():
+            if not rule.endpoint.startswith("member."):
+                continue
+            unexpected = rule.arguments - self.CONTENT_IDS
+            assert not unexpected, f"{rule} accepts unexpected {unexpected}"
+
+    def test_a_resource_id_is_checked_against_the_tenant(self, db, linked_member, member):
+        from app.models import Church, Resource
+
+        riverbend = db.session.scalar(db.select(Church).where(Church.slug == "riverbend"))
+        theirs = Resource(
+            church_id=riverbend.id, title="Theirs", kind="study", status="published"
+        )
+        db.session.add(theirs)
+        db.session.commit()
+
+        r = member.get(f"/me/read/{theirs.id}/", headers={"Host": JOURNEY_HOST})
+        assert r.status_code == 404
 
     def test_a_member_still_cannot_reach_the_roster(self, db, linked_member, member):
         assert member.get("/people/", headers={"Host": JOURNEY_HOST}).status_code == 403

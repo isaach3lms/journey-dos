@@ -27,6 +27,16 @@ from app.models.outbox import (  # noqa: F401
     OutboxMessage,
 )
 from app.models.person import Household, Person  # noqa: F401
+from app.models.resource import (  # noqa: F401
+    RESOURCE_KINDS,
+    RESOURCE_STATUSES,
+    STATUS_ARCHIVED,
+    STATUS_DRAFT,
+    STATUS_PUBLISHED,
+    Resource,
+    ResourceSession,
+    SessionCompletion,
+)
 from app.models.person_event import (  # noqa: F401
     EVENT_KINDS,
     KIND_CONTACT,
@@ -49,6 +59,13 @@ __all__ = [
     "NextStep",
     "OutboxMessage",
     "NotificationPreference",
+    "Resource",
+    "ResourceSession",
+    "SessionCompletion",
+    "RESOURCE_KINDS",
+    "STATUS_DRAFT",
+    "STATUS_PUBLISHED",
+    "STATUS_ARCHIVED",
     "STATUS_QUEUED",
     "STATUS_SENT",
     "STATUS_FAILED",

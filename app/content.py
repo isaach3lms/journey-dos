@@ -44,7 +44,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS),
     NavItem("kids", "Kids", "Run", 11, "kids", STAFF_AND_LEADERS),
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY),
-    NavItem("resources", "Resources", "Run", 6, "res", EVERYONE),
+    NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
     NavItem("messages", "Messages", "Manage", 12, "msg", EVERYONE),
     NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
 ]
@@ -55,6 +55,7 @@ NAV_ITEMS: list[NavItem] = [
 NAV_ENDPOINTS = {
     "dashboard": "shell.index",
     "people": "people.index",
+    "resources": "resources.index",
 }
 
 
@@ -117,7 +118,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6}
 
 SHELL = {
     "title": "Foundation",
@@ -452,6 +453,7 @@ EMAIL = {
 MEMBER = {
     "app_name": "Home",
     "tab_home": "Home",
+    "tab_read": "Read",
     "tab_you": "You",
 
     "greeting_morning": "Good morning, {name}",
@@ -513,6 +515,85 @@ MEMBER = {
     # Staff previewing the member app.
     "preview_note": "You are looking at the member app as {name}.",
     "back_to_staff": "Back to the staff view",
+}
+
+
+RESOURCES = {
+    "title": "Resources",
+    "subtitle": "Content published under your name.",
+    "intro": (
+        "Written for {church} and delivered inside your app. Members never see "
+        "another brand on it."
+    ),
+
+    "new_heading": "Write something new",
+    "new_title": "What is it called",
+    "new_title_placeholder": "Known: a five day plan",
+    "new_kind": "What kind",
+    "new_summary": "One line about it",
+    "new_summary_placeholder": "Who it is for and what it covers.",
+    "create": "Create it",
+    "created": "{title} created. Add the days, then publish it.",
+    "title_required": "It needs a name.",
+
+    "empty": "Nothing published yet.",
+    "empty_hint": "Write a plan, add a few days, and publish it. Members see it immediately.",
+
+    "sessions": "{count} days",
+    "one_session": "1 day",
+    "no_sessions": "No days yet",
+    "started": "{count} started",
+    "started_none": "Nobody has started it",
+
+    "edit": "Edit",
+    "publish": "Publish it",
+    "published": "{title} is live. Members can read it now.",
+    "unpublish": "Unpublish",
+    "unpublished": "{title} is back to a draft. Members no longer see it.",
+    "publish_empty": "Add at least one day before publishing.",
+    "archive": "Archive",
+    "archived": "{title} archived.",
+
+    "session_heading": "The days",
+    "session_add": "Add a day",
+    "session_title": "Title for this day",
+    "session_title_placeholder": "Day 1: Known before you were born",
+    "session_passage": "Passage",
+    "session_passage_placeholder": "Psalm 139:1-6",
+    "session_body": "What they read",
+    "session_body_placeholder": (
+        "Write it the way you would say it. Blank line for a new paragraph, "
+        "> for scripture, - for a list, **bold**."
+    ),
+    "session_question": "A question to sit with",
+    "session_question_placeholder": "Where have you been trying to be known?",
+    "session_save": "Save the day",
+    "session_saved": "Added.",
+    "session_delete": "Delete",
+    "session_deleted": "Deleted.",
+    "session_none": "No days yet. Add the first one below.",
+    "session_title_required": "Every day needs a title.",
+
+    "format_help": (
+        "Formatting: a blank line starts a paragraph, # for a heading, "
+        "> for scripture, - for a list, **bold** and *italic*."
+    ),
+
+    # Member side
+    "member_heading": "Reading",
+    "member_none": "Nothing to read right now.",
+    "member_none_hint": "When your church publishes a plan it shows up here.",
+    "member_progress": "Day {done} of {total}",
+    "member_day_of": "Day {position} of {total}",
+    "member_start": "Start",
+    "member_continue": "Keep reading",
+    "member_done": "Finished",
+    "member_mark": "Mark today done",
+    "member_unmark": "Not done after all",
+    "member_next": "Next day",
+    "member_back": "Back to the plan",
+    "member_complete": "You finished it. Well done.",
+    "member_question": "Sit with this",
 }
 
 ERRORS = {

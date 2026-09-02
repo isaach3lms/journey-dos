@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="hd"><h2>{{ content.new_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('resources.create') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="title"
+               placeholder="{{ content.new_title_placeholder }}"
+               aria-label="{{ content.new_title }}">
+        <select class="input select" name="kind" aria-label="{{ content.new_kind }}">
+          {% for kind in kinds %}
+            <option value="{{ kind }}">{{ kind_labels[kind] }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn" type="submit">{{ content.create }}</button>
+      </div>
+      <input class="input" type="text" name="summary"
+             placeholder="{{ content.new_summary_placeholder }}"
+             aria-label="{{ content.new_summary }}">
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="bd">
+    <p>{{ content.intro.format(church=church.name) }}</p>
+    {% if resources %}
+      <ul class="flaglist">
+        {% for resource in resources %}
+          <li>
+            <a href="{{ url_for('resources.edit', resource_id=resource.id) }}">
+              <span class="fl">
+                <span class="pn">{{ resource.title }}</span>
+                <span class="pe">
+                  {{ resource.kind_label }} &middot;
+                  {% if resource.session_count == 0 %}{{ content.no_sessions }}
+                  {% elif resource.session_count == 1 %}{{ content.one_session }}
+                  {% else %}{{ content.sessions.format(count=resource.session_count) }}{% endif %}
+                  &middot;
+                  {% set count = started.get(resource.id, 0) %}
+                  {% if count %}{{ content.started.format(count=count) }}
+                  {% else %}{{ content.started_none }}{% endif %}
+                </span>
+              </span>
+              <span class="pill {% if not resource.is_published %}pending{% endif %}">{{ resource.status_label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.empty }}</div>
+        <div class="d">{{ content.empty_hint }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

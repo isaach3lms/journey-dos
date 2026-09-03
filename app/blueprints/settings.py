@@ -21,7 +21,7 @@ from app.audit import record
 from app.brand import assert_accent_readable
 from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES, SETTINGS
 from app.extensions import db
-from app.models import AuditEvent
+from app.models import AuditEvent, BibleVerse
 from app.models.audit import ACTIONS, BRAND_CHANGED, RETENTION_DAYS
 from app.security import min_role
 from app.timeutil import COMMON_TIMEZONES, is_valid_timezone
@@ -61,6 +61,8 @@ def index():
         audit_count=AuditEvent.count_since(g.church.id, 30),
         retention_days=RETENTION_DAYS,
         active="settings",
+        bible_verses=BibleVerse.verse_count(),
+        bible_books=len(BibleVerse.loaded_books()),
         **_cost_context(),
     )
 

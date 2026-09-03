@@ -7,6 +7,24 @@
 <h1 class="mgreet">{{ session.title }}</h1>
 {% if session.passage_ref %}<p class="msub">{{ session.passage_ref }}</p>{% endif %}
 
+{% if passage and not passage.is_empty %}
+  <section class="mcard scripture">
+    <div class="mlbl">{{ passage.reference }} &middot; {{ passage.translation_name }}</div>
+    {% for verse in passage.verses %}
+      <p><sup class="vnum">{{ verse.number }}</sup>{{ verse.text }}</p>
+    {% endfor %}
+    {% if passage.fell_back %}
+      {# A member deserves to know they are reading a different translation
+         from the one their church chose. #}
+      <p class="mnote">{{ res.passage_fallback.format(name=passage.translation_name) }}</p>
+    {% endif %}
+  </section>
+{% elif session.passage_ref %}
+  <section class="mcard">
+    <p class="mnote">{{ res.passage_missing.format(reference=session.passage_ref) }}</p>
+  </section>
+{% endif %}
+
 <section class="mcard mread">
   {# Rendered by app/markup.py, which escapes before it formats. #}
   {{ session.rendered_body }}

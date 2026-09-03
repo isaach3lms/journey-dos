@@ -1134,3 +1134,81 @@ a{{
         removed = AuditEvent.purge_old(older_than_days=days or RETENTION_DAYS)
         db.session.commit()
         click.echo(f"Removed {removed} audit entries.")
+
+    # -- increment 8 --------------------------------------------------------
+
+    @app.cli.command("import-bible")
+    @click.option("--file", "path", required=True, type=click.Path(exists=True))
+    def import_bible(path):
+        """Load World English Bible text.
+
+        The WEB is public domain, which is why it can be stored at all. Do not
+        point this at a licensed translation: `bible_verse` has no translation
+        column precisely so there is nowhere for one to accumulate.
+
+        Expects JSON: a list of {book, chapter, verse, text}.
+        """
+        import json as _json
+
+        from app.bible.reference import normalize_book
+        from app.models import BibleVerse
+
+        with open(path, encoding="utf-8") as handle:
+            rows = _json.load(handle)
+
+        problems, staged = [], []
+        for index, row in enumerate(rows, start=1):
+            book = normalize_book(row.get("book"))
+            if book is None:
+                problems.append(f"row {index}: {row.get('book')!r} is not a book")
+                continue
+            text = (row.get("text") or "").strip()
+            if not text:
+                problems.append(f"row {index}: no text")
+                continue
+            staged.append((book, int(row["chapter"]), int(row["verse"]), text))
+
+        if problems:
+            click.echo(f"{len(problems)} problems. Nothing was written.\n")
+            for problem in problems[:20]:
+                click.echo(f"  {problem}")
+            raise click.ClickException("Fix the file and run it again.")
+
+        created = updated = 0
+        for book, chapter, verse, text in staged:
+            existing = db.session.scalar(
+                db.select(BibleVerse).where(
+                    BibleVerse.book == book,
+                    BibleVerse.chapter == chapter,
+                    BibleVerse.verse == verse,
+                )
+            )
+            if existing is not None:
+                existing.text = text
+                updated += 1
+            else:
+                db.session.add(
+                    BibleVerse(book=book, chapter=chapter, verse=verse, text=text)
+                )
+                created += 1
+
+        db.session.commit()
+        click.echo(f"Created {created}, updated {updated}.")
+        click.echo(f"{BibleVerse.verse_count()} verses loaded across "
+                   f"{len(BibleVerse.loaded_books())} books.")
+
+    @app.cli.command("bible-status")
+    def bible_status():
+        """What scripture is available, and to whom."""
+        from app.models import BibleVerse
+
+        count = BibleVerse.verse_count()
+        books = BibleVerse.loaded_books()
+        click.echo(f"World English Bible: {count} verses, {len(books)} books.")
+        if books:
+            click.echo("  " + ", ".join(books))
+        if count == 0:
+            click.echo(
+                "\nNothing loaded. Run `flask import-bible --file <web.json>`. "
+                "Until then a reading plan shows its reference without the text."
+            )

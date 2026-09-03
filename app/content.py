@@ -128,7 +128,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}
+SHIPPED_INCREMENTS = set(range(16))
 
 SHELL = {
     "title": "Foundation",
@@ -649,6 +649,14 @@ RESOURCES = {
     "member_back": "Back to the plan",
     "member_complete": "You finished it. Well done.",
     "member_question": "Sit with this",
+    "passage_fallback": (
+        "Showing the {name} because your church's translation was not "
+        "available just now."
+    ),
+    "passage_missing": (
+        "We do not have the text for {reference} loaded yet. Open it in your "
+        "own Bible and the rest of the day still works."
+    ),
 }
 
 
@@ -1215,6 +1223,18 @@ SETTINGS = {
     "audit_system": "by the system",
     "audit_count": "{count} in the last 30 days",
     "audit_retention": "Entries are kept for {days} days.",
+
+    "bible_heading": "Scripture",
+    "bible_body": (
+        "Reading plans show the passage inline from the World English Bible, "
+        "which is public domain and needs nobody's permission."
+    ),
+    "bible_licensed": (
+        "A licensed translation such as NIV runs through your church's own "
+        "YouVersion registration. We never store the text of a licensed "
+        "translation, so if that service is unavailable your people read the "
+        "World English Bible and the page says so."
+    ),
 
     "support_heading": "Getting help",
     "support_body": (

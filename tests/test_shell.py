@@ -51,11 +51,11 @@ class TestRoadmapHonesty:
 
         assert SHIPPED_INCREMENTS <= set(INCREMENT_NAMES)
         # Bump this deliberately when an increment lands, not incidentally.
-        assert SHIPPED_INCREMENTS == {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}
+        assert SHIPPED_INCREMENTS == set(range(16))
 
     def test_the_progress_pill_counts_the_shipped_set(self, staff):
         r = staff.get("/", headers={"Host": "journey.dos.test"})
-        assert b"15 of 16 shipped" in r.data
+        assert b"16 of 16 shipped" in r.data
 
 
 class TestNavIcons:

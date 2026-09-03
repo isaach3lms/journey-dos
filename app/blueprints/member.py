@@ -19,6 +19,7 @@ from datetime import datetime, timezone
 
 from flask import (
     Blueprint,
+    current_app,
     abort,
     flash,
     g,
@@ -33,6 +34,8 @@ from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.content import GIVING, GROUPS, MEMBER, MESSAGES, RESOURCES, SERVICES
 from app.extensions import db
 from app.mail import opt_in, opt_out
+from app.bible import parse as parse_reference
+from app.bible.providers import fetch_passage
 from app.models import (
     RSVP_CHOICES,
     Group,
@@ -242,8 +245,18 @@ def read_session(resource_id: int, session_id: int):
     done = SessionCompletion.completed_session_ids(g.church.id, person.id, resource.id)
     following = [s for s in resource.sessions if s.position > session.position]
 
+    # The plan stores a reference, not the words. This is where it becomes
+    # scripture, and it falls back to the public domain text rather than
+    # failing if a licensed provider cannot answer.
+    passage = fetch_passage(
+        parse_reference(session.passage_ref),
+        g.church,
+        current_app.config.get("SECRET_KEY"),
+    )
+
     return render_template(
         "member/session.html",
+        passage=passage,
         resource=resource,
         session=session,
         is_done=session.id in done,

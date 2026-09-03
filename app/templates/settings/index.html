@@ -131,6 +131,18 @@
 </section>
 
 <section class="card">
+  <div class="hd"><h2>{{ content.bible_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.bible_body }}</p>
+    <div class="metrics">
+      <div><span class="mono mv">{{ bible_verses }}</span> verses loaded</div>
+      <div><span class="mono mv">{{ bible_books }}</span> books</div>
+    </div>
+    <p class="muted small">{{ content.bible_licensed }}</p>
+  </div>
+</section>
+
+<section class="card">
   <div class="hd"><h2>{{ content.support_heading }}</h2></div>
   <div class="bd">
     <p>{{ content.support_body }}</p>

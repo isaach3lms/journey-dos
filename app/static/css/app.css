@@ -672,3 +672,7 @@ form.inline .select{min-width:170px}
   padding:11px 0;border-top:1px solid var(--line-soft);font-size:14px;
 }
 .costline b{font-size:17px}
+
+.scripture p{font-size:15px;line-height:1.65;margin:0 0 10px}
+.scripture p:last-child{margin-bottom:0}
+.vnum{font-size:10px;font-weight:700;color:var(--muted-2);margin-right:5px;vertical-align:super}

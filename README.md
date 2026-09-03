@@ -3,15 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: every numbered increment except 8 is complete.** 0 through 7 and
-9 through 15, plus self-serve password reset. Increment 8, the Bible, is
-deferred pending the YouVersion answer and ships on the WEB fallback
-regardless. Increment 8, the Bible, is deferred pending the YouVersion
+**Status: every numbered increment is complete.** 0 through 15, plus
+self-serve password reset. 783 tests passing across 18 migrations. Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
-check-in, messaging, the giving mirror, sequences, and settings. 733 tests
-passing. Dashboard, People, Resources, and the member app are real
+check-in, messaging, the giving mirror, sequences, settings, and the Bible. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -88,6 +85,8 @@ python -m pytest
 | `flask run-sequences [--church x]` | Queue the sequence steps that have fallen due. |
 | `flask sequence-status --church x` | What is running and why things ended. |
 | `flask purge-audit [--days n]` | Drop audit entries past the retention window. |
+| `flask import-bible --file web.json` | Load World English Bible text. |
+| `flask bible-status` | What scripture is available. |
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
@@ -1090,6 +1089,64 @@ every child collected.
 
 Kept for 400 days, purged by the same cron job that runs the outbox.
 
+
+---
+
+## The Bible
+
+### The floor is public domain
+
+The World English Bible is out of copyright. It is stored in this system's own
+database, served with no network call, and available to every church with **no
+registration, no key, and nobody's permission**. A member can always read the
+passage in a plan.
+
+`flask import-bible` loads it. `sample-data/web-bible-sample.json` ships a small
+subset so the reader works out of the box.
+
+### A licensed translation runs on the church's own registration
+
+Per spec v3 section C.5, each church registers with YouVersion Platform and we
+operate the app on their behalf, which is why the credential is per church and
+lives in `integration_credential` alongside the giving keys.
+
+### Licensed text is never stored
+
+Not in a table, not in a cache, not in a column added later for performance.
+`bible_verse` has **no `translation` column**, precisely so there is nowhere
+for NIV to accumulate. A licensed translation sitting in this database,
+replicated across every backup, is a violation that grows quietly and gets
+discovered by somebody else.
+
+Two tests hold that line: one asserts the column does not exist, one fetches a
+licensed passage through a stubbed provider and checks nothing was written.
+
+`bible_verse` is also **global rather than tenant scoped**, the only table in
+the system besides its index without a `church_id`. Scripture is not a church's
+data, and copying 31,000 verses per tenant would be absurd.
+
+### Failure falls back rather than failing
+
+A missing key, an expired key, a rejected request, or a service simply down all
+produce the World English Bible plus a line on the page saying which
+translation is being shown. A member opening a reading plan on a Sunday morning
+should never see an error where a psalm was meant to be, and should never be
+misled about which translation they are reading.
+
+### Reference parsing is its own module
+
+`app/bible/reference.py`, pure functions, no database. Two ambiguities handled
+explicitly rather than guessed at:
+
+- **A leading number belongs to the book.** "1 John 4" is the first epistle,
+  chapter 4. Parsing left to right without knowing that produces confident
+  nonsense.
+- **Psalm and Psalms are one book**, as are Song of Songs and Song of Solomon,
+  and Revelation and Revelations, which is wrong and universal.
+
+An unparseable reference returns None rather than raising, so a typo in a
+reading plan shows one apologetic card instead of taking down the page.
+
 ---
 
 ## Deploying to Render
@@ -1153,19 +1210,27 @@ link you have already shared keeps working.
 
 ## What is next
 
-**Increment 8, the Bible.** The only numbered increment left. It ships on the
-World English Bible, which is public domain and needs nobody's permission. NIV
-requires the church's own YouVersion Platform registration, and spec section
-C.5 still needs a written answer to two questions: whether a vendor-operated
-app under a church's registration is permitted under the non-commercial terms,
-and whether NIV is enabled for such a key.
+The build plan is finished. What remains is not code.
 
-That answer affects every client ever onboarded, not one module. Worth having
-in writing before promising a pastor the translation he preaches from.
+**Load the full World English Bible.** The sample covers three books. The full
+public domain text is a single `flask import-bible` run.
 
-**Not built, and worth a decision:** there is no SMS provider. Anywhere the
-spec says "text", this emails instead, including the kiosk forgot-code flow
-where it matters most. A parent standing at a kiosk will not check email.
+**The YouVersion answer.** NIV needs a written reply to two questions from spec
+C.5: whether a vendor-operated app under a church's own registration is
+permitted under the non-commercial terms, and whether NIV is enabled for such a
+key. Nothing is blocked, because the WEB path is complete and needs nobody's
+permission. But that answer affects every client ever onboarded, not one
+module, and it should be in writing before a pastor is promised the translation
+he preaches from.
+
+**Tithely API access.** The CSV importer covers it today and writes to the same
+tables, so approval is an upgrade rather than a prerequisite.
+
+**No SMS provider exists.** Anywhere the spec says "text", this emails,
+including the kiosk forgot-code flow where it matters most. A parent standing
+at a tablet in a lobby will not check email. This is the largest remaining gap
+between the product and the spec, and it is a vendor decision rather than a
+build one.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

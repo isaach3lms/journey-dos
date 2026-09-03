@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.brand_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">White label</span>
+  </div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('settings.save_brand') }}">
+      {{ csrf_field() }}
+      <div class="field">
+        <label for="name">{{ content.church_name }}</label>
+        <input class="input" id="name" type="text" name="name" value="{{ church.name }}">
+      </div>
+      <div class="field">
+        <label for="app_name">{{ content.app_name }}</label>
+        <input class="input" id="app_name" type="text" name="app_name" value="{{ church.app_name or '' }}">
+      </div>
+      <div class="field">
+        <label for="app_domain">{{ content.app_domain }}</label>
+        <input class="input" id="app_domain" type="text" name="app_domain" value="{{ church.app_domain or '' }}">
+      </div>
+      <div class="field">
+        <label for="timezone">{{ content.timezone }}</label>
+        <select class="input select" id="timezone" name="timezone">
+          {% for zone in timezones %}
+            <option value="{{ zone }}" {% if church.timezone == zone %}selected{% endif %}>{{ zone }}</option>
+          {% endfor %}
+        </select>
+        <div class="fieldhelp">{{ content.timezone_hint }}</div>
+      </div>
+      <div class="field">
+        <label for="accent_hex">{{ content.accent }}</label>
+        <input class="input" id="accent_hex" type="text" name="accent_hex"
+               value="{{ church.accent_hex or '' }}" placeholder="{{ content.accent_placeholder }}">
+        <div class="fieldhelp">{{ content.accent_hint }}</div>
+      </div>
+      <button class="btn" type="submit">{{ content.save_brand }}</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.replaces_heading }}</h2></div>
+  <div class="bd">
+    <ul class="flaglist">
+      {% for item in replaces %}
+        <li>
+          <span class="fl">
+            <span class="pn">{{ item.name }}</span>
+            <span class="pe">{{ item.note }}</span>
+          </span>
+          <span class="pill mono">
+            {% if item.cents %}${{ "%.0f"|format(item.cents / 100) }}/mo{% else %}unchanged{% endif %}
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+
+    <div class="costline">
+      <span>{{ content.replaces_total }}</span>
+      <b class="mono">${{ "%.0f"|format(replaced_cents / 100) }} / mo</b>
+    </div>
+    <div class="costline">
+      <span>{{ content.replaces_ours }}</span>
+      <b class="mono">${{ "%.0f"|format(ours_cents / 100) }} / mo</b>
+    </div>
+    <p class="muted small">
+      {{ content.replaces_saving.format(
+           monthly="$%.0f"|format(saving_cents / 100),
+           yearly="$%.0f"|format(saving_cents * 12 / 100)) }}
+    </p>
+
+    <div class="mlbl">{{ content.included_heading }}</div>
+    {% for item in included %}
+      <p class="muted small"><b>{{ item.name }}</b> &middot; {{ item.note }}</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.audit_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">{{ content.audit_count.format(count=audit_count) }}</span>
+  </div>
+  <div class="bd">
+    <p>{{ content.audit_intro }}</p>
+
+    <form method="get" class="filters">
+      <select class="input select" name="action" aria-label="{{ content.audit_filter }}">
+        <option value="">{{ content.audit_all }}</option>
+        {% for action in actions %}
+          <option value="{{ action }}" {% if active_action == action %}selected{% endif %}>
+            {{ action.replace('_', ' ')|title }}
+          </option>
+        {% endfor %}
+      </select>
+      <button class="btn ghostbtn" type="submit">{{ content.audit_filter }}</button>
+    </form>
+
+    {% if events %}
+      <ol class="tl">
+        {% for event in events %}
+          <li>
+            <div class="tlt">{{ event.summary }}</div>
+            <div class="tld muted">
+              {{ event.occurred_at|church_time("%b %-d, %-I:%M%p") }} &middot;
+              {% if event.actor_name %}{{ content.audit_by.format(name=event.actor_name) }}
+              {% else %}{{ content.audit_system }}{% endif %}
+              &middot; {{ event.action_label }}
+              {% if event.detail %} &middot; {{ event.detail }}{% endif %}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+      <p class="muted small">{{ content.audit_retention.format(days=retention_days) }}</p>
+    {% else %}
+      <p class="muted small">{{ content.audit_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.support_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.support_body }}</p>
+    <p class="muted small">{{ content.support_what_to_include }}</p>
+  </div>
+</section>
+{% endblock %}

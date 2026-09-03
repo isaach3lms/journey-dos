@@ -46,7 +46,9 @@ from app.models import (
     User,
 )
 from app.models.base import utcnow
+from app.audit import record as audit_record
 from app.automation import enroll_for_stage, on_contact_logged, on_stage_changed
+from app.models.audit import SEQUENCE_STOPPED
 from app.mail import NotQueued, opt_in, opt_out, queue
 from app.security import min_role
 from app.stages import (
@@ -566,6 +568,14 @@ def stop_sequence(person_id: int, enrollment_id: int):
             f"Stopped: {enrollment.sequence_name}",
             detail=enrollment.end_reason_label,
             actor=current_user,
+        )
+        audit_record(
+            SEQUENCE_STOPPED,
+            f"{enrollment.sequence_name} stopped for {person.full_name}",
+            actor=current_user,
+            subject_type="sequence_enrollment",
+            subject_id=enrollment.id,
+            subject_label=person.full_name,
         )
         db.session.commit()
 

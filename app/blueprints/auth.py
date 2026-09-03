@@ -23,7 +23,9 @@ from flask import (
 )
 from flask_login import current_user, login_required, login_user, logout_user
 
+from app.audit import record
 from app.content import AUTH
+from app.models.audit import PASSWORD_RESET, SIGN_IN, SIGN_IN_FAILED
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.forms import ForgotPasswordForm, LoginForm, ResetPasswordForm
@@ -52,6 +54,10 @@ def login():
             current_app.logger.info(
                 "Failed login for unknown address at church %s", g.church.id
             )
+            # The address is not recorded. A log of attempted addresses is a
+            # list of who somebody thinks attends this church.
+            record(SIGN_IN_FAILED, "Failed sign-in", actor=None)
+            db.session.commit()
             flash(AUTH["failed"], "error")
             return render_template(
                 "auth/login.html", church=g.church, form=form, content=AUTH
@@ -69,12 +75,20 @@ def login():
             current_app.logger.info(
                 "Failed login for user %s at church %s", user.id, g.church.id
             )
+            record(
+                SIGN_IN_FAILED, "Failed sign-in", actor=None,
+                subject_type="user", subject_id=user.id, subject_label=user.name,
+            )
             flash(AUTH["failed"], "error")
             return render_template(
                 "auth/login.html", church=g.church, form=form, content=AUTH
             ), 401
 
         user.register_successful_login()
+        record(
+            SIGN_IN, f"{user.name} signed in", actor=user,
+            subject_type="user", subject_id=user.id, subject_label=user.name,
+        )
         db.session.commit()
 
         # Flask-Login rotates the session on login, which retires any
@@ -195,6 +209,11 @@ def reset(token: str):
         # attempts, so clear that too.
         user.failed_login_count = 0
         user.locked_until = None
+        record(
+            PASSWORD_RESET, f"{user.name} reset their password", actor=user,
+            subject_type="user", subject_id=user.id, subject_label=user.name,
+            detail="Every other signed-in device was signed out.",
+        )
         db.session.commit()
 
         # set_password bumped session_version, so every other device is now

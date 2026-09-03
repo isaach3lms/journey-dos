@@ -667,3 +667,8 @@ form.inline .select{min-width:170px}
 .thread form.inline{margin-top:6px}
 .flaglist li.stacked{flex-wrap:wrap;align-items:flex-start}
 .flaglist li.stacked .fl{flex:1 1 100%;margin-bottom:9px}
+.costline{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:11px 0;border-top:1px solid var(--line-soft);font-size:14px;
+}
+.costline b{font-size:17px}

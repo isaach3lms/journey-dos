@@ -28,7 +28,9 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from app.audit import record
 from app.content import KIDS
+from app.models.audit import CHILD_CHECKED_OUT
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import Checkin, CheckinSession, Household, Person
@@ -347,6 +349,17 @@ def do_checkout():
             continue
         checkin.check_out(collected_by=collected_by, user=current_user)
         names.append(checkin.person.full_name)
+        # The pickup code is deliberately not recorded. Who left with a child
+        # is the fact worth keeping; the code that authorised it is a secret.
+        record(
+            CHILD_CHECKED_OUT,
+            f"{checkin.person.full_name} collected by "
+            f"{collected_by or 'somebody not named'}",
+            actor=current_user,
+            subject_type="checkin",
+            subject_id=checkin.id,
+            subject_label=checkin.person.full_name,
+        )
 
     db.session.commit()
 

@@ -39,6 +39,7 @@ from app.models.giving_mirror import (  # noqa: F401
     ExternalRecurringGift,
     IntegrationCredential,
 )
+from app.models.audit import ACTIONS, AuditEvent  # noqa: F401
 from app.models.kids import Checkin, CheckinSession  # noqa: F401
 from app.models.sequence import (  # noqa: F401
     ENROLLMENT_STATUSES,
@@ -150,6 +151,8 @@ __all__ = [
     "SequenceEnrollment",
     "REASON_CONTACT",
     "REASON_TARGET_STAGE",
+    "AuditEvent",
+    "ACTIONS",
     "Checkin",
     "CheckinSession",
     "Group",

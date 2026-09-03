@@ -20,7 +20,9 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from app.audit import record
 from app.content import MESSAGES
+from app.models.audit import MESSAGE_DELETED
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import (
@@ -185,7 +187,16 @@ def delete_message(conversation_id: int, message_id: int):
     if conversation is None or message is None or message.conversation_id != conversation.id:
         abort(404)
 
+    author = message.author_name or "someone"
     message.soft_delete()
+    record(
+        MESSAGE_DELETED,
+        f"A message from {author} was deleted in {conversation.title}",
+        actor=current_user,
+        subject_type="message",
+        subject_id=message.id,
+        subject_label=conversation.title,
+    )
     db.session.commit()
 
     flash(MESSAGES["deleted"], "notice")

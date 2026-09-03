@@ -25,7 +25,9 @@ from flask_login import current_user, login_required
 from app.content import GIVING
 from app.extensions import db
 from app.giving import PROVIDER_TITHELY, PROVIDERS, InvalidGivingURL, validate_giving_url
+from app.audit import record
 from app.matching import suggest_for_gift
+from app.models.audit import CREDENTIAL_CHANGED, GIFT_MATCHED
 from app.models import (
     ExternalGift,
     ExternalRecurringGift,
@@ -117,6 +119,16 @@ def save_keys():
         credential.set_private_key(private, current_app.config["SECRET_KEY"])
 
     credential.status = STATUS_ACTIVE if credential.is_usable else "pending_setup"
+    # The key itself is never in the entry. Recording what changed would take
+    # a secret out of the one column that protects it.
+    record(
+        CREDENTIAL_CHANGED,
+        f"Provider keys changed for {PROVIDER_TITHELY}",
+        actor=current_user,
+        subject_type="integration_credential",
+        subject_id=credential.id,
+        detail="A private key was replaced." if private else "Public settings only.",
+    )
     db.session.commit()
 
     flash(GIVING["keys_saved"], "notice")
@@ -159,6 +171,15 @@ def attach_gift(gift_id: int):
         abort(400)
 
     gift.attach(person, user=current_user)
+    record(
+        GIFT_MATCHED,
+        f"{gift.amount_display} matched to {person.full_name}",
+        actor=current_user,
+        subject_type="external_gift",
+        subject_id=gift.id,
+        subject_label=person.full_name,
+        detail=f"Gift received {gift.received_on:%B %-d, %Y}.",
+    )
     db.session.commit()
 
     flash(

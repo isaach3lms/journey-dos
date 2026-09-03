@@ -3,12 +3,15 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 and 9 through 14 complete, plus self-serve
-password reset.** Increment 8, the Bible, is deferred pending the YouVersion
+**Status: every numbered increment except 8 is complete.** 0 through 7 and
+9 through 15, plus self-serve password reset. Increment 8, the Bible, is
+deferred pending the YouVersion answer and ships on the WEB fallback
+regardless. Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
-check-in, messaging, the giving mirror, and sequences. 693 tests passing. Dashboard, People, Resources, and the member app are real
+check-in, messaging, the giving mirror, sequences, and settings. 733 tests
+passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -84,6 +87,7 @@ python -m pytest
 | `flask giving-stopped --church x` | Who had a standing gift and has gone quiet. |
 | `flask run-sequences [--church x]` | Queue the sequence steps that have fallen due. |
 | `flask sequence-status --church x` | What is running and why things ended. |
+| `flask purge-audit [--days n]` | Drop audit entries past the retention window. |
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
@@ -1038,6 +1042,54 @@ job where nobody would see it.
 There is a Stop button on the person record, so nobody has to fake a phone call
 to end a sequence.
 
+
+---
+
+## Settings, support, and the audit surface
+
+### The cost comparison is data, not markup
+
+`REPLACES` and `DOS_PRICE_CENTS` in `app/content.py`. Changing the number is one
+edit, and a test asserts the arithmetic: **$294 replaced, $100 ours, $194 a
+month saved.** Spec section F item 1, closed.
+
+Two deliberate omissions, both tested:
+
+- **The Bible is not counted as a saving.** It is listed as included. Most
+  churches already use a free app, and claiming it is the kind of overstatement
+  a pastor checks and remembers.
+- **Giving fees show as unchanged.** The pitch is "keep Tithely and your
+  rates", so claiming a saving there would contradict the giving screen.
+
+### The accent guard finally has a form
+
+`assert_accent_readable` was written in increment 0 and has been unused since.
+It is now wired to the Settings colour field, so a pastor pasting Journey gold
+is stopped at the form rather than discovered by a volunteer squinting at a
+button in a lobby.
+
+### The audit log is append only
+
+No update path, no delete route, no `is_deleted` column, and tests asserting
+all three. A log a leader can edit is a story.
+
+`actor_name` is copied onto the entry, so it still names who did it after an
+account is removed. "Someone changed the giving keys" is not an audit trail.
+
+**It never holds a secret.** Not an API key, not a reset token, not a pickup
+code, and not the address somebody typed into a failed sign-in, because a log
+of attempted addresses is a list of who an outsider thinks attends the church.
+`scrub` is the second line; the first is that no call site passes one. A test
+walks every recorded action to check.
+
+**It is deliberately not a log of everything.** A record of every page view
+buries the twelve entries that matter under thousands that do not. What is
+recorded: sign-ins, failed sign-ins, password resets, branding changes,
+provider keys, matched gifts, deleted messages, sequences stopped by staff, and
+every child collected.
+
+Kept for 400 days, purged by the same cron job that runs the outbox.
+
 ---
 
 ## Deploying to Render
@@ -1101,13 +1153,19 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 15, settings, support, and the audit surface. The last one in the
-plan, and it renders the cost comparison that spec section F item 1 still needs
-signed off: `$294 replaced, $194/mo saved`, with the Bible repositioned as
-convenience rather than savings.
+**Increment 8, the Bible.** The only numbered increment left. It ships on the
+World English Bible, which is public domain and needs nobody's permission. NIV
+requires the church's own YouVersion Platform registration, and spec section
+C.5 still needs a written answer to two questions: whether a vendor-operated
+app under a church's registration is permitted under the non-commercial terms,
+and whether NIV is enabled for such a key.
 
-Increment 8, the Bible, is deferred until YouVersion answers. It ships on the
-World English Bible fallback regardless.
+That answer affects every client ever onboarded, not one module. Worth having
+in writing before promising a pastor the translation he preaches from.
+
+**Not built, and worth a decision:** there is no SMS provider. Anywhere the
+spec says "text", this emails instead, including the kiosk forgot-code flow
+where it matters most. A parent standing at a kiosk will not check email.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

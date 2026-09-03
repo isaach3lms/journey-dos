@@ -1119,3 +1119,18 @@ a{{
 
         stopped = SequenceEnrollment.stopped_by_contact_count(church.id)
         click.echo(f"\n{stopped} stopped because a person made contact.")
+
+
+    @app.cli.command("purge-audit")
+    @click.option("--days", default=None, type=int)
+    def purge_audit(days):
+        """Drop audit entries past the retention window.
+
+        Long enough to answer a question about last season, short enough that
+        the table is not a liability nobody manages.
+        """
+        from app.models.audit import RETENTION_DAYS, AuditEvent
+
+        removed = AuditEvent.purge_old(older_than_days=days or RETENTION_DAYS)
+        db.session.commit()
+        click.echo(f"Removed {removed} audit entries.")

@@ -47,7 +47,7 @@ NAV_ITEMS: list[NavItem] = [
     NavItem("giving", "Giving", "Run", 7, "give", STAFF_ONLY, ready=True),
     NavItem("resources", "Resources", "Run", 6, "res", STAFF_AND_LEADERS, ready=True),
     NavItem("messages", "Messages", "Manage", 12, "msg", STAFF_AND_LEADERS, ready=True),
-    NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY),
+    NavItem("settings", "Settings", "Manage", 15, "set", STAFF_ONLY, ready=True),
 ]
 
 
@@ -62,6 +62,7 @@ NAV_ENDPOINTS = {
     "services": "services.index",
     "kids": "kids.index",
     "messages": "messages.index",
+    "settings": "settings.index",
 }
 
 
@@ -127,7 +128,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15}
 
 SHELL = {
     "title": "Foundation",
@@ -1142,6 +1143,89 @@ AUTOMATION = {
         "person gets where it was pointing. Writing a note does not stop it, "
         "because writing that somebody should be called is not calling them."
     ),
+}
+
+
+# The cost comparison, per spec v3 section C.6. One list, so the number is one
+# edit rather than a hunt through markup. The Bible is deliberately not counted
+# as a saving: most churches use a free app already, so claiming it as a
+# replaced line item is the kind of overstatement a pastor checks and remembers.
+REPLACES = (
+    {"name": "Planning Center", "cents": 19900,
+     "note": "People, services, teams, check-in"},
+    {"name": "Website and hosting", "cents": 9500,
+     "note": "The site, the domain, the updates"},
+    {"name": "Giving platform fees", "cents": 0,
+     "note": "Unchanged. You keep Tithely and your rates."},
+)
+
+INCLUDED_NOT_SAVED = (
+    {"name": "Bible and reading plans",
+     "note": "Included, not counted as a saving. Most churches already use a "
+             "free app for this."},
+)
+
+DOS_PRICE_CENTS = 10000
+
+
+SETTINGS = {
+    "title": "Settings",
+    "subtitle": "Your brand, your data, your app.",
+
+    "brand_heading": "Your brand",
+    "church_name": "Church name",
+    "app_name": "App name in the store",
+    "app_domain": "Domain",
+    "timezone": "Timezone",
+    "timezone_hint": (
+        "Meeting and service times are read in this zone. A wrong value here "
+        "produces no error at all, so it is worth checking."
+    ),
+    "accent": "Primary colour",
+    "accent_placeholder": "#485B38",
+    "accent_hint": (
+        "Every screen updates instantly, including the member app. Any hex "
+        "works as long as white text stays readable on it."
+    ),
+    "save_brand": "Save",
+    "brand_saved": "Saved. Every screen is already using it.",
+    "accent_rejected": "{reason}",
+    "timezone_rejected": "{value} is not a timezone. Try America/Chicago.",
+
+    "replaces_heading": "What this replaces",
+    "replaces_total": "Current total",
+    "replaces_ours": "Discipleship Operating System",
+    "replaces_saving": (
+        "Net saving of {monthly} a month, {yearly} a year, before counting "
+        "staff hours."
+    ),
+    "replaces_note": "Per month.",
+    "included_heading": "Included, not counted",
+
+    "audit_heading": "What happened here",
+    "audit_intro": (
+        "Sign-ins, access changes, provider keys, matched gifts, deleted "
+        "messages, and every child collected. Append only: nothing on this "
+        "screen can be edited or removed, including by us."
+    ),
+    "audit_empty": "Nothing recorded yet.",
+    "audit_all": "Everything",
+    "audit_filter": "Show",
+    "audit_by": "by {name}",
+    "audit_system": "by the system",
+    "audit_count": "{count} in the last 30 days",
+    "audit_retention": "Entries are kept for {days} days.",
+
+    "support_heading": "Getting help",
+    "support_body": (
+        "Email isaac@betweensundaysconsulting.com and a person will answer. "
+        "There is no ticket queue and no chatbot."
+    ),
+    "support_what_to_include": (
+        "It helps to say what you were doing and roughly when. The screen "
+        "above gives us the rest."
+    ),
+    "support_status": "Everything on this page is running.",
 }
 
 ERRORS = {

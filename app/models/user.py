@@ -279,20 +279,26 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Matching on email is imperfect and deliberately not automatic anywhere
         a mistake would be costly. Here the worst case is that a member sees an
         empty Home screen until staff link them by hand, which is recoverable.
+        An address held by two people is refused rather than resolved, because
+        the failure there is showing one spouse the other's record.
         """
         from app.models.person import Person
 
         if self.person_id:
             return False
 
-        match = db.session.scalar(
-            db.select(Person).where(
-                Person.church_id == self.church_id,
-                Person.email == self.email,
-                Person.is_archived.is_(False),
+        matches = list(
+            db.session.scalars(
+                db.select(Person).where(
+                    Person.church_id == self.church_id,
+                    Person.email == self.email,
+                    Person.is_archived.is_(False),
+                )
             )
         )
-        if match is None:
+        # Households share addresses, so this is not an identifier. Linking a
+        # login to the wrong spouse would show one person the other's record.
+        if len(matches) != 1:
             return False
-        self.person_id = match.id
+        self.person_id = matches[0].id
         return True

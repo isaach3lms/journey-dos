@@ -497,12 +497,15 @@ a{{
 
             existing = None
             if record["email"]:
-                existing = db.session.scalar(
+                # `.first()` rather than `.scalar()`: an address may be held by
+                # two people in a household, and raising in the middle of an
+                # import over something that normal is the wrong behavior.
+                existing = db.session.scalars(
                     db.select(Person).where(
                         Person.church_id == church.id,
                         Person.email == record["email"],
                     )
-                )
+                ).first()
 
             if existing is not None:
                 existing.first_name = record["first_name"]
@@ -871,3 +874,189 @@ a{{
         church.timezone = tz_name
         db.session.commit()
         click.echo(f"{church.name} now reads meeting times in {tz_name}.")
+
+    # -- increment 13 -------------------------------------------------------
+
+    @app.cli.command("import-gifts")
+    @click.option("--church", "church_slug", required=True)
+    @click.option("--file", "path", required=True, type=click.Path(exists=True))
+    @click.option("--dry-run", is_flag=True)
+    def import_gifts(church_slug, path, dry_run):
+        """Import a giving CSV export into the read-only mirror.
+
+        This is the fallback for Tithely API access being request-based with no
+        published turnaround, and it is not a lesser path: it writes to exactly
+        the same tables the sync will, so approval upgrades the plumbing
+        without changing anything downstream.
+
+        Columns, header row required:
+          transaction_id, donor_name, donor_email, amount, fund, method, date
+
+        Re-importing the same file changes nothing. Rows are keyed on
+        transaction_id, so a church that exports overlapping date ranges does
+        not double its own totals.
+        """
+        import csv
+        from datetime import date as _date
+
+        from app.matching import match_donor
+        from app.models import ExternalGift
+        from app.models.giving_mirror import (
+            MATCH_MATCHED,
+            MATCH_UNMATCHED,
+            PROVIDER_TITHELY,
+        )
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        with open(path, newline="", encoding="utf-8-sig") as handle:
+            rows = list(csv.DictReader(handle))
+        if not rows:
+            raise click.ClickException("That file has no rows.")
+
+        problems, staged = [], []
+        for line, row in enumerate(rows, start=2):
+            txn = (row.get("transaction_id") or "").strip()
+            if not txn:
+                problems.append(f"line {line}: no transaction_id, so it cannot be deduped")
+                continue
+
+            raw_amount = (row.get("amount") or "").strip().replace("$", "").replace(",", "")
+            try:
+                # Parsed as a decimal string and multiplied, never through a
+                # float. 19.99 is not representable in binary floating point
+                # and a church's totals should not drift by a cent a year.
+                whole, _, frac = raw_amount.partition(".")
+                cents = int(whole or 0) * 100 + int((frac + "00")[:2] or 0)
+            except ValueError:
+                problems.append(f"line {line}: {raw_amount!r} is not an amount")
+                continue
+            if cents <= 0:
+                problems.append(f"line {line}: amount must be more than zero")
+                continue
+
+            try:
+                received = _date.fromisoformat((row.get("date") or "").strip())
+            except ValueError:
+                problems.append(f"line {line}: date must be YYYY-MM-DD")
+                continue
+
+            staged.append({
+                "provider_txn_id": txn[:120],
+                "donor_name": (row.get("donor_name") or "").strip() or None,
+                "donor_email": (row.get("donor_email") or "").strip().lower() or None,
+                "amount_cents": cents,
+                "fund_name": (row.get("fund") or "").strip() or None,
+                "method": (row.get("method") or "").strip() or None,
+                "received_on": received,
+            })
+
+        if problems:
+            click.echo(f"{len(problems)} problems. Nothing was written.\n")
+            for problem in problems[:25]:
+                click.echo(f"  {problem}")
+            raise click.ClickException("Fix the file and run it again.")
+
+        created = updated = auto = 0
+        for record in staged:
+            existing = db.session.scalar(
+                db.select(ExternalGift).where(
+                    ExternalGift.church_id == church.id,
+                    ExternalGift.provider == PROVIDER_TITHELY,
+                    ExternalGift.provider_txn_id == record["provider_txn_id"],
+                )
+            )
+            if existing is not None:
+                # The provider owns the ledger, so its numbers win. The match a
+                # human made is ours and is left alone.
+                existing.amount_cents = record["amount_cents"]
+                existing.received_on = record["received_on"]
+                existing.fund_name = record["fund_name"]
+                updated += 1
+                continue
+
+            gift = ExternalGift(
+                church_id=church.id,
+                provider=PROVIDER_TITHELY,
+                match_status=MATCH_UNMATCHED,
+                **record,
+            )
+            result = match_donor(
+                church.id, email=record["donor_email"], name=record["donor_name"]
+            )
+            if result.is_auto:
+                gift.person_id = result.person.id
+                gift.match_status = MATCH_MATCHED
+                auto += 1
+
+            db.session.add(gift)
+            created += 1
+
+        if dry_run:
+            db.session.rollback()
+            click.echo(
+                f"Dry run. Would create {created}, update {updated}, "
+                f"auto-match {auto}. Nothing written."
+            )
+            return
+
+        db.session.commit()
+        click.echo(
+            f"Created {created}, updated {updated}, matched {auto} automatically."
+        )
+        click.echo(
+            f"{ExternalGift.unmatched_count(church.id)} gifts need a human. "
+            f"See Giving, gifts we could not match."
+        )
+
+    @app.cli.command("match-gifts")
+    @click.option("--church", "church_slug", required=True)
+    def match_gifts(church_slug):
+        """Retry matching after a roster import filled in email addresses."""
+        from app.matching import match_donor
+        from app.models import ExternalGift
+        from app.models.giving_mirror import MATCH_MATCHED
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        matched = 0
+        for gift in db.session.scalars(ExternalGift.unmatched(church.id, limit=5000)):
+            result = match_donor(
+                church.id, email=gift.donor_email, name=gift.donor_name
+            )
+            if result.is_auto:
+                gift.person_id = result.person.id
+                gift.match_status = MATCH_MATCHED
+                matched += 1
+
+        db.session.commit()
+        click.echo(
+            f"Matched {matched}. "
+            f"{ExternalGift.unmatched_count(church.id)} still need a human."
+        )
+
+    @app.cli.command("giving-stopped")
+    @click.option("--church", "church_slug", required=True)
+    def giving_stopped(church_slug):
+        """Who had a standing gift and has gone quiet."""
+        from app.models import ExternalRecurringGift
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        stopped = list(db.session.scalars(ExternalRecurringGift.stopped(church.id)))
+        if not stopped:
+            click.echo(f"Nobody at {church.name} who gives regularly has gone quiet.")
+            return
+
+        click.echo(f"{len(stopped)} stopped at {church.name}\n")
+        for recurring in stopped:
+            who = recurring.person.full_name if recurring.person else (
+                recurring.donor_name or "not matched to anyone"
+            )
+            click.echo(f"  {who:26} {recurring.stopped_reason}")

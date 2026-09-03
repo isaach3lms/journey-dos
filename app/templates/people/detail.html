@@ -296,6 +296,40 @@
 </section>
 
 <section class="card">
+  <div class="hd">
+    <h2>{{ giving.recent_gifts }}</h2>
+    <div class="spacer"></div>
+    {% if giving_summary.count %}
+      <span class="pill">{{ giving.given_total.format(total="$%.2f"|format(giving_summary.total_cents / 100), count=giving_summary.count) }}</span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% for arrangement in recurring %}
+      <p>
+        <b>{{ giving.recurring_heading }}</b>
+        &middot; {{ giving.recurring_line.format(amount=arrangement.amount_display, frequency=arrangement.frequency, date=arrangement.last_success_on.strftime("%B %-d") if arrangement.last_success_on else "never") }}
+        {% if arrangement.has_stopped %}<span class="pill pending">{{ giving.stopped_flag }}</span>{% endif %}
+      </p>
+    {% else %}
+      <p class="muted small">{{ giving.recurring_none }}</p>
+    {% endfor %}
+
+    {% if gifts %}
+      <ol class="tl">
+        {% for gift in gifts %}
+          <li>
+            <div class="tlt">{{ gift.amount_display }}{% if gift.fund_name %} to {{ gift.fund_name }}{% endif %}</div>
+            <div class="tld muted">{{ gift.received_on.strftime("%B %-d, %Y") }}{% if gift.method %} &middot; {{ gift.method }}{% endif %}</div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted small">{{ giving.no_gifts }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
   <div class="hd"><h2>{{ content.timeline }}</h2></div>
   <div class="bd">
     {% if events %}

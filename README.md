@@ -3,12 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 and 9 through 12 complete, plus self-serve
+**Status: increments 0 through 7 and 9 through 13 complete, plus self-serve
 password reset.** Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
-check-in, and messaging. 586 tests passing. Dashboard, People, Resources, and the member app are real
+check-in, messaging, and the giving mirror. 648 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -79,6 +79,9 @@ python -m pytest
 | `flask unlock-user --church x --email y` | Clear a lockout without changing the password. |
 | `flask set-domain --church x --domain host` | Point a hostname at a church. |
 | `flask set-timezone --church x --timezone America/Chicago` | Zone meeting times are read in. |
+| `flask import-gifts --church x --file gifts.csv` | Import a giving export. Add `--dry-run` first. |
+| `flask match-gifts --church x` | Retry matching after a roster import. |
+| `flask giving-stopped --church x` | Who had a standing gift and has gone quiet. |
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
@@ -896,6 +899,91 @@ a second copy in their inbox, which is exactly what they asked for.
 
 Room posts never email the church. That is checked, not assumed.
 
+
+---
+
+## The giving mirror
+
+Read only, in both senses. Nothing writes to Tithely, and nothing here is the
+source of truth. Tithely owns the ledger; this is a copy kept so the system can
+answer a question Tithely cannot. Not "did revenue drop", which is a budget
+report, but "has Chris Vaughn stopped giving", which is usually a discipleship
+signal weeks earlier.
+
+### Matching is where the danger is
+
+The failure mode is not a missed match. It is **money attributed to the wrong
+person**, which surfaces in a giving statement at year end addressed to
+somebody who did not give it.
+
+Three rungs, each weaker than the last: email, phone, name. **Only email
+auto-matches, and only when it points at exactly one person.** Phone is a
+household line as often as a personal one. A name is not an identifier: two
+Chris Vaughns in a church is ordinary.
+
+**Ambiguity never auto-matches.** More than one candidate sends the gift to the
+review queue with the candidates attached, and a human decides.
+
+### The review queue does not invite a mistake
+
+When there is no suggestion, the person dropdown defaults to a non-person
+option. It previously defaulted to whoever was first alphabetically, sitting
+one click from a green confirm button, which is how a company's gift gets
+attached to a child. Confirming without choosing now attaches nothing.
+
+### Lapse detection has a grace period, per frequency
+
+A card that failed on the 1st and succeeded on the 4th is a payment system
+doing its job, not a person leaving. A standing gift counts as stopped once it
+is past **its own rhythm** plus three weeks, so a weekly giver lapses sooner
+than a monthly one. Cancelled arrangements never appear: they told the church,
+which is a decision rather than a signal.
+
+The SQL and the Python property are asserted to agree on every row, because a
+dashboard that disagrees with the record it links to is worse than no
+dashboard.
+
+### The credential is encrypted at rest
+
+The stored private key can read every gift a church has ever received. It is
+encrypted with a key derived from `SECRET_KEY`, never logged, never rendered,
+and absent from `__repr__` because reprs end up in logs.
+
+The tradeoff: rotating `SECRET_KEY` makes stored credentials unreadable. That
+is recoverable, because these are third-party keys a church can re-enter, and
+it would not be acceptable for anything irreplaceable.
+
+### CSV is not the lesser path
+
+Tithely API access is request-based with no published turnaround.
+`flask import-gifts` writes to exactly the same tables the sync will, so
+approval upgrades the plumbing without changing anything downstream. Imports
+are keyed on `transaction_id`, so overlapping exports do not double a church's
+totals, and a re-import never undoes a match a human made: the provider owns
+the ledger, the match is ours.
+
+Amounts are parsed as integer cents through string arithmetic, never a float.
+19.99 is not representable in binary floating point and a church's totals
+should not drift by a cent a year.
+
+---
+
+## A constraint that was wrong for churches
+
+`person.email` was unique per church until increment 13. A married couple
+sharing one address is the normal case in a church, not an edge case, and that
+constraint meant the second spouse could not be entered at all: a wall a church
+hits on its first afternoon of data entry.
+
+It is now indexed and not unique. The cost is that email is no longer an
+identifier, so every lookup through it decides what to do with more than one
+row. They all refuse rather than guess. `User.link_person_by_email` returns
+False on an ambiguous address, because linking a login to the wrong spouse
+would show one person the other's record.
+
+The tell that the constraint was wrong: the matching module was already written
+to handle a shared address, defending against a situation the schema forbade.
+
 ---
 
 ## Deploying to Render
@@ -959,15 +1047,16 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 13, the Tithely read-only sync. Giving appears on a person's record
-and the "Giving that stopped" card goes live, which is the sharpest single
-claim in the whole pitch: lapsed giving is a discipleship signal before it is a
-budget problem.
+Increment 14, sequences and automations. A first-visit welcome fires by itself,
+and a logged phone call stops it mid-sequence. Per the architecture rules,
+sequences are Python data structures rather than rows, with two hard stops: a
+human logs real contact, or the person reaches the target stage.
 
-**This one has an external dependency.** Tithely API access is request-based
-with no published turnaround. If it has not been applied for, do that before
-starting. The increment ships a CSV importer against the same mirror tables
-either way, so approval is an upgrade rather than a prerequisite.
+Both stops already exist. Increment 3 built the contact log and increment 2
+built the stage rail, so increment 14 is the engine that reads them.
+
+Then increment 15, settings and the audit surface, and increment 8, the Bible,
+whenever YouVersion answers.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

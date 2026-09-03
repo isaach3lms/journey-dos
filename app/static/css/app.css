@@ -665,3 +665,5 @@ form.inline .select{min-width:170px}
 .mbody p{font-size:14px;line-height:1.55;margin:0 0 8px}
 .mbody p:last-child{margin-bottom:0}
 .thread form.inline{margin-top:6px}
+.flaglist li.stacked{flex-wrap:wrap;align-items:flex-start}
+.flaglist li.stacked .fl{flex:1 1 100%;margin-bottom:9px}

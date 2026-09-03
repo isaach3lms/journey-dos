@@ -260,13 +260,15 @@ def kiosk_forgot():
     """
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
-        person = db.session.scalar(
+        # An address may belong to two people in one household. They share a
+        # household, so they share a PIN, and either one is the right answer.
+        person = db.session.scalars(
             db.select(Person).where(
                 Person.church_id == g.church.id,
                 Person.email == email,
                 Person.is_archived.is_(False),
             )
-        ) if email else None
+        ).first() if email else None
 
         # Everything below is conditional and the response is not. A kiosk that
         # says "no such address" is a device for finding out who attends.

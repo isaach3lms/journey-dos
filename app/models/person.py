@@ -138,7 +138,19 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     __tablename__ = "person"
     __table_args__ = (
         CheckConstraint(f"stage IN ({_STAGE_LIST})", name="ck_person_stage"),
-        UniqueConstraint("church_id", "email", name="uq_person_church_email"),
+        # Deliberately NOT unique.
+        #
+        # A married couple sharing one address is the normal case in a church,
+        # not an edge case, and a unique constraint here means the second
+        # spouse cannot be entered at all. That is a wall a church hits on its
+        # first afternoon of data entry.
+        #
+        # The cost is that email is no longer an identifier, so every lookup
+        # through it has to decide what to do with more than one row. They all
+        # refuse rather than guess: see User.link_person_by_email and
+        # app/matching.py. Guessing which spouse gave a gift is exactly the
+        # error the matching module exists to prevent.
+        Index("ix_person_church_email", "church_id", "email"),
         Index("ix_person_church_stage", "church_id", "stage"),
         Index("ix_person_church_last_first", "church_id", "last_name", "first_name"),
     Index("ix_person_church_stage_since", "church_id", "stage", "stage_since"),

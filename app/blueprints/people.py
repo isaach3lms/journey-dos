@@ -22,7 +22,7 @@ from datetime import date
 
 from flask_login import current_user, login_required
 
-from app.content import EMAIL, PEOPLE, STUCK
+from app.content import EMAIL, GIVING, PEOPLE, STUCK
 from app.extensions import db
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
@@ -35,6 +35,8 @@ from app.models import (
     ContactLog,
     KIND_NOTE,
     KIND_STAGE_CHANGE,
+    ExternalGift,
+    ExternalRecurringGift,
     NextStep,
     OutboxMessage,
     Person,
@@ -131,6 +133,14 @@ def detail(person_id: int):
         optional_categories=OPTIONAL_CATEGORIES,
         emails=db.session.scalars(
             OutboxMessage.for_person(g.church.id, person.id)
+        ).all(),
+        giving=GIVING,
+        gifts=db.session.scalars(
+            ExternalGift.for_person(g.church.id, person.id)
+        ).all(),
+        giving_summary=ExternalGift.person_summary(g.church.id, person.id),
+        recurring=db.session.scalars(
+            ExternalRecurringGift.for_person(g.church.id, person.id)
         ).all(),
         household_members=household_members,
         stages=stages_for(g.church),

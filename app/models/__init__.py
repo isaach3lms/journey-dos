@@ -26,6 +26,19 @@ from app.models.outbox import (  # noqa: F401
     NotificationPreference,
     OutboxMessage,
 )
+from app.models.giving_mirror import (  # noqa: F401
+    LAPSE_GRACE_DAYS,
+    MATCH_IGNORED,
+    MATCH_MATCHED,
+    MATCH_STATUSES,
+    MATCH_UNMATCHED,
+    RECURRING_ACTIVE,
+    RECURRING_CANCELLED,
+    RECURRING_PAUSED,
+    ExternalGift,
+    ExternalRecurringGift,
+    IntegrationCredential,
+)
 from app.models.kids import Checkin, CheckinSession  # noqa: F401
 from app.models.message import (  # noqa: F401
     CONVERSATION_KINDS,
@@ -120,6 +133,14 @@ __all__ = [
     "KIND_ANNOUNCEMENT",
     "KIND_ROOM",
     "KIND_DIRECT",
+    "ExternalGift",
+    "ExternalRecurringGift",
+    "IntegrationCredential",
+    "MATCH_UNMATCHED",
+    "MATCH_MATCHED",
+    "MATCH_IGNORED",
+    "RECURRING_ACTIVE",
+    "LAPSE_GRACE_DAYS",
     "Checkin",
     "CheckinSession",
     "Group",

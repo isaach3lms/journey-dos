@@ -492,3 +492,62 @@ class TestImport:
 
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         assert len(db.session.scalars(Person.search(church.id, term="Marcus")).all()) == 1
+
+
+class TestAHouseholdMayShareOneEmail:
+    """The constraint that was wrong for this domain.
+
+    A married couple sharing one address is the normal case in a church. The
+    original unique constraint meant the second spouse could not be entered at
+    all, which is a wall a church hits on its first afternoon of data entry.
+    """
+
+    def test_two_people_may_hold_one_address(self, db):
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        db.session.add_all([
+            Person(church_id=church.id, first_name="Chris", last_name="Vaughn",
+                   email="vaughns@example.com", stage="attender"),
+            Person(church_id=church.id, first_name="Alina", last_name="Vaughn",
+                   email="vaughns@example.com", stage="attender"),
+        ])
+        db.session.commit()
+        assert len(db.session.scalars(Person.search(church.id, term="vaughns@")).all()) == 2
+
+    def test_a_shared_address_does_not_link_a_login_to_a_guess(self, db):
+        """Linking to the wrong spouse would show one person the other's record."""
+        from app.models import User
+
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        for first in ("Chris", "Alina"):
+            db.session.add(
+                Person(church_id=church.id, first_name=first, last_name="Vaughn",
+                       email="member@journeychurchsemo.com", stage="attender")
+            )
+        db.session.commit()
+
+        user = db.session.scalar(
+            db.select(User).where(
+                User.email == "member@journeychurchsemo.com",
+                User.church_id == church.id,
+            )
+        )
+        assert user.link_person_by_email() is False
+        assert user.person is None
+
+    def test_a_unique_address_still_links(self, db):
+        from app.models import User
+
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        db.session.add(
+            Person(church_id=church.id, first_name="Alicia", last_name="Romero",
+                   email="member@journeychurchsemo.com", stage="attender")
+        )
+        db.session.commit()
+
+        user = db.session.scalar(
+            db.select(User).where(
+                User.email == "member@journeychurchsemo.com",
+                User.church_id == church.id,
+            )
+        )
+        assert user.link_person_by_email() is True

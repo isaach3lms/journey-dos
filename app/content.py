@@ -127,7 +127,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13}
 
 SHELL = {
     "title": "Foundation",
@@ -662,9 +662,68 @@ GIVING = {
         "people to your giving page."
     ),
     "why": (
-        "Reading giving back into a person's record so the system can tell you "
-        "when someone quietly stops arrives at increment 13."
+        "Giving is mirrored here read only, so the system can tell you when "
+        "somebody quietly stops. Nothing is written back to your platform."
     ),
+
+    # Increment 13
+    "sync_heading": "Giving data",
+    "sync_hint": (
+        "Paste your API keys and the system pulls a read-only copy of your "
+        "giving. Until Tithely approves API access, import a CSV export "
+        "instead. Both land in the same place."
+    ),
+    "public_key": "Public key",
+    "private_key": "Private key",
+    "private_key_stored": "A key is stored. Paste a new one to replace it.",
+    "org_ref": "Organization ID",
+    "save_keys": "Save the keys",
+    "keys_saved": "Saved. The private key is encrypted at rest.",
+    "keys_cleared": "Keys removed.",
+    "last_sync": "Last pulled {when}",
+    "never_synced": "Nothing pulled yet",
+
+    "stopped_heading": "Giving that stopped",
+    "stopped_intro": (
+        "These people had a standing gift and it has gone quiet. That is "
+        "usually a discipleship signal before it is a budget problem."
+    ),
+    "stopped_empty": "Nobody who gives regularly has gone quiet.",
+    "stopped_empty_hint": (
+        "A standing gift counts as stopped once it is past its own rhythm by "
+        "three weeks, so a failed card that retried does not show up here."
+    ),
+    "stopped_flag": "Stopped",
+    "stopped_unmatched": "Not matched to anyone on the roster",
+
+    "mtd": "Giving month to date",
+    "recent_gifts": "Recent gifts",
+    "no_gifts": "No gifts recorded for this person.",
+    "given_total": "{total} across {count} gifts",
+    "given_since": "since {date}",
+    "recurring_heading": "Standing gift",
+    "recurring_line": "{amount} {frequency}, last on {date}",
+    "recurring_none": "No standing gift on file.",
+
+    # The review queue
+    "queue_title": "Gifts we could not match to a person",
+    "queue_subtitle": (
+        "The system only attaches a gift by itself when an email address "
+        "points at exactly one person. Everything else is here for a human."
+    ),
+    "queue_empty": "Every gift is matched.",
+    "queue_empty_hint": "Nothing waiting.",
+    "queue_count": "{count} waiting",
+    "queue_suggestion": "Looks like {name}",
+    "queue_no_suggestion": "No obvious match",
+    "queue_attach": "That is them",
+    "queue_attached": "{amount} attached to {name}.",
+    "queue_pick": "Someone else",
+    "queue_choose": "Choose a person",
+    "queue_choose_first": "Pick who this is before attaching it.",
+    "queue_ignore": "Not a person here",
+    "queue_ignored": "Set aside.",
+    "queue_ambiguous": "More than one person could be this. Pick one.",
 
     "open_admin": "Open {provider}",
     "open_admin_hint": "Opens in a new tab. Sign in there as you normally would.",

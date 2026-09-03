@@ -8,8 +8,16 @@ end to end without dead links.
 from flask import Blueprint, abort, g, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
-from app.content import INCREMENT_NAMES, NAV_ITEMS, PEOPLE, SHELL, SHIPPED_INCREMENTS, STUCK
-from app.models import Person
+from app.content import (
+    AUTOMATION,
+    INCREMENT_NAMES,
+    NAV_ITEMS,
+    PEOPLE,
+    SHELL,
+    SHIPPED_INCREMENTS,
+    STUCK,
+)
+from app.models import Person, SequenceEnrollment
 from app.extensions import db
 from app.stages import CONTACT_WINDOW_DAYS, stages_for
 
@@ -48,6 +56,11 @@ def index():
         contacted_count=Person.contacted_since(g.church.id, 7) if show_rail else 0,
         unowned_count=Person.unowned_count(g.church.id) if show_rail else 0,
         contact_window=CONTACT_WINDOW_DAYS,
+        automation=AUTOMATION,
+        auto_sent=SequenceEnrollment.sent_last_days(g.church.id, 7) if show_rail else 0,
+        auto_running=SequenceEnrollment.active_count(g.church.id) if show_rail else 0,
+        auto_stopped=SequenceEnrollment.stopped_by_contact_count(g.church.id)
+        if show_rail else 0,
         active="dashboard",
         increment_names=INCREMENT_NAMES,
         shipped=SHIPPED_INCREMENTS,

@@ -22,12 +22,13 @@ from datetime import date
 
 from flask_login import current_user, login_required
 
-from app.content import EMAIL, GIVING, PEOPLE, STUCK
+from app.content import AUTOMATION, EMAIL, GIVING, PEOPLE, STUCK
 from app.extensions import db
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
     CONTACT_METHODS,
     KIND_CONTACT,
+    KIND_EMAIL,
     KIND_NEXT_STEP,
     STATUS_DONE,
     STATUS_DROPPED,
@@ -41,9 +42,11 @@ from app.models import (
     OutboxMessage,
     Person,
     PersonEvent,
+    SequenceEnrollment,
     User,
 )
 from app.models.base import utcnow
+from app.automation import enroll_for_stage, on_contact_logged, on_stage_changed
 from app.mail import NotQueued, opt_in, opt_out, queue
 from app.security import min_role
 from app.stages import (
@@ -142,6 +145,10 @@ def detail(person_id: int):
         recurring=db.session.scalars(
             ExternalRecurringGift.for_person(g.church.id, person.id)
         ).all(),
+        enrollments=db.session.scalars(
+            SequenceEnrollment.for_person(g.church.id, person.id)
+        ).all(),
+        automation=AUTOMATION,
         household_members=household_members,
         stages=stages_for(g.church),
         next_stage=next_stage(person.stage),
@@ -195,6 +202,8 @@ def move_stage(person_id: int):
         detail=PEOPLE["stage_moved_detail"].format(direction=direction),
         actor=current_user,
     )
+    # Hard stop two, and the ordinary case of arriving somewhere new.
+    on_stage_changed(person, previous, actor=current_user)
     db.session.commit()
 
     flash(
@@ -302,6 +311,8 @@ def log_contact(person_id: int):
         actor=current_user,
         occurred_at=now,
     )
+    # Hard stop one. A human stepped in, so the system steps back.
+    on_contact_logged(person, actor=current_user)
     db.session.commit()
 
     flash(STUCK["contact_saved"].format(name=person.first_name), "notice")
@@ -528,4 +539,35 @@ def toggle_opt_out(person_id: int):
     db.session.commit()
 
     flash(message.format(name=person.first_name), "notice")
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+@bp.post("/<int:person_id>/sequence/<int:enrollment_id>/stop/")
+@login_required
+@min_role("leader")
+def stop_sequence(person_id: int, enrollment_id: int):
+    """Stop a sequence by hand.
+
+    Staff should always be able to overrule the automation without having to
+    fake a phone call to do it.
+    """
+    from app.models.sequence import REASON_MANUAL
+
+    person = Person.get_for_church(g.church.id, person_id)
+    enrollment = SequenceEnrollment.get_for_church(g.church.id, enrollment_id)
+    if person is None or enrollment is None or enrollment.person_id != person.id:
+        abort(404)
+
+    if enrollment.is_active:
+        enrollment.stop(REASON_MANUAL)
+        PersonEvent.record(
+            person,
+            KIND_EMAIL,
+            f"Stopped: {enrollment.sequence_name}",
+            detail=enrollment.end_reason_label,
+            actor=current_user,
+        )
+        db.session.commit()
+
+    flash(AUTOMATION["stopped"], "notice")
     return redirect(url_for("people.detail", person_id=person.id))

@@ -1060,3 +1060,62 @@ a{{
                 recurring.donor_name or "not matched to anyone"
             )
             click.echo(f"  {who:26} {recurring.stopped_reason}")
+
+    # -- increment 14 -------------------------------------------------------
+
+    @app.cli.command("run-sequences")
+    @click.option("--church", "church_slug", default=None)
+    @click.option("--limit", default=200)
+    def run_sequences(church_slug, limit):
+        """Send the sequence steps that have fallen due.
+
+        Queues into the outbox rather than sending, so the same worker run
+        cannot be slowed or broken by the mail provider. `send-outbox` does
+        the sending.
+        """
+        from app.automation import run_due
+
+        church_id = None
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            church_id = church.id
+
+        counts = run_due(church_id=church_id, limit=limit)
+        click.echo(
+            f"queued {counts['sent']}, stopped {counts['stopped']}, "
+            f"completed {counts['completed']}, skipped {counts['skipped']}"
+        )
+
+    @app.cli.command("sequence-status")
+    @click.option("--church", "church_slug", required=True)
+    def sequence_status(church_slug):
+        """What is running and why things ended."""
+        from sqlalchemy import func as sa_func
+
+        from app.models import SequenceEnrollment
+
+        church = Church.by_slug(church_slug)
+        if church is None:
+            raise click.ClickException(f"No church with slug {church_slug!r}.")
+
+        rows = db.session.execute(
+            db.select(
+                SequenceEnrollment.sequence_code,
+                SequenceEnrollment.status,
+                sa_func.count(SequenceEnrollment.id),
+            )
+            .where(SequenceEnrollment.church_id == church.id)
+            .group_by(SequenceEnrollment.sequence_code, SequenceEnrollment.status)
+        ).all()
+
+        if not rows:
+            click.echo(f"Nothing enrolled at {church.name}.")
+            return
+
+        for code, status, count in sorted(rows):
+            click.echo(f"  {code:24} {status:11} {count}")
+
+        stopped = SequenceEnrollment.stopped_by_contact_count(church.id)
+        click.echo(f"\n{stopped} stopped because a person made contact.")

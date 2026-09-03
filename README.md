@@ -3,12 +3,12 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: increments 0 through 7 and 9 through 13 complete, plus self-serve
+**Status: increments 0 through 7 and 9 through 14 complete, plus self-serve
 password reset.** Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
-check-in, messaging, and the giving mirror. 648 tests passing. Dashboard, People, Resources, and the member app are real
+check-in, messaging, the giving mirror, and sequences. 693 tests passing. Dashboard, People, Resources, and the member app are real
 screens; the remaining nav items resolve to placeholders naming the increment
 they arrive in.
 
@@ -82,6 +82,8 @@ python -m pytest
 | `flask import-gifts --church x --file gifts.csv` | Import a giving export. Add `--dry-run` first. |
 | `flask match-gifts --church x` | Retry matching after a roster import. |
 | `flask giving-stopped --church x` | Who had a standing gift and has gone quiet. |
+| `flask run-sequences [--church x]` | Queue the sequence steps that have fallen due. |
+| `flask sequence-status --church x` | What is running and why things ended. |
 | `flask routing-check` | Show which hosts resolve to which church. |
 | `flask import-people --church x --file roster.csv` | Import a roster. Add `--dry-run` first. |
 | `flask people-summary --church x` | Stage counts, the same numbers the rail shows. |
@@ -984,6 +986,58 @@ would show one person the other's record.
 The tell that the constraint was wrong: the matching module was already written
 to handle a shared address, defending against a situation the schema forbade.
 
+
+---
+
+## Sequences and automations
+
+Sequences are **Python**, enrollments are **rows**. Same reasoning as stages and
+notification categories: a sequence is shape, and the shape is the same for
+every church until one asks otherwise. In the database it would mean a
+migration to change a sentence, a UI nobody uses, and no way to review a
+wording change in a diff.
+
+### Two hard stops, and they are the whole design
+
+1. **A human logs real contact.**
+2. **The person reaches the target stage.**
+
+The first matters most. The promise of this product is that the system notices
+people and then gets out of the way when a human steps in. A welcome series
+that keeps emailing somebody the pastor already phoned is worse than no
+automation, because it tells that person nobody is paying attention.
+
+A **note does not stop a sequence.** Only a logged conversation does, which is
+the distinction increment 3 exists to keep.
+
+### Both stops are checked twice, on purpose
+
+Once when the event happens, so the enrollment is visibly stopped on the
+person's record, and again inside the worker immediately before sending.
+Somebody can be phoned in the hour between a step falling due and the worker
+waking up. Checking only at the event leaves a race; checking only at send
+leaves a pastor looking at a record that still claims a sequence is running.
+
+### Offsets, not dates, with a catch-up limit
+
+Steps are day 0, day 3, day 7 **from enrollment**, so a worker down for a day
+does not push the whole series a day later. A step more than five days overdue
+is skipped rather than sent: if the worker was off for a month, the person on
+day 2 of a welcome series does not want the day 2 email in September, they want
+to be left alone.
+
+### Editing a sequence cannot strand an enrollment
+
+An enrollment stores the code and a step index, not a copy of the step, so
+edited wording takes effect on the next send. A sequence that gets shorter, or
+is removed entirely, completes the enrollment rather than erroring in a cron
+job where nobody would see it.
+
+### Staff always overrule it
+
+There is a Stop button on the person record, so nobody has to fake a phone call
+to end a sequence.
+
 ---
 
 ## Deploying to Render
@@ -1047,16 +1101,13 @@ link you have already shared keeps working.
 
 ## What is next
 
-Increment 14, sequences and automations. A first-visit welcome fires by itself,
-and a logged phone call stops it mid-sequence. Per the architecture rules,
-sequences are Python data structures rather than rows, with two hard stops: a
-human logs real contact, or the person reaches the target stage.
+Increment 15, settings, support, and the audit surface. The last one in the
+plan, and it renders the cost comparison that spec section F item 1 still needs
+signed off: `$294 replaced, $194/mo saved`, with the Bible repositioned as
+convenience rather than savings.
 
-Both stops already exist. Increment 3 built the contact log and increment 2
-built the stage rail, so increment 14 is the engine that reads them.
-
-Then increment 15, settings and the audit surface, and increment 8, the Bible,
-whenever YouVersion answers.
+Increment 8, the Bible, is deferred until YouVersion answers. It ships on the
+World English Bible fallback regardless.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

@@ -40,6 +40,12 @@ from app.models.giving_mirror import (  # noqa: F401
     IntegrationCredential,
 )
 from app.models.kids import Checkin, CheckinSession  # noqa: F401
+from app.models.sequence import (  # noqa: F401
+    ENROLLMENT_STATUSES,
+    REASON_CONTACT,
+    REASON_TARGET_STAGE,
+    SequenceEnrollment,
+)
 from app.models.message import (  # noqa: F401
     CONVERSATION_KINDS,
     KIND_ANNOUNCEMENT,
@@ -141,6 +147,9 @@ __all__ = [
     "MATCH_IGNORED",
     "RECURRING_ACTIVE",
     "LAPSE_GRACE_DAYS",
+    "SequenceEnrollment",
+    "REASON_CONTACT",
+    "REASON_TARGET_STAGE",
     "Checkin",
     "CheckinSession",
     "Group",

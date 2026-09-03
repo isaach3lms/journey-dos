@@ -393,21 +393,28 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         from app.stages import TRANSITIONAL_STAGES
 
         now = now or utcnow()
-        contact_cutoff = now - timedelta(days=CONTACT_WINDOW_DAYS)
+        # `+ 1` and `<=`, matching `days_since_contact > CONTACT_WINDOW_DAYS`
+        # exactly. See the note on the overdue clause below: truncated whole
+        # days and exact timestamps disagree for one day unless both sides
+        # count the same way.
+        contact_cutoff = now - timedelta(days=CONTACT_WINDOW_DAYS + 1)
 
         # Only transitional stages. A Member of three years is not stuck.
         overdue = db.or_(
             *[
                 db.and_(
                     cls.stage == stage.code,
-                    cls.stage_since < now - timedelta(days=stage.expected_days),
+                    # `+ 1` and `<=` so this matches `days_in_stage > limit`
+                    # exactly. Whole days elapsed >= limit + 1 is the same
+                    # condition the Python property tests.
+                    cls.stage_since <= now - timedelta(days=stage.expected_days + 1),
                 )
                 for stage in TRANSITIONAL_STAGES
             ]
         )
         silent = db.or_(
             cls.last_contact_at.is_(None),
-            cls.last_contact_at < contact_cutoff,
+            cls.last_contact_at <= contact_cutoff,
         )
         return db.and_(overdue, silent)
 

@@ -497,3 +497,73 @@ class TestDashboard:
         person = add_person(db, "journey", "Recent", "Contact", "member", 400, 3)
         add_person(db, "journey", "Old", "Contact", "member", 400, 40)
         assert Person.contacted_since(person.church_id, 7) == 1
+
+
+class TestTheBoundaryIsTheSameInBothPlaces:
+    """The one-day window where the SQL and the property disagreed.
+
+    `days_in_stage` truncates, so `days > 90` needs 91 whole days. The SQL
+    asked for `stage_since < now - 90 days`, true from 90 days and one second.
+    In between, the dashboard listed somebody the record said was fine and
+    rendered "None" where the reason belonged.
+
+    The original invariant test passed because every fixture sat far from the
+    boundary. These sit on it.
+    """
+
+    def test_they_agree_across_the_whole_boundary(self, db):
+        from app.stages import STAGE_BY_CODE
+
+        limit = STAGE_BY_CODE["attender"].expected_days
+        for hours in range(limit * 24 - 6, limit * 24 + 54, 3):
+            person = add_person(
+                db, "journey", f"H{hours}", "Boundary", "attender", 0, None
+            )
+            person.stage_since = utcnow() - timedelta(hours=hours)
+            db.session.commit()
+
+            church = person.church_id
+            in_query = person.id in {
+                p.id for p in db.session.scalars(Person.stuck(church))
+            }
+            assert in_query == person.is_stuck, (
+                f"{hours}h: query said {in_query}, property said {person.is_stuck}"
+            )
+
+    def test_they_agree_across_the_contact_window_boundary(self, db):
+        """The same bug on the other side of the AND.
+
+        Fixed for stage_since first, and this swept it up: Sam Hartley in the
+        real roster sat exactly 21 days past contact, where the SQL said stuck
+        and the property said fine.
+        """
+        for hours in range(CONTACT_WINDOW_DAYS * 24 - 6, CONTACT_WINDOW_DAYS * 24 + 54, 3):
+            person = add_person(
+                db, "journey", f"C{hours}", "Window", "attender", 300, None
+            )
+            person.last_contact_at = utcnow() - timedelta(hours=hours)
+            db.session.commit()
+
+            church = person.church_id
+            in_query = person.id in {
+                p.id for p in db.session.scalars(Person.stuck(church))
+            }
+            assert in_query == person.is_stuck, (
+                f"{hours}h since contact: query said {in_query}, "
+                f"property said {person.is_stuck}"
+            )
+
+    def test_a_flagged_person_always_has_a_reason(self, db):
+        """The card rendered "None" for anyone caught in the gap."""
+        from app.stages import STAGE_BY_CODE
+
+        limit = STAGE_BY_CODE["attender"].expected_days
+        for hours in (limit * 24, limit * 24 + 1, limit * 24 + 25):
+            person = add_person(
+                db, "journey", f"R{hours}", "Reason", "attender", 0, None
+            )
+            person.stage_since = utcnow() - timedelta(hours=hours)
+            db.session.commit()
+
+        for person in db.session.scalars(Person.stuck(person.church_id)):
+            assert person.stuck_reason is not None

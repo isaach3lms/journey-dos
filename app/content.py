@@ -127,7 +127,7 @@ ICONS: dict[str, str] = {
 
 # Increments that are actually built. The roadmap card reads this, so the
 # dashboard cannot claim something is shipped that is not.
-SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13}
+SHIPPED_INCREMENTS = {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14}
 
 SHELL = {
     "title": "Foundation",
@@ -1112,6 +1112,36 @@ MESSAGES = {
     "direct_start": "Message someone",
     "direct_started": "Talking to {name}.",
     "direct_self": "You cannot start a conversation with yourself.",
+}
+
+
+AUTOMATION = {
+    "card_heading": "Running without staff time",
+    "card_intro": (
+        "These went out on their own this week. None of them was written on a "
+        "Monday morning."
+    ),
+    "card_empty": "Nothing is running automatically yet.",
+    "card_empty_hint": (
+        "A welcome series starts by itself when somebody first shows up, and "
+        "stops the moment anyone actually talks to them."
+    ),
+    "sent_this_week": "sent automatically in the last 7 days",
+    "running_now": "sequences running",
+    "stopped_by_contact": "stopped because a person made contact",
+
+    "person_heading": "Automatic follow up",
+    "person_none": "Nothing running for this person.",
+    "person_running": "Step {step} of {total}, next on {date}",
+    "person_ended": "{reason}",
+    "stop_it": "Stop it",
+    "stopped": "Stopped.",
+
+    "why_stopped": (
+        "A sequence ends the moment somebody logs a real conversation, or the "
+        "person gets where it was pointing. Writing a note does not stop it, "
+        "because writing that somebody should be called is not calling them."
+    ),
 }
 
 ERRORS = {

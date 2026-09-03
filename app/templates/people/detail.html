@@ -330,6 +330,45 @@
 </section>
 
 <section class="card">
+  <div class="hd"><h2>{{ automation.person_heading }}</h2></div>
+  <div class="bd">
+    {% if enrollments %}
+      <ul class="flaglist">
+        {% for enrollment in enrollments %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ enrollment.sequence_name }}</span>
+              <span class="pe">
+                {% if enrollment.is_active %}
+                  {{ automation.person_running.format(
+                       step=enrollment.step_index + 1,
+                       total=enrollment.sequence.steps|length if enrollment.sequence else 0,
+                       date=enrollment.next_due_at|church_time("%B %-d") if enrollment.next_due_at else "unscheduled") }}
+                {% else %}
+                  {{ enrollment.end_reason_label }}
+                {% endif %}
+              </span>
+            </span>
+            {% if enrollment.is_active %}
+              <form method="post" class="inline"
+                    action="{{ url_for('people.stop_sequence', person_id=person.id, enrollment_id=enrollment.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn" type="submit">{{ automation.stop_it }}</button>
+              </form>
+            {% else %}
+              <span class="pill">{{ enrollment.status|title }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+      <p class="muted small">{{ automation.why_stopped }}</p>
+    {% else %}
+      <p class="muted small">{{ automation.person_none }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
   <div class="hd"><h2>{{ content.timeline }}</h2></div>
   <div class="bd">
     {% if events %}

@@ -89,7 +89,9 @@ services:
     branch: main
     schedule: "*/5 * * * *"
     buildCommand: pip install -r requirements.txt
-    startCommand: flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens
+    # Sequences queue first, then the outbox sends. Two steps in one job so
+    # a step that falls due is emailed in the same five minute window.
+    startCommand: flask run-sequences && flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens
     envVars:
       - key: FLASK_ENV
         value: production

@@ -3,8 +3,9 @@
 Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
-**Status: every numbered increment is complete.** 0 through 15, plus
-self-serve password reset. 783 tests passing across 18 migrations. Increment 8, the Bible, is deferred pending the YouVersion
+**Status: every numbered increment is complete**, 0 through 15, plus
+self-serve password reset and the installable member app. 827 tests passing
+across 18 migrations. Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
@@ -1147,6 +1148,55 @@ explicitly rather than guessed at:
 An unparseable reference returns None rather than raising, so a typo in a
 reading plan shows one apologetic card instead of taking down the page.
 
+
+---
+
+## Installing the member app
+
+A manifest, a service worker, and an offline page. No app store, no build
+tooling, no second codebase: a member adds it to their home screen and it opens
+without browser chrome, under their church's name and colour.
+
+### The manifest is per church
+
+Generated from the same brand tokens as every screen, so an installed icon says
+"Journey", not "Between Sundays". A member should experience it as their
+church's app, because it is.
+
+`short_name` is what appears under the icon, and home screens truncate hard.
+Taking the first word produced **"The"**, which is wrong for the majority of
+church names because most start with an article. It now skips articles and
+generic words: "The Journey Church" becomes "Journey", "Church of the Redeemer"
+becomes "Redeemer".
+
+### The caching rule that matters
+
+A church tablet in a lobby and a family iPad are both shared devices. A cache
+that outlives a session shows the next person somebody else's giving history,
+household PIN, or conversations. So there are two caches:
+
+- **`-assets`**: CSS and icons. No data about anybody, cached hard.
+- **`-pages`**: anything under `/me/`. Deleted the instant somebody signs out,
+  via a message the sign-out form posts to the worker.
+
+Anything under `/auth/` is never cached at all. A cached reset link is a
+security problem, not a convenience.
+
+Pages are **network first**, so a member sees current data whenever they can.
+The cache is a fallback for a tunnel or a bad signal, not the default.
+
+The worker only handles GET, only handles its own origin, and deletes every
+cache from an older version on activate, which is how a deploy reaches a phone
+that already has the old files.
+
+### One head, five shells
+
+The staff app, the member app, the signed-out pages, the login page, and the
+kiosk each had their own `<head>` and had drifted. The login page ended up
+without a manifest link, which is the one screen most people are looking at
+when they decide to install. All five now include `partials/head_meta.html`,
+and a test fails the build if any of them grows its own copy again.
+
 ---
 
 ## Deploying to Render
@@ -1210,7 +1260,8 @@ link you have already shared keeps working.
 
 ## What is next
 
-The build plan is finished. What remains is not code.
+The numbered build plan is finished, and the member app is installable. What
+remains is not code.
 
 **Load the full World English Bible.** The sample covers three books. The full
 public domain text is a single `flask import-bible` run.
@@ -1231,6 +1282,16 @@ including the kiosk forgot-code flow where it matters most. A parent standing
 at a tablet in a lobby will not check email. This is the largest remaining gap
 between the product and the spec, and it is a vendor decision rather than a
 build one.
+
+**No push notifications.** The installable app can receive them on both
+platforms now, but nothing sends them. The outbox already has the right shape,
+queue, worker, categories, opt-out, so push becomes a second transport beside
+Resend rather than a new system.
+
+**App Store listings** need a Capacitor wrapper and, under Apple's rule on
+templated apps, submission from each church's own developer account. Roughly
+two to three weeks for the first, a day each after. Worth piloting with Journey
+before promising it to a church you have not sold yet.
 
 Increment 8, the Bible, is deferred until YouVersion answers. Spec section F
 item 2a is closed: the kiosk "I forgot my code" flow shipped with this

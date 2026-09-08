@@ -8,11 +8,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ church.name }}{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="{{ palette.font_url }}" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
-<style>:root{ {{ brand_css|safe }} }</style>
+{% include "partials/head_meta.html" %}
 </head>
 <body class="kioskbody">
 <header class="kioskhead">
@@ -35,5 +31,6 @@
     {% block content %}{% endblock %}
   </div>
 </main>
+{% include "partials/pwa_script.html" %}
 </body>
 </html>

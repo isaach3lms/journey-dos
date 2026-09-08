@@ -1248,6 +1248,30 @@ SETTINGS = {
     "support_status": "Everything on this page is running.",
 }
 
+
+PWA = {
+    "description": (
+        "{church} in your pocket: what is next for you, what you are reading, "
+        "your groups, and your kids check-in code."
+    ),
+    "shortcut_read": "Reading",
+    "shortcut_you": "Your details",
+
+    "offline_title": "You are offline",
+    "offline_body": (
+        "This page needs a connection. Anything you have already opened is "
+        "still here."
+    ),
+    "offline_hint": "It will load as soon as you are back on a signal.",
+
+    "install_prompt": "Add {church} to your home screen",
+    "install_action": "Add it",
+    "install_dismiss": "Not now",
+    "install_ios": (
+        "In Safari, tap the share button and then Add to Home Screen."
+    ),
+}
+
 ERRORS = {
     # Shown when the host resolves to no church at all. Distinct from a 500 on
     # purpose: this is a configuration answer, not a crash, and telling an

@@ -93,3 +93,40 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request).then((hit) => hit || caches.match(OFFLINE_URL)))
   );
 });
+
+// A push arrives with a small payload: enough to get somebody to open the app,
+// never anything private. Lock screens are readable by whoever is standing
+// nearby.
+self.addEventListener('push', (event) => {
+  let data = { title: 'Update', body: '', url: '/', tag: 'dos' };
+  try { data = Object.assign(data, event.data.json()); } catch (e) {}
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      // A tag replaces rather than stacks. Three copies of the same reminder
+      // is how somebody turns notifications off for good.
+      tag: data.tag,
+      renotify: false,
+      icon: '/static/img/icon-192.png',
+      badge: '/static/img/icon-192.png',
+      data: { url: data.url }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || '/';
+
+  // Focus a tab that is already open rather than piling up new ones.
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windows) => {
+        for (const client of windows) {
+          if (client.url.includes(target) && 'focus' in client) return client.focus();
+        }
+        return self.clients.openWindow(target);
+      })
+  );
+});

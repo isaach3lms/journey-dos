@@ -1217,3 +1217,46 @@ a{{
                 "\nNothing loaded. Run `flask import-bible --file <web.json>`. "
                 "Until then a reading plan shows its reference without the text."
             )
+
+
+    @app.cli.command("purge-push")
+    def purge_push():
+        """Delete push subscriptions nobody is behind.
+
+        A browser reinstall, a cleared site, or a phone reset leaves an
+        endpoint that answers 410 forever. Retrying those means the worker
+        eventually spends its time talking to nothing.
+        """
+        from app.models import PushSubscription
+
+        removed = PushSubscription.purge_dead()
+        db.session.commit()
+        click.echo(f"Removed {removed} dead push subscriptions.")
+
+    @app.cli.command("vapid-keys")
+    def vapid_keys():
+        """Generate a VAPID key pair.
+
+        One pair covers every church: VAPID identifies this application to the
+        push services, not the tenant. Rotating it invalidates every
+        subscription everywhere, so it belongs in config and in a deploy.
+        """
+        import base64
+
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        private = ec.generate_private_key(ec.SECP256R1())
+        raw_private = private.private_numbers().private_value.to_bytes(32, "big")
+        raw_public = private.public_key().public_bytes(
+            serialization.Encoding.X962,
+            serialization.PublicFormat.UncompressedPoint,
+        )
+
+        def b64(data):
+            return base64.urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
+
+        click.echo("Set these on the web service and the cron job.\n")
+        click.echo(f"VAPID_PUBLIC_KEY={b64(raw_public)}")
+        click.echo(f"VAPID_PRIVATE_KEY={b64(raw_private)}")
+        click.echo("\nThe private key is a secret. Set it with sync: false.")

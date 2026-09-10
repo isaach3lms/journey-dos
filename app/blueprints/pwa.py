@@ -35,7 +35,7 @@ bp = Blueprint("pwa", __name__)
 # Bumped when the service worker or the assets it caches change. The worker
 # deletes every cache whose name does not match, which is how a deploy reaches
 # a phone that already has the old files.
-CACHE_VERSION = "dos-v1"
+CACHE_VERSION = "dos-v2"
 
 
 # Words that carry no identity in a church name. "The Journey Church" under

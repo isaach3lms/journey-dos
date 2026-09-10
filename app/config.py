@@ -76,6 +76,17 @@ class BaseConfig:
     MAIL_TIMEOUT = 15
     OUTBOX_BATCH_SIZE = 50
 
+    # Push. VAPID identifies this application to the push services, so one key
+    # pair covers every church. It lives here rather than in a column because
+    # rotating it invalidates every subscription everywhere, which should be a
+    # deploy rather than a form somebody can submit.
+    PUSH_TRANSPORT = os.environ.get("PUSH_TRANSPORT", "null")
+    VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+    VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+    VAPID_SUBJECT = os.environ.get(
+        "VAPID_SUBJECT", "mailto:isaac@betweensundaysconsulting.com"
+    )
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
@@ -110,6 +121,7 @@ class TestingConfig(BaseConfig):
     # Only ever lowered here. See User._hash_method.
     PASSWORD_HASH_METHOD = "pbkdf2:sha256:1"
     MAIL_TRANSPORT = "memory"
+    PUSH_TRANSPORT = "memory"
 
 
 class ProductionConfig(BaseConfig):
@@ -126,6 +138,14 @@ class ProductionConfig(BaseConfig):
                 "DATABASE_URL is not set. Refusing to boot in production. "
                 "Falling back to SQLite here would put every church's data on "
                 "an ephemeral disk that is wiped on the next deploy."
+            )
+        if app.config.get("PUSH_TRANSPORT") == "webpush" and not app.config.get(
+            "VAPID_PRIVATE_KEY"
+        ):
+            raise RuntimeError(
+                "PUSH_TRANSPORT is 'webpush' but VAPID_PRIVATE_KEY is empty. "
+                "A church whose people tapped Turn on notifications and never "
+                "receive one is worse off than a deploy that refused to start."
             )
         if app.config.get("MAIL_TRANSPORT") == "resend" and not app.config.get(
             "RESEND_API_KEY"

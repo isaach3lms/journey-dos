@@ -73,6 +73,12 @@ services:
         sync: false
       - key: MAIL_FROM
         value: The Journey Church <no-reply@thejourneychurchsemo.com>
+      - key: PUSH_TRANSPORT
+        value: webpush
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
 
   # ---------------------------------------------------------------------
   # The outbox worker.
@@ -91,7 +97,7 @@ services:
     buildCommand: pip install -r requirements.txt
     # Sequences queue first, then the outbox sends. Two steps in one job so
     # a step that falls due is emailed in the same five minute window.
-    startCommand: flask run-sequences && flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens && flask purge-audit
+    startCommand: flask run-sequences && flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens && flask purge-audit && flask purge-push
     envVars:
       - key: FLASK_ENV
         value: production
@@ -114,3 +120,9 @@ services:
         sync: false
       - key: MAIL_FROM
         value: The Journey Church <no-reply@thejourneychurchsemo.com>
+      - key: PUSH_TRANSPORT
+        value: webpush
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false

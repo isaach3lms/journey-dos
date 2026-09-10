@@ -86,6 +86,8 @@ python -m pytest
 | `flask run-sequences [--church x]` | Queue the sequence steps that have fallen due. |
 | `flask sequence-status --church x` | What is running and why things ended. |
 | `flask purge-audit [--days n]` | Drop audit entries past the retention window. |
+| `flask purge-push` | Delete push subscriptions nobody is behind. |
+| `flask vapid-keys` | Generate the VAPID key pair for push. |
 | `flask import-bible --file web.json` | Load World English Bible text. |
 | `flask bible-status` | What scripture is available. |
 | `flask routing-check` | Show which hosts resolve to which church. |
@@ -1308,6 +1310,84 @@ backfill is present in the migration file.
 The form answers identically whether or not the address already has an account,
 so it cannot be used to find out who attends.
 
+
+---
+
+## Deleting your own account
+
+Required by both app stores for any app that lets people create an account, and
+right regardless. It is in the app, on the You screen, and it does not route
+through an email to support.
+
+**What it deletes is the thing the person created: the login.** The pastoral
+record is the church's, in the same way a paper roll would be, and deleting it
+would take a child's check-in history and matched giving with it. The screen
+says exactly that rather than implying the church forgets them.
+
+The password is re-entered, not just clicked. A phone left unlocked on a table
+is the normal case, and this is not undoable.
+
+**The last active staff account cannot delete itself.** It would lock the
+church out of its own data with nobody able to undo it.
+
+Every deletion is audited, and the person's push subscriptions go with it.
+
+---
+
+## The privacy policy
+
+`/privacy/`, public, per church, generated from what the application actually
+does. Both stores require a URL, and Apple's questionnaire asks you to declare
+each data type and whether it is linked to identity, so a bought template does
+not survive review.
+
+It declares children's check-in records and giving explicitly, because the app
+holds both. It states what is never collected: card numbers, location, device
+contacts, advertising identifiers. Those are claims the rest of the codebase is
+built to keep, and there are tests asserting the page still says so.
+
+**It is part of every future increment.** If something starts collecting a new
+kind of data, this page changes in the same commit.
+
+---
+
+## Push notifications
+
+Web Push, chosen over a native-only service on purpose: it works in the
+installed PWA on both platforms today and keeps working unchanged inside a
+Capacitor wrapper later. One transport, two delivery targets, no rewrite when
+the store path arrives.
+
+**Push is a second transport beside Resend, not a second system.** The opt-out
+check is the same one email makes, at the same moment, immediately before
+sending. Somebody who turned off "Next steps" turned off next steps, not email
+specifically, and honouring that in one channel and ignoring it in the other
+has not honoured it. Transactional categories still send, for the same reason
+they do in email.
+
+**A subscription belongs to a device.** One member has a phone, a tablet, and a
+laptop, each a separate endpoint with its own keys. Turning notifications off
+on one must not silence the others. Re-subscribing the same browser updates the
+row rather than adding one, because the endpoint is the identity.
+
+**A revoked endpoint is deleted, not retried.** A push service answers 404 or
+410 forever for a subscription behind a browser that no longer exists.
+Retrying accumulates garbage until the worker spends its time talking to
+nothing. `flask purge-push` runs on the same cron as the outbox.
+
+**A payload says little.** Lock screens are readable by whoever is standing
+nearby, so a notification carries a title and one short line: enough to get
+somebody to open the app, which is the only thing it needs to do. No giving
+amounts, nothing from a private conversation, no child's name. Notifications
+carry a tag so a repeat replaces rather than stacks, because three copies of
+the same reminder is how somebody turns them off for good.
+
+**Setup.** `flask vapid-keys` generates the pair. One pair covers every church:
+VAPID identifies this application to the push services, not the tenant.
+Rotating it invalidates every subscription everywhere, which is why it lives in
+config and in a deploy rather than in a form. Production with
+`PUSH_TRANSPORT=webpush` and no private key refuses to boot.
+
 ---
 
 ## Deploying to Render
@@ -1393,11 +1473,6 @@ including the kiosk forgot-code flow where it matters most. A parent standing
 at a tablet in a lobby will not check email. This is the largest remaining gap
 between the product and the spec, and it is a vendor decision rather than a
 build one.
-
-**No push notifications.** The installable app can receive them on both
-platforms now, but nothing sends them. The outbox already has the right shape,
-queue, worker, categories, opt-out, so push becomes a second transport beside
-Resend rather than a new system.
 
 **App Store listings** need a Capacitor wrapper and, under Apple's rule on
 templated apps, submission from each church's own developer account. Roughly

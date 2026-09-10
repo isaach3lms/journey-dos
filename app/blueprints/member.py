@@ -28,10 +28,10 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import current_user, login_required
+from flask_login import current_user, login_required, logout_user
 
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
-from app.content import GIVING, GROUPS, MEMBER, MESSAGES, RESOURCES, SERVICES
+from app.content import GIVING, GROUPS, MEMBER, MESSAGES, PRIVACY, RESOURCES, SERVICES
 from app.extensions import db
 from app.mail import opt_in, opt_out
 from app.bible import parse as parse_reference
@@ -46,6 +46,9 @@ from app.models import (
     ResourceSession,
     SessionCompletion,
 )
+from app.audit import record as audit_record
+from app.models import PushSubscription
+from app.models.audit import PERSON_ARCHIVED
 from app.models.message import Conversation, Message
 from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
 from app.stages import STAGE_BY_CODE, stages_for
@@ -131,6 +134,8 @@ def you():
         pin=pin,
         categories=CATEGORIES,
         optional_categories=OPTIONAL_CATEGORIES,
+        push_devices=PushSubscription.device_count(g.church.id, current_user.id),
+        vapid_public_key=current_app.config.get("VAPID_PUBLIC_KEY", ""),
         tab="you",
         **_base_context(person),
     )
@@ -493,3 +498,129 @@ def chat_post(conversation_id: int):
     db.session.commit()
 
     return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+@bp.post("/you/push/")
+@login_required
+def subscribe_push():
+    """Register this browser for notifications.
+
+    A subscription is per device, not per person. One member has a phone, a
+    tablet, and a laptop, and turning notifications off on one must not
+    silence the others.
+    """
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+    keys = payload.get("keys") or {}
+
+    if not endpoint or not keys.get("p256dh") or not keys.get("auth"):
+        # Without both keys a payload cannot be encrypted for this device, so
+        # storing the row would mean a subscription that can never be used.
+        return {"ok": False}, 400
+
+    PushSubscription.register(
+        g.church.id,
+        current_user,
+        endpoint=endpoint,
+        p256dh=keys["p256dh"],
+        auth=keys["auth"],
+        label=(payload.get("label") or "")[:120] or None,
+    )
+    db.session.commit()
+
+    return {"ok": True}
+
+
+@bp.post("/you/push/off/")
+@login_required
+def unsubscribe_push():
+    payload = request.get_json(silent=True) or {}
+    endpoint = (payload.get("endpoint") or "").strip()
+
+    if endpoint:
+        digest = PushSubscription.hash_endpoint(endpoint)
+        subscription = db.session.scalar(
+            db.select(PushSubscription).where(
+                PushSubscription.endpoint_hash == digest,
+                PushSubscription.church_id == g.church.id,
+                # Scoped to the signed-in user, so a stray endpoint cannot be
+                # used to unsubscribe somebody else's device.
+                PushSubscription.user_id == current_user.id,
+            )
+        )
+        if subscription is not None:
+            db.session.delete(subscription)
+            db.session.commit()
+
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Deleting your own account
+#
+# Required by the app stores for any app that lets people create an account,
+# and right regardless. What it deletes is the thing the person created: the
+# login. The pastoral record is the church's, in the same way a paper roll
+# would be, and deleting it would take a child's check-in history and matched
+# giving with it. The screen says so plainly rather than implying more.
+# ---------------------------------------------------------------------------
+
+@bp.post("/you/delete/")
+@login_required
+def delete_account():
+    person = current_user.person
+
+    # Re-entered, not just clicked. A phone left unlocked on a table is the
+    # normal case, and an irreversible action deserves more than one tap.
+    if not current_user.check_password(request.form.get("password") or ""):
+        flash(MEMBER["delete_wrong_password"], "error")
+        return redirect(url_for("member.you"))
+
+    if current_user.is_staff:
+        from app.models import User
+
+        remaining = db.session.scalar(
+            db.select(db.func.count(User.id)).where(
+                User.church_id == g.church.id,
+                User.role == "staff",
+                User.is_active_account.is_(True),
+                User.id != current_user.id,
+            )
+        )
+        if not remaining:
+            # Deleting the last staff account locks the church out of its own
+            # data with nobody able to undo it.
+            flash(MEMBER["delete_last_staff"], "error")
+            return redirect(url_for("member.you"))
+
+    audit_record(
+        PERSON_ARCHIVED,
+        f"{current_user.name} deleted their own account",
+        actor=current_user,
+        subject_type="user",
+        subject_id=current_user.id,
+        subject_label=current_user.name,
+        detail="The login was removed. The roster record was kept for the church.",
+    )
+
+    for subscription in PushSubscription.for_user(g.church.id, current_user.id):
+        db.session.delete(subscription)
+
+    if person is not None:
+        # Unlinked, not deleted. Staff keep the record; nobody can sign in to
+        # it, and a future account with the same address does not silently
+        # inherit it, because linking needs a confirmed email either way.
+        person.owner_user_id = None
+
+    user = db.session.get(type(current_user._get_current_object()), current_user.id)
+    logout_user()
+    db.session.delete(user)
+    db.session.commit()
+
+    return render_template(
+        "member/deleted.html", church=g.church, content=MEMBER
+    )

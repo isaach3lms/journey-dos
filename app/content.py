@@ -404,6 +404,55 @@ AUTH = {
         "{church}"
     ),
     "sign_out": "Sign out",
+
+    # Notifications
+    "push_heading": "Notifications on this device",
+    "push_hint": (
+        "A short note on your lock screen when something needs you. It never "
+        "says anything private, only enough to open the app."
+    ),
+    "push_on": "Turn them on",
+    "push_off": "Turn them off on this device",
+    "push_enabled": "On for this device",
+    "push_devices": "On for {count} of your devices",
+    "push_none": "Off",
+    "push_blocked": (
+        "Your browser is blocking notifications. Turn them back on in your "
+        "browser settings for this site, then come back here."
+    ),
+    "push_unsupported": (
+        "This browser cannot do notifications. On an iPhone, add the app to "
+        "your home screen first and open it from there."
+    ),
+    "push_saved": "Notifications are on for this device.",
+    "push_removed": "Notifications are off for this device.",
+
+    # Deleting an account
+    "privacy_link": "What is stored about you",
+    "delete_heading": "Delete your account",
+    "delete_body": (
+        "This removes your login straight away and signs you out everywhere. "
+        "You will not be able to sign in again unless the church sets you up "
+        "a new one."
+    ),
+    "delete_record": (
+        "Your record at {church} belongs to the church, in the same way a "
+        "paper roll would, so it stays. Ask the office if you want that "
+        "removed too and they will do it."
+    ),
+    "delete_confirm_label": "Type your password to confirm",
+    "delete_button": "Delete my account",
+    "delete_wrong_password": "That password is not right, so nothing was deleted.",
+    "delete_done": "Your account is deleted. Thanks for letting us know.",
+    "delete_last_staff": (
+        "You are the only staff account at this church. Deleting it would "
+        "lock everybody out, so make somebody else staff first."
+    ),
+    "delete_gone_title": "Your account is deleted",
+    "delete_gone": (
+        "It is gone. If you change your mind, ask {church} and they will set "
+        "you up again."
+    ),
 }
 
 
@@ -659,6 +708,55 @@ MEMBER = {
     "unsubscribe_all": "Turn all optional email off",
 
     "sign_out": "Sign out",
+
+    # Notifications
+    "push_heading": "Notifications on this device",
+    "push_hint": (
+        "A short note on your lock screen when something needs you. It never "
+        "says anything private, only enough to open the app."
+    ),
+    "push_on": "Turn them on",
+    "push_off": "Turn them off on this device",
+    "push_enabled": "On for this device",
+    "push_devices": "On for {count} of your devices",
+    "push_none": "Off",
+    "push_blocked": (
+        "Your browser is blocking notifications. Turn them back on in your "
+        "browser settings for this site, then come back here."
+    ),
+    "push_unsupported": (
+        "This browser cannot do notifications. On an iPhone, add the app to "
+        "your home screen first and open it from there."
+    ),
+    "push_saved": "Notifications are on for this device.",
+    "push_removed": "Notifications are off for this device.",
+
+    # Deleting an account
+    "privacy_link": "What is stored about you",
+    "delete_heading": "Delete your account",
+    "delete_body": (
+        "This removes your login straight away and signs you out everywhere. "
+        "You will not be able to sign in again unless the church sets you up "
+        "a new one."
+    ),
+    "delete_record": (
+        "Your record at {church} belongs to the church, in the same way a "
+        "paper roll would, so it stays. Ask the office if you want that "
+        "removed too and they will do it."
+    ),
+    "delete_confirm_label": "Type your password to confirm",
+    "delete_button": "Delete my account",
+    "delete_wrong_password": "That password is not right, so nothing was deleted.",
+    "delete_done": "Your account is deleted. Thanks for letting us know.",
+    "delete_last_staff": (
+        "You are the only staff account at this church. Deleting it would "
+        "lock everybody out, so make somebody else staff first."
+    ),
+    "delete_gone_title": "Your account is deleted",
+    "delete_gone": (
+        "It is gone. If you change your mind, ask {church} and they will set "
+        "you up again."
+    ),
 
     # Shown to a login with no roster record behind it.
     "unlinked_title": "We have your login, not your record yet",
@@ -1398,6 +1496,100 @@ PWA = {
     "install_dismiss": "Not now",
     "install_ios": (
         "In Safari, tap the share button and then Add to Home Screen."
+    ),
+}
+
+
+PRIVACY = {
+    "title": "Privacy",
+    "updated": "Last updated {date}",
+    "intro": (
+        "{church} uses this app to keep track of its own people. Between "
+        "Sundays Consulting builds and runs it for them. This page says "
+        "exactly what is stored, why, and how to get rid of it."
+    ),
+
+    "collect_heading": "What is stored",
+    "collect": (
+        {
+            "name": "Your name and contact details",
+            "why": "So the church can reach you and know who you are.",
+        },
+        {
+            "name": "Where you are in the church's own steps",
+            "why": (
+                "Visitor, guest, member and so on, plus notes staff write "
+                "about conversations they have had with you."
+            ),
+        },
+        {
+            "name": "Your household, and your children if you check them in",
+            "why": (
+                "A child's name and the times they were checked in and "
+                "collected, and who collected them. This is a safety record "
+                "and the church keeps it."
+            ),
+        },
+        {
+            "name": "Giving, if your church connects its giving platform",
+            "why": (
+                "Amounts and dates are copied here read only. Card numbers "
+                "are never seen by this app at any point."
+            ),
+        },
+        {
+            "name": "What you read, join, and serve on",
+            "why": "Reading progress, group RSVPs, and serving answers.",
+        },
+        {
+            "name": "Messages you send in the app",
+            "why": "Announcements, rooms, and direct conversations.",
+        },
+        {
+            "name": "Sign-in records",
+            "why": (
+                "When you signed in, and when somebody changed access or "
+                "collected a child. Kept for 400 days."
+            ),
+        },
+    ),
+
+    "not_heading": "What is never stored",
+    "not_collected": (
+        "Card or bank numbers. Giving happens on your church's own giving "
+        "platform and this app only ever links to it.",
+        "Your location. Nothing here tracks where you are.",
+        "Your contacts, photos, microphone, or anything else on your device.",
+        "Advertising identifiers. Nothing here is sold, shared with "
+        "advertisers, or used to target you.",
+    ),
+
+    "share_heading": "Who it is shared with",
+    "share": (
+        "Nobody, beyond the services needed to run the app: Resend sends the "
+        "email, Render hosts it, and your church's own giving platform is "
+        "linked to rather than replaced. Your data is never sold and is never "
+        "shared with another church."
+    ),
+
+    "rights_heading": "Getting rid of it",
+    "rights": (
+        "You can delete your account yourself, in the app, on the You screen. "
+        "That removes your login immediately. Your record at the church "
+        "belongs to the church, in the same way a paper roll would, so ask "
+        "the office if you want that removed too."
+    ),
+    "children_heading": "Children",
+    "children": (
+        "Children do not have accounts. A child's name and check-in times are "
+        "entered by a parent at a kiosk or by staff, and exist so the church "
+        "knows who was in a room and who took them home."
+    ),
+
+    "contact_heading": "Questions",
+    "contact": (
+        "Ask {church} first, since it is their data. For anything about how "
+        "the software itself works, email isaac@betweensundaysconsulting.com."
     ),
 }
 

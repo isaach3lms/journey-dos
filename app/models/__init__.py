@@ -72,6 +72,7 @@ from app.models.group import (  # noqa: F401
 )
 from app.models.email_verification import EmailVerificationToken  # noqa: F401
 from app.models.password_reset import PasswordResetToken  # noqa: F401
+from app.models.push import PushSubscription  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
 from app.models.service import (  # noqa: F401
     ACCEPTED,
@@ -123,6 +124,7 @@ __all__ = [
     "NotificationPreference",
     "PasswordResetToken",
     "EmailVerificationToken",
+    "PushSubscription",
     "Service",
     "ServiceItem",
     "ServiceAssignment",

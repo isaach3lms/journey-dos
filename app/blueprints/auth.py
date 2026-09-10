@@ -26,10 +26,23 @@ from flask_login import current_user, login_required, login_user, logout_user
 from app.audit import record
 from app.content import AUTH
 from app.models.audit import PASSWORD_RESET, SIGN_IN, SIGN_IN_FAILED
+from app.models.email_verification import MAX_REQUESTS_PER_HOUR as VERIFY_LIMIT
 from app.extensions import db
+from app.automation import enroll_for_stage
 from app.mail import NotQueued, queue
-from app.forms import ForgotPasswordForm, LoginForm, ResetPasswordForm
-from app.models import PasswordResetToken, User
+from app.models import KIND_CREATED, PersonEvent
+from app.models.base import utcnow
+from app.forms import ForgotPasswordForm, LoginForm, ResetPasswordForm, SignupForm
+from app.automation import enroll_for_stage
+from app.models import (
+    KIND_CREATED,
+    EmailVerificationToken,
+    PasswordResetToken,
+    Person,
+    PersonEvent,
+    User,
+)
+from app.models.base import utcnow
 from app.models.password_reset import LIFETIME_MINUTES, MAX_REQUESTS_PER_HOUR
 from app.security import safe_next_url
 
@@ -83,6 +96,25 @@ def login():
             return render_template(
                 "auth/login.html", church=g.church, form=form, content=AUTH
             ), 401
+
+        if not user.is_verified:
+            # A distinct state from "deactivated by staff", and the person sees
+            # a different message because the fix is different.
+            _send_verification(user)
+            db.session.commit()
+            flash(AUTH["verify_needed"], "error")
+            return render_template(
+                "auth/verify_needed.html", church=g.church, content=AUTH
+            ), 403
+
+        if not user.is_verified:
+            # Correct password, unproved address. They are told plainly and
+            # offered another link, because the alternative is somebody who
+            # signed up an hour ago concluding the app is broken.
+            return render_template(
+                "auth/unverified.html", church=g.church, content=AUTH,
+                email=user.email,
+            ), 403
 
         user.register_successful_login()
         record(
@@ -229,3 +261,161 @@ def reset(token: str):
     return render_template(
         "auth/reset.html", church=g.church, form=form, content=AUTH, token=token
     )
+
+
+# ---------------------------------------------------------------------------
+# Self-registration
+#
+# Off unless the church turns it on. Two rules do the safety work:
+#
+# 1. **An account is useless until the address is confirmed.** Signing in is
+#    refused, so a stranger who guesses somebody's email achieves nothing.
+#
+# 2. **A new account is never linked to a roster record at creation.** Linking
+#    happens on verification, and only when the address matches exactly one
+#    person. A linked record carries a household check-in PIN and giving
+#    history; handing that to whoever typed the address first would be an
+#    account takeover, not a convenience.
+# ---------------------------------------------------------------------------
+
+def _send_verification(user) -> None:
+    """Mint a token and queue the email. Caller commits."""
+    if EmailVerificationToken.recent_request_count(user) >= VERIFY_LIMIT:
+        current_app.logger.warning(
+            "Verification rate limit hit for user %s at church %s",
+            user.id, g.church.id,
+        )
+        return
+
+    _, raw = EmailVerificationToken.issue(user)
+    db.session.flush()
+
+    link = url_for(
+        "auth.verify", token=raw, _external=True,
+        _scheme="https" if request.is_secure else "http",
+    )
+    try:
+        queue(
+            church_id=g.church.id,
+            # Transactional: this is the account itself, not marketing.
+            category="account",
+            subject=AUTH["verify_email_subject"].format(church=g.church.name),
+            body_text=AUTH["verify_email_body"].format(
+                name=user.name, church=g.church.name, link=link
+            ),
+            to_email=user.email,
+            to_name=user.name,
+        )
+    except NotQueued as exc:
+        current_app.logger.error("Verification email not queued: %s", exc)
+
+
+@bp.route("/join", methods=["GET", "POST"])
+def join():
+    if current_user.is_authenticated:
+        return redirect(url_for("shell.index"))
+
+    if not g.church.allow_self_signup:
+        return render_template(
+            "auth/join_closed.html", church=g.church, content=AUTH
+        ), 404
+
+    form = SignupForm()
+
+    if form.validate_on_submit():
+        email = form.email.data.strip().lower()
+        existing = User.by_email(g.church.id, email)
+
+        if existing is None:
+            user = User(
+                church_id=g.church.id,
+                email=email,
+                name=form.name.data.strip()[:120],
+                role="member",
+                # Deliberately not linked to a Person. See the section note.
+            )
+            try:
+                user.set_password(form.password.data)
+            except ValueError as exc:
+                form.password.errors.append(str(exc))
+                return render_template(
+                    "auth/join.html", church=g.church, form=form, content=AUTH
+                )
+            db.session.add(user)
+            db.session.flush()
+            _send_verification(user)
+        elif not existing.is_verified:
+            # They tried again before opening the first link. Send another
+            # rather than telling them the address is taken.
+            _send_verification(existing)
+
+        db.session.commit()
+
+        # One message either way. Anything else turns this form into a way to
+        # find out who has an account at this church.
+        flash(AUTH["join_sent"], "notice")
+        return render_template(
+            "auth/join.html", church=g.church, form=SignupForm(), content=AUTH
+        )
+
+    return render_template("auth/join.html", church=g.church, form=form, content=AUTH)
+
+
+@bp.get("/verify/<token>")
+def verify(token: str):
+    verification = EmailVerificationToken.redeem(g.church.id, token)
+    if verification is None:
+        return render_template(
+            "auth/verify_invalid.html", church=g.church, content=AUTH
+        ), 404
+
+    user = verification.user
+    verification.consume()
+    user.mark_verified()
+
+    # Linking happens here and nowhere earlier, because this is the first
+    # moment anybody has proved they control the address. `link_person_by_email`
+    # refuses an address held by two people, so a shared household address
+    # leaves the account unlinked for staff to sort out rather than guessing
+    # which spouse it is.
+    if user.person_id is None and not user.link_person_by_email():
+        # Nobody on the roster holds this address, so this is somebody the
+        # church has not met. They join as a Visitor rather than existing only
+        # as a login: an account with no pastoral record is invisible to the
+        # stuck engine, the rail, and every sequence, which means the one
+        # person who actively raised their hand is the one nobody follows up.
+        person = Person(
+            church_id=g.church.id,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+            stage="visitor",
+            first_seen_on=utcnow().date(),
+        )
+        db.session.add(person)
+        db.session.flush()
+        user.person_id = person.id
+
+        PersonEvent.record(
+            person, KIND_CREATED, AUTH["joined_event"], detail=AUTH["joined_detail"]
+        )
+        enroll_for_stage(person)
+
+    db.session.commit()
+    login_user(user)
+
+    flash(AUTH["verify_done"], "notice")
+    return redirect(url_for("shell.index"))
+
+
+@bp.post("/verify/resend")
+def resend_verification():
+    email = (request.form.get("email") or "").strip().lower()
+    user = User.by_email(g.church.id, email) if email else None
+
+    if user is not None and not user.is_verified:
+        _send_verification(user)
+        db.session.commit()
+
+    flash(AUTH["unverified_sent"], "notice")
+    return redirect(url_for("auth.login"))

@@ -51,7 +51,7 @@ def app():
         _db.session.add_all([journey, riverbend, closed])
         _db.session.flush()
 
-        def make(church, email, name, role, active=True):
+        def make(church, email, name, role, active=True, verified=True):
             u = User(
                 church_id=church.id,
                 email=email,
@@ -60,6 +60,12 @@ def app():
                 is_active_account=active,
             )
             u.set_password(PASSWORD)
+            # These stand in for accounts a staff member created, which are
+            # verified on creation. `email_verified_at` is fail-closed, so a
+            # fixture that skips this is locked out, which is the intended
+            # behaviour rather than an inconvenience to work around.
+            if verified:
+                u.mark_verified()
             return u
 
         _db.session.add_all(

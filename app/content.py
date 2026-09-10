@@ -259,6 +259,106 @@ AUTH = {
     ),
 
     "forgot_link": "Forgot your password?",
+    "join_link": "New here? Create an account",
+
+    # Creating an account
+    "join_title": "Create your account",
+    "join_subtitle": (
+        "We will email you a link to confirm the address. Nothing shows up in "
+        "your account until you click it."
+    ),
+    "join_name": "Your name",
+    "join_submit": "Create it",
+    "join_back": "Already have an account? Sign in",
+    "join_closed_title": "Accounts are set up by the church",
+    "join_closed": (
+        "This church creates accounts for its people rather than letting "
+        "anyone sign themselves up. Ask the office and they will set yours up."
+    ),
+    # One message whether or not the address already has an account. Otherwise
+    # the form is a way to find out who attends.
+    "join_sent": (
+        "Check your email. If that address can have an account here, a "
+        "confirmation link is on its way. It works once and lasts three days."
+    ),
+    "join_name_required": "We need a name to put on your account.",
+
+    "verify_done": "Your account is ready. You are signed in.",
+    "joined_event": "Created their own account",
+    "joined_detail": "Signed up through the app and confirmed their email.",
+    "verify_bad_title": "That link will not work",
+    "verify_bad": (
+        "Confirmation links last three days and work once. This one has "
+        "expired, has already been used, or was mistyped."
+    ),
+    "verify_resend": "Send me a new link",
+
+    "unverified_title": "Confirm your email first",
+    "unverified": (
+        "We sent a link to your address when you signed up. Open it and you "
+        "are in. Nothing else is needed."
+    ),
+    "unverified_resend": "Send it again",
+    "unverified_sent": "On its way. Check your inbox and your spam folder.",
+
+    "verify_email_subject": "Confirm your {church} account",
+    "verify_email_body": (
+        "Hello {name},\n\n"
+        "Somebody created an account at {church} with this address. Open this "
+        "link to confirm it and finish signing up:\n\n"
+        "{link}\n\n"
+        "The link works once and expires in three days.\n\n"
+        "If this was not you, ignore this message. Nothing was created that "
+        "can be used without opening the link above.\n\n"
+        "{church}"
+    ),
+    "join_link": "New here? Create an account",
+
+    # Creating an account
+    "join_title": "Create your account",
+    "join_subtitle": "Takes a minute. We will email you a link to confirm it.",
+    "join_name": "Your name",
+    "join_submit": "Create it",
+    "join_back": "Already have an account? Sign in",
+    "join_closed_title": "Accounts are set up by the church",
+    "join_closed": (
+        "This church creates accounts for its people rather than letting "
+        "anyone sign themselves up. Ask the church office and they will set "
+        "yours up."
+    ),
+    # One message whether or not the address already has an account. Anything
+    # else turns the form into a way to find out who attends.
+    "join_sent": (
+        "Check your email. If that address can be used here, a confirmation "
+        "link is on its way. It works once and lasts three days."
+    ),
+
+    "verify_title": "Confirm your email",
+    "verify_done": "You are all set. Welcome.",
+    "verify_bad_link_title": "That link will not work",
+    "verify_bad_link": (
+        "Confirmation links last three days and work once. This one has "
+        "expired, has already been used, or was mistyped."
+    ),
+    "verify_resend": "Send me a new link",
+    "verify_needed_title": "Confirm your email first",
+    "verify_needed": (
+        "We sent a link to the address you signed up with. Open it and you "
+        "are in."
+    ),
+    "verify_resent": "Sent. Check your email.",
+
+    "verify_email_subject": "Confirm your account at {church}",
+    "verify_email_body": (
+        "Hello {name},\n\n"
+        "Somebody created an account at {church} with this address. Open this "
+        "link to confirm it:\n\n"
+        "{link}\n\n"
+        "The link works once and lasts three days.\n\n"
+        "If this was not you, ignore this message. Nothing was created that "
+        "can be used without opening the link above.\n\n"
+        "{church}"
+    ),
 
     # Request a reset
     "forgot_title": "Reset your password",
@@ -292,7 +392,7 @@ AUTH = {
     "reset_try_again": "Send a new link",
 
     # The email itself
-    "reset_email_subject": "Reset your {church} password",
+    "reset_email_subject": "Reset your password at {church}",
     "reset_email_body": (
         "Hello {name},\n\n"
         "Somebody asked to reset the password for your {church} account. "
@@ -1027,7 +1127,7 @@ KIDS = {
         "If we have that address on file, your check-in code is on its way."
     ),
     "forgot_back": "Back",
-    "forgot_email_subject": "Your {church} check-in code",
+    "forgot_email_subject": "Your check-in code at {church}",
     "forgot_email_body": (
         "Hello {name},\n\n"
         "Your family's check-in code at {church} is {pin}.\n\n"
@@ -1179,6 +1279,35 @@ DOS_PRICE_CENTS = 10000
 SETTINGS = {
     "title": "Settings",
     "subtitle": "Your brand, your data, your app.",
+
+    "signup_heading": "Who can create an account",
+    "signup_off": "Only the church",
+    "signup_on": "Anyone with the link",
+    "signup_hint": (
+        "With this off, staff create accounts. With it on, anyone who reaches "
+        "your sign-in page can make one and confirm it by email."
+    ),
+    "signup_warning": (
+        "Turning this on means a stranger who finds your address can read "
+        "your church-wide announcements. Rooms, giving, and kids check-in "
+        "stay closed to them. Nobody is ever attached to an existing person "
+        "on your roster without confirming that email address."
+    ),
+    "signup_toggle_on": "Let anyone create an account",
+    "signup_toggle_off": "Only the church creates accounts",
+    "signup_changed_on": "Anyone with your address can now create an account.",
+    "signup_changed_off": "Only staff create accounts now.",
+
+    "signup_heading": "Who can create an account",
+    "signup_on": "Anyone can create their own account",
+    "signup_off": "Only we create accounts",
+    "signup_warning": (
+        "Turning this on means a stranger who finds the address can read your "
+        "church-wide announcements. It does not give anyone access to a "
+        "person's record: an account only connects to somebody on your roster "
+        "when the email address matches exactly one person and they have "
+        "confirmed it from that inbox."
+    ),
 
     "brand_heading": "Your brand",
     "church_name": "Church name",

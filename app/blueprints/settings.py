@@ -129,3 +129,34 @@ def save_brand():
 
     flash(SETTINGS["brand_saved"], "notice")
     return redirect(url_for("settings.index"))
+
+
+@bp.post("/signup/")
+@login_required
+@min_role("staff")
+def toggle_signup():
+    """Open or close self-registration.
+
+    Staff only, and audited, because it changes who can see the church's
+    announcements.
+    """
+    church = g.church
+    church.allow_self_signup = not church.allow_self_signup
+
+    record(
+        BRAND_CHANGED,
+        "Self-registration turned "
+        + ("on" if church.allow_self_signup else "off"),
+        actor=current_user,
+        subject_type="church",
+        subject_id=church.id,
+        subject_label=church.name,
+    )
+    db.session.commit()
+
+    flash(
+        SETTINGS["signup_changed_on"] if church.allow_self_signup
+        else SETTINGS["signup_changed_off"],
+        "notice",
+    )
+    return redirect(url_for("settings.index"))

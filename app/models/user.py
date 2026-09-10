@@ -156,6 +156,25 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Integer, nullable=False, default=1, server_default=text("1")
     )
 
+    # Null means nobody has proved they control this address. Distinct from
+    # `is_active_account`, which means a staff member switched them off: those
+    # are different states and the messages a person sees differ too.
+    #
+    # Defaults to verified, and the direction of that default is the decision.
+    # Every path that creates a user except self-registration involves a staff
+    # member vouching for the address, which is a stronger signal than a click
+    # in an inbox. So the one route that cannot vouch, `auth.join`, clears this
+    # explicitly, rather than every other path having to remember to set it.
+    #
+    # Null by default, which is fail-closed. Defaulting to verified would mean
+    # any future code path that creates a user and forgets to clear the flag
+    # hands out a confirmed account, and that failure is silent. The cost is
+    # that every place which legitimately vouches for an address has to say so:
+    # `flask create-user`, the tenant seeds, and the test fixtures all call
+    # `mark_verified`. A staff member typing an address is a stronger signal
+    # than a click in an inbox, so that is the right place for it.
+    email_verified_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
@@ -302,3 +321,23 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
             return False
         self.person_id = matches[0].id
         return True
+
+
+    @property
+    def is_verified(self) -> bool:
+        return self.email_verified_at is not None
+
+    def mark_verified(self) -> None:
+        if self.email_verified_at is None:
+            self.email_verified_at = utcnow()
+
+
+    @property
+    def first_name(self) -> str:
+        """Best effort from the single name field a signup form collects."""
+        return (self.name or "").strip().split(" ")[0] or "Friend"
+
+    @property
+    def last_name(self) -> str:
+        parts = (self.name or "").strip().split()
+        return parts[-1] if len(parts) > 1 else ""

@@ -17,7 +17,7 @@ from typing import Optional
 
 import re
 
-from sqlalchemy import String, Boolean, UniqueConstraint
+from sqlalchemy import String, Boolean, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -65,6 +65,16 @@ class Church(TimestampMixin, db.Model):
     # Wall-clock time for meetings. See app/timeutil.py. A wrong value here
     # is silent, so onboarding sets it rather than the system guessing.
     timezone: Mapped[Optional[str]] = mapped_column(String(64))
+
+    # Whether anyone can create their own account.
+    #
+    # Default off, and the default is the decision. A church that has not
+    # thought about it yet should not discover that strangers can read its
+    # announcements. Turning it on is one toggle in Settings, made
+    # deliberately by somebody who understands what it opens.
+    allow_self_signup: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("0")
+    )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

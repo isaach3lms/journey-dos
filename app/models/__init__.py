@@ -70,6 +70,7 @@ from app.models.group import (  # noqa: F401
     GroupMembership,
     MeetingRSVP,
 )
+from app.models.email_verification import EmailVerificationToken  # noqa: F401
 from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
 from app.models.service import (  # noqa: F401
@@ -121,6 +122,7 @@ __all__ = [
     "OutboxMessage",
     "NotificationPreference",
     "PasswordResetToken",
+    "EmailVerificationToken",
     "Service",
     "ServiceItem",
     "ServiceAssignment",

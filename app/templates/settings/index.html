@@ -50,6 +50,26 @@
 </section>
 
 <section class="card">
+  <div class="hd">
+    <h2>{{ content.signup_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill {% if not church.allow_self_signup %}pending{% endif %}">
+      {% if church.allow_self_signup %}{{ content.signup_on }}{% else %}{{ content.signup_off }}{% endif %}
+    </span>
+  </div>
+  <div class="bd">
+    <p>{{ content.signup_hint }}</p>
+    <p class="muted small">{{ content.signup_warning }}</p>
+    <form method="post" action="{{ url_for('settings.toggle_signup') }}">
+      {{ csrf_field() }}
+      <button class="btn {% if church.allow_self_signup %}ghostbtn{% endif %}" type="submit">
+        {% if church.allow_self_signup %}{{ content.signup_toggle_off }}{% else %}{{ content.signup_toggle_on }}{% endif %}
+      </button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
   <div class="hd"><h2>{{ content.replaces_heading }}</h2></div>
   <div class="bd">
     <ul class="flaglist">

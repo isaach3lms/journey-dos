@@ -4,8 +4,8 @@ Discipleship Operating System. Multi-tenant Flask application, built by
 Between Sundays, first tenant The Journey Church, Jackson MO.
 
 **Status: every numbered increment is complete**, 0 through 15, plus
-self-serve password reset and the installable member app. 827 tests passing
-across 18 migrations. Increment 8, the Bible, is deferred pending the YouVersion
+self-serve password reset and the installable member app. 865 tests passing
+across 19 migrations. Increment 8, the Bible, is deferred pending the YouVersion
 answer.
 Foundation, tenancy, identity, roles, the roster, the stuck engine, the outbox,
 the member app, resources, the giving link-out, groups, services, kids
@@ -99,7 +99,7 @@ python -m pytest
 | `flask link-users [--church x]` | Attach logins to roster records by email. |
 | `flask assign-pins --church x` | Give every household a check-in PIN. |
 | `flask rotate-pin --church x --household "Name"` | Rotate one household's PIN. |
-| `flask purge-reset-tokens --days 7` | Delete spent and expired reset tokens. |
+| `flask purge-reset-tokens --days 7` | Delete spent and expired reset and verification tokens. |
 
 ---
 
@@ -1196,6 +1196,117 @@ kiosk each had their own `<head>` and had drifted. The login page ended up
 without a manifest link, which is the one screen most people are looking at
 when they decide to install. All five now include `partials/head_meta.html`,
 and a test fails the build if any of them grows its own copy again.
+
+
+---
+
+## Self-registration
+
+Off by default, per church, toggled in Settings by staff and audited when it
+changes.
+
+**The direction of that default is the decision.** A church that has not
+thought about it should not discover that strangers can read its
+announcements. Turning it on is one deliberate click by somebody who
+understands what it opens.
+
+### The rule that carries the risk
+
+**A new account is never attached to an existing person until the address is
+confirmed.**
+
+A linked record holds a household check-in PIN, giving history, and contact
+details. Linking on an unconfirmed address would let anyone who knows a
+member's email address claim that member, and the PIN is what identifies a
+family at a kids kiosk. Controlling the inbox is the same bar the password
+reset flow already sets, which is why confirming is enough and nothing less is.
+
+Somebody with no roster match becomes a **new person at Visitor**, appearing on
+the dashboard the same way anyone who walked in on a Sunday would, and entering
+the welcome sequence. A shared household address resolves to neither spouse: it
+creates a new record rather than guessing.
+
+### What signing up does not get you
+
+Member role, nothing more. Rooms, giving, kids check-in, and the roster all
+stay closed. A stranger who registers can read church-wide announcements, which
+is inherent to letting anyone join, and the Settings copy says so plainly
+rather than burying it.
+
+The form is also not a way to find out who already has an account: an existing
+address and a new one produce the same response, and an existing account is
+never overwritten.
+
+### The verification default was wrong first
+
+The first version defaulted accounts to unverified, and the test fixtures found
+it immediately: every account not created through the CLI was locked out.
+
+Every path that creates a user except self-registration involves a staff member
+vouching for the address, which is a stronger signal than a click in an inbox.
+So the default is **verified**, and `auth.join` clears it, rather than every
+other path having to remember to set it. The migration backfills existing
+users, since they all predate the column.
+
+That clear happens **after** the flush, because a column `default=` fires at
+INSERT and would overwrite a None set at construction. Same trap as sequence
+enrollments in increment 14.
+
+
+---
+
+## Creating your own account
+
+Off unless the church turns it on. `church.allow_self_signup` defaults to
+false, and **the default is the decision**: a church that has not thought about
+it should not discover that strangers can read its announcements. The toggle is
+in Settings, staff only, audited, with the tradeoff stated on the screen next
+to it.
+
+### Two rules do the safety work
+
+**An account is useless until the address is confirmed.** Sign-in is refused
+with a plain explanation and a resend button, so a stranger who guesses
+somebody's email achieves nothing.
+
+**A new account is never linked to a roster record at creation.** Linking
+happens only on verification, and only when the address matches exactly one
+person. A linked record carries a household check-in PIN, giving history, and
+contact details; handing that to whoever typed the address first would be
+account takeover, not convenience. Controlling the inbox is the same bar the
+password reset flow already sets, which is why confirming is enough and nothing
+less is.
+
+A shared household address matches two people and links to neither, reusing the
+refusal built for `User.link_person_by_email`.
+
+### A confirmed stranger becomes a Visitor
+
+If nobody on the roster holds the address, verification creates a Person at
+stage Visitor with today as `first_seen_on`, and enrolls them in the welcome
+sequence.
+
+An account with no pastoral record is invisible to the stuck engine, the rail,
+and every sequence, which would mean the one person who actively raised their
+hand is the one nobody follows up.
+
+### The verification flag is fail-closed
+
+`email_verified_at` is null by default. Defaulting to verified would mean any
+future code path that creates a user and forgets to clear the flag hands out a
+confirmed account, and that failure is silent. The cost is that every place
+which legitimately vouches for an address says so: `flask create-user`, the
+seeds, and the test fixtures all call `mark_verified`. A staff member typing an
+address is a stronger signal than a click in an inbox.
+
+**The migration backfills existing accounts.** Without it the deploy locks out
+every user at every church, including the person who would have to fix it. Any
+account predating this feature was created by a staff member, which is exactly
+what the column records, so it is set to `created_at`. A test asserts the
+backfill is present in the migration file.
+
+The form answers identically whether or not the address already has an account,
+so it cannot be used to find out who attends.
 
 ---
 

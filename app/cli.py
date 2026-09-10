@@ -243,6 +243,8 @@ a{{
             )
 
         user = User(church_id=church.id, email=email, name=name, role=role)
+        # A staff member typing an address vouches for it.
+        user.mark_verified()
         try:
             user.set_password(password)
         except ValueError as exc:
@@ -844,7 +846,10 @@ a{{
         """
         from app.models import PasswordResetToken
 
+        from app.models import EmailVerificationToken
+
         removed = PasswordResetToken.purge_expired(older_than_days=days)
+        removed += EmailVerificationToken.purge_expired(older_than_days=days)
         db.session.commit()
         click.echo(f"Removed {removed} tokens older than {days} days.")
 

@@ -70,3 +70,58 @@ class ResetPasswordForm(FlaskForm):
         render_kw={"autocomplete": "new-password"},
     )
     submit = SubmitField(AUTH["reset_submit"])
+
+
+class SignupForm(FlaskForm):
+    name = StringField(
+        AUTH["join_name"],
+        validators=[DataRequired(message=AUTH["join_name"]), Length(max=120)],
+        render_kw={"autocomplete": "name", "autofocus": True},
+    )
+    email = StringField(
+        AUTH["email_label"],
+        validators=[
+            DataRequired(message=AUTH["email_required"]),
+            EMAIL_SYNTAX_ONLY,
+            Length(max=255),
+        ],
+        render_kw={"autocomplete": "email", "inputmode": "email"},
+    )
+    password = PasswordField(
+        AUTH["password_label"],
+        validators=[
+            DataRequired(message=AUTH["password_required"]),
+            Length(min=12, message=AUTH["reset_subtitle"]),
+        ],
+        render_kw={"autocomplete": "new-password"},
+    )
+    submit = SubmitField(AUTH["join_submit"])
+
+
+class SignupForm(FlaskForm):
+    name = StringField(
+        AUTH["join_name"],
+        validators=[
+            DataRequired(message=AUTH["join_name_required"]),
+            Length(min=2, max=120),
+        ],
+        render_kw={"autocomplete": "name", "autofocus": True},
+    )
+    email = StringField(
+        AUTH["email_label"],
+        validators=[
+            DataRequired(message=AUTH["email_required"]),
+            EMAIL_SYNTAX_ONLY,
+            Length(max=255),
+        ],
+        render_kw={"autocomplete": "email", "inputmode": "email"},
+    )
+    password = PasswordField(
+        AUTH["reset_password"],
+        validators=[
+            DataRequired(message=AUTH["password_required"]),
+            Length(min=12, message=AUTH["reset_subtitle"]),
+        ],
+        render_kw={"autocomplete": "new-password"},
+    )
+    submit = SubmitField(AUTH["join_submit"])

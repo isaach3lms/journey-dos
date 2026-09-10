@@ -86,3 +86,45 @@ class TestMigrationsAreSafeOnPopulatedTables:
             "These add a NOT NULL column to a table that already has rows, "
             "with nothing to put in them:\n" + "\n".join(offenders)
         )
+
+
+class TestMigrationsCompileOnPostgresToo:
+    """Local migrations run on SQLite. Production runs on Postgres.
+
+    SQLite has no boolean type and accepts `DEFAULT 0` on a BOOLEAN column.
+    Postgres refuses an integer default on a boolean, so a migration that
+    passes locally fails at deploy time. That happened once.
+    """
+
+    def test_no_boolean_column_uses_an_integer_default(self):
+        import re
+        from pathlib import Path
+
+        versions = Path(__file__).resolve().parent.parent / "migrations" / "versions"
+        offenders = []
+
+        for path in sorted(versions.glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            for match in re.finditer(
+                r"sa\.Column\((?:[^()]|\([^()]*\))*?sa\.Boolean\((?:[^()]|\([^()]*\))*?\)",
+                source,
+                re.S,
+            ):
+                block = match.group(0)
+                if "server_default" in block and re.search(
+                    r"server_default\s*=\s*sa\.text\(\s*['\"][01]['\"]", block
+                ):
+                    offenders.append(f"{path.name}: {block[:80]}")
+
+        assert not offenders, (
+            "These set an integer default on a boolean column, which Postgres "
+            "refuses:\n" + "\n".join(offenders)
+        )
+
+    def test_the_church_model_agrees(self):
+        from app.models import Church
+
+        column = Church.__table__.c.allow_self_signup
+        assert column.server_default is not None
+        rendered = str(column.server_default.arg).lower()
+        assert rendered not in ("0", "1"), rendered

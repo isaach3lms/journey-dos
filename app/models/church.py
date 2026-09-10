@@ -17,7 +17,7 @@ from typing import Optional
 
 import re
 
-from sqlalchemy import String, Boolean, UniqueConstraint, text
+from sqlalchemy import String, Boolean, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -73,7 +73,7 @@ class Church(TimestampMixin, db.Model):
     # announcements. Turning it on is one toggle in Settings, made
     # deliberately by somebody who understands what it opens.
     allow_self_signup: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default=text("0")
+        Boolean, nullable=False, default=False, server_default=false()
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

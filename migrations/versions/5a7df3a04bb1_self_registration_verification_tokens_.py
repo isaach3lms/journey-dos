@@ -38,7 +38,15 @@ def upgrade():
         batch_op.create_index('ix_verify_token_hash', ['token_hash'], unique=False)
 
     with op.batch_alter_table('church', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('allow_self_signup', sa.Boolean(), server_default=sa.text('0'), nullable=False))
+        batch_op.add_column(sa.Column(
+            'allow_self_signup',
+            sa.Boolean(),
+            # sa.false(), not sa.text('0'). SQLite has no boolean type and
+            # accepts DEFAULT 0; Postgres refuses an integer default on a
+            # boolean column. sa.false() renders correctly on both.
+            server_default=sa.false(),
+            nullable=False,
+        ))
 
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.add_column(sa.Column('email_verified_at', sa.DateTime(timezone=True), nullable=True))

@@ -8,6 +8,13 @@
   {% else %}{{ content.since_new.format(church=church.name) }}{% endif %}
 </p>
 
+{% if waiting_for_approval %}
+  <section class="mcard">
+    <div class="mlbl">{{ content.waiting_title }}</div>
+    <p class="mnote">{{ content.waiting_body.format(church=church.name) }}</p>
+  </section>
+{% endif %}
+
 <section class="mcard dark">
   <div class="mlbl">{{ content.stage_label }}</div>
   <div class="mbig">{{ person.stage_label }}</div>

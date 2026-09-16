@@ -105,16 +105,18 @@ class TestMigrationsCompileOnPostgresToo:
 
         for path in sorted(versions.glob("*.py")):
             source = path.read_text(encoding="utf-8")
+            # Any `sa.text('0')` or `sa.text('1')` default anywhere near a
+            # Boolean. The first version of this test only matched when the
+            # default followed the type on the same line, and autogenerate
+            # produces both shapes, so it missed a real one.
             for match in re.finditer(
-                r"sa\.Column\((?:[^()]|\([^()]*\))*?sa\.Boolean\((?:[^()]|\([^()]*\))*?\)",
-                source,
-                re.S,
+                r"sa\.Column\(((?:[^()]|\([^()]*\))*)\)", source, re.S
             ):
-                block = match.group(0)
-                if "server_default" in block and re.search(
-                    r"server_default\s*=\s*sa\.text\(\s*['\"][01]['\"]", block
-                ):
-                    offenders.append(f"{path.name}: {block[:80]}")
+                block = match.group(1)
+                if "sa.Boolean" not in block:
+                    continue
+                if re.search(r"server_default\s*=\s*sa\.text\(\s*['\"][01]['\"]", block):
+                    offenders.append(f"{path.name}: {' '.join(block.split())[:90]}")
 
         assert not offenders, (
             "These set an integer default on a boolean column, which Postgres "

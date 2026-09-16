@@ -507,3 +507,30 @@ class TestTheDeployDoesNotLockAnybodyOut:
             headers={"Host": JOURNEY_HOST},
         )
         assert allowed.status_code == 302
+
+
+class TestTheLoginPageOffersItOnlyWhenItIsOn:
+    def test_the_link_is_hidden_when_self_signup_is_off(self, db, client):
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        church.allow_self_signup = False
+        db.session.commit()
+
+        r = client.get("/auth/login", headers={"Host": JOURNEY_HOST})
+        assert b"/auth/join" not in r.data
+
+    def test_the_link_appears_once_when_it_is_on(self, db, client):
+        """It was rendered twice by an interrupted edit, so the page offered
+        the same link on two lines."""
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        church.allow_self_signup = True
+        db.session.commit()
+
+        body = client.get("/auth/login", headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
+        assert body.count('href="/auth/join"') == 1
+
+    def test_the_join_page_is_a_404_while_it_is_off(self, db, client):
+        church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+        church.allow_self_signup = False
+        db.session.commit()
+
+        assert client.get("/auth/join", headers={"Host": JOURNEY_HOST}).status_code == 404

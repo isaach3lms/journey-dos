@@ -391,6 +391,10 @@ def verify(token: str):
             email=user.email,
             stage="visitor",
             first_seen_on=utcnow().date(),
+            # Waiting for a human. Their own record works; church-wide
+            # announcements stay hidden until somebody confirms they are real.
+            self_registered=True,
+            approved_at=None,
         )
         db.session.add(person)
         db.session.flush()

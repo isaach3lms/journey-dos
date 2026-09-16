@@ -21,6 +21,18 @@
   </div>
 {% endif %}
 
+{% if waiting_for_approval %}
+<section class="card">
+  <div class="bd">
+    <div class="alert error">{{ content.waiting_intro }}</div>
+    <form method="post" action="{{ url_for('people.approve_person', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <button class="btn" type="submit">{{ content.approve }}</button>
+    </form>
+  </div>
+</section>
+{% endif %}
+
 <section class="card">
   <div class="hd"><h2>{{ content.snapshot }}</h2></div>
   <div class="bd">

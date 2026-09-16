@@ -100,6 +100,7 @@ def home():
     return render_template(
         "member/home.html",
         greeting=_greeting(person.first_name),
+        waiting_for_approval=person.is_waiting_for_approval,
         days=days,
         open_steps=open_steps,
         stage=STAGE_BY_CODE.get(person.stage),
@@ -434,7 +435,7 @@ def chat():
         return render_template("member/unlinked.html", church=g.church, content=MEMBER)
 
     conversations = db.session.scalars(
-        Conversation.visible_to(g.church.id, person.id)
+        Conversation.visible_to(g.church.id, person)
     ).all()
     return render_template(
         "member/chat.html",
@@ -458,7 +459,7 @@ def chat_thread(conversation_id: int):
         abort(404)
     # 404 rather than 403. Telling somebody a private room exists is itself a
     # disclosure about who is talking to whom.
-    if not conversation.can_read(person.id):
+    if not conversation.can_read(person):
         abort(404)
 
     membership = conversation.membership_for(person.id)
@@ -469,7 +470,7 @@ def chat_thread(conversation_id: int):
     return render_template(
         "member/thread.html",
         conversation=conversation,
-        can_post=conversation.can_post(person.id, is_staff=current_user.is_staff),
+        can_post=conversation.can_post(person, is_staff=current_user.is_staff),
         msg=MESSAGES,
         tab="chat",
         **_base_context(person),
@@ -484,9 +485,9 @@ def chat_post(conversation_id: int):
         return redirect(url_for("member.chat"))
 
     conversation = Conversation.get_for_church(g.church.id, conversation_id)
-    if conversation is None or not conversation.can_read(person.id):
+    if conversation is None or not conversation.can_read(person):
         abort(404)
-    if not conversation.can_post(person.id, is_staff=current_user.is_staff):
+    if not conversation.can_post(person, is_staff=current_user.is_staff):
         abort(403)
 
     body = (request.form.get("body") or "").strip()

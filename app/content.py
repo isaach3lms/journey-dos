@@ -507,6 +507,28 @@ PEOPLE = {
     "advance_to": "Move to {stage}",
     "at_end": "At the end of the rail.",
 
+    "waiting_heading": "Waiting to be let in",
+    "waiting_intro": (
+        "These people signed themselves up. Their own record works and they "
+        "can read what you publish, but church-wide messages stay hidden "
+        "until one of you says they are real."
+    ),
+    "waiting_none": "Nobody is waiting.",
+    "waiting_count": "{count} waiting",
+    "waiting_since": "Signed up {date}",
+    "approve": "They are real",
+    "approved": "{name} is in.",
+    "approved_event": "Approved",
+    "approved_detail": "Confirmed by {name} after signing themselves up.",
+    "approved_pill": "Waiting to be approved",
+    "approved_email_subject": "You are in at {church}",
+    "approved_email_body": (
+        "Hello {name},\n\n"
+        "Somebody at {church} has confirmed your account. You will now see "
+        "church-wide messages in the app along with everything else.\n\n"
+        "{church}"
+    ),
+
     "stage_moved": "Moved from {frm} to {to}",
     "stage_moved_detail": "Direction: {direction}",
     "stage_flash": "{name} is now at {stage}.",
@@ -667,6 +689,13 @@ MEMBER = {
     "since_new": "Welcome to {church}",
 
     "next_step_label": "Your next step",
+    "waiting_title": "Someone will let you in shortly",
+    "waiting_body": (
+        "You are signed up. Somebody at {church} confirms new accounts by "
+        "hand, usually within a day or two. Everything here works in the "
+        "meantime, and church-wide messages appear once they have."
+    ),
+
     "next_step_none": "Nothing on your list right now.",
     "next_step_none_hint": "When there is a next step for you, it shows up here.",
     "next_step_owner": "{owner} is following up",

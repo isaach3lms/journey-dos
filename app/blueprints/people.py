@@ -28,6 +28,7 @@ from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
     CONTACT_METHODS,
     KIND_CONTACT,
+    KIND_CREATED,
     KIND_EMAIL,
     KIND_NEXT_STEP,
     STATUS_DONE,
@@ -93,6 +94,9 @@ def index():
         total=Person.total_for_church(g.church.id),
         active_stage=stage,
         term=term,
+        waiting=db.session.scalars(
+            Person.waiting_for_approval(g.church.id)
+        ).all(),
         active="people",
     )
 
@@ -133,6 +137,7 @@ def detail(person_id: int):
         recommended=recommended_next_step(person.stage),
         assignable=_assignable_users(),
         contact_methods=CONTACT_METHODS,
+        waiting_for_approval=person.is_waiting_for_approval,
         email=EMAIL,
         categories=CATEGORIES,
         optional_categories=OPTIONAL_CATEGORIES,
@@ -580,4 +585,58 @@ def stop_sequence(person_id: int, enrollment_id: int):
         db.session.commit()
 
     flash(AUTOMATION["stopped"], "notice")
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+@bp.post("/<int:person_id>/approve/")
+@login_required
+@min_role("leader")
+def approve_person(person_id: int):
+    """Confirm a self-registered person is real.
+
+    Until this happens they can use their own record and read published plans,
+    but church-wide announcements are hidden from them.
+    """
+    from app.models.audit import ROLE_CHANGED
+
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    if person.approve(actor=current_user):
+        PersonEvent.record(
+            person,
+            KIND_CREATED,
+            PEOPLE["approved_event"],
+            detail=PEOPLE["approved_detail"].format(name=current_user.name),
+            actor=current_user,
+        )
+        audit_record(
+            ROLE_CHANGED,
+            f"{person.full_name} was approved after signing themselves up",
+            actor=current_user,
+            subject_type="person",
+            subject_id=person.id,
+            subject_label=person.full_name,
+        )
+
+        if person.email:
+            try:
+                queue(
+                    church_id=g.church.id,
+                    # Transactional: this is about their account, not news.
+                    category="account",
+                    subject=PEOPLE["approved_email_subject"].format(church=g.church.name),
+                    body_text=PEOPLE["approved_email_body"].format(
+                        name=person.first_name, church=g.church.name
+                    ),
+                    person=person,
+                    dedupe_key=f"approved:{person.id}",
+                )
+            except NotQueued:
+                pass
+
+        db.session.commit()
+
+    flash(PEOPLE["approved"].format(name=person.full_name), "notice")
     return redirect(url_for("people.detail", person_id=person.id))

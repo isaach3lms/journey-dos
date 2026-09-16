@@ -6,6 +6,40 @@
 {% block content %}
 {% include "partials/rail.html" %}
 
+{% if waiting %}
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.waiting_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill pending">{{ content.waiting_count.format(count=waiting|length) }}</span>
+  </div>
+  <div class="bd">
+    <p>{{ content.waiting_intro }}</p>
+    <ul class="flaglist">
+      {% for person in waiting %}
+        <li>
+          <span class="av">{{ person.initials }}</span>
+          <span class="fl">
+            <span class="pn">
+              <a href="{{ url_for('people.detail', person_id=person.id) }}">{{ person.full_name }}</a>
+            </span>
+            <span class="pe">
+              {{ person.email or "" }} &middot;
+              {{ content.waiting_since.format(date=person.created_at|church_time("%B %-d")) }}
+            </span>
+          </span>
+          <form method="post" class="inline"
+                action="{{ url_for('people.approve_person', person_id=person.id) }}">
+            {{ csrf_field() }}
+            <button class="btn" type="submit">{{ content.approve }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
 <section class="card">
   <div class="bd">
     <form class="filters" method="get">

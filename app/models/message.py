@@ -109,13 +109,25 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
 
     # -- authorization ------------------------------------------------------
 
-    def can_read(self, person_id: int) -> bool:
-        """An announcement is for everyone. Everything else needs membership."""
+    def can_read(self, person) -> bool:
+        """An announcement is for everyone the church has confirmed is real.
+
+        Takes the person rather than an id, because the answer depends on
+        approval as well as membership and splitting that across two call
+        sites is how the two views drift apart.
+        """
+        person_id = getattr(person, "id", person)
+
         if self.is_announcement:
-            return True
+            # A stranger who signed up this morning is not yet part of "the
+            # church", so a church-wide message is not yet for them. A named
+            # room they were invited to is, because somebody chose to invite
+            # them.
+            return bool(getattr(person, "is_approved", True))
+
         return any(m.person_id == person_id for m in self.members)
 
-    def can_post(self, person_id: int, is_staff: bool = False) -> bool:
+    def can_post(self, person, is_staff: bool = False) -> bool:
         """Only staff post to an announcement.
 
         A church-wide broadcast that anyone can reply to stops being an
@@ -125,7 +137,7 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
             return False
         if self.is_announcement:
             return is_staff
-        return self.can_read(person_id)
+        return self.can_read(person)
 
     def membership_for(self, person_id: int) -> "ConversationMember | None":
         for member in self.members:
@@ -173,18 +185,31 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         return query.order_by(cls.last_message_at.desc().nullslast(), cls.id.desc())
 
     @classmethod
-    def visible_to(cls, church_id: int, person_id: int):
-        """Announcements plus anything this person is a member of."""
+    def visible_to(cls, church_id: int, person):
+        """Anything this person may read.
+
+        Rooms they belong to always. Announcements only once the church has
+        confirmed they are real, which is the same rule `can_read` applies and
+        expressed once so the list and the page cannot disagree.
+        """
+        person_id = getattr(person, "id", person)
+        approved = bool(getattr(person, "is_approved", True))
+
         member_ids = db.select(ConversationMember.conversation_id).where(
             ConversationMember.church_id == church_id,
             ConversationMember.person_id == person_id,
+        )
+        readable = (
+            db.or_(cls.kind == KIND_ANNOUNCEMENT, cls.id.in_(member_ids))
+            if approved
+            else cls.id.in_(member_ids)
         )
         return (
             db.select(cls)
             .where(
                 cls.church_id == church_id,
                 cls.is_archived.is_(False),
-                db.or_(cls.kind == KIND_ANNOUNCEMENT, cls.id.in_(member_ids)),
+                readable,
             )
             .order_by(cls.last_message_at.desc().nullslast(), cls.id.desc())
         )

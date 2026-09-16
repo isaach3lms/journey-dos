@@ -206,6 +206,24 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     # Generated lazily, because most people never need one.
     unsubscribe_token: Mapped[Optional[str]] = mapped_column(String(64), index=True)
 
+    # Whether this person created their own account rather than being added
+    # by staff. Recorded because it is the only thing that distinguishes a
+    # stranger who signed up from somebody the church already knew.
+    self_registered: Mapped[bool] = mapped_column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+
+    # Null means a self-registered person is waiting for a human to confirm
+    # they are real. Staff-created people are approved on creation, so this is
+    # set for everybody the church entered themselves.
+    #
+    # Until it is set, the person's own record works normally and church-wide
+    # announcements are hidden. The gate is deliberately narrow: somebody
+    # waiting should be able to read a plan and see their own details, because
+    # the alternative is an app that looks broken to the person who just
+    # decided to engage.
+    approved_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
     is_child: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
 
@@ -514,3 +532,55 @@ class Person(TenantScoped, TimestampMixin, db.Model):
             )
         )
 
+
+
+    # -- approval -----------------------------------------------------------
+
+    @property
+    def is_approved(self) -> bool:
+        """May this person see anything the church posts to everyone?
+
+        Deliberately not "approved_at is set". Approval exists only for people
+        who signed themselves up; somebody staff entered was never in the
+        queue. Defining it the other way would mean every new staff-created
+        person started invisible to announcements unless somebody remembered
+        to stamp a column, and forgetting would be silent.
+        """
+        return not self.is_waiting_for_approval
+
+    @property
+    def is_waiting_for_approval(self) -> bool:
+        return self.self_registered and self.approved_at is None
+
+    def approve(self, actor=None) -> bool:
+        """Confirm a self-registered person is real. Caller commits."""
+        if self.approved_at is not None:
+            return False
+        self.approved_at = utcnow()
+        return True
+
+    @classmethod
+    def waiting_for_approval(cls, church_id: int):
+        return (
+            db.select(cls)
+            .where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.self_registered.is_(True),
+                cls.approved_at.is_(None),
+            )
+            .order_by(cls.created_at)
+        )
+
+    @classmethod
+    def waiting_count(cls, church_id: int) -> int:
+        from sqlalchemy import func as sa_func
+
+        return db.session.scalar(
+            db.select(sa_func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.self_registered.is_(True),
+                cls.approved_at.is_(None),
+            )
+        ) or 0

@@ -341,3 +341,48 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     def last_name(self) -> str:
         parts = (self.name or "").strip().split()
         return parts[-1] if len(parts) > 1 else ""
+
+
+    # -- managing accounts --------------------------------------------------
+
+    @classmethod
+    def for_church(cls, church_id: int, include_inactive: bool = True):
+        query = db.select(cls).where(cls.church_id == church_id)
+        if not include_inactive:
+            query = query.where(cls.is_active_account.is_(True))
+        return query.order_by(cls.role.desc(), cls.name)
+
+    @classmethod
+    def get_for_church(cls, church_id: int, user_id: int) -> "User | None":
+        return db.session.scalar(
+            db.select(cls).where(cls.id == user_id, cls.church_id == church_id)
+        )
+
+    @classmethod
+    def active_staff_count(cls, church_id: int, excluding: int | None = None) -> int:
+        """How many working staff logins remain.
+
+        The number that decides whether a demotion or a deactivation would
+        lock the church out of its own data with nobody able to undo it.
+        """
+        from sqlalchemy import func as sa_func
+
+        query = db.select(sa_func.count(cls.id)).where(
+            cls.church_id == church_id,
+            cls.role == "staff",
+            cls.is_active_account.is_(True),
+        )
+        if excluding is not None:
+            query = query.where(cls.id != excluding)
+        return db.session.scalar(query) or 0
+
+    def set_unusable_password(self) -> None:
+        """No password anybody knows, including staff.
+
+        Staff invite somebody and the person sets their own password from an
+        emailed link. A staff member typing a password means telling it to
+        somebody over text, and it is then a password two people know.
+        """
+        import secrets
+
+        self.set_password(secrets.token_urlsafe(48))

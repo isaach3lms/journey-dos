@@ -1528,6 +1528,57 @@ SETTINGS = {
     "title": "Settings",
     "subtitle": "Your brand, your data, your app.",
 
+    # Accounts staff create
+    "accounts_heading": "People who can sign in",
+    "accounts_hint": (
+        "Create an account and we email them a link to set their own "
+        "password. You never type one, so it is never a password two people "
+        "know."
+    ),
+    "accounts_name": "Their name",
+    "accounts_email": "Their email",
+    "accounts_role": "What they can do",
+    "accounts_create": "Create the account",
+    "accounts_created": "{name} can sign in. We emailed them a link to set a password.",
+    "accounts_exists": "{email} already has an account here.",
+    "accounts_name_required": "We need a name and an email address.",
+    "accounts_empty": "Nobody has an account yet.",
+
+    "role_member": "Member: their own record only",
+    "role_leader": "Leader: the roster, groups, services, kids",
+    "role_staff": "Staff: everything, including giving and settings",
+    "role_changed": "{name} is now {role}.",
+    "role_change": "Change",
+
+    "account_active": "Active",
+    "account_off": "Switched off",
+    "account_unverified": "Has not confirmed their email",
+    "account_never": "Never signed in",
+    "account_last_seen": "Last in {when}",
+    "account_deactivate": "Switch off",
+    "account_reactivate": "Switch back on",
+    "account_deactivated": "{name} can no longer sign in.",
+    "account_reactivated": "{name} can sign in again.",
+    "account_resend": "Send a set-password link",
+    "account_resent": "Sent to {email}.",
+
+    "account_self": "You cannot change your own access.",
+    "account_last_staff": (
+        "That would leave nobody with staff access, and nobody able to undo "
+        "it. Make somebody else staff first."
+    ),
+
+    "invite_subject": "Your {church} account",
+    "invite_body": (
+        "Hello {name},\n\n"
+        "{actor} has set up an account for you at {church}.\n\n"
+        "Open this link to choose a password and sign in:\n\n"
+        "{link}\n\n"
+        "The link works once and expires in {minutes} minutes. If it has "
+        "expired by the time you open this, ask them to send another.\n\n"
+        "{church}"
+    ),
+
     "signup_heading": "Who can create an account",
     "signup_off": "Only the church",
     "signup_on": "Anyone with the link",
@@ -1545,6 +1596,57 @@ SETTINGS = {
     "signup_toggle_off": "Only the church creates accounts",
     "signup_changed_on": "Anyone with your address can now create an account.",
     "signup_changed_off": "Only staff create accounts now.",
+
+    # Accounts staff create
+    "accounts_heading": "People who can sign in",
+    "accounts_hint": (
+        "Create an account and we email them a link to set their own "
+        "password. You never type one, so it is never a password two people "
+        "know."
+    ),
+    "accounts_name": "Their name",
+    "accounts_email": "Their email",
+    "accounts_role": "What they can do",
+    "accounts_create": "Create the account",
+    "accounts_created": "{name} can sign in. We emailed them a link to set a password.",
+    "accounts_exists": "{email} already has an account here.",
+    "accounts_name_required": "We need a name and an email address.",
+    "accounts_empty": "Nobody has an account yet.",
+
+    "role_member": "Member: their own record only",
+    "role_leader": "Leader: the roster, groups, services, kids",
+    "role_staff": "Staff: everything, including giving and settings",
+    "role_changed": "{name} is now {role}.",
+    "role_change": "Change",
+
+    "account_active": "Active",
+    "account_off": "Switched off",
+    "account_unverified": "Has not confirmed their email",
+    "account_never": "Never signed in",
+    "account_last_seen": "Last in {when}",
+    "account_deactivate": "Switch off",
+    "account_reactivate": "Switch back on",
+    "account_deactivated": "{name} can no longer sign in.",
+    "account_reactivated": "{name} can sign in again.",
+    "account_resend": "Send a set-password link",
+    "account_resent": "Sent to {email}.",
+
+    "account_self": "You cannot change your own access.",
+    "account_last_staff": (
+        "That would leave nobody with staff access, and nobody able to undo "
+        "it. Make somebody else staff first."
+    ),
+
+    "invite_subject": "Your {church} account",
+    "invite_body": (
+        "Hello {name},\n\n"
+        "{actor} has set up an account for you at {church}.\n\n"
+        "Open this link to choose a password and sign in:\n\n"
+        "{link}\n\n"
+        "The link works once and expires in {minutes} minutes. If it has "
+        "expired by the time you open this, ask them to send another.\n\n"
+        "{church}"
+    ),
 
     "signup_heading": "Who can create an account",
     "signup_on": "Anyone can create their own account",

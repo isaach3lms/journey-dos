@@ -48,6 +48,74 @@
 
 <section class="card">
   <div class="hd">
+    <h2>{{ content.accounts_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">{{ users|length }}</span>
+  </div>
+  <div class="bd">
+    <p>{{ content.accounts_hint }}</p>
+
+    <form method="post" action="{{ url_for('settings.create_account') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="name" placeholder="{{ content.accounts_name }}" aria-label="{{ content.accounts_name }}">
+        <input class="input" type="email" name="email" placeholder="{{ content.accounts_email }}" aria-label="{{ content.accounts_email }}">
+        <select class="input select" name="role" aria-label="{{ content.accounts_role }}">
+          {% for role in roles %}
+            <option value="{{ role }}">{{ content['role_' + role] }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn" type="submit">{{ content.accounts_create }}</button>
+      </div>
+    </form>
+
+    {% if users %}
+      <ul class="flaglist">
+        {% for account in users %}
+          <li>
+            <span class="av">{{ account.name[:2]|upper }}</span>
+            <span class="fl">
+              <span class="pn">{{ account.name }}</span>
+              <span class="pe">
+                {{ account.email }} &middot;
+                {% if not account.is_active_account %}{{ content.account_off }}
+                {% elif not account.is_verified %}{{ content.account_unverified }}
+                {% elif account.last_login_at %}{{ content.account_last_seen.format(when=account.last_login_at|church_time("%b %-d")) }}
+                {% else %}{{ content.account_never }}{% endif %}
+              </span>
+            </span>
+
+            <form method="post" class="inline" action="{{ url_for('settings.change_role', user_id=account.id) }}">
+              {{ csrf_field() }}
+              <select class="input select" name="role" aria-label="{{ content.accounts_role }}" onchange="this.form.submit()">
+                {% for role in roles %}
+                  <option value="{{ role }}" {% if account.role == role %}selected{% endif %}>{{ role|title }}</option>
+                {% endfor %}
+              </select>
+            </form>
+
+            <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">{{ content.account_resend }}</button>
+            </form>
+
+            <form method="post" class="inline" action="{{ url_for('settings.toggle_account', user_id=account.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">
+                {% if account.is_active_account %}{{ content.account_deactivate }}{% else %}{{ content.account_reactivate }}{% endif %}
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.accounts_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd">
     <h2>{{ content.signup_heading }}</h2>
     <div class="spacer"></div>
     <span class="pill {% if not church.allow_self_signup %}pending{% endif %}">

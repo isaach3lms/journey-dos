@@ -738,3 +738,78 @@ def _filters() -> dict:
         if value:
             carried[key] = value
     return carried
+
+
+@bp.post("/add/")
+@login_required
+@min_role("leader")
+def add_person():
+    """Put one person on the roster, optionally with a login.
+
+    The roster has only ever been filled by a spreadsheet import, by somebody
+    signing themselves up, or from a terminal. A leader with a connection card
+    in their hand had no way in at all.
+    """
+    from app.accounts import create_login
+    from app.models.audit import ROLE_CHANGED
+    from app.stages import STAGE_CODES
+
+    first = (request.form.get("first_name") or "").strip()
+    last = (request.form.get("last_name") or "").strip()
+    if not first:
+        flash(PEOPLE["add_first_required"], "error")
+        return redirect(url_for("people.index"))
+
+    stage = (request.form.get("stage") or "visitor").strip()
+    if stage not in STAGE_CODES:
+        abort(400)
+
+    person = Person(
+        church_id=g.church.id,
+        first_name=first[:80],
+        last_name=last[:80],
+        email=(request.form.get("email") or "").strip().lower() or None,
+        phone=(request.form.get("phone") or "").strip() or None,
+        stage=stage,
+        first_seen_on=utcnow().date(),
+        # Entered by a human with roster access, so there is nobody to approve.
+        approved_at=utcnow(),
+    )
+    db.session.add(person)
+    db.session.flush()
+
+    PersonEvent.record(
+        person, KIND_CREATED,
+        PEOPLE["add_event"].format(name=current_user.name), actor=current_user,
+    )
+    enroll_for_stage(person, actor=current_user)
+
+    message = PEOPLE["add_done"].format(name=person.full_name)
+
+    # Only staff hand out logins. A leader can add people all day; deciding
+    # who can sign in is a different level of trust.
+    if request.form.get("with_login") and current_user.is_staff:
+        if not person.email:
+            message = PEOPLE["add_login_needs_email"].format(name=person.full_name)
+        else:
+            user = create_login(
+                g.church.id, person.full_name, person.email,
+                (request.form.get("role") or "member").strip(),
+                actor=current_user, person=person,
+            )
+            if user is None:
+                message = PEOPLE["add_login_taken"].format(
+                    name=person.full_name, email=person.email
+                )
+            else:
+                message = PEOPLE["add_done_login"].format(name=person.full_name)
+                audit_record(
+                    ROLE_CHANGED,
+                    f"{user.name} was given a {user.role} account",
+                    actor=current_user,
+                    subject_type="user", subject_id=user.id, subject_label=user.name,
+                )
+
+    db.session.commit()
+    flash(message, "notice")
+    return redirect(url_for("people.detail", person_id=person.id))

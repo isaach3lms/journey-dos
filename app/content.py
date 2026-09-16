@@ -507,6 +507,37 @@ PEOPLE = {
     "advance_to": "Move to {stage}",
     "at_end": "At the end of the rail.",
 
+    # Adding somebody by hand
+    "add_heading": "Add someone",
+    "add_open": "Add someone",
+    "add_hint": (
+        "For the person who filled in a card on Sunday. Import a spreadsheet "
+        "instead if you have a list."
+    ),
+    "add_first": "First name",
+    "add_last": "Last name",
+    "add_email": "Email",
+    "add_phone": "Phone",
+    "add_stage": "Where they are",
+    "add_login": "Also let them sign in",
+    "add_login_hint": (
+        "We email them a link to set their own password. You never type one."
+    ),
+    "add_role": "What they can do",
+    "add_submit": "Add them",
+    "add_first_required": "A first name is the one thing we need.",
+    "add_done": "{name} is on the roster.",
+    "add_done_login": "{name} is on the roster. We emailed them a link to set a password.",
+    "add_login_taken": (
+        "{name} is on the roster, but {email} already has an account, so no "
+        "invite was sent."
+    ),
+    "add_login_needs_email": (
+        "{name} is on the roster. An account needs an email address, so none "
+        "was created."
+    ),
+    "add_event": "Added by {name}",
+
     "waiting_heading": "Waiting to be let in",
     "waiting_intro": (
         "These people signed themselves up. Their own record works and they "
@@ -1662,7 +1693,16 @@ SETTINGS = {
     "brand_heading": "Your brand",
     "church_name": "Church name",
     "app_name": "App name in the store",
-    "app_domain": "Domain",
+    "custom_domain": "Web address your people use",
+    "custom_domain_hint": (
+        "The hostname you pointed at this app, without https or a trailing "
+        "slash. Until this matches, that address shows a page saying no "
+        "church is set up here."
+    ),
+    "custom_domain_bad": "{value} is not a hostname. It should look like app.yourchurch.org.",
+    "custom_domain_taken": "{value} already points at another church. One address, one church.",
+    "custom_domain_set": "{value} now opens this church.",
+    "app_domain": "Name in the app store listing",
     "timezone": "Timezone",
     "timezone_hint": (
         "Meeting and service times are read in this zone. A wrong value here "

@@ -450,3 +450,122 @@ class TestAPartialFormDoesNotWipeData:
         )
         db.session.refresh(journey)
         assert journey.app_name is None
+
+
+class TestPointingADomainAtTheChurch:
+    """`custom_domain` routes; `app_domain` is a display field.
+
+    Settings exposed only the second one, labelled "Domain", so a pastor
+    pointing a real domain at the app would type it into the field that does
+    nothing and get a "no church is set up here" page with no way to tell why.
+    """
+
+    def _save(self, staff, journey, **extra):
+        data = {"name": journey.name, "timezone": journey.timezone}
+        data.update(extra)
+        return staff.post(
+            "/settings/brand/", data=data,
+            headers={"Host": JOURNEY_HOST}, follow_redirects=True,
+        )
+
+    def test_setting_it_makes_that_address_resolve(self, db, journey, staff):
+        self._save(staff, journey, custom_domain="app.thejourneychurchsemo.com")
+        db.session.refresh(journey)
+        assert journey.custom_domain == "app.thejourneychurchsemo.com"
+        assert Church.by_custom_domain("app.thejourneychurchsemo.com").id == journey.id
+
+    def test_the_app_answers_on_it(self, db, journey, staff, client):
+        """Checked on a public page rather than the login screen.
+
+        The `db` fixture holds one application context open and Flask-Login
+        caches the signed-in user on `g`, so the second client inherits the
+        first one's session and the login route redirects instead of
+        rendering. Sixth time that has bitten.
+        """
+        self._save(staff, journey, custom_domain="app.thejourneychurchsemo.com")
+        r = client.get("/privacy/", headers={"Host": "app.thejourneychurchsemo.com"})
+        assert r.status_code == 200
+        assert journey.name.encode() in r.data
+
+    def test_an_unmapped_host_still_says_no_church_is_here(self, app, db, client):
+        # The testing config allows a ?tenant= override and falls back to the
+        # single church, which is what makes local work convenient. Turn both
+        # off to see what production does with a host nobody mapped.
+        app.config["ALLOW_TENANT_QUERY_OVERRIDE"] = False
+        app.config["PLATFORM_DOMAIN"] = ""
+        r = client.get("/privacy/", headers={"Host": "nobody.example.org"})
+        assert r.status_code == 404
+
+    @pytest.mark.parametrize(
+        "typed,stored",
+        [
+            ("https://app.journey.org/", "app.journey.org"),
+            ("http://app.journey.org", "app.journey.org"),
+            ("APP.Journey.Org", "app.journey.org"),
+            ("  app.journey.org  ", "app.journey.org"),
+            ("app.journey.org/", "app.journey.org"),
+        ],
+    )
+    def test_it_accepts_what_people_actually_paste(
+        self, db, journey, staff, typed, stored
+    ):
+        """People paste what is in their address bar. Refusing that would be
+        correct and useless; it is a hostname either way."""
+        self._save(staff, journey, custom_domain=typed)
+        db.session.refresh(journey)
+        assert journey.custom_domain == stored
+
+    def test_nonsense_is_refused(self, db, journey, staff):
+        before = journey.custom_domain
+        r = self._save(staff, journey, custom_domain="not a host")
+        assert b"is not a hostname" in r.data
+        db.session.refresh(journey)
+        assert journey.custom_domain == before
+
+    def test_a_bare_word_is_refused(self, db, journey, staff):
+        r = self._save(staff, journey, custom_domain="journey")
+        assert b"is not a hostname" in r.data
+
+    def test_one_address_one_church(self, db, journey, staff):
+        riverbend = db.session.scalar(
+            db.select(Church).where(Church.slug == "riverbend")
+        )
+        riverbend.custom_domain = "shared.example.org"
+        db.session.commit()
+
+        r = self._save(staff, journey, custom_domain="shared.example.org")
+        assert b"already points at another church" in r.data
+        db.session.refresh(journey)
+        assert journey.custom_domain != "shared.example.org"
+
+    def test_it_can_be_cleared(self, db, journey, staff):
+        self._save(staff, journey, custom_domain="app.journey.org")
+        self._save(staff, journey, custom_domain="")
+        db.session.refresh(journey)
+        assert journey.custom_domain is None
+
+    def test_the_change_is_audited(self, db, journey, staff):
+        from app.models.audit import BRAND_CHANGED
+
+        self._save(staff, journey, custom_domain="app.journey.org")
+        event = db.session.scalars(
+            AuditEvent.recent(journey.id, action=BRAND_CHANGED)
+        ).first()
+        assert "web address" in event.detail
+
+    def test_the_two_domain_fields_are_labelled_differently(self, staff):
+        """One routes and one does not. A pastor cannot be expected to guess
+        which "Domain" means what."""
+        r = staff.get("/settings/", headers={"Host": JOURNEY_HOST})
+        body = r.get_data(as_text=True)
+        assert 'name="custom_domain"' in body
+        assert "Web address your people use" in body
+        assert body.count(">Domain<") == 0
+
+    def test_a_leader_cannot_repoint_the_church(self, leader):
+        r = leader.post(
+            "/settings/brand/",
+            data={"custom_domain": "evil.example.org"},
+            headers={"Host": JOURNEY_HOST},
+        )
+        assert r.status_code == 403

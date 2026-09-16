@@ -133,3 +133,29 @@ class Church(TimestampMixin, db.Model):
         from app.giving import PROVIDER_TITHELY, provider_label
 
         return provider_label(self.giving_provider or PROVIDER_TITHELY)
+
+
+    @staticmethod
+    def normalize_host(raw: str | None) -> str:
+        """A bare hostname, or "".
+
+        People paste what is in their address bar, which includes a scheme and
+        often a trailing slash. Refusing that would be correct and useless; it
+        is a hostname either way.
+        """
+        if not raw:
+            return ""
+        host = raw.strip().lower()
+        for prefix in ("https://", "http://"):
+            if host.startswith(prefix):
+                host = host[len(prefix):]
+        host = host.split("/", 1)[0].split("?", 1)[0].strip().rstrip(".")
+        return host
+
+    @staticmethod
+    def host_looks_valid(host: str) -> bool:
+        import re
+
+        if not host or len(host) > 253 or "." not in host:
+            return False
+        return bool(re.fullmatch(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+", host))

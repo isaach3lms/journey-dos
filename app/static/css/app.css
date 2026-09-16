@@ -787,3 +787,11 @@ ul.policy span{color:var(--muted)}
 .pickcol{width:34px}
 .rowpick{width:16px;height:16px;accent-color:var(--accent)}
 .vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- Add someone ---------- */
+.addbox{margin-bottom:14px}
+.addbox > summary{display:inline-block;cursor:pointer;list-style:none}
+.addbox > summary::-webkit-details-marker{display:none}
+.addbox[open] > summary{margin-bottom:12px}
+.addbox .check{display:flex;align-items:center;gap:9px;margin:12px 0 4px;font-size:13.5px}
+.addbox .check input{width:16px;height:16px;accent-color:var(--accent)}

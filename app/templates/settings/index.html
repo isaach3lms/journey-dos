@@ -23,6 +23,13 @@
         <input class="input" id="app_name" type="text" name="app_name" value="{{ church.app_name or '' }}">
       </div>
       <div class="field">
+        <label for="custom_domain">{{ content.custom_domain }}</label>
+        <input class="input" id="custom_domain" type="text" name="custom_domain"
+               value="{{ church.custom_domain or '' }}" placeholder="app.yourchurch.org"
+               autocomplete="off" spellcheck="false">
+        <div class="fieldhelp">{{ content.custom_domain_hint }}</div>
+      </div>
+      <div class="field">
         <label for="app_domain">{{ content.app_domain }}</label>
         <input class="input" id="app_domain" type="text" name="app_domain" value="{{ church.app_domain or '' }}">
       </div>

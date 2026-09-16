@@ -18,11 +18,12 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from app.accounts import send_set_password
 from app.audit import record
 from app.brand import assert_accent_readable
 from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES, SETTINGS
 from app.extensions import db
-from app.models import AuditEvent, BibleVerse, PasswordResetToken, User
+from app.models import AuditEvent, BibleVerse, Church, PasswordResetToken, User
 from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
@@ -93,6 +94,29 @@ def save_brand():
         if app_name != church.app_name:
             changes.append("app name")
             church.app_name = app_name
+
+    if "custom_domain" in request.form:
+        # This is the field that actually routes. Getting it wrong shows a
+        # "no church here" page at that address, so it is validated rather
+        # than accepted and left to fail silently.
+        host = Church.normalize_host(request.form["custom_domain"])
+        if host and not Church.host_looks_valid(host):
+            flash(
+                SETTINGS["custom_domain_bad"].format(value=request.form["custom_domain"]),
+                "error",
+            )
+            return redirect(url_for("settings.index"))
+
+        if host != (church.custom_domain or ""):
+            taken = Church.by_custom_domain(host) if host else None
+            if taken is not None and taken.id != church.id:
+                flash(SETTINGS["custom_domain_taken"].format(value=host), "error")
+                return redirect(url_for("settings.index"))
+
+            changes.append(f"web address to {host or 'none'}")
+            church.custom_domain = host or None
+            if host:
+                flash(SETTINGS["custom_domain_set"].format(value=host), "notice")
 
     if "app_domain" in request.form:
         app_domain = request.form["app_domain"].strip() or None
@@ -174,42 +198,6 @@ def toggle_signup():
 # Staff only. These decide who can see the roster, the giving, and this page.
 # ---------------------------------------------------------------------------
 
-def _send_set_password(user, actor) -> bool:
-    """Email a link so the person chooses their own password.
-
-    Staff never type one. A password a staff member sets has to be told to
-    somebody over text or in a hallway, and is then a password two people
-    know, one of whom wrote it down.
-    """
-    from app.mail import NotQueued, queue
-
-    PasswordResetToken.invalidate_all_for(user)
-    _, raw = PasswordResetToken.issue(user)
-    db.session.flush()
-
-    link = url_for(
-        "auth.reset", token=raw, _external=True,
-        _scheme="https" if request.is_secure else "http",
-    )
-    try:
-        queue(
-            church_id=g.church.id,
-            # Transactional: it is the account itself, not church news.
-            category="account",
-            subject=SETTINGS["invite_subject"].format(church=g.church.name),
-            body_text=SETTINGS["invite_body"].format(
-                name=user.name, church=g.church.name,
-                actor=getattr(actor, "name", "Someone"),
-                link=link, minutes=LIFETIME_MINUTES,
-            ),
-            to_email=user.email,
-            to_name=user.name,
-        )
-    except NotQueued:
-        return False
-    return True
-
-
 @bp.post("/accounts/")
 @login_required
 @min_role("staff")
@@ -239,7 +227,7 @@ def create_account():
     db.session.flush()
 
     user.link_person_by_email()
-    _send_set_password(user, current_user)
+    send_set_password(user, current_user)
 
     record(
         ROLE_CHANGED,
@@ -343,7 +331,7 @@ def resend_invite(user_id: int):
     if user is None:
         abort(404)
 
-    _send_set_password(user, current_user)
+    send_set_password(user, current_user)
     db.session.commit()
 
     flash(SETTINGS["account_resent"].format(email=user.email), "notice")

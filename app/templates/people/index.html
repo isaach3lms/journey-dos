@@ -6,6 +6,49 @@
 {% block content %}
 {% include "partials/rail.html" %}
 
+{# Collapsed by default: the roster is for reading, and a form sitting open
+   above it pushes the list down every time somebody opens the tab. #}
+<details class="addbox">
+  <summary class="btn">{{ content.add_open }}</summary>
+  <section class="card">
+    <div class="bd">
+      <p class="muted small">{{ content.add_hint }}</p>
+      <form method="post" action="{{ url_for('people.add_person') }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <input class="input" type="text" name="first_name" placeholder="{{ content.add_first }}" aria-label="{{ content.add_first }}" required>
+          <input class="input" type="text" name="last_name" placeholder="{{ content.add_last }}" aria-label="{{ content.add_last }}">
+          <input class="input" type="email" name="email" placeholder="{{ content.add_email }}" aria-label="{{ content.add_email }}">
+          <input class="input" type="tel" name="phone" placeholder="{{ content.add_phone }}" aria-label="{{ content.add_phone }}">
+          <select class="input select" name="stage" aria-label="{{ content.add_stage }}">
+            {% for option in stages %}
+              <option value="{{ option.code }}">{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {% if current_user.is_staff %}
+          <label class="check">
+            <input type="checkbox" name="with_login" value="1">
+            <span>{{ content.add_login }}</span>
+          </label>
+          <div class="filters">
+            <select class="input select" name="role" aria-label="{{ content.add_role }}">
+              <option value="member">Member</option>
+              <option value="leader">Leader</option>
+              <option value="staff">Staff</option>
+            </select>
+          </div>
+          <p class="muted small">{{ content.add_login_hint }}</p>
+        {% endif %}
+
+        <button class="btn" type="submit">{{ content.add_submit }}</button>
+      </form>
+    </div>
+  </section>
+</details>
+
+
 {% if waiting %}
 <section class="card">
   <div class="hd">

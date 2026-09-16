@@ -85,8 +85,19 @@ services:
         sync: false
       - key: MAIL_FROM
         value: The Journey Church <no-reply@thejourneychurchsemo.com>
+      # Push is off until the keys exist. Turning it on without them makes
+      # the service refuse to boot, which is the guard working correctly and a
+      # terrible out-of-the-box experience.
+      #
+      # To switch it on:
+      #   1. flask vapid-keys           (in the shell, once)
+      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the dashboard
+      #   3. change this value to: webpush
+      #
+      # The public key is not a secret; the private one is. Set the private key
+      # in the dashboard rather than here, and never commit it.
       - key: PUSH_TRANSPORT
-        value: webpush
+        value: "null"
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
@@ -132,8 +143,19 @@ services:
         sync: false
       - key: MAIL_FROM
         value: The Journey Church <no-reply@thejourneychurchsemo.com>
+      # Push is off until the keys exist. Turning it on without them makes
+      # the service refuse to boot, which is the guard working correctly and a
+      # terrible out-of-the-box experience.
+      #
+      # To switch it on:
+      #   1. flask vapid-keys           (in the shell, once)
+      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the dashboard
+      #   3. change this value to: webpush
+      #
+      # The public key is not a secret; the private one is. Set the private key
+      # in the dashboard rather than here, and never commit it.
       - key: PUSH_TRANSPORT
-        value: webpush
+        value: "null"
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

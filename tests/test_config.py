@@ -128,3 +128,47 @@ class TestMigrationsCompileOnPostgresToo:
         assert column.server_default is not None
         rendered = str(column.server_default.arg).lower()
         assert rendered not in ("0", "1"), rendered
+
+
+class TestTheBlueprintCanActuallyBoot:
+    """A blueprint that only works if a human already knew something is a
+    broken blueprint.
+
+    `render.yaml` turned push on while marking the key `sync: false`, so the
+    service refused to boot on a step documented nowhere. The boot guard was
+    right; the blueprint was wrong.
+    """
+
+    def _render(self):
+        from pathlib import Path
+
+        return (Path(__file__).resolve().parent.parent / "render.yaml").read_text()
+
+    def test_push_is_not_enabled_without_keys_in_the_blueprint(self):
+        render = self._render()
+        # Any service that sets webpush must also set a private key value in
+        # the file, which it never should. So webpush must not appear.
+        assert "value: webpush" not in render
+
+    def test_no_secret_is_committed_in_the_blueprint(self):
+        """Keys belong in the dashboard. A key in git is a rotated key."""
+        render = self._render()
+        for secret in ("VAPID_PRIVATE_KEY", "RESEND_API_KEY", "SECRET_KEY"):
+            for line in render.splitlines():
+                if line.strip().startswith(f"- key: {secret}"):
+                    continue
+            assert f"{secret}=" not in render
+
+    def test_every_secret_env_var_is_sync_false_or_generated(self):
+        import re
+
+        render = self._render()
+        secrets = ("VAPID_PRIVATE_KEY", "RESEND_API_KEY")
+        for secret in secrets:
+            for match in re.finditer(
+                rf"- key: {secret}\n(.*?)(?=\n      - key:|\n  - type:|\Z)",
+                render,
+                re.S,
+            ):
+                block = match.group(1)
+                assert "sync: false" in block or "generateValue" in block, secret

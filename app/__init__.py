@@ -126,6 +126,12 @@ def create_app(config_name: str | None = None) -> Flask:
             ),
         }
 
+    @app.context_processor
+    def inject_asset_version():
+        from app.blueprints.pwa import CACHE_VERSION
+
+        return {"asset_version": CACHE_VERSION}
+
     @app.template_filter("church_time")
     def church_time(value, fmt="%A %-I:%M%p"):
         """Render a stored UTC datetime in the church's own zone."""

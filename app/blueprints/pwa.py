@@ -32,10 +32,37 @@ from app.content import PWA
 
 bp = Blueprint("pwa", __name__)
 
-# Bumped when the service worker or the assets it caches change. The worker
-# deletes every cache whose name does not match, which is how a deploy reaches
-# a phone that already has the old files.
-CACHE_VERSION = "dos-v2"
+def _asset_fingerprint() -> str:
+    """A hash of everything the worker caches hard.
+
+    Hand-typing a version number does not work. I shipped a Services redesign
+    and forgot to bump it, the worker kept serving the previous stylesheet
+    cache-first, and the new layout simply did not appear: the HTML was
+    current and the CSS was a week old. Nothing in the deploy or the tests
+    could have caught that, because the staleness lived in a browser.
+
+    Deriving it from the file contents means any change to a cached asset
+    invalidates the cache by construction, and no future change can forget.
+    """
+    import hashlib
+    from pathlib import Path as _Path
+
+    static = _Path(__file__).resolve().parent.parent / "static"
+    digest = hashlib.sha256()
+    for name in sorted(("css/app.css", "img/icon-192.png")):
+        path = static / name
+        if path.exists():
+            digest.update(path.read_bytes())
+
+    # The worker itself is a template, so its own text counts too.
+    worker = _Path(__file__).resolve().parent.parent / "templates" / "pwa" / "sw.js"
+    if worker.exists():
+        digest.update(worker.read_bytes())
+
+    return "dos-" + digest.hexdigest()[:12]
+
+
+CACHE_VERSION = _asset_fingerprint()
 
 
 # Words that carry no identity in a church name. "The Journey Church" under

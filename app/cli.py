@@ -1260,3 +1260,30 @@ a{{
         click.echo(f"VAPID_PUBLIC_KEY={b64(raw_public)}")
         click.echo(f"VAPID_PRIVATE_KEY={b64(raw_private)}")
         click.echo("\nThe private key is a secret. Set it with sync: false.")
+
+
+    @app.cli.command("db-status")
+    def db_status():
+        """Where the database is, and where the code expects it to be.
+
+        One line, so it is quick to read in a shell and quick to paste when
+        something is wrong.
+        """
+        from app.blueprints.health import migration_state
+
+        state = migration_state()
+        if state.get("error"):
+            click.echo(f"Could not read the migration history: {state['error']}")
+            return
+
+        click.echo(f"database: {state.get('applied') or 'not tracked by migrations'}")
+        click.echo(f"code:     {state['expected']}")
+        if state["pending"] is None:
+            click.echo(
+                "This database was built directly rather than migrated, so "
+                "there is nothing to compare."
+            )
+        elif state["pending"]:
+            click.echo("PENDING. Run `flask db upgrade`.")
+        else:
+            click.echo("Up to date.")

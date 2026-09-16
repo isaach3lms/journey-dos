@@ -38,22 +38,19 @@ services:
     plan: starter
     branch: main
     buildCommand: pip install -r requirements.txt
-    # TEMPORARILY OFF.
+    # Migrations run after the build and before traffic cuts over, so a
+    # failed migration fails the deploy instead of half-migrating live users.
     #
-    # This normally runs migrations after the build and before traffic cuts
-    # over, so a failed migration fails the deploy instead of half-migrating
-    # live users. That is the right default and it should go back on.
+    # This was off for a week while an unrelated migration failure was
+    # diagnosed, and in that week two separate deploys shipped code whose
+    # schema had not been applied. Both looked like a 500 on one tab with
+    # nothing to connect it to a schema change. Leaving this on is worth more
+    # than the one time it made a failure harder to read.
     #
-    # It is off right now because a migration failure and a deploy failure are
-    # the same event, which means a broken migration also blocks every code
-    # change behind it and hides its own error in a truncated deploy log. With
-    # it off: the deploy succeeds, then `flask db upgrade` runs in the shell
-    # where the whole error is readable.
-    #
-    # While it is off, `/readyz` returns 503 with the pending revision, so a
-    # half-deployed state is visible rather than silent.
-    #
-    # preDeployCommand: flask db upgrade
+    # If a migration fails again: comment this out, deploy, then run
+    # `flask db upgrade` in the shell where the whole error is readable.
+    # `/readyz` reports a pending migration either way.
+    preDeployCommand: flask db upgrade
     startCommand: gunicorn wsgi:app --workers 2 --threads 4 --timeout 60 --access-logfile -
     healthCheckPath: /healthz
     autoDeploy: true

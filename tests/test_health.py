@@ -44,3 +44,23 @@ class TestReadyzReportsPendingMigrations:
     def test_healthz_still_answers_regardless(self, client):
         """Render checks this one, and it must not depend on the database."""
         assert client.get("/healthz", headers={"Host": self.HOST}).status_code == 200
+
+
+class TestMigrationsRunOnDeploy:
+    """Pre-deploy was off for a week, and in that week two deploys shipped
+    code whose schema had not been applied.
+
+    Both looked like a 500 on one tab with nothing to connect it to a schema
+    change. This asserts the blueprint does not quietly leave it off again.
+    """
+
+    def test_the_web_service_runs_migrations_before_traffic(self):
+        from pathlib import Path
+
+        render = (Path(__file__).resolve().parent.parent / "render.yaml").read_text()
+        active = [
+            line for line in render.splitlines()
+            if "preDeployCommand" in line and not line.strip().startswith("#")
+        ]
+        assert active, "preDeployCommand is commented out"
+        assert "flask db upgrade" in active[0]

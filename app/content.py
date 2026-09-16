@@ -39,7 +39,7 @@ EVERYONE = frozenset(ROLES)
 NAV_GROUPS = ["Lead", "Run", "Manage"]
 
 NAV_ITEMS: list[NavItem] = [
-    NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE),
+    NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE, ready=True),
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("groups", "Groups", "Lead", 9, "people", STAFF_AND_LEADERS, ready=True),
     NavItem("services", "Services", "Run", 10, "serv", STAFF_AND_LEADERS, ready=True),

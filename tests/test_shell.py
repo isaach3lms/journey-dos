@@ -75,3 +75,35 @@ class TestNavIcons:
             # currentColor keeps icons free of brand information, so they work
             # on the dark sidebar and anywhere else without a second copy.
             assert "currentColor" in svg, key
+
+
+class TestTheNavDoesNotCallBuiltThingsUnbuilt:
+    """The badge means "arrives at increment N".
+
+    Dashboard was built in increment 3 and never marked ready, so it carried a
+    "3" for thirteen increments. Nothing failed, the screen just quietly told
+    every pastor a finished feature was not finished.
+    """
+
+    def test_no_shipped_section_still_shows_an_increment_badge(self):
+        from app.content import NAV_ITEMS, SHIPPED_INCREMENTS
+
+        lying = [
+            item.key for item in NAV_ITEMS
+            if not item.ready and item.increment in SHIPPED_INCREMENTS
+        ]
+        assert not lying, (
+            f"These are built but still badged as unbuilt: {lying}"
+        )
+
+    def test_the_badge_is_absent_from_the_sidebar_when_everything_is_built(
+        self, staff
+    ):
+        from app.content import NAV_ITEMS
+
+        response = staff.get("/", headers={"Host": "journey.dos.test"})
+        body = response.get_data(as_text=True)
+        sidebar = body[body.index('class="navstrip"'): body.index('class="sidefoot"')]
+
+        if all(item.ready for item in NAV_ITEMS):
+            assert 'class="inc"' not in sidebar

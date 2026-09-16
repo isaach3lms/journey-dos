@@ -97,6 +97,7 @@ def index():
         waiting=db.session.scalars(
             Person.waiting_for_approval(g.church.id)
         ).all(),
+        archived_count=Person.archived_count(g.church.id),
         active="people",
     )
 
@@ -640,3 +641,100 @@ def approve_person(person_id: int):
 
     flash(PEOPLE["approved"].format(name=person.full_name), "notice")
     return redirect(url_for("people.detail", person_id=person.id))
+
+
+# ---------------------------------------------------------------------------
+# Archiving in bulk
+#
+# Archive, never delete. A person row is referenced by check-in history,
+# matched giving, service assignments, and messages. Deleting one erases a
+# child's check-in record, which a church has to keep, and rewrites who said
+# what in a room.
+# ---------------------------------------------------------------------------
+
+@bp.post("/archive/")
+@login_required
+@min_role("leader")
+def bulk_archive():
+    from app.models.audit import PERSON_ARCHIVED
+
+    ids = request.form.getlist("person_id", type=int)
+    people = Person.get_many_for_church(g.church.id, ids)
+
+    if not people:
+        flash(PEOPLE["bulk_none"], "error")
+        return redirect(url_for("people.index", **_filters()))
+
+    mine = current_user.person_id
+    archived = []
+    for person in people:
+        # Archiving your own record hides you from the roster you are standing
+        # on, which is confusing rather than dangerous, and never intended.
+        if mine is not None and person.id == mine:
+            flash(PEOPLE["bulk_self"], "error")
+            continue
+        if person.archive():
+            archived.append(person)
+
+    for person in archived:
+        PersonEvent.record(
+            person, KIND_CREATED, PEOPLE["archived_event"], actor=current_user
+        )
+
+    if archived:
+        audit_record(
+            PERSON_ARCHIVED,
+            f"{len(archived)} people archived",
+            actor=current_user,
+            subject_type="person",
+            subject_label=", ".join(p.full_name for p in archived[:5]),
+            detail=f"Archived: {', '.join(p.full_name for p in archived)}"[:1900],
+        )
+        db.session.commit()
+        flash(PEOPLE["bulk_archived"].format(count=len(archived)), "notice")
+
+    return redirect(url_for("people.index", **_filters()))
+
+
+@bp.get("/archived/")
+@login_required
+@min_role("leader")
+def archived():
+    return render_template(
+        "people/archived.html",
+        church=g.church,
+        content=PEOPLE,
+        people=db.session.scalars(Person.archived_for_church(g.church.id)).all(),
+        active="people",
+    )
+
+
+@bp.post("/archived/restore/")
+@login_required
+@min_role("leader")
+def bulk_restore():
+    ids = request.form.getlist("person_id", type=int)
+    people = Person.get_many_for_church(g.church.id, ids)
+
+    restored = [person for person in people if person.unarchive()]
+    if restored:
+        db.session.commit()
+        flash(PEOPLE["bulk_restored"].format(count=len(restored)), "notice")
+    else:
+        flash(PEOPLE["bulk_none"], "error")
+
+    return redirect(url_for("people.archived"))
+
+
+def _filters() -> dict:
+    """Carry the roster's filter and search back through a redirect.
+
+    Archiving forty people and landing on an unfiltered page means finding
+    your place again, which is how somebody archives the wrong batch next.
+    """
+    carried = {}
+    for key in ("stage", "q", "page"):
+        value = request.form.get(key) or request.args.get(key)
+        if value:
+            carried[key] = value
+    return carried

@@ -8,9 +8,6 @@
 {% block content %}
 <a class="ghost back" href="{{ url_for('groups.index') }}">{{ content.title }}</a>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
-{% endwith %}
 
 <section class="card">
   <div class="hd"><h2>{{ content.roster_heading }}</h2></div>

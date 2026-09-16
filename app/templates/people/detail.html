@@ -8,11 +8,6 @@
 {% block content %}
 <a class="ghost back" href="{{ url_for('people.index') }}">{{ content.back_to_roster }}</a>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}
-    <div class="alert {{ category }}" role="alert">{{ message }}</div>
-  {% endfor %}
-{% endwith %}
 
 {% if person.is_stuck %}
   <div class="alert error stuckbanner" role="status">

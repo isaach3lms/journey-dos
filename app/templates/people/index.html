@@ -58,10 +58,27 @@
     </form>
 
     {% if people %}
+      <form method="post" action="{{ url_for('people.bulk_archive') }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="stage" value="{{ active_stage or '' }}">
+      <input type="hidden" name="q" value="{{ term or '' }}">
+
+      {# The bar stays hidden until something is ticked, so the roster is a
+         roster until somebody means to act on it. #}
+      <div class="bulkbar" id="bulkbar" hidden>
+        <span id="bulkcount"></span>
+        <span class="muted small">{{ content.bulk_hint }}</span>
+        <button class="btn" type="submit" data-confirm="{{ content.bulk_confirm }}"
+                onclick="return confirm(this.dataset.confirm.replace('{count}', document.querySelectorAll('.rowpick:checked').length))">
+          {{ content.bulk_archive }}
+        </button>
+      </div>
+
       <div class="tablewrap">
       <table class="roster">
         <thead>
           <tr>
+            <th class="pickcol"><span class="vh">{{ content.bulk_select }}</span></th>
             <th>{{ content.col_person }}</th>
             <th>{{ content.col_stage }}</th>
             <th>{{ content.col_household }}</th>
@@ -70,7 +87,12 @@
         </thead>
         <tbody>
           {% for person in people %}
-            <tr onclick="window.location='{{ url_for('people.detail', person_id=person.id) }}'">
+            <tr>
+              <td class="pickcol">
+                <input class="rowpick" type="checkbox" name="person_id"
+                       value="{{ person.id }}"
+                       aria-label="{{ content.bulk_select }} {{ person.full_name }}">
+              </td>
               <td>
                 <a class="personcell" href="{{ url_for('people.detail', person_id=person.id) }}">
                   <span class="av">{{ person.initials }}</span>
@@ -92,6 +114,7 @@
         </tbody>
       </table>
       </div>
+      </form>
 
       {% if pagination.pages > 1 %}
         <div class="pager">
@@ -118,4 +141,25 @@
     {% endif %}
   </div>
 </section>
+
+<p class="muted small">
+  <a href="{{ url_for('people.archived') }}">{{ content.archived_link.format(count=archived_count) }}</a>
+</p>
+
+<script>
+  (function () {
+    var bar = document.getElementById('bulkbar');
+    var label = document.getElementById('bulkcount');
+    if (!bar) return;
+    function refresh() {
+      var picked = document.querySelectorAll('.rowpick:checked').length;
+      bar.hidden = picked === 0;
+      label.textContent = {{ content.bulk_selected | tojson }}.replace('{count}', picked);
+    }
+    document.querySelectorAll('.rowpick').forEach(function (box) {
+      box.addEventListener('change', refresh);
+    });
+    refresh();
+  })();
+</script>
 {% endblock %}

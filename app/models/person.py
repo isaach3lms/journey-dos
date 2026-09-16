@@ -584,3 +584,61 @@ class Person(TenantScoped, TimestampMixin, db.Model):
                 cls.approved_at.is_(None),
             )
         ) or 0
+
+
+    # -- archiving ----------------------------------------------------------
+
+    def archive(self) -> bool:
+        """Take somebody off the roster without destroying the record.
+
+        Archive rather than delete, always. A person row is referenced by
+        check-in history, matched giving, service assignments, and messages.
+        Deleting one erases a child's check-in record, which a church has to
+        keep, and rewrites who said what in a room. Archiving removes them from
+        the roster, the counts, the stuck engine, and every sequence, and
+        leaves the history intact.
+        """
+        if self.is_archived:
+            return False
+        self.is_archived = True
+        return True
+
+    def unarchive(self) -> bool:
+        if not self.is_archived:
+            return False
+        self.is_archived = False
+        return True
+
+    @classmethod
+    def archived_for_church(cls, church_id: int):
+        return (
+            db.select(cls)
+            .where(cls.church_id == church_id, cls.is_archived.is_(True))
+            .order_by(cls.last_name, cls.first_name)
+        )
+
+    @classmethod
+    def archived_count(cls, church_id: int) -> int:
+        from sqlalchemy import func as sa_func
+
+        return db.session.scalar(
+            db.select(sa_func.count(cls.id)).where(
+                cls.church_id == church_id, cls.is_archived.is_(True)
+            )
+        ) or 0
+
+    @classmethod
+    def get_many_for_church(cls, church_id: int, ids: list[int]) -> list["Person"]:
+        """Load several people, tenant-scoped.
+
+        Takes the ids and returns only the ones that belong to this church,
+        silently dropping the rest. A bulk action is exactly where a stray id
+        from another tenant would otherwise slip through unnoticed.
+        """
+        if not ids:
+            return []
+        return list(
+            db.session.scalars(
+                db.select(cls).where(cls.church_id == church_id, cls.id.in_(ids))
+            )
+        )

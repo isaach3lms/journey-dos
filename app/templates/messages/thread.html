@@ -6,9 +6,6 @@
 {% block content %}
 <a class="ghost back" href="{{ url_for('messages.index') }}">{{ content.title }}</a>
 
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
-{% endwith %}
 
 {% if conversation.is_archived %}
   <div class="alert error">{{ content.archived_note }}</div>

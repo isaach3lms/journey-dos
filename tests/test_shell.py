@@ -107,3 +107,39 @@ class TestTheNavDoesNotCallBuiltThingsUnbuilt:
 
         if all(item.ready for item in NAV_ITEMS):
             assert 'class="inc"' not in sidebar
+
+
+class TestFlashesAreRenderedOnce:
+    """Flashes were rendered per page, and the roster never had the block.
+
+    Every flash that redirected there vanished, including the approval message
+    from the previous increment. Nothing failed; the screen just said nothing.
+    """
+
+    def test_the_staff_shell_renders_them(self):
+        from pathlib import Path
+
+        base = (
+            Path(__file__).resolve().parent.parent
+            / "app" / "templates" / "base.html"
+        ).read_text()
+        assert "get_flashed_messages" in base
+
+    def test_no_staff_page_renders_its_own(self):
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent / "app" / "templates"
+        offenders = [
+            path.name for path in root.rglob("*.html")
+            if '{% extends "base.html" %}' in path.read_text()
+            and "get_flashed_messages" in path.read_text()
+        ]
+        assert not offenders, f"These duplicate the shell's flash block: {offenders}"
+
+    def test_a_flash_reaches_the_roster(self, staff):
+        r = staff.post(
+            "/people/archive/",
+            headers={"Host": "journey.dos.test"},
+            follow_redirects=True,
+        )
+        assert b"Tick somebody first" in r.data

@@ -516,6 +516,30 @@ PEOPLE = {
     "waiting_none": "Nobody is waiting.",
     "waiting_count": "{count} waiting",
     "waiting_since": "Signed up {date}",
+    # Bulk archiving
+    "bulk_select": "Select",
+    "bulk_selected": "{count} selected",
+    "bulk_archive": "Archive them",
+    "bulk_none": "Tick somebody first.",
+    "bulk_archived": "Archived {count}.",
+    "bulk_restored": "Restored {count}.",
+    "bulk_hint": (
+        "Archiving takes somebody off the roster and out of the counts, the "
+        "flags, and every sequence. Nothing is deleted: their check-in "
+        "history, giving, and messages stay, because the church has to keep "
+        "those."
+    ),
+    "bulk_confirm": "Archive {count} people?",
+    "bulk_self": "You cannot archive your own record.",
+
+    "archived_event": "Archived",
+    "archived_title": "Archived people",
+    "archived_subtitle": "Off the roster, still on the record.",
+    "archived_count": "{count} archived",
+    "archived_none": "Nobody is archived.",
+    "archived_restore": "Put them back",
+    "archived_link": "Archived ({count})",
+
     "approve": "They are real",
     "approved": "{name} is in.",
     "approved_event": "Approved",

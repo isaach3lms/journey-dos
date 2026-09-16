@@ -30,6 +30,15 @@
       </div>
     </div>
     <div class="content">
+      {# Rendered here rather than per page. Eleven staff templates each
+         had their own copy and the roster never got one, so every flash that
+         redirected there vanished. #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
       {% block content %}{% endblock %}
     </div>
   </main>

@@ -4,9 +4,6 @@
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
 {% block content %}
-{% with messages = get_flashed_messages(with_categories=true) %}
-  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
-{% endwith %}
 
 {% if open_session %}
   <section class="card">

@@ -773,3 +773,17 @@ ul.policy span{color:var(--muted)}
 .songrow .fl{flex:1;min-width:160px}
 .songrow form{margin:0}
 .songrow .input.select{width:auto;min-width:104px;padding:7px 28px 7px 10px;font-size:12.5px}
+
+/* ---------- Bulk selection ----------
+   The bar appears only once something is ticked, so the roster stays a roster
+   until somebody means to act on it. */
+.bulkbar{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:11px 14px;margin-bottom:12px;
+  background:var(--surface-alt);border:1px solid var(--line-soft);
+  border-radius:var(--r);font-size:13px;font-weight:500;
+}
+.bulkbar .muted{font-weight:400;flex:1 1 320px}
+.pickcol{width:34px}
+.rowpick{width:16px;height:16px;accent-color:var(--accent)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}

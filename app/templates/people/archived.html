@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ content.archived_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.archived_title }}{% endblock %}
+{% block subheading %}{{ content.archived_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('people.index') }}">{{ content.title }}</a>
+
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.archived_count.format(count=people|length) }}</h2>
+  </div>
+  <div class="bd">
+    <p class="muted small">{{ content.bulk_hint }}</p>
+    {% if people %}
+      <form method="post" action="{{ url_for('people.bulk_restore') }}">
+        {{ csrf_field() }}
+        <ul class="flaglist">
+          {% for person in people %}
+            <li>
+              <input class="rowpick" type="checkbox" name="person_id" value="{{ person.id }}"
+                     aria-label="{{ content.bulk_select }} {{ person.full_name }}">
+              <span class="av">{{ person.initials }}</span>
+              <span class="fl">
+                <span class="pn">{{ person.full_name }}</span>
+                <span class="pe">{{ person.email or "" }}{% if person.stage_label %} &middot; {{ person.stage_label }}{% endif %}</span>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+        <button class="btn" type="submit">{{ content.archived_restore }}</button>
+      </form>
+    {% else %}
+      <p class="muted small">{{ content.archived_none }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

@@ -14,34 +14,72 @@
 {% endwith %}
 
 <section class="card">
-  <div class="hd"><h2>{{ content.plan_heading }}</h2></div>
+  <div class="hd">
+    <h2>{{ content.plan_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill">{{ content.plan_runs.format(
+      start=service.starts_at|church_time("%-I:%M%p"),
+      end=service.ends_at|church_time("%-I:%M%p")) }}</span>
+  </div>
   <div class="bd">
     {% if service.items %}
-      <ul class="flaglist">
-        {% for item in service.items %}
-          <li>
-            <span class="av">{{ item.position }}</span>
-            <span class="fl">
-              <span class="pn">{{ item.title }}</span>
-              <span class="pe">
-                {% if item.key %}
-                  {{ content.key_label }} {{ item.key }}
-                  {% for option in item.capo_options[:2] %}
-                    &middot; {{ content.capo.format(capo=option.capo, shape=option.shape) }}
-                  {% endfor %}
-                {% elif item.kind == 'song' %}{{ content.no_key }}{% endif %}
-                {% if item.minutes %} &middot; {{ item.minutes }} min{% endif %}
-                {% if item.notes %} &middot; {{ item.notes }}{% endif %}
+      <ol class="runsheet">
+        {% for item, at in timed_items %}
+          {% if item.kind == 'header' %}
+            <li class="rsection">
+              <span class="rlabel">{{ item.title }}</span>
+              <span class="ractions">
+                <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}<input type="hidden" name="direction" value="up">
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.move_up }}</button>
+                </form>
+                <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}<input type="hidden" name="direction" value="down">
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.move_down }}</button>
+                </form>
+                <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
+                </form>
               </span>
-            </span>
-            <form method="post" class="inline"
-                  action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
-              {{ csrf_field() }}
-              <button class="btn ghostbtn" type="submit">{{ content.item_delete }}</button>
-            </form>
-          </li>
+            </li>
+          {% else %}
+            <li class="rrow">
+              {# The time is computed from the service start, so moving a
+                 service or changing one length reflows the whole plan. #}
+              <span class="rtime mono">{{ at|church_time("%-I:%M") }}</span>
+              <span class="rlen mono">{% if item.minutes %}{{ item.minutes }}m{% endif %}</span>
+              <span class="rbody">
+                <span class="rtitle">{{ item.title }}</span>
+                <span class="rmeta">
+                  {% if item.key %}
+                    {{ content.key_label }} {{ item.key }}
+                    {% for option in item.capo_options[:2] %}
+                      &middot; {{ content.capo.format(capo=option.capo, shape=option.shape) }}
+                    {% endfor %}
+                  {% elif item.kind == 'song' %}{{ content.no_key }}{% endif %}
+                  {% if item.notes %}{% if item.key %} &middot; {% endif %}{{ item.notes }}{% endif %}
+                </span>
+              </span>
+              <span class="ractions">
+                <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}<input type="hidden" name="direction" value="up">
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.move_up }}</button>
+                </form>
+                <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}<input type="hidden" name="direction" value="down">
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.move_down }}</button>
+                </form>
+                <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
+                </form>
+              </span>
+            </li>
+          {% endif %}
         {% endfor %}
-      </ul>
+      </ol>
+      <p class="muted small">{{ content.plan_total.format(minutes=service.total_minutes) }}</p>
     {% else %}
       <p class="muted small">{{ content.plan_empty }}</p>
     {% endif %}
@@ -73,8 +111,69 @@
         <button class="btn ghostbtn" type="submit">{{ content.add_element }}</button>
       </div>
     </form>
+
+    <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <input type="hidden" name="kind" value="header">
+      <div class="filters">
+        <input class="input" type="text" name="title" placeholder="{{ content.section_placeholder }}" aria-label="{{ content.section_add }}">
+        <button class="btn ghostbtn" type="submit">{{ content.section_add }}</button>
+      </div>
+      <p class="muted small">{{ content.section_hint }}</p>
+    </form>
   </div>
 </section>
+
+<section class="card">
+  <div class="hd">
+    <h2>{{ content.staffing_heading }}</h2>
+    <div class="spacer"></div>
+    {% if service.is_fully_staffed %}
+      <span class="pill">{{ content.staffing_full }}</span>
+    {% else %}
+      <span class="pill pending">{{ service.unfilled_count }}</span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% if service.needs %}
+      <ul class="flaglist">
+        {% for row in service.needs_summary %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ content.staffing_line.format(position=row.position, filled=row.filled, wanted=row.wanted) }}</span>
+              <span class="pe">{{ content.staffing_accepted.format(count=row.accepted) }}</span>
+            </span>
+            {% if row.short %}
+              <span class="pill pending">{{ content.staffing_short.format(position=row.position, count=row.short) }}</span>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.staffing_none }}</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if earlier %}
+<section class="card">
+  <div class="hd"><h2>{{ content.copy_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.copy_hint }}</p>
+    <form method="post" action="{{ url_for('services.copy_from', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="source_id" aria-label="{{ content.copy_heading }}">
+          {% for option in earlier %}
+            <option value="{{ option.id }}">{{ option.starts_at|church_time("%B %-d") }} &middot; {{ option.name }}</option>
+          {% endfor %}
+        </select>
+        <button class="btn ghostbtn" type="submit">{{ content.copy_do }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endif %}
 
 <section class="card">
   <div class="hd">

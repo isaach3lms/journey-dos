@@ -684,3 +684,34 @@ ul.policy li{padding:9px 0;border-top:1px solid var(--line-soft);font-size:13.5p
 ul.policy li:first-child{border-top:none}
 ul.policy b{display:block;margin-bottom:2px}
 ul.policy span{color:var(--muted)}
+
+/* ---------- Run sheet ----------
+   A plan reads down the page as a time column, a length, and what happens.
+   Times are computed from the service start, never stored. */
+.runsheet{list-style:none;margin:0 0 16px;padding:0}
+.rrow{
+  display:grid;grid-template-columns:58px 40px minmax(0,1fr) auto;
+  gap:12px;align-items:baseline;
+  padding:10px 0;border-top:1px solid var(--line-soft);
+}
+.rtime{font-size:12.5px;font-weight:600;color:var(--deep)}
+.rlen{font-size:11.5px;color:var(--muted-2)}
+.rtitle{display:block;font-size:14px;font-weight:500}
+.rmeta{display:block;font-size:11.5px;color:var(--muted-2);margin-top:2px}
+.rsection{
+  display:flex;align-items:center;gap:12px;
+  padding:16px 0 7px;border-top:1px solid var(--line);
+}
+.rsection:first-child{border-top:none}
+.rlabel{
+  flex:1;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  font-weight:600;color:var(--muted-2);
+}
+.ractions{display:flex;gap:5px;flex:none}
+.ractions form.inline{margin-top:0}
+.btn.tiny{padding:5px 10px;font-size:11px}
+@media (max-width:760px){
+  .rrow{grid-template-columns:52px minmax(0,1fr);row-gap:4px}
+  .rlen{grid-column:1}
+  .ractions{grid-column:1 / -1}
+}

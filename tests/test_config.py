@@ -174,3 +174,59 @@ class TestTheBlueprintCanActuallyBoot:
             ):
                 block = match.group(1)
                 assert "sync: false" in block or "generateValue" in block, secret
+
+
+class TestAMigratedSchemaMatchesTheModels:
+    """Tests build the schema with `create_all`; production builds it with
+    migrations. The two can quietly disagree.
+
+    Adding 'header' to the item kinds changed the model but not the CHECK
+    constraint already in the database, and Alembic does not diff check
+    constraints. Every test passed and the seeded demo blew up.
+    """
+
+    def _migrated_session(self, tmp_path):
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parent.parent
+        uri = f"sqlite:///{tmp_path / 'migrated.sqlite'}"
+        env = {
+            "PATH": "/usr/bin:/bin:/usr/local/bin",
+            "FLASK_APP": "wsgi.py",
+            "FLASK_ENV": "development",
+            "DATABASE_URL": uri,
+        }
+        result = subprocess.run(
+            [sys.executable, "-m", "flask", "db", "upgrade"],
+            cwd=root, env=env, capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr[-1500:]
+        return uri
+
+    def test_every_check_constraint_accepts_every_value_the_models_allow(
+        self, tmp_path
+    ):
+        import sqlalchemy as sa
+
+        from app.models.service import ITEM_KINDS
+
+        uri = self._migrated_session(tmp_path)
+        engine = sa.create_engine(uri)
+
+        with engine.begin() as connection:
+            rows = connection.execute(
+                sa.text(
+                    "SELECT sql FROM sqlite_master "
+                    "WHERE type='table' AND name='service_item'"
+                )
+            ).scalar()
+
+        # Every kind the model permits must appear in the constraint the
+        # migration created, or inserts fail in production only.
+        for kind in ITEM_KINDS:
+            assert f"'{kind}'" in rows, (
+                f"The migrated CHECK constraint on service_item does not allow "
+                f"{kind!r}, but the model does."
+            )

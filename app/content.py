@@ -1060,9 +1060,66 @@ SERVICES = {
     "title": "Services",
     "subtitle": "Plan the Sunday, ask the people, send it.",
 
+    # Service types and templates
+    "types_title": "Service types",
+    "types_subtitle": "The shape a Sunday usually takes, so you are not rebuilding it every week.",
+    "type_name": "What kind of service",
+    "type_name_placeholder": "Sunday Morning",
+    "type_add": "Add the type",
+    "type_added": "{name} added. Build its usual running order.",
+    "types_empty": "No service types yet.",
+    "types_empty_hint": (
+        "Sunday Morning, Wednesday Youth, Christmas Eve. Each one holds the "
+        "running order that rarely changes."
+    ),
+    "template_heading": "Its usual running order",
+    "template_hint": (
+        "Copied into every new service of this type. Leave songs blank if you "
+        "pick them each week; the slots still appear."
+    ),
+    "template_empty": "Nothing in the template yet.",
+    "template_minutes": "{minutes} minutes",
+    "needs_heading": "Who it usually needs",
+    "needs_hint": "Shown as filled or short on every plan of this type.",
+    "needs_position": "Position",
+    "needs_wanted": "How many",
+    "needs_add": "Add",
+    "needs_added": "{name} added.",
+    "needs_empty": "No positions listed yet.",
+    "needs_line": "{position}, {wanted}",
+
+    # Plan
+    "section_add": "Add a section",
+    "section_placeholder": "Worship",
+    "section_hint": "A heading to group what follows. It takes no time of its own.",
+    "move_up": "Up",
+    "move_down": "Down",
+    "moved": "Moved.",
+    "starts_at_item": "{time}",
+    "plan_runs": "Runs {start} to {end}",
+    "plan_total": "{minutes} minutes of plan",
+    "copy_heading": "Start from a previous week",
+    "copy_hint": (
+        "Replaces this plan with that one. Who served is not copied: last "
+        "week's team is not this week's, and nobody should find out they are "
+        "playing by reading it."
+    ),
+    "copy_do": "Copy it here",
+    "copied": "Copied {count} items from {name}.",
+    "copy_none": "No earlier service to copy from.",
+
+    "staffing_heading": "Still needed",
+    "staffing_full": "Fully staffed.",
+    "staffing_line": "{position}: {filled} of {wanted}",
+    "staffing_short": "{position}: short {count}",
+    "staffing_accepted": "{count} accepted",
+    "staffing_none": "No positions listed for this service.",
+
     "new_heading": "Plan a service",
     "name": "What is it",
     "name_placeholder": "Sunday",
+    "use_type": "Use a type",
+    "no_type": "One off, no type",
     "when": "When",
     "create": "Add it",
     "created": "{name} added. Build the plan.",

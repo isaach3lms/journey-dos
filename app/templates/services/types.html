@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}{{ content.types_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.types_title }}{% endblock %}
+{% block subheading %}{{ content.types_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('services.index') }}">{{ content.title }}</a>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}<div class="alert {{ category }}">{{ message }}</div>{% endfor %}
+{% endwith %}
+
+<section class="card">
+  <div class="bd">
+    <form method="post" action="{{ url_for('services.add_type') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="name" placeholder="{{ content.type_name_placeholder }}" aria-label="{{ content.type_name }}">
+        <button class="btn" type="submit">{{ content.type_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+{% for service_type in types %}
+  <section class="card">
+    <div class="hd">
+      <h2>{{ service_type.name }}</h2>
+      <div class="spacer"></div>
+      <span class="pill">{{ content.template_minutes.format(minutes=service_type.template_minutes) }}</span>
+    </div>
+    <div class="bd">
+      <div class="mlbl">{{ content.template_heading }}</div>
+      <p class="muted small">{{ content.template_hint }}</p>
+
+      {% if service_type.template_items %}
+        <ol class="runsheet">
+          {% for item in service_type.template_items %}
+            {% if item.kind == 'header' %}
+              <li class="rsection">
+                <span class="rlabel">{{ item.title }}</span>
+                <span class="ractions">
+                  <form method="post" class="inline" action="{{ url_for('services.delete_template_item', type_id=service_type.id, item_id=item.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
+                  </form>
+                </span>
+              </li>
+            {% else %}
+              <li class="rrow">
+                <span class="rtime mono">{{ item.position }}</span>
+                <span class="rlen mono">{% if item.minutes %}{{ item.minutes }}m{% endif %}</span>
+                <span class="rbody">
+                  <span class="rtitle">{{ item.title }}</span>
+                  {% if item.song %}<span class="rmeta">{{ item.song.default_key or content.no_key }}</span>{% endif %}
+                </span>
+                <span class="ractions">
+                  <form method="post" class="inline" action="{{ url_for('services.delete_template_item', type_id=service_type.id, item_id=item.id) }}">
+                    {{ csrf_field() }}
+                    <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
+                  </form>
+                </span>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="muted small">{{ content.template_empty }}</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('services.add_template_item', type_id=service_type.id) }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="kind" value="element">
+        <div class="filters">
+          <input class="input" type="text" name="title" placeholder="{{ content.element_placeholder }}" aria-label="{{ content.element_title }}">
+          <input class="input dateinput" type="number" name="minutes" min="1" max="120" placeholder="{{ content.minutes }}" aria-label="{{ content.minutes }}">
+          <button class="btn ghostbtn" type="submit">{{ content.add_element }}</button>
+        </div>
+      </form>
+
+      <form method="post" action="{{ url_for('services.add_template_item', type_id=service_type.id) }}">
+        {{ csrf_field() }}
+        <input type="hidden" name="kind" value="header">
+        <div class="filters">
+          <input class="input" type="text" name="title" placeholder="{{ content.section_placeholder }}" aria-label="{{ content.section_add }}">
+          <button class="btn ghostbtn" type="submit">{{ content.section_add }}</button>
+        </div>
+      </form>
+
+      <div class="mlbl">{{ content.needs_heading }}</div>
+      <p class="muted small">{{ content.needs_hint }}</p>
+      {% if service_type.needs %}
+        <p>
+          {% for need in service_type.needs %}
+            <span class="tag">{{ content.needs_line.format(position=need.position.name if need.position else "?", wanted=need.wanted) }}</span>
+          {% endfor %}
+        </p>
+      {% else %}
+        <p class="muted small">{{ content.needs_empty }}</p>
+      {% endif %}
+
+      <form method="post" action="{{ url_for('services.add_type_need', type_id=service_type.id) }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <select class="input select" name="position_id" aria-label="{{ content.needs_position }}">
+            {% for team in teams %}
+              {% for position in team.positions %}
+                <option value="{{ position.id }}">{{ team.name }}: {{ position.name }}</option>
+              {% endfor %}
+            {% endfor %}
+          </select>
+          <input class="input dateinput" type="number" name="wanted" min="1" max="20" value="1" aria-label="{{ content.needs_wanted }}">
+          <button class="btn ghostbtn" type="submit">{{ content.needs_add }}</button>
+        </div>
+      </form>
+    </div>
+  </section>
+{% else %}
+  <section class="card">
+    <div class="bd">
+      <div class="empty">
+        <div class="t">{{ content.types_empty }}</div>
+        <div class="d">{{ content.types_empty_hint }}</div>
+      </div>
+    </div>
+  </section>
+{% endfor %}
+{% endblock %}

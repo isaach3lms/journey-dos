@@ -13,10 +13,17 @@
     <div class="filters">
       <a class="ghost" href="{{ url_for('services.songs') }}">{{ content.songs_title }}</a>
       <a class="ghost" href="{{ url_for('services.teams') }}">{{ content.teams_title }}</a>
+      <a class="ghost" href="{{ url_for('services.types') }}">{{ content.types_title }}</a>
     </div>
     <form method="post" action="{{ url_for('services.create') }}">
       {{ csrf_field() }}
       <div class="filters">
+        <select class="input select" name="service_type_id" aria-label="{{ content.use_type }}">
+          <option value="">{{ content.no_type }}</option>
+          {% for service_type in types %}
+            <option value="{{ service_type.id }}">{{ service_type.name }}</option>
+          {% endfor %}
+        </select>
         <input class="input" type="text" name="name" placeholder="{{ content.name_placeholder }}" aria-label="{{ content.name }}">
         <input class="input dateinput" type="datetime-local" name="starts_at" aria-label="{{ content.when }}">
         <button class="btn" type="submit">{{ content.create }}</button>
@@ -39,6 +46,7 @@
                   {{ service.name }} &middot;
                   {{ content.team_status.format(accepted=service.accepted_count, waiting=service.waiting_count, declined=service.declined_count) }}
                   {% if service.total_minutes %} &middot; {{ content.runtime.format(minutes=service.total_minutes) }}{% endif %}
+                  {% if service.unfilled_count %} &middot; <b>short {{ service.unfilled_count }}</b>{% endif %}
                 </span>
               </span>
               <span class="pill {% if service.status != 'sent' %}pending{% endif %}">{{ service.status|title }}</span>

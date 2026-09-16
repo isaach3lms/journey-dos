@@ -43,7 +43,8 @@ from app.models.base import TenantScoped, TimestampMixin, UTCDateTime, utcnow
 # Plan item kinds. A song points at the library; everything else is free text.
 ITEM_SONG = "song"
 ITEM_ELEMENT = "element"
-ITEM_KINDS = (ITEM_SONG, ITEM_ELEMENT)
+ITEM_HEADER = "header"
+ITEM_KINDS = (ITEM_SONG, ITEM_ELEMENT, ITEM_HEADER)
 
 STATUS_DRAFT = "draft"
 STATUS_SENT = "sent"
@@ -63,6 +64,130 @@ ASSIGNMENT_LABELS = {
 _ITEM_KINDS = ", ".join(f"'{k}'" for k in ITEM_KINDS)
 _SERVICE_STATUSES = ", ".join(f"'{s}'" for s in SERVICE_STATUSES)
 _ASSIGNMENT_STATUSES = ", ".join(f"'{s}'" for s in ASSIGNMENT_STATUSES)
+
+
+class ServiceType(TenantScoped, TimestampMixin, db.Model):
+    """A recurring kind of service, and the shape its plan usually takes.
+
+    The single biggest thing a worship leader does every week is rebuild last
+    week's plan. A type holds the running order that rarely changes, so a new
+    service starts as a real plan rather than an empty page. Sunday Morning,
+    Wednesday Youth, Christmas Eve.
+
+    The template is a plan like any other, stored as items against the type. It
+    is copied into a service, never referenced, so editing this week's plan
+    cannot rewrite the template and editing the template cannot rewrite a
+    service that already went out.
+    """
+
+    __tablename__ = "service_type"
+    __table_args__ = (
+        UniqueConstraint("church_id", "name", name="uq_service_type_name"),
+        Index("ix_service_type_church", "church_id", "is_active"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    # Where the clock starts. A plan's running times are offsets from the
+    # service start, so an item knows when it happens without storing a time.
+    default_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    template_items: Mapped[list["ServiceTemplateItem"]] = relationship(
+        back_populates="service_type",
+        cascade="all, delete-orphan",
+        order_by="ServiceTemplateItem.position",
+    )
+    needs: Mapped[list["ServiceTypeNeed"]] = relationship(
+        back_populates="service_type", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ServiceType {self.name!r} church={self.church_id}>"
+
+    @property
+    def template_minutes(self) -> int:
+        return sum(item.minutes or 0 for item in self.template_items)
+
+    @classmethod
+    def get_for_church(cls, church_id: int, type_id: int) -> "ServiceType | None":
+        return db.session.scalar(
+            db.select(cls).where(cls.id == type_id, cls.church_id == church_id)
+        )
+
+    @classmethod
+    def for_church(cls, church_id: int):
+        return (
+            db.select(cls)
+            .where(cls.church_id == church_id, cls.is_active.is_(True))
+            .order_by(cls.name)
+        )
+
+
+class ServiceTemplateItem(TenantScoped, TimestampMixin, db.Model):
+    """One line of a service type's usual running order."""
+
+    __tablename__ = "service_template_item"
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({_ITEM_KINDS})", name="ck_service_template_item_kind"),
+        UniqueConstraint(
+            "service_type_id", "position", name="uq_service_template_item_position"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_type_id: Mapped[int] = mapped_column(
+        ForeignKey("service_type.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service_type: Mapped["ServiceType"] = relationship(back_populates="template_items")
+
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    kind: Mapped[str] = mapped_column(String(20), nullable=False, default=ITEM_ELEMENT)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    minutes: Mapped[Optional[int]] = mapped_column(Integer)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # A template may pin a song, though most churches leave songs blank and
+    # choose them each week.
+    song_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("song.id", ondelete="SET NULL")
+    )
+    song: Mapped[Optional["Song"]] = relationship()
+
+    def __repr__(self) -> str:
+        return f"<ServiceTemplateItem {self.position}. {self.title!r}>"
+
+
+class ServiceTypeNeed(TenantScoped, TimestampMixin, db.Model):
+    """How many people this kind of service usually needs in a position.
+
+    "Two vocals, one drummer, one on the check-in desk." Copied onto each
+    service so a leader can see what is still unfilled rather than counting
+    names against a mental list.
+    """
+
+    __tablename__ = "service_type_need"
+    __table_args__ = (
+        UniqueConstraint(
+            "service_type_id", "position_id", name="uq_service_type_need_position"
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_type_id: Mapped[int] = mapped_column(
+        ForeignKey("service_type.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service_type: Mapped["ServiceType"] = relationship(back_populates="needs")
+
+    position_id: Mapped[int] = mapped_column(
+        ForeignKey("team_position.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped["TeamPosition"] = relationship()
+    wanted: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    def __repr__(self) -> str:
+        return f"<ServiceTypeNeed position={self.position_id} wanted={self.wanted}>"
 
 
 class Song(TenantScoped, TimestampMixin, db.Model):
@@ -98,7 +223,10 @@ class Song(TenantScoped, TimestampMixin, db.Model):
         if not self.default_key:
             return []
         try:
-            return capo_options(self.default_key)
+            return [
+                option for option in capo_options(self.default_key)
+                if option.capo > 0
+            ]
         except UnknownKey:
             return []
 
@@ -227,6 +355,14 @@ class Service(TenantScoped, TimestampMixin, db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     name: Mapped[str] = mapped_column(String(160), nullable=False, default="Sunday")
+
+    # Nullable so every service built before types existed still loads. A
+    # service without a type is a one-off, which churches genuinely have.
+    service_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("service_type.id", ondelete="SET NULL"), index=True
+    )
+    service_type: Mapped[Optional["ServiceType"]] = relationship()
+
     # Aware UTC, rendered through app/timeutil.py in the church's zone.
     starts_at: Mapped[datetime] = mapped_column(UTCDateTime, nullable=False)
     notes: Mapped[Optional[str]] = mapped_column(Text)
@@ -242,6 +378,9 @@ class Service(TenantScoped, TimestampMixin, db.Model):
         order_by="ServiceItem.position",
     )
     assignments: Mapped[list["ServiceAssignment"]] = relationship(
+        back_populates="service", cascade="all, delete-orphan"
+    )
+    needs: Mapped[list["ServiceNeed"]] = relationship(
         back_populates="service", cascade="all, delete-orphan"
     )
 
@@ -270,6 +409,118 @@ class Service(TenantScoped, TimestampMixin, db.Model):
 
     def next_position(self) -> int:
         return max((item.position for item in self.items), default=0) + 1
+
+    # -- the running order --------------------------------------------------
+
+    @property
+    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
+        """Each item with the moment it starts.
+
+        Computed from the service start rather than stored, so moving a
+        service or changing one item's length reflows the whole plan. A stored
+        time would go stale the first time somebody added two minutes to the
+        welcome.
+
+        A header has no duration of its own: it labels what follows.
+        """
+        from datetime import timedelta
+
+        running = self.starts_at
+        out = []
+        for item in self.items:
+            if item.kind == ITEM_HEADER:
+                out.append((item, None))
+                continue
+            out.append((item, running))
+            running = running + timedelta(minutes=item.minutes or 0)
+        return out
+
+    @property
+    def ends_at(self) -> datetime:
+        from datetime import timedelta
+
+        return self.starts_at + timedelta(minutes=self.total_minutes)
+
+    def move_item(self, item, direction: int) -> bool:
+        """Swap an item with its neighbour. Caller commits.
+
+        Two swaps of a unique column need a gap to pass through, so the first
+        value is parked out of range. Without it the unique constraint fires
+        halfway.
+        """
+        ordered = list(self.items)
+        index = next((i for i, candidate in enumerate(ordered) if candidate.id == item.id), None)
+        if index is None:
+            return False
+
+        target = index + direction
+        if target < 0 or target >= len(ordered):
+            return False
+
+        other = ordered[target]
+        parked = -abs(item.position) - 1
+        item_position, other_position = item.position, other.position
+
+        item.position = parked
+        db.session.flush()
+        other.position = item_position
+        db.session.flush()
+        item.position = other_position
+        db.session.flush()
+        return True
+
+    def renumber(self) -> None:
+        """Close gaps left by deletions and swaps, so positions read 1..n.
+
+        Two passes with a flush between them. Assigning directly would collide
+        with the unique constraint the moment a later item takes a number an
+        earlier one has not given up yet, so everything is parked out of range
+        first.
+        """
+        db.session.expire(self, ["items"])
+        ordered = sorted(self.items, key=lambda i: i.position)
+
+        for offset, item in enumerate(ordered, start=1):
+            item.position = -offset
+        db.session.flush()
+
+        for index, item in enumerate(ordered, start=1):
+            item.position = index
+        db.session.flush()
+
+    # -- staffing -----------------------------------------------------------
+
+    @property
+    def needs_summary(self) -> list[dict]:
+        """What is still unfilled, which is the question a leader actually has.
+
+        Counts accepted and invited separately: somebody who has not answered
+        is not the same as a gap, and treating them alike either panics a
+        leader or hides a real hole.
+        """
+        summary = []
+        for need in sorted(self.needs, key=lambda n: (n.position_name or "")):
+            filled = [
+                a for a in self.assignments
+                if a.position_id == need.position_id and a.status != DECLINED
+            ]
+            accepted = [a for a in filled if a.status == ACCEPTED]
+            summary.append({
+                "position": need.position_name,
+                "wanted": need.wanted,
+                "filled": len(filled),
+                "accepted": len(accepted),
+                "short": max(0, need.wanted - len(filled)),
+            })
+        return summary
+
+    @property
+    def unfilled_count(self) -> int:
+        return sum(row["short"] for row in self.needs_summary)
+
+    @property
+    def is_fully_staffed(self) -> bool:
+        return self.unfilled_count == 0
 
     @classmethod
     def get_for_church(cls, church_id: int, service_id: int) -> "Service | None":
@@ -340,12 +591,18 @@ class ServiceItem(TenantScoped, TimestampMixin, db.Model):
 
     @property
     def capo_options(self):
+        """Capo suggestions worth printing.
+
+        A capo of zero is not a capo, it is the absence of one, and the row
+        already names the key. Showing "Key G, capo 0, play G" is noise on the
+        one screen a musician reads while setting up.
+        """
         from app.music import UnknownKey, capo_options
 
         if not self.key:
             return []
         try:
-            return capo_options(self.key)
+            return [option for option in capo_options(self.key) if option.capo > 0]
         except UnknownKey:
             return []
 
@@ -431,3 +688,130 @@ class ServiceAssignment(TenantScoped, TimestampMixin, db.Model):
             .order_by(Service.starts_at)
             .limit(limit)
         )
+
+
+class ServiceNeed(TenantScoped, TimestampMixin, db.Model):
+    """How many people this service needs in a position.
+
+    Copied from the service type rather than read through it, so changing the
+    type next month does not rewrite what a service in the past was asking
+    for.
+    """
+
+    __tablename__ = "service_need"
+    __table_args__ = (
+        UniqueConstraint("service_id", "position_id", name="uq_service_need_position"),
+        Index("ix_service_need_church", "church_id", "service_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("service.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service: Mapped["Service"] = relationship(back_populates="needs")
+
+    position_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("team_position.id", ondelete="SET NULL"), index=True
+    )
+    position: Mapped[Optional["TeamPosition"]] = relationship()
+    # Denormalized for the same reason the assignment copies it: a renamed or
+    # deleted position must not turn last month's plan into blanks.
+    position_name: Mapped[Optional[str]] = mapped_column(String(120))
+
+    wanted: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    def __repr__(self) -> str:
+        return f"<ServiceNeed {self.position_name!r} wanted={self.wanted}>"
+
+
+def build_from_type(church_id: int, service_type, name: str, starts_at) -> Service:
+    """Create a service preloaded with its type's usual plan and staffing.
+
+    A copy, never a reference. Editing this week cannot rewrite the template,
+    and editing the template cannot rewrite a service that already went out.
+    """
+    service = Service(
+        church_id=church_id,
+        service_type_id=service_type.id if service_type else None,
+        name=name[:160] or "Sunday",
+        starts_at=starts_at,
+    )
+    db.session.add(service)
+    db.session.flush()
+
+    if service_type is None:
+        return service
+
+    for template in service_type.template_items:
+        db.session.add(
+            ServiceItem(
+                church_id=church_id,
+                service_id=service.id,
+                position=template.position,
+                kind=template.kind,
+                title=template.title,
+                minutes=template.minutes,
+                notes=template.notes,
+                song_id=template.song_id,
+            )
+        )
+
+    for need in service_type.needs:
+        db.session.add(
+            ServiceNeed(
+                church_id=church_id,
+                service_id=service.id,
+                position_id=need.position_id,
+                position_name=need.position.name if need.position else None,
+                wanted=need.wanted,
+            )
+        )
+
+    return service
+
+
+def copy_plan(source: Service, target: Service) -> int:
+    """Copy a running order from one service onto another.
+
+    Replaces rather than appends: "copy last week" means this week looks like
+    last week, not like both weeks stacked.
+
+    Assignments are deliberately not copied. Who served last week is not who
+    is available this week, and a plan that arrives pre-filled with names
+    nobody asked is how a volunteer finds out they are playing by reading it
+    on Sunday.
+    """
+    for item in list(target.items):
+        db.session.delete(item)
+    db.session.flush()
+
+    copied = 0
+    for item in source.items:
+        db.session.add(
+            ServiceItem(
+                church_id=target.church_id,
+                service_id=target.id,
+                position=item.position,
+                kind=item.kind,
+                title=item.title,
+                minutes=item.minutes,
+                notes=item.notes,
+                song_id=item.song_id,
+                key_override=item.key_override,
+            )
+        )
+        copied += 1
+
+    if not target.needs:
+        for need in source.needs:
+            db.session.add(
+                ServiceNeed(
+                    church_id=target.church_id,
+                    service_id=target.id,
+                    position_id=need.position_id,
+                    position_name=need.position_name,
+                    wanted=need.wanted,
+                )
+            )
+
+    return copied

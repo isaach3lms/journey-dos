@@ -1388,6 +1388,59 @@ Rotating it invalidates every subscription everywhere, which is why it lives in
 config and in a deploy rather than in a form. Production with
 `PUSH_TRANSPORT=webpush` and no private key refuses to boot.
 
+
+---
+
+## The Services redesign
+
+The first version let you build a plan. This version stops you rebuilding it
+every week, which is the actual job.
+
+### A service type holds the shape
+
+Sunday Morning, Wednesday Youth, Christmas Eve. Each holds the running order
+that rarely changes and the staffing it usually needs, so a new service arrives
+as a real plan rather than an empty page.
+
+**It is copied, never referenced.** Editing this week cannot rewrite the
+template, and editing the template cannot rewrite a service that already went
+out.
+
+### The plan is a run sheet
+
+Every item shows the time it starts, computed from the service start rather
+than stored. A stored time goes stale the first time somebody adds two minutes
+to the welcome; a computed one reflows the whole plan, including when the
+service itself moves.
+
+**Sections group what follows and take no time of their own.** Pre-service,
+Worship, Word, Response: the way every worship plan on paper has always been
+written.
+
+Items move up and down, and the plan renumbers after every change so positions
+stay 1..n. A gap makes the next insert land somewhere surprising.
+
+### Staffing answers the question a leader actually has
+
+Not "who is on this" but "who is still missing." Each position shows filled
+against wanted, counting accepted separately: somebody who has not answered yet
+is not a gap, and treating them alike either panics a leader or hides a real
+hole. A decline reopens the slot.
+
+### Copying a previous week
+
+Replaces rather than appends, because "copy last week" means this week looks
+like last week, not like both stacked.
+
+**Assignments are never copied.** Last week's team is not this week's, and a
+plan that arrives pre-filled with names nobody asked is how a volunteer finds
+out they are playing by reading it on Sunday.
+
+### A capo of zero is not a capo
+
+The row already names the key. "Key G, capo 0, play G" is noise on the one
+screen a musician reads while setting up.
+
 ---
 
 ## Deploying to Render

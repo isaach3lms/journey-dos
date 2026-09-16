@@ -75,6 +75,13 @@ from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.push import PushSubscription  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
 from app.models.service import (  # noqa: F401
+    ITEM_HEADER,
+    ServiceNeed,
+    ServiceTemplateItem,
+    ServiceType,
+    ServiceTypeNeed,
+    build_from_type,
+    copy_plan,
     ACCEPTED,
     ASSIGNMENT_STATUSES,
     DECLINED,
@@ -136,6 +143,13 @@ __all__ = [
     "ACCEPTED",
     "DECLINED",
     "ITEM_SONG",
+    "ITEM_HEADER",
+    "ServiceType",
+    "ServiceTemplateItem",
+    "ServiceTypeNeed",
+    "ServiceNeed",
+    "build_from_type",
+    "copy_plan",
     "ITEM_ELEMENT",
     "ITEM_KINDS",
     "Conversation",

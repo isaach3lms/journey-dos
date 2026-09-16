@@ -25,6 +25,14 @@ from app.content import SERVICES
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import (
+    ITEM_KINDS,
+    ITEM_HEADER,
+    ServiceNeed,
+    ServiceTemplateItem,
+    ServiceType,
+    ServiceTypeNeed,
+    build_from_type,
+    copy_plan,
     ACCEPTED,
     DECLINED,
     INVITED,
@@ -61,6 +69,7 @@ def index():
         church=g.church,
         content=SERVICES,
         upcoming=db.session.scalars(Service.upcoming(g.church.id)).all(),
+        types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         past=db.session.scalars(Service.recent(g.church.id)).all(),
         active="services",
     )
@@ -77,12 +86,19 @@ def create():
         flash(SERVICES["bad_time"], "error")
         return redirect(url_for("services.index"))
 
-    service = Service(
-        church_id=g.church.id,
-        name=(request.form.get("name") or "Sunday").strip()[:160] or "Sunday",
+    type_id = request.form.get("service_type_id", type=int)
+    service_type = (
+        ServiceType.get_for_church(g.church.id, type_id) if type_id else None
+    )
+
+    # A new service arrives as a real plan rather than an empty page, which is
+    # the single biggest thing this saves a worship leader every week.
+    service = build_from_type(
+        g.church.id,
+        service_type,
+        name=(request.form.get("name") or (service_type.name if service_type else "Sunday")).strip(),
         starts_at=from_local(naive, g.church),
     )
-    db.session.add(service)
     db.session.commit()
 
     flash(SERVICES["created"].format(name=service.name), "notice")
@@ -104,6 +120,17 @@ def plan(service_id: int):
         service=service,
         songs=db.session.scalars(Song.for_church(g.church.id)).all(),
         teams=db.session.scalars(Team.for_church(g.church.id)).all(),
+        timed_items=service.timed_items,
+        earlier=db.session.scalars(
+            db.select(Service)
+            .where(
+                Service.church_id == g.church.id,
+                Service.id != service.id,
+                Service.starts_at < service.starts_at,
+            )
+            .order_by(Service.starts_at.desc())
+            .limit(6)
+        ).all(),
         people=db.session.scalars(Person.for_church(g.church.id)).all(),
         keys=key_choices(),
         active="services",
@@ -121,6 +148,23 @@ def add_item(service_id: int):
     kind = (request.form.get("kind") or ITEM_ELEMENT).strip()
     song = None
     title = (request.form.get("title") or "").strip()
+
+    if kind == ITEM_HEADER:
+        if not title:
+            flash(SERVICES["item_title_required"], "error")
+            return redirect(url_for("services.plan", service_id=service.id))
+        db.session.add(
+            ServiceItem(
+                church_id=g.church.id,
+                service_id=service.id,
+                position=service.next_position(),
+                kind=ITEM_HEADER,
+                title=title[:200],
+            )
+        )
+        db.session.commit()
+        flash(SERVICES["item_added"], "notice")
+        return redirect(url_for("services.plan", service_id=service.id))
 
     if kind == ITEM_SONG:
         song_id = request.form.get("song_id", type=int)
@@ -172,6 +216,8 @@ def delete_item(service_id: int, item_id: int):
         abort(404)
 
     db.session.delete(item)
+    db.session.flush()
+    service.renumber()
     db.session.commit()
 
     flash(SERVICES["item_removed"], "notice")
@@ -480,3 +526,190 @@ def remove_team_member(team_id: int, membership_id: int):
 
     flash(SERVICES["member_removed"].format(name=name), "notice")
     return redirect(url_for("services.teams"))
+
+
+# ---------------------------------------------------------------------------
+# Reordering, copying, and staffing
+# ---------------------------------------------------------------------------
+
+@bp.post("/<int:service_id>/items/<int:item_id>/move/")
+@login_required
+@min_role("leader")
+def move_item(service_id: int, item_id: int):
+    service = Service.get_for_church(g.church.id, service_id)
+    item = ServiceItem.get_for_church(g.church.id, item_id)
+    if service is None or item is None or item.service_id != service.id:
+        abort(404)
+
+    direction = -1 if request.form.get("direction") == "up" else 1
+    if service.move_item(item, direction):
+        # Swapping preserves the pair of numbers but a plan that has been
+        # edited for weeks accumulates gaps, and a gap makes the next insert
+        # land somewhere surprising.
+        service.renumber()
+        db.session.commit()
+        flash(SERVICES["moved"], "notice")
+
+    return redirect(url_for("services.plan", service_id=service.id))
+
+
+@bp.post("/<int:service_id>/copy/")
+@login_required
+@min_role("leader")
+def copy_from(service_id: int):
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    source_id = request.form.get("source_id", type=int)
+    source = Service.get_for_church(g.church.id, source_id) if source_id else None
+    if source is None or source.id == service.id:
+        abort(400)
+
+    copied = copy_plan(source, service)
+    db.session.commit()
+
+    flash(
+        SERVICES["copied"].format(
+            count=copied,
+            name=format_local(source.starts_at, g.church, "%B %-d"),
+        ),
+        "notice",
+    )
+    return redirect(url_for("services.plan", service_id=service.id))
+
+
+# ---------------------------------------------------------------------------
+# Service types
+# ---------------------------------------------------------------------------
+
+@bp.get("/types/")
+@login_required
+@min_role("leader")
+def types():
+    return render_template(
+        "services/types.html",
+        church=g.church,
+        content=SERVICES,
+        types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
+        songs=db.session.scalars(Song.for_church(g.church.id)).all(),
+        teams=db.session.scalars(Team.for_church(g.church.id)).all(),
+        active="services",
+    )
+
+
+@bp.post("/types/")
+@login_required
+@min_role("leader")
+def add_type():
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        flash(SERVICES["item_title_required"], "error")
+        return redirect(url_for("services.types"))
+
+    service_type = ServiceType(church_id=g.church.id, name=name[:120])
+    db.session.add(service_type)
+    db.session.commit()
+
+    flash(SERVICES["type_added"].format(name=service_type.name), "notice")
+    return redirect(url_for("services.types"))
+
+
+@bp.post("/types/<int:type_id>/items/")
+@login_required
+@min_role("leader")
+def add_template_item(type_id: int):
+    service_type = ServiceType.get_for_church(g.church.id, type_id)
+    if service_type is None:
+        abort(404)
+
+    kind = (request.form.get("kind") or ITEM_ELEMENT).strip()
+    if kind not in ITEM_KINDS:
+        abort(400)
+
+    title = (request.form.get("title") or "").strip()
+    song = None
+    if kind == ITEM_SONG:
+        song_id = request.form.get("song_id", type=int)
+        song = Song.get_for_church(g.church.id, song_id) if song_id else None
+        title = song.title if song else title
+
+    if not title:
+        flash(SERVICES["item_title_required"], "error")
+        return redirect(url_for("services.types"))
+
+    db.session.add(
+        ServiceTemplateItem(
+            church_id=g.church.id,
+            service_type_id=service_type.id,
+            position=max((i.position for i in service_type.template_items), default=0) + 1,
+            kind=kind,
+            title=title[:200],
+            minutes=request.form.get("minutes", type=int),
+            song_id=song.id if song else None,
+        )
+    )
+    db.session.commit()
+
+    flash(SERVICES["item_added"], "notice")
+    return redirect(url_for("services.types"))
+
+
+@bp.post("/types/<int:type_id>/items/<int:item_id>/delete/")
+@login_required
+@min_role("leader")
+def delete_template_item(type_id: int, item_id: int):
+    service_type = ServiceType.get_for_church(g.church.id, type_id)
+    item = db.session.scalar(
+        db.select(ServiceTemplateItem).where(
+            ServiceTemplateItem.id == item_id,
+            ServiceTemplateItem.church_id == g.church.id,
+        )
+    )
+    if service_type is None or item is None or item.service_type_id != service_type.id:
+        abort(404)
+
+    db.session.delete(item)
+    db.session.commit()
+
+    flash(SERVICES["item_removed"], "notice")
+    return redirect(url_for("services.types"))
+
+
+@bp.post("/types/<int:type_id>/needs/")
+@login_required
+@min_role("leader")
+def add_type_need(type_id: int):
+    service_type = ServiceType.get_for_church(g.church.id, type_id)
+    if service_type is None:
+        abort(404)
+
+    position_id = request.form.get("position_id", type=int)
+    position = db.session.scalar(
+        db.select(TeamPosition).where(
+            TeamPosition.id == position_id, TeamPosition.church_id == g.church.id
+        )
+    ) if position_id else None
+    if position is None:
+        abort(400)
+
+    wanted = max(1, request.form.get("wanted", type=int) or 1)
+
+    existing = next(
+        (n for n in service_type.needs if n.position_id == position.id), None
+    )
+    if existing is not None:
+        existing.wanted = wanted
+    else:
+        db.session.add(
+            ServiceTypeNeed(
+                church_id=g.church.id,
+                service_type_id=service_type.id,
+                position_id=position.id,
+                wanted=wanted,
+            )
+        )
+    db.session.commit()
+
+    flash(SERVICES["needs_added"].format(name=position.name), "notice")
+    return redirect(url_for("services.types"))

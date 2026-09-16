@@ -446,7 +446,9 @@ class TestStaffing:
         self._need(db, journey, service, positions["Vocals"], 2)
 
         r = staff.get(f"/services/{service.id}/", headers={"Host": JOURNEY_HOST})
-        assert b"Still needed" in r.data
+        # The panel a leader acts on, now in the sidebar rather than a section
+        # further down the page.
+        assert b"Open roles" in r.data
         assert b"Vocals" in r.data
 
     def test_a_need_is_unique_per_position(self, db, journey, positions):
@@ -645,3 +647,204 @@ class TestCapoSuggestionsAreWorthPrinting:
         db.session.commit()
         db.session.refresh(service)
         assert all(option.capo > 0 for option in service.items[0].capo_options)
+
+
+class TestHowASundayReadsAtAGlance:
+    """The week strip and the status pill are what a leader scans first."""
+
+    def _need_and_fill(self, db, journey, service, position, wanted, statuses):
+        db.session.add(
+            ServiceNeed(
+                church_id=journey.id, service_id=service.id,
+                position_id=position.id, position_name=position.name, wanted=wanted,
+            )
+        )
+        for index, status in enumerate(statuses):
+            person = Person(
+                church_id=journey.id, first_name=f"P{index}", last_name="X", stage="member"
+            )
+            db.session.add(person)
+            db.session.flush()
+            db.session.add(
+                ServiceAssignment(
+                    church_id=journey.id, service_id=service.id, person_id=person.id,
+                    position_id=position.id, position_name=position.name, status=status,
+                )
+            )
+        db.session.commit()
+        db.session.refresh(service)
+
+    def test_an_empty_plan_is_a_draft(self, db, journey):
+        service = a_service(db, journey)
+        db.session.refresh(service)
+        assert service.readiness == "draft"
+
+    def test_a_short_roster_needs_a_team(self, db, journey, positions):
+        service = a_service(db, journey)
+        self._need_and_fill(db, journey, service, positions["Vocals"], 2, [ACCEPTED])
+        assert service.readiness == "needs_team"
+        assert service.readiness_label == "Needs team"
+
+    def test_full_but_unanswered_is_not_ready(self, db, journey, positions):
+        """A plan where half the team has not replied is not ready, and calling
+        it ready is how a leader finds out on Saturday night."""
+        service = a_service(db, journey)
+        self._need_and_fill(
+            db, journey, service, positions["Vocals"], 2, [ACCEPTED, INVITED]
+        )
+        assert service.readiness == "draft"
+
+    def test_full_and_accepted_is_ready(self, db, journey, positions):
+        service = a_service(db, journey)
+        self._need_and_fill(
+            db, journey, service, positions["Vocals"], 2, [ACCEPTED, ACCEPTED]
+        )
+        assert service.readiness == "ready"
+
+    def test_a_decline_does_not_count_as_filled(self, db, journey, positions):
+        service = a_service(db, journey)
+        self._need_and_fill(
+            db, journey, service, positions["Vocals"], 2, [ACCEPTED, DECLINED]
+        )
+        assert service.roles_filled == 1
+        assert service.readiness == "needs_team"
+
+    def test_somebody_asked_with_no_listed_position_still_counts(
+        self, db, journey
+    ):
+        """Somebody invited to help with no formal slot is still a role."""
+        service = a_service(db, journey)
+        person = Person(
+            church_id=journey.id, first_name="Helper", last_name="X", stage="member"
+        )
+        db.session.add(person)
+        db.session.flush()
+        db.session.add(
+            ServiceAssignment(
+                church_id=journey.id, service_id=service.id, person_id=person.id,
+                position_name=None, status=ACCEPTED,
+            )
+        )
+        db.session.commit()
+        db.session.refresh(service)
+        assert service.roles_total == 1
+        assert service.readiness == "ready"
+
+    def test_open_roles_lead_with_the_biggest_gap(self, db, journey, positions):
+        """The one missing two people matters more than the one missing one."""
+        service = a_service(db, journey)
+        for name, wanted in (("Vocals", 3), ("Drums", 2)):
+            db.session.add(
+                ServiceNeed(
+                    church_id=journey.id, service_id=service.id,
+                    position_id=positions[name].id, position_name=name, wanted=wanted,
+                )
+            )
+        db.session.commit()
+        db.session.refresh(service)
+        assert [row["position"] for row in service.open_roles] == ["Vocals", "Drums"]
+
+    def test_the_strip_offers_the_next_few_sundays(self, db, journey, staff):
+        for week in range(1, 4):
+            a_service(db, journey, days=7 * week, name=f"Week {week}")
+        service = a_service(db, journey, days=2)
+
+        r = staff.get(f"/services/{service.id}/", headers={"Host": JOURNEY_HOST})
+        assert b"Plan ahead" in r.data
+        for week in range(1, 4):
+            assert f"Week {week}".encode() in r.data
+
+    def test_the_open_service_appears_in_its_own_strip(self, db, journey, staff):
+        """Even a service in the past, so opening one never shows a strip it
+        is missing from."""
+        service = a_service(db, journey, days=-3, name="Last Sunday")
+        r = staff.get(f"/services/{service.id}/", headers={"Host": JOURNEY_HOST})
+        assert b"Last Sunday" in r.data
+
+
+class TestChangingAKeyFromThePlan:
+    def _song_item(self, db, journey, service, key=None):
+        song = Song(church_id=journey.id, title="Known", default_key="G")
+        db.session.add(song)
+        db.session.flush()
+        item = ServiceItem(
+            church_id=journey.id, service_id=service.id, position=1,
+            kind="song", title="Known", song_id=song.id, key_override=key,
+        )
+        db.session.add(item)
+        db.session.commit()
+        return item
+
+    def test_it_changes_this_week_only(self, db, journey, staff):
+        """The same song does not sit in the same key every week."""
+        service = a_service(db, journey)
+        item = self._song_item(db, journey, service)
+
+        staff.post(
+            f"/services/{service.id}/items/{item.id}/key/",
+            data={"key_override": "A"},
+            headers={"Host": JOURNEY_HOST},
+        )
+        db.session.refresh(item)
+        assert item.key == "A"
+        assert item.song.default_key == "G"
+
+    def test_clearing_it_falls_back_to_the_song(self, db, journey, staff):
+        service = a_service(db, journey)
+        item = self._song_item(db, journey, service, key="A")
+
+        staff.post(
+            f"/services/{service.id}/items/{item.id}/key/",
+            data={"key_override": ""},
+            headers={"Host": JOURNEY_HOST},
+        )
+        db.session.refresh(item)
+        assert item.key_override is None
+        assert item.key == "G"
+
+    def test_a_nonsense_key_is_refused(self, db, journey, staff):
+        service = a_service(db, journey)
+        item = self._song_item(db, journey, service)
+
+        r = staff.post(
+            f"/services/{service.id}/items/{item.id}/key/",
+            data={"key_override": "H"},
+            headers={"Host": JOURNEY_HOST},
+            follow_redirects=True,
+        )
+        assert b"is not a key" in r.data
+        db.session.refresh(item)
+        assert item.key_override is None
+
+    def test_an_item_from_another_service_is_a_404(self, db, journey, staff):
+        first = a_service(db, journey, days=5)
+        second = a_service(db, journey, days=12, name="Other")
+        item = self._song_item(db, journey, second)
+
+        r = staff.post(
+            f"/services/{first.id}/items/{item.id}/key/",
+            data={"key_override": "A"},
+            headers={"Host": JOURNEY_HOST},
+        )
+        assert r.status_code == 404
+
+    def test_charts_are_linked_not_stored(self, db, journey, staff):
+        """Charts stay in SongSelect under the church's own CCLI licence."""
+        service = a_service(db, journey)
+        song = Song(
+            church_id=journey.id, title="Known", default_key="G", ccli_number="7070345"
+        )
+        db.session.add(song)
+        db.session.flush()
+        db.session.add(
+            ServiceItem(
+                church_id=journey.id, service_id=service.id, position=1,
+                kind="song", title="Known", song_id=song.id,
+            )
+        )
+        db.session.commit()
+
+        r = staff.get(f"/services/{service.id}/", headers={"Host": JOURNEY_HOST})
+        assert b"songselect.ccli.com" in r.data
+        assert b'rel="noopener noreferrer"' in r.data
+        assert b"never store the words" in r.data

@@ -113,8 +113,13 @@ def plan(service_id: int):
     if service is None:
         abort(404)
 
+    upcoming = db.session.scalars(Service.upcoming(g.church.id, limit=8)).all()
+    if service not in upcoming:
+        upcoming = sorted(upcoming + [service], key=lambda s: s.starts_at)
+
     return render_template(
         "services/plan.html",
+        upcoming=upcoming,
         church=g.church,
         content=SERVICES,
         service=service,
@@ -713,3 +718,29 @@ def add_type_need(type_id: int):
 
     flash(SERVICES["needs_added"].format(name=position.name), "notice")
     return redirect(url_for("services.types"))
+
+
+@bp.post("/<int:service_id>/items/<int:item_id>/key/")
+@login_required
+@min_role("leader")
+def set_item_key(service_id: int, item_id: int):
+    """Change the key of one song in one plan.
+
+    Per plan, not per song: the same song does not sit in the same key every
+    week, and changing it here is what the worship team will see.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    item = ServiceItem.get_for_church(g.church.id, item_id)
+    if service is None or item is None or item.service_id != service.id:
+        abort(404)
+
+    raw = (request.form.get("key_override") or "").strip()
+    try:
+        item.key_override = normalize_key(raw)
+    except UnknownKey:
+        flash(SERVICES["key_bad"].format(key=raw), "error")
+        return redirect(url_for("services.plan", service_id=service.id))
+
+    db.session.commit()
+    flash(SERVICES["key_set"].format(title=item.title, key=item.key or "the song default"), "notice")
+    return redirect(url_for("services.plan", service_id=service.id))

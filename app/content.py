@@ -1058,7 +1058,47 @@ GROUPS = {
 
 SERVICES = {
     "title": "Services",
-    "subtitle": "Plan the Sunday, ask the people, send it.",
+    "subtitle": "Plan Sunday and fill the team.",
+
+    # The week strip
+    "ahead_heading": "Plan ahead",
+    "ahead_hint": "Plan weeks out, not the night before. Open a Sunday to work on it.",
+    "ahead_count": "{count} scheduled",
+    "ahead_roles": "{filled} of {total} roles",
+    "ahead_no_roles": "No roles listed",
+    "ahead_add": "Add a Sunday",
+
+    # The plan header
+    "plan_for": "{day} at {time}",
+    "plan_ends": "Ends at {time}. Change any element and every time after it moves.",
+    "songs_word": "Song",
+    "element_word": "Element",
+    "roles_filled": "{filled} of {total} roles filled",
+    "roles_none": "No roles listed for this service",
+
+    # The side panel
+    "open_roles_heading": "Open roles",
+    "open_roles_none": "Every role is filled.",
+    "open_roles_count": "{count} open",
+    "open_roles_filled": "{filled} of {wanted} filled",
+    "add_heading": "Add to the plan",
+    "waiting_heading": "Waiting on",
+    "waiting_none": "Everybody has answered.",
+    "team_heading": "Who is serving",
+    "team_none": "Nobody asked yet.",
+
+    # Songs on the plan
+    "songs_heading": "Songs for this Sunday",
+    "songs_none": "No songs in the plan yet.",
+    "songs_ccli": "CCLI {number}",
+    "songs_no_ccli": "No CCLI number on file",
+    "songs_open": "Open in SongSelect",
+    "songs_licence_note": (
+        "Charts and sheet music stay in SongSelect under your own CCLI "
+        "licence. We never store the words or the music."
+    ),
+    "key_set": "{title} is now in {key}.",
+    "key_change": "Key",
 
     # Service types and templates
     "types_title": "Service types",

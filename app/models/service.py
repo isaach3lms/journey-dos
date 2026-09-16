@@ -56,7 +56,7 @@ DECLINED = "declined"
 ASSIGNMENT_STATUSES = (INVITED, ACCEPTED, DECLINED)
 
 ASSIGNMENT_LABELS = {
-    INVITED: "Waiting on them",
+    INVITED: "Waiting",
     ACCEPTED: "Accepted",
     DECLINED: "Declined",
 }
@@ -521,6 +521,68 @@ class Service(TenantScoped, TimestampMixin, db.Model):
     @property
     def is_fully_staffed(self) -> bool:
         return self.unfilled_count == 0
+
+    # -- how a Sunday reads at a glance -------------------------------------
+
+    @property
+    def roles_total(self) -> int:
+        """Every slot this service is asking for.
+
+        Needs plus anybody asked outside a listed position, because somebody
+        invited to help with no formal slot is still a role being filled.
+        """
+        listed = sum(need.wanted for need in self.needs)
+        unlisted = sum(
+            1 for a in self.assignments
+            if a.position_id is None and a.status != DECLINED
+        )
+        return listed + unlisted
+
+    @property
+    def roles_filled(self) -> int:
+        return sum(1 for a in self.assignments if a.status != DECLINED)
+
+    @property
+    def readiness(self) -> str:
+        """One of: ready, needs_team, draft.
+
+        `ready` means every slot is filled and everybody has answered yes. A
+        plan where half the team has not replied is not ready, and calling it
+        ready is how a leader finds out on Saturday night.
+        """
+        if self.roles_total and self.roles_filled >= self.roles_total:
+            if all(a.status == ACCEPTED for a in self.assignments):
+                return "ready"
+            return "draft"
+        if self.roles_total:
+            return "needs_team"
+        return "draft"
+
+    @property
+    def readiness_label(self) -> str:
+        return {
+            "ready": "Ready",
+            "needs_team": "Needs team",
+            "draft": "Draft",
+        }[self.readiness]
+
+    @property
+    def open_roles(self) -> list[dict]:
+        """Positions still short, for the panel a leader acts on.
+
+        Ordered by how short they are, because the one missing two people
+        matters more than the one missing one.
+        """
+        rows = [row for row in self.needs_summary if row["short"]]
+        return sorted(rows, key=lambda row: (-row["short"], row["position"] or ""))
+
+    @property
+    def waiting_on(self) -> list["ServiceAssignment"]:
+        return [a for a in self.assignments if a.status == INVITED]
+
+    @property
+    def songs_in_plan(self) -> list["ServiceItem"]:
+        return [item for item in self.items if item.kind == ITEM_SONG]
 
     @classmethod
     def get_for_church(cls, church_id: int, service_id: int) -> "Service | None":

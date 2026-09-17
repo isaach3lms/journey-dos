@@ -43,19 +43,38 @@ class TestShellRendersFromTheRow:
         assert r.headers["X-Frame-Options"] == "DENY"
 
 
-class TestRoadmapHonesty:
-    """The dashboard must not claim something is shipped that is not."""
+class TestTheDashboardIsForAPastor:
+    """The build scaffolding is gone.
+
+    "What this page proves" and "What comes next" existed to show the platform
+    was real and to track what was still coming. Everything is built, so they
+    became a pastor's dashboard talking to him about increments.
+    """
 
     def test_shipped_set_matches_what_is_actually_built(self):
         from app.content import INCREMENT_NAMES, SHIPPED_INCREMENTS
 
+        # Still read by the nav to decide whether a section is a working
+        # screen or a placeholder.
         assert SHIPPED_INCREMENTS <= set(INCREMENT_NAMES)
-        # Bump this deliberately when an increment lands, not incidentally.
         assert SHIPPED_INCREMENTS == set(range(16))
 
-    def test_the_progress_pill_counts_the_shipped_set(self, staff):
-        r = staff.get("/", headers={"Host": "journey.dos.test"})
-        assert b"16 of 16 shipped" in r.data
+    def test_the_dashboard_says_nothing_about_increments(self, staff):
+        body = staff.get(
+            "/", headers={"Host": "journey.dos.test"}
+        ).get_data(as_text=True)
+        for scaffolding in (
+            "What this page proves", "What comes next", "increments live",
+            "of 16 shipped", "SHIPPED",
+        ):
+            assert scaffolding not in body, scaffolding
+
+    def test_it_still_shows_the_things_a_pastor_opens_it_for(self, staff):
+        body = staff.get(
+            "/", headers={"Host": "journey.dos.test"}
+        ).get_data(as_text=True)
+        assert "Needs a person, not an email" in body
+        assert "Running without staff time" in body
 
 
 class TestNavIcons:

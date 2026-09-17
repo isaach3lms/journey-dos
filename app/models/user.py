@@ -33,6 +33,7 @@ from datetime import datetime, timedelta
 
 from flask_login import UserMixin
 from sqlalchemy import (
+    false,
     Boolean,
     CheckConstraint,
     ForeignKey,
@@ -174,6 +175,13 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     # `mark_verified`. A staff member typing an address is a stronger signal
     # than a click in an inbox, so that is the right place for it.
     email_verified_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    # Set when staff hand out a temporary password. Until the person chooses
+    # their own, every page redirects them to the change screen. A temporary
+    # password that stays in use is just a shared password with a nicer name.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
@@ -386,3 +394,34 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         import secrets
 
         self.set_password(secrets.token_urlsafe(48))
+
+
+    def issue_temporary_password(self) -> str:
+        """Generate a password staff can read aloud, and force a change.
+
+        Staff never choose it. A password a staff member picks becomes a
+        password two people know, is usually sent over text, and is often one
+        the person already uses elsewhere. This one is random, said out loud
+        once, and replaced before they can do anything with it.
+
+        Signs them out everywhere first, for the same reason a reset does: a
+        session opened with the old password must not survive.
+        """
+        import secrets
+
+        # No characters that get misheard or misread down a phone line: no
+        # O/0, I/l/1, S/5, Z/2. Staff will be reading this to somebody.
+        alphabet = "ABCDEFGHJKMNPQRTUVWXY" "abcdefghjkmnpqrtuvwxy" "346789"
+        raw = "-".join(
+            "".join(secrets.choice(alphabet) for _ in range(4)) for _ in range(3)
+        )
+
+        self.set_password(raw)
+        self.must_change_password = True
+        self.failed_login_count = 0
+        self.locked_until = None
+        self.session_version = (self.session_version or 1) + 1
+        return raw
+
+    def clear_password_change_requirement(self) -> None:
+        self.must_change_password = False

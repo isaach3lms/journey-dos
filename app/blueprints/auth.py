@@ -241,6 +241,8 @@ def reset(token: str):
         # attempts, so clear that too.
         user.failed_login_count = 0
         user.locked_until = None
+        # Whichever route they took, they have chosen their own password.
+        user.clear_password_change_requirement()
         record(
             PASSWORD_RESET, f"{user.name} reset their password", actor=user,
             subject_type="user", subject_id=user.id, subject_label=user.name,
@@ -423,3 +425,53 @@ def resend_verification():
 
     flash(AUTH["unverified_sent"], "notice")
     return redirect(url_for("auth.login"))
+
+
+@bp.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    """Where somebody with a temporary password is sent, and kept.
+
+    A temporary password that stays in use is a shared password with a nicer
+    name, so nothing else in the app is reachable until this is done.
+    """
+    form = ResetPasswordForm()
+
+    if form.validate_on_submit():
+        if current_user.check_password(form.password.data):
+            form.password.errors.append(AUTH["change_same"])
+            return render_template(
+                "auth/change_password.html", church=g.church, form=form, content=AUTH
+            )
+
+        try:
+            current_user.set_password(form.password.data)
+        except ValueError as exc:
+            form.password.errors.append(str(exc))
+            return render_template(
+                "auth/change_password.html", church=g.church, form=form, content=AUTH
+            )
+
+        user = current_user._get_current_object()
+        user.clear_password_change_requirement()
+        # Their own session keeps working; every other device does not. The
+        # cookie carries the version, so it has to be reissued here or the
+        # person who just set the password is the one signed out.
+        user.session_version = (user.session_version or 1) + 1
+        db.session.flush()
+        login_user(user)
+
+        record(
+            PASSWORD_RESET,
+            f"{user.name} replaced a temporary password",
+            actor=user,
+            subject_type="user", subject_id=user.id, subject_label=user.name,
+        )
+        db.session.commit()
+
+        flash(AUTH["change_done"], "notice")
+        return redirect(url_for("shell.index"))
+
+    return render_template(
+        "auth/change_password.html", church=g.church, form=form, content=AUTH
+    )

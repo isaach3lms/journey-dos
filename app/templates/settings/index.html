@@ -61,6 +61,7 @@
   </div>
   <div class="bd">
     <p>{{ content.accounts_hint }}</p>
+    <p class="muted small">{{ content.account_temp_hint }}</p>
 
     <form method="post" action="{{ url_for('settings.create_account') }}">
       {{ csrf_field() }}
@@ -104,6 +105,11 @@
             <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
               {{ csrf_field() }}
               <button class="btn ghostbtn tiny" type="submit">{{ content.account_resend }}</button>
+            </form>
+
+            <form method="post" class="inline" action="{{ url_for('settings.temporary_password', user_id=account.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">{{ content.account_temp }}</button>
             </form>
 
             <form method="post" class="inline" action="{{ url_for('settings.toggle_account', user_id=account.id) }}">

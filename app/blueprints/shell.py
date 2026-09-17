@@ -9,12 +9,11 @@ from flask import Blueprint, abort, g, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from app.content import (
-    AUTOMATION,
     INCREMENT_NAMES,
+    AUTOMATION,
     NAV_ITEMS,
     PEOPLE,
     SHELL,
-    SHIPPED_INCREMENTS,
     STUCK,
 )
 from app.models import Person, SequenceEnrollment
@@ -62,8 +61,6 @@ def index():
         auto_stopped=SequenceEnrollment.stopped_by_contact_count(g.church.id)
         if show_rail else 0,
         active="dashboard",
-        increment_names=INCREMENT_NAMES,
-        shipped=SHIPPED_INCREMENTS,
         user=current_user,
     )
 
@@ -84,5 +81,5 @@ def placeholder(key: str):
         content=SHELL,
         item=item,
         active=key,
-        increment_name=INCREMENT_NAMES[item.increment],
+        increment_name=INCREMENT_NAMES.get(item.increment, item.label),
     )

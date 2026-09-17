@@ -336,3 +336,46 @@ def resend_invite(user_id: int):
 
     flash(SETTINGS["account_resent"].format(email=user.email), "notice")
     return redirect(url_for("settings.index"))
+
+
+@bp.post("/accounts/<int:user_id>/temp-password/")
+@login_required
+@min_role("staff")
+def temporary_password(user_id: int):
+    """Hand somebody a password to use once.
+
+    For a person whose email is dead, or who is standing in front of you. The
+    system generates it; staff never choose one, because a password a staff
+    member picks becomes a password two people know and is usually one the
+    person already uses elsewhere.
+    """
+    from app.models.audit import PASSWORD_RESET
+
+    user = User.get_for_church(g.church.id, user_id)
+    if user is None:
+        abort(404)
+
+    if user.id == current_user.id:
+        flash(SETTINGS["account_temp_self"], "error")
+        return redirect(url_for("settings.index"))
+
+    raw = user.issue_temporary_password()
+
+    # The password itself is deliberately not in the audit entry. The log is
+    # designed to be read, kept, and exported; a working password in it is
+    # worse than no log.
+    record(
+        PASSWORD_RESET,
+        f"A temporary password was issued for {user.name}",
+        actor=current_user,
+        subject_type="user", subject_id=user.id, subject_label=user.name,
+        detail="They must choose their own before they can use the app.",
+    )
+    db.session.commit()
+
+    # Shown once, on this screen, and never again.
+    flash(
+        SETTINGS["account_temp_made"].format(name=user.name, password=raw),
+        "notice",
+    )
+    return redirect(url_for("settings.index"))

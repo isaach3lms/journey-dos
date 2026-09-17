@@ -86,6 +86,29 @@ def create_app(config_name: str | None = None) -> Flask:
     # Order matters. Tenancy runs first so `g.church` exists before the
     # Flask-Login user loader needs it to validate the session.
     register_tenancy(app)
+
+    @app.before_request
+    def require_password_change():
+        """Keep somebody on the change screen until they have changed it.
+
+        Enforced here rather than per blueprint, because a route added later
+        would otherwise be a hole nobody notices.
+        """
+        from flask import redirect, request, url_for
+        from flask_login import current_user
+
+        if not getattr(current_user, "is_authenticated", False):
+            return None
+        if not getattr(current_user, "must_change_password", False):
+            return None
+
+        allowed = {"auth.change_password", "auth.logout", "static",
+                   "health.healthz", "health.readyz", "pwa.service_worker",
+                   "pwa.manifest", "pwa.offline"}
+        if request.endpoint in allowed:
+            return None
+
+        return redirect(url_for("auth.change_password"))
     register_security(app)
     register_error_handlers(app)
 

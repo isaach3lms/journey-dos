@@ -126,102 +126,14 @@ ICONS: dict[str, str] = {
     ),
 }
 
-# Increments that are actually built. The roadmap card reads this, so the
+# Increments that are actually built. The nav reads this to decide whether a
+# section is a working screen or a placeholder, so the
 # dashboard cannot claim something is shipped that is not.
 SHIPPED_INCREMENTS = set(range(16))
 
 SHELL = {
     "title": "Foundation",
     "subtitle": "The roster is live. Click any stage to see who is in it.",
-    "proof_heading": "What this page proves",
-    "proof_intro": (
-        "Nothing here is hard coded to one church. This page is reading a "
-        "single database row and rendering itself from it."
-    ),
-    "proof_points": [
-        (
-            "The tenant came from the address",
-            "The host in your address bar resolved to one church row before any "
-            "other code ran. An address that matches no church returns a 404 "
-            "rather than guessing.",
-        ),
-        (
-            "The brand came from that row",
-            "Every color, both typefaces, and the logo above were read off the "
-            "same row. No template in this codebase contains a hex code.",
-        ),
-        (
-            "A second church is a second row",
-            "No migration, no deploy, no branch. Run the seed command with a "
-            "different slug and a second church exists.",
-        ),
-        (
-            "Time is stored the same way everywhere",
-            "Timestamps are written and read as aware UTC on both SQLite here "
-            "and Postgres in production, so a comparison cannot fail in one "
-            "environment and pass in the other.",
-        ),
-        (
-            "Your session belongs to this church only",
-            "Signing in here does not sign you in anywhere else. A session "
-            "issued by one church is refused by every other, even when the "
-            "same person holds an account at both.",
-        ),
-        (
-            "The menu on the left is yours",
-            "Staff, leaders, and members see different navigation from the "
-            "same code. Hiding a link is presentation; the page itself checks "
-            "the role again before it renders.",
-        ),
-        (
-            "The rail above is a live count",
-            "Every number comes from one grouped query against this church's "
-            "roster. Click a stage to see exactly who is standing on it.",
-        ),
-        (
-            "A person id is only a number",
-            "Opening someone from another church returns a 404, not their "
-            "record. Every query that touches a person carries the church in "
-            "its WHERE clause rather than filtering afterwards.",
-        ),
-        (
-            "The flag needs two reasons, not one",
-            "Someone is flagged only when they are past their stage's expected "
-            "time AND nobody has spoken to them in three weeks. Long-standing "
-            "members never flag; staying is the point for them.",
-        ),
-        (
-            "Email is queued, never sent inside a click",
-            "A request that calls a mail provider is as slow and as reliable "
-            "as that provider. The outbox commits a row and a worker sends it, "
-            "so a failure is retried and recorded rather than lost.",
-        ),
-        (
-            "Opting out is checked when the message goes, not when it is written",
-            "Somebody can unsubscribe in the hour between a message being "
-            "queued and being sent. Receipts and account email still reach "
-            "them, because those are not marketing.",
-        ),
-        (
-            "One database, two readers",
-            "The member app and this dashboard read the same rows. A person "
-            "sees only their own record, because no route in the member app "
-            "accepts a person id at all.",
-        ),
-        (
-            "Logging a call clears the flag, a note does not",
-            "Real contact is the hard stop. Writing that somebody should call "
-            "Marcus is not calling Marcus, and treating the two the same would "
-            "quietly stop the system flagging the people it exists to find.",
-        ),
-    ],
-    "roadmap_heading": "What comes next",
-    "roadmap_intro": (
-        "Each item below becomes a working screen at the increment shown. The "
-        "order is the approved build order."
-    ),
-    "shipped_label": "Shipped",
-    "progress_label": "{shipped} of {total} shipped",
     "placeholder_lead": "Not built yet.",
     "placeholder_body": (
         "This screen arrives at increment {increment}, {name}. The navigation "
@@ -292,6 +204,15 @@ AUTH = {
         "expired, has already been used, or was mistyped."
     ),
     "verify_resend": "Send me a new link",
+
+    "change_title": "Choose your own password",
+    "change_body": (
+        "You signed in with a temporary password. Pick one only you know and "
+        "you are in."
+    ),
+    "change_submit": "Set it and continue",
+    "change_done": "Done. That is your password now.",
+    "change_same": "That is the temporary one. Pick something else.",
 
     "unverified_title": "Confirm your email first",
     "unverified": (
@@ -1591,6 +1512,21 @@ SETTINGS = {
     "account_deactivated": "{name} can no longer sign in.",
     "account_reactivated": "{name} can sign in again.",
     "account_resend": "Send a set-password link",
+    "account_temp": "Give them a temporary password",
+    "account_temp_hint": (
+        "For somebody whose email is dead or who is standing in front of you. "
+        "We generate it, you read it out, and they have to change it before "
+        "they can do anything. You never choose it, so it never becomes a "
+        "password two people know."
+    ),
+    "account_temp_made": (
+        "Temporary password for {name}: {password}. Read it to them now. It "
+        "is not shown again and they must change it at sign-in."
+    ),
+    "account_temp_self": (
+        "Use the forgot-password link for your own account rather than "
+        "issuing yourself a temporary one."
+    ),
     "account_resent": "Sent to {email}.",
 
     "account_self": "You cannot change your own access.",
@@ -1660,6 +1596,21 @@ SETTINGS = {
     "account_deactivated": "{name} can no longer sign in.",
     "account_reactivated": "{name} can sign in again.",
     "account_resend": "Send a set-password link",
+    "account_temp": "Give them a temporary password",
+    "account_temp_hint": (
+        "For somebody whose email is dead or who is standing in front of you. "
+        "We generate it, you read it out, and they have to change it before "
+        "they can do anything. You never choose it, so it never becomes a "
+        "password two people know."
+    ),
+    "account_temp_made": (
+        "Temporary password for {name}: {password}. Read it to them now. It "
+        "is not shown again and they must change it at sign-in."
+    ),
+    "account_temp_self": (
+        "Use the forgot-password link for your own account rather than "
+        "issuing yourself a temporary one."
+    ),
     "account_resent": "Sent to {email}.",
 
     "account_self": "You cannot change your own access.",

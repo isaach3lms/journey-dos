@@ -171,6 +171,7 @@ AUTH = {
     ),
 
     "forgot_link": "Forgot your password?",
+    "help_link": "Help",
     "join_link": "New here? Create an account",
 
     # Creating an account
@@ -1834,6 +1835,89 @@ PRIVACY = {
         "Ask {church} first, since it is their data. For anything about how "
         "the software itself works, email isaac@betweensundaysconsulting.com."
     ),
+}
+
+
+# The public support page. Required by the app stores, and the only page a
+# member can reach when the thing they need help with is signing in.
+#
+# Written for the person who is stuck, not for a reviewer. Every answer is
+# something they can act on without emailing anybody, because most of them do
+# not need a human and the ones who do should not be queued behind those who
+# do not.
+SUPPORT = {
+    "title": "Help",
+    "subtitle": "The short answers first, then a person.",
+
+    "answers_heading": "The usual questions",
+    "answers": (
+        {
+            "q": "I cannot sign in",
+            "a": (
+                "Use the forgotten password link on the sign-in screen. It "
+                "emails you a link that works once and lasts an hour. If the "
+                "email never arrives, the address on your account is probably "
+                "not the one you are checking, and {church} can fix that."
+            ),
+        },
+        {
+            "q": "I do not have an account",
+            "a": (
+                "{church} sets accounts up. Ask the office and they will send "
+                "you a link to choose your own password."
+            ),
+        },
+        {
+            "q": "I want fewer emails",
+            "a": (
+                "Every email has an unsubscribe link at the bottom. You can "
+                "also choose which kinds you get on the You screen in the app. "
+                "Anything about your own account still reaches you, because "
+                "that is not news, it is your account."
+            ),
+        },
+        {
+            "q": "I want to delete my account",
+            "a": (
+                "You screen, then Delete your account. It removes your login "
+                "straight away. Your record at {church} belongs to the church, "
+                "in the same way a paper roll would, so ask the office if you "
+                "want that removed too."
+            ),
+        },
+        {
+            "q": "Where is my kids check-in code",
+            "a": (
+                "On the You screen, in large type. It is your household's "
+                "code, so it is the same for everybody in your family."
+            ),
+        },
+        {
+            "q": "Giving is not working",
+            "a": (
+                "Giving happens on {church}'s own giving platform. This app "
+                "links to it and never handles the payment, so anything to do "
+                "with a card or a receipt is with them."
+            ),
+        },
+    ),
+
+    "contact_heading": "Still stuck",
+    "contact_church": (
+        "Ask {church} first. They hold your record and can change anything "
+        "about it."
+    ),
+    "contact_us": (
+        "If the app itself is broken, email isaac@betweensundaysconsulting.com "
+        "and a person will answer. There is no ticket queue and no chatbot."
+    ),
+    "contact_detail": (
+        "It helps to say what you were doing and roughly when. We can find the "
+        "rest."
+    ),
+
+    "privacy_link": "What is stored about you",
+    "sign_in_link": "Back to sign in",
 }
 
 ERRORS = {

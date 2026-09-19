@@ -14,10 +14,13 @@
   {% for group in nav_groups if visible_nav|selectattr('group','equalto',group)|list %}
     <div class="navlbl">{{ group }}</div>
     {% for item in visible_nav if item.group == group %}
-      <a class="nav" href="{{ nav_url(item) }}"
+      {% set external = nav_external(item) %}
+      <a class="nav" href="{{ external or nav_url(item) }}"
+         {% if external %}target="_blank" rel="noopener noreferrer" title="{{ item.label }} opens in a new tab"{% endif %}
          {% if active == item.key %}aria-current="page"{% endif %}>
         <span class="icwrap" aria-hidden="true">{{ icons[item.key]|safe }}</span>
         <span class="lbl">{{ item.label }}</span>
+        {% if external %}<span class="navext" aria-hidden="true">↗</span>{% endif %}
         {% if not item.ready %}<span class="inc" title="Arrives at increment {{ item.increment }}">{{ item.increment }}</span>{% endif %}
       </a>
     {% endfor %}

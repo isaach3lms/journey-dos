@@ -1845,6 +1845,19 @@ SETTINGS = {
         "World English Bible and the page says so."
     ),
 
+    # Giving shortcut
+    "giving_heading": "Giving",
+    "giving_linked": (
+        "The Giving tab in the sidebar opens {url} in a new tab. Change that "
+        "link, match gifts to people, and see who stopped giving from the "
+        "giving setup page."
+    ),
+    "giving_unlinked": (
+        "Add your giving platform's sign-in link and the Giving tab will open "
+        "it directly."
+    ),
+    "giving_setup": "Giving setup and reports",
+
     # Member announcements
     "announce_heading": "Who can post church-wide announcements",
     "announce_on": "Staff, leaders, and members",

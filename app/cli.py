@@ -35,6 +35,7 @@ SEED_TENANTS = [
         "logo_reversed_path": "img/journey-logo-white.png",
         "app_name": "The Journey Church",
         "app_domain": "app.thejourneychurchsemo.com",
+        "giving_admin_url": "https://auth.tithely.com/login",
         "custom_domain": None,
     },
     {

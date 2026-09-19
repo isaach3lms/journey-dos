@@ -147,6 +147,14 @@
   </div>
 </section>
 
+<section class="card" id="giving">
+  <div class="hd"><h2>{{ content.giving_heading }}</h2></div>
+  <div class="bd">
+    <p>{% if church.giving_admin_url %}{{ content.giving_linked.format(url=church.giving_admin_url) }}{% else %}{{ content.giving_unlinked }}{% endif %}</p>
+    <a class="btn ghostbtn" href="{{ url_for('giving.index') }}">{{ content.giving_setup }}</a>
+  </div>
+</section>
+
 <section class="card" id="announcements">
   <div class="hd">
     <h2>{{ content.announce_heading }}</h2>

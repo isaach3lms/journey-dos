@@ -1025,3 +1025,6 @@ ul.policy span{color:var(--muted)}
 .mcover{margin:0 -16px 13px;height:88px;display:grid;place-items:center}
 .mcover .glyph{width:34px;height:34px}
 .memberfull .mcover{margin:0 -24px 16px;height:120px}
+
+/* A sidebar item that opens another site in a new tab. */
+.navext{margin-left:auto;font-size:12px;opacity:.6}

@@ -143,6 +143,16 @@ def create_app(config_name: str | None = None) -> Flask:
                 NAV_ENDPOINTS.get(item.key, "shell.placeholder"),
                 **({} if item.key in NAV_ENDPOINTS else {"key": item.key}),
             ),
+            # A nav item that leaves the app. Giving goes straight to the
+            # church's giving platform when one is set, because that is where
+            # staff actually work with gifts; the setup page stays reachable
+            # from Settings.
+            "nav_external": lambda item: (
+                church.giving_admin_url
+                if item.key == "giving" and church is not None
+                and getattr(church, "giving_admin_url", None)
+                else None
+            ),
             "auth": AUTH,
             "csrf_field": lambda: Markup(
                 f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">'

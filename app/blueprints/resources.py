@@ -7,6 +7,8 @@ rather than merely unlinked, so guessing an id reveals nothing.
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 from flask import (
     Blueprint,
     abort,
@@ -29,6 +31,7 @@ from app.models import (
     SessionCompletion,
 )
 from app.models.resource import COVER_COUNT, KIND_LABELS, STATUS_DRAFT, STATUS_PUBLISHED
+from app.models.verse import WeeklyVerse, week_of
 from app.security import min_role
 
 bp = Blueprint("resources", __name__, url_prefix="/resources")
@@ -54,6 +57,7 @@ def index():
         resources=resources,
         archived=archived,
         covers=range(COVER_COUNT),
+        **_verse_context(),
         started=SessionCompletion.started_counts(g.church.id),
         kinds=RESOURCE_KINDS,
         kind_labels=KIND_LABELS,
@@ -313,3 +317,141 @@ def archive(resource_id: int):
 
     flash(RESOURCES["archived"].format(title=resource.title), "notice")
     return redirect(url_for("resources.index"))
+
+
+# ---------------------------------------------------------------------------
+# Verse of the week
+#
+# Lives on the Resources page because it is content published to members, the
+# same as a reading plan. See app/models/verse.py for how the week is chosen.
+# ---------------------------------------------------------------------------
+
+def _today():
+    from app.timeutil import now_local
+
+    return now_local(g.church).date()
+
+
+def _verse_context() -> dict:
+    today = _today()
+    current = WeeklyVerse.current(g.church.id, today)
+    this_week = week_of(today)
+    return {
+        "verse_current": current,
+        "verse_upcoming": db.session.scalars(WeeklyVerse.upcoming(g.church.id, today)).all(),
+        "verse_past": db.session.scalars(
+            WeeklyVerse.past(g.church.id, current.starts_on if current else this_week)
+        ).all(),
+        "verse_this_week": this_week,
+        "verse_next_week": this_week + timedelta(days=7),
+    }
+
+
+def _world_english_text(reference: str) -> str | None:
+    """Fill a blank verse from the public domain translation, if loaded."""
+    from app.bible.reference import parse
+    from app.models import BibleVerse
+
+    parsed = parse(reference)
+    if parsed is None:
+        return None
+    rows = BibleVerse.passage(parsed)
+    return " ".join(row.text for row in rows) or None
+
+
+def _verse_from_form(verse: WeeklyVerse | None = None):
+    """Read and check the form. Returns (fields, error_key)."""
+    from datetime import date as _date
+
+    reference = (request.form.get("reference") or "").strip()[:120]
+    text = (request.form.get("text") or "").strip()
+    translation = (request.form.get("translation") or "").strip()[:20] or None
+    raw_week = (request.form.get("starts_on") or "").strip()
+
+    if not reference:
+        return None, "verse_reference_required"
+    try:
+        starts_on = week_of(_date.fromisoformat(raw_week)) if raw_week else week_of(_today())
+    except ValueError:
+        return None, "verse_bad_date"
+
+    if not text:
+        text = _world_english_text(reference)
+        if not text:
+            return None, "verse_text_required"
+        translation = "WEB"
+
+    return {
+        "reference": reference,
+        "text": text[:2000],
+        "translation": translation,
+        "starts_on": starts_on,
+    }, None
+
+
+@bp.post("/verse/")
+@login_required
+@min_role("leader")
+def save_verse():
+    """Set the verse for a week. Setting a week that already has one replaces
+    it, because two verses for one week is never what anybody meant."""
+    fields, error = _verse_from_form()
+    if error:
+        flash(RESOURCES[error], "error")
+        return redirect(url_for("resources.index", _anchor="verse"))
+
+    verse = WeeklyVerse.for_week(g.church.id, fields["starts_on"])
+    if verse is None:
+        verse = WeeklyVerse(church_id=g.church.id, created_by_user_id=current_user.id, **fields)
+        db.session.add(verse)
+    else:
+        for key, value in fields.items():
+            setattr(verse, key, value)
+    db.session.commit()
+
+    flash(_verse_saved_message(verse), "notice")
+    return redirect(url_for("resources.index", _anchor="verse"))
+
+
+@bp.post("/verse/<int:verse_id>/")
+@login_required
+@min_role("leader")
+def update_verse(verse_id: int):
+    verse = WeeklyVerse.get_for_church(g.church.id, verse_id)
+    if verse is None:
+        abort(404)
+    fields, error = _verse_from_form(verse)
+    if error:
+        flash(RESOURCES[error], "error")
+        return redirect(url_for("resources.index", _anchor="verse"))
+
+    clash = WeeklyVerse.for_week(g.church.id, fields["starts_on"])
+    if clash is not None and clash.id != verse.id:
+        flash(RESOURCES["verse_week_taken"].format(date=fields["starts_on"].strftime("%B %-d")), "error")
+        return redirect(url_for("resources.index", _anchor="verse"))
+
+    for key, value in fields.items():
+        setattr(verse, key, value)
+    db.session.commit()
+    flash(_verse_saved_message(verse), "notice")
+    return redirect(url_for("resources.index", _anchor="verse"))
+
+
+@bp.post("/verse/<int:verse_id>/delete/")
+@login_required
+@min_role("leader")
+def delete_verse(verse_id: int):
+    verse = WeeklyVerse.get_for_church(g.church.id, verse_id)
+    if verse is None:
+        abort(404)
+    db.session.delete(verse)
+    db.session.commit()
+    flash(RESOURCES["verse_deleted"], "notice")
+    return redirect(url_for("resources.index", _anchor="verse"))
+
+
+def _verse_saved_message(verse) -> str:
+    when = verse.starts_on.strftime("%B %-d")
+    if verse.starts_on <= _today():
+        return RESOURCES["verse_saved_live"].format(reference=verse.reference)
+    return RESOURCES["verse_saved_scheduled"].format(reference=verse.reference, date=when)

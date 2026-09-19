@@ -1101,3 +1101,27 @@ ul.policy span{color:var(--muted)}
 .pill.plain{text-transform:none;letter-spacing:0;font-size:12px;padding:3px 10px}
 .stackform{display:grid;gap:9px;margin-top:12px}
 .stackform .input{margin:0}
+
+/* Verse of the week: staff card on Resources, member card on Home. */
+.versecard{background:var(--deep);color:#fff;border-radius:var(--r);padding:18px 20px;margin-bottom:14px}
+.versecard .pill.plain{background:rgba(255,255,255,.14);color:#fff}
+.versecard .muted{color:rgba(255,255,255,.62)}
+.versemeta{display:flex;align-items:center;gap:10px}
+.versecard blockquote{margin:12px 0 8px;font-size:17px;line-height:1.5}
+.verseref{font-size:13px;font-weight:600;color:rgba(255,255,255,.75)}
+.versecard .verseedit{margin-top:12px}
+.versecard .verseedit form{background:var(--white);color:var(--ink);border-radius:var(--r-sm);padding:12px 14px;margin-top:10px}
+.verseedit > summary,.verseadd > summary{list-style:none;display:inline-block;cursor:pointer}
+.verseedit > summary::-webkit-details-marker,.verseadd > summary::-webkit-details-marker{display:none}
+.verseadd form{margin-top:10px}
+.verseadd form .btn,.verseedit form .btn{margin-top:4px}
+.versegrid{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr);gap:10px}
+@media (max-width:700px){.versegrid{grid-template-columns:minmax(0,1fr)}}
+.versesub{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-2);margin:18px 0 6px}
+.flaglist li .verseedit.inline{flex:none}
+.flaglist li:has(.verseedit.inline){display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0}
+.flaglist li .verseedit[open]{flex-basis:100%;order:3}
+.mverse .mversetext{margin:4px 0 10px;font-size:17px;line-height:1.5;color:#fff}
+.mverse .mverseref{font-size:13px;font-weight:600;color:rgba(255,255,255,.7)}
+.mverse .mverseref span{font-weight:400;opacity:.8}
+.memberfull .mverse .mversetext{font-size:21px}

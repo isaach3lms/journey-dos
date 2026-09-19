@@ -712,6 +712,7 @@ EMAIL = {
 
 
 MEMBER = {
+    "verse_label": "This week's verse",
     "app_name": "Home",
     "tab_home": "Home",
     "tab_read": "Read",
@@ -899,6 +900,43 @@ RESOURCES = {
         "Formatting: a blank line starts a paragraph, # for a heading, "
         "> for scripture, - for a list, **bold** and *italic*."
     ),
+
+    # Verse of the week
+    "verse_heading": "Verse of the week",
+    "verse_intro": (
+        "Shown at the top of every member's Home tab. A new week starts on "
+        "Sunday. Schedule weeks ahead and each one appears on its Sunday."
+    ),
+    "verse_live": "Showing now",
+    "verse_none": "No verse yet. Members see nothing on Home until you add one.",
+    "verse_week_label": "Week of {date}",
+    "verse_field_reference": "Reference",
+    "verse_field_reference_placeholder": "Hebrews 10:24",
+    "verse_field_text": "Verse",
+    "verse_field_text_placeholder": (
+        "Paste the verse in your church's translation, or leave this blank and "
+        "we fill it in from the World English Bible."
+    ),
+    "verse_field_translation": "Translation",
+    "verse_field_translation_placeholder": "NIV",
+    "verse_field_week": "Week starting",
+    "verse_add": "Set the verse",
+    "verse_save": "Save",
+    "verse_edit": "Edit",
+    "verse_delete": "Delete",
+    "verse_delete_confirm": "Delete this verse? Members go back to the previous week's.",
+    "verse_upcoming": "Scheduled",
+    "verse_past": "Earlier weeks",
+    "verse_saved_live": "{reference} is on every member's Home tab now.",
+    "verse_saved_scheduled": "{reference} is scheduled. It appears on Sunday, {date}.",
+    "verse_deleted": "Verse deleted.",
+    "verse_reference_required": "The verse needs a reference, like Hebrews 10:24.",
+    "verse_text_required": (
+        "We could not find that reference in the World English Bible. Check it, "
+        "or paste the verse text in yourself."
+    ),
+    "verse_bad_date": "That is not a date.",
+    "verse_week_taken": "The week of {date} already has a verse. Edit that one instead.",
 
     # Staff library, laid out like the approved demo
     "library_heading": "Published to your people",

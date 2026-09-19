@@ -100,8 +100,12 @@ def home():
     if person.first_seen_on:
         days = (datetime.now(timezone.utc).date() - person.first_seen_on).days + 1
 
+    from app.models.verse import WeeklyVerse
+    from app.timeutil import now_local
+
     return render_template(
         "member/home.html",
+        verse=WeeklyVerse.current(g.church.id, now_local(g.church).date()),
         greeting=_greeting(person.first_name),
         waiting_for_approval=person.is_waiting_for_approval,
         days=days,

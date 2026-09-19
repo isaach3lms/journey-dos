@@ -104,6 +104,7 @@ from app.models.service import (  # noqa: F401
     TeamMembership,
     TeamPosition,
 )
+from app.models.verse import WeeklyVerse, week_of  # noqa: F401
 from app.models.resource import (  # noqa: F401
     RESOURCE_KINDS,
     RESOURCE_STATUSES,
@@ -128,6 +129,8 @@ from app.models.person_event import (  # noqa: F401
 from app.models.user import ROLES, User  # noqa: F401
 
 __all__ = [
+    "WeeklyVerse",
+    "week_of",
     "Church",
     "Household",
     "Person",

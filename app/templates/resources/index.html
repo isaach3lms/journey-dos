@@ -16,6 +16,93 @@
   <p class="muted small" data-search-none hidden>{{ content.search_none }}</p>
 </div>
 
+{% macro verse_fields(v=none, week=none) %}
+  <div class="versegrid">
+    <div>
+      <label class="flabel">{{ content.verse_field_reference }}</label>
+      <input class="input" type="text" name="reference" required maxlength="120"
+             value="{{ v.reference if v else '' }}" placeholder="{{ content.verse_field_reference_placeholder }}">
+    </div>
+    <div>
+      <label class="flabel">{{ content.verse_field_translation }}</label>
+      <input class="input" type="text" name="translation" maxlength="20"
+             value="{{ (v.translation or '') if v else '' }}" placeholder="{{ content.verse_field_translation_placeholder }}">
+    </div>
+    <div>
+      <label class="flabel">{{ content.verse_field_week }}</label>
+      <input class="input" type="date" name="starts_on"
+             value="{{ (v.starts_on if v else week).isoformat() }}">
+    </div>
+  </div>
+  <label class="flabel">{{ content.verse_field_text }}</label>
+  <textarea class="input" name="text" rows="3" maxlength="2000"
+            placeholder="{{ content.verse_field_text_placeholder }}">{{ v.text if v else '' }}</textarea>
+{% endmacro %}
+
+<section class="card" id="verse">
+  <div class="hd"><h2>{{ content.verse_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.verse_intro }}</p>
+
+    {% if verse_current %}
+      <div class="versecard">
+        <div class="versemeta">
+          <span class="pill plain">{{ content.verse_live }}</span>
+          <span class="muted small">{{ content.verse_week_label.format(date=verse_current.starts_on.strftime("%B %-d")) }}</span>
+        </div>
+        <blockquote>&ldquo;{{ verse_current.text }}&rdquo;</blockquote>
+        <div class="verseref">{{ verse_current.reference }}{% if verse_current.translation %} &middot; {{ verse_current.translation }}{% endif %}</div>
+        <details class="verseedit">
+          <summary class="btn ghostbtn tiny">{{ content.verse_edit }}</summary>
+          <form method="post" action="{{ url_for('resources.update_verse', verse_id=verse_current.id) }}">
+            {{ csrf_field() }}
+            {{ verse_fields(verse_current) }}
+            <button class="btn" type="submit">{{ content.verse_save }}</button>
+          </form>
+        </details>
+      </div>
+    {% else %}
+      <p class="muted small">{{ content.verse_none }}</p>
+    {% endif %}
+
+    <details class="verseadd" {% if not verse_current %}open{% endif %}>
+      <summary class="btn {% if verse_current %}ghostbtn{% endif %} tiny">{{ content.verse_add }}</summary>
+      <form method="post" action="{{ url_for('resources.save_verse') }}">
+        {{ csrf_field() }}
+        {{ verse_fields(none, verse_next_week if verse_current and verse_current.starts_on == verse_this_week else verse_this_week) }}
+        <button class="btn" type="submit">{{ content.verse_add }}</button>
+      </form>
+    </details>
+
+    {% for label, rows in ((content.verse_upcoming, verse_upcoming), (content.verse_past, verse_past)) if rows %}
+      <h3 class="versesub">{{ label }}</h3>
+      <ul class="flaglist">
+        {% for v in rows %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ v.reference }}{% if v.translation %} <span class="muted">{{ v.translation }}</span>{% endif %}</span>
+              <span class="pe">{{ content.verse_week_label.format(date=v.starts_on.strftime("%B %-d")) }} &middot; {{ v.text|truncate(90) }}</span>
+            </span>
+            <details class="verseedit inline">
+              <summary class="btn ghostbtn tiny">{{ content.verse_edit }}</summary>
+              <form method="post" action="{{ url_for('resources.update_verse', verse_id=v.id) }}">
+                {{ csrf_field() }}
+                {{ verse_fields(v) }}
+                <button class="btn" type="submit">{{ content.verse_save }}</button>
+              </form>
+            </details>
+            <form method="post" class="inline" action="{{ url_for('resources.delete_verse', verse_id=v.id) }}"
+                  onsubmit='return confirm({{ content.verse_delete_confirm | tojson }})'>
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny danger" type="submit">{{ content.verse_delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="card">
   <div class="hd">
     <h2>{{ content.library_heading }}</h2>

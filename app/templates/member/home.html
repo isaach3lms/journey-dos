@@ -8,6 +8,14 @@
   {% else %}{{ content.since_new.format(church=church.name) }}{% endif %}
 </p>
 
+{% if verse %}
+  <section class="mcard dark mverse mwide">
+    <div class="mlbl">{{ content.verse_label }}</div>
+    <blockquote class="mversetext">&ldquo;{{ verse.text }}&rdquo;</blockquote>
+    <div class="mverseref">{{ verse.reference }}{% if verse.translation %} <span>{{ verse.translation }}</span>{% endif %}</div>
+  </section>
+{% endif %}
+
 {% if waiting_for_approval %}
   <section class="mcard mwide">
     <div class="mlbl">{{ content.waiting_title }}</div>

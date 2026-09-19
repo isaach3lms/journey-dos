@@ -263,7 +263,7 @@
           <p class="muted small">{{ content.who_empty }}</p>
         {% endif %}
 
-        <form method="post" action="{{ url_for('services.assign', service_id=service.id) }}">
+        <form method="post" class="stackform" action="{{ url_for('services.assign', service_id=service.id) }}">
           {{ csrf_field() }}
           <select class="input select" name="person_id" aria-label="{{ content.assign }}">
             {% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}

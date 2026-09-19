@@ -810,6 +810,8 @@ ul.policy span{color:var(--muted)}
    Plan on the left, the two things a leader acts on down the right. */
 .planwrap{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
 @media (max-width:1100px){.planwrap{grid-template-columns:minmax(0,1fr)}}
+/* Both columns stack their cards with the same gap the page uses. */
+.planwrap > div{display:grid;gap:18px;align-content:start;min-width:0}
 
 /* Rows stay quiet: the controls appear on hover on a pointer, and are always
    visible on touch, where there is no hover to reveal them. */
@@ -1097,3 +1099,5 @@ ul.policy span{color:var(--muted)}
   border:1px solid var(--line);border-radius:999px;padding:4px 11px;
 }
 .pill.plain{text-transform:none;letter-spacing:0;font-size:12px;padding:3px 10px}
+.stackform{display:grid;gap:9px;margin-top:12px}
+.stackform .input{margin:0}

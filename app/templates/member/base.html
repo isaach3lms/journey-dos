@@ -39,26 +39,45 @@
           <div class="alert {{ category }}" role="alert">{{ message }}</div>
         {% endfor %}
       {% endwith %}
+      {% if tab in ('read', 'groups') %}
+        <div class="growswitch" role="tablist" aria-label="{{ content.tab_grow }}">
+          <a href="{{ url_for('member.reading') }}" role="tab" {% if tab == 'read' %}aria-selected="true"{% endif %}>{{ content.grow_reading }}</a>
+          <a href="{{ url_for('member.groups') }}" role="tab" {% if tab == 'groups' %}aria-selected="true"{% endif %}>{{ content.grow_groups }}</a>
+        </div>
+      {% endif %}
       {% block content %}{% endblock %}
     </main>
 
+    {# Same six tabs, same order, same icons as the approved demo. Grow holds
+       reading plans and groups; both pages carry a switch between them. #}
+    {% set grow_active = tab in ('read', 'groups', 'grow') %}
     <nav class="mtabs" aria-label="Member">
-      <a href="{{ url_for('member.home') }}"
-         {% if tab == 'home' %}aria-current="page"{% endif %}>{{ content.tab_home }}</a>
-      <a href="{{ url_for('member.reading') }}"
-         {% if tab == 'read' %}aria-current="page"{% endif %}>{{ content.tab_read }}</a>
-      <a href="{{ url_for('member.chat') }}"
-         {% if tab == 'chat' %}aria-current="page"{% endif %}>{{ content.tab_chat }}</a>
-      <a href="{{ url_for('member.serve') }}"
-         {% if tab == 'serve' %}aria-current="page"{% endif %}>{{ content.tab_serve }}</a>
-      <a href="{{ url_for('member.groups') }}"
-         {% if tab == 'groups' %}aria-current="page"{% endif %}>{{ content.tab_groups }}</a>
+      <a href="{{ url_for('member.home') }}" {% if tab == 'home' %}aria-current="page"{% endif %}>
+        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>
+        <span>{{ content.tab_home }}</span>
+      </a>
       {% if church.giving_form_url %}
-        <a href="{{ url_for('member.give') }}"
-           {% if tab == 'give' %}aria-current="page"{% endif %}>{{ content.tab_give }}</a>
+        <a href="{{ url_for('member.give') }}" {% if tab == 'give' %}aria-current="page"{% endif %}>
+          <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z"/></svg>
+          <span>{{ content.tab_give }}</span>
+        </a>
       {% endif %}
-      <a href="{{ url_for('member.you') }}"
-         {% if tab == 'you' %}aria-current="page"{% endif %}>{{ content.tab_you }}</a>
+      <a href="{{ url_for('member.serve') }}" {% if tab == 'serve' %}aria-current="page"{% endif %}>
+        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 12V5.5a1.5 1.5 0 0 1 3 0V11m0-6.5V4a1.5 1.5 0 0 1 3 0v7m0-5.5a1.5 1.5 0 0 1 3 0V13c0 4.4-2.6 8-6.5 8-2.7 0-4.3-1.4-5.8-3.7L4 14.6a1.4 1.4 0 0 1 2.3-1.6l2.2 2.4"/></svg>
+        <span>{{ content.tab_serve }}</span>
+      </a>
+      <a href="{{ url_for('member.reading') }}" {% if grow_active %}aria-current="page"{% endif %}>
+        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V11m0 0c0-3.3-2.5-5.5-6-5.5 0 3.5 2.5 5.5 6 5.5zm0 0c0-3.9 2.3-6.5 6-6.5 0 3.9-2.4 6.5-6 6.5z"/></svg>
+        <span>{{ content.tab_grow }}</span>
+      </a>
+      <a href="{{ url_for('member.chat') }}" {% if tab == 'chat' %}aria-current="page"{% endif %}>
+        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4V6a1 1 0 0 1 1-1z"/></svg>
+        <span>{{ content.tab_chat }}</span>
+      </a>
+      <a href="{{ url_for('member.you') }}" {% if tab == 'you' %}aria-current="page"{% endif %}>
+        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c0-3.9 3.1-6.3 7-6.3s7 2.4 7 6.3"/></svg>
+        <span>{{ content.tab_you }}</span>
+      </a>
     </nav>
   </div>
 </div>

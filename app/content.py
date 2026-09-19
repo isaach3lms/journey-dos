@@ -721,6 +721,9 @@ MEMBER = {
     "tab_serve": "Serve",
     "tab_chat": "Chat",
     "tab_you": "You",
+    "tab_grow": "Grow",
+    "grow_reading": "Reading plans",
+    "grow_groups": "My groups",
 
     "greeting_morning": "Good morning, {name}",
     "greeting_afternoon": "Good afternoon, {name}",

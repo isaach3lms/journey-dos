@@ -22,7 +22,14 @@ from flask_login import current_user, login_required
 
 from app.audit import record
 from app.content import MESSAGES
-from app.models.audit import MESSAGE_DELETED
+from app.models.audit import MESSAGE_DELETED, REPORT_RESOLVED
+from app.models.moderation import (
+    REPORT_DISMISSED,
+    REPORT_OPEN,
+    REPORT_REMOVED,
+    MessageReport,
+)
+from app.moderation import objectionable_terms
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import (
@@ -59,6 +66,7 @@ def index():
         content=MESSAGES,
         conversations=db.session.scalars(Conversation.for_church(g.church.id)).all(),
         kinds=(KIND_ANNOUNCEMENT, KIND_ROOM),
+        open_reports=MessageReport.open_count(g.church.id),
         active="messages",
     )
 
@@ -132,6 +140,11 @@ def post(conversation_id: int):
         flash(MESSAGES["post_empty"], "error")
         return redirect(url_for("messages.thread", conversation_id=conversation.id))
 
+    terms = objectionable_terms(body)
+    if terms:
+        flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
+        return redirect(url_for("messages.thread", conversation_id=conversation.id))
+
     Message.post(conversation, person, body[:4000])
 
     queued = 0
@@ -189,6 +202,7 @@ def delete_message(conversation_id: int, message_id: int):
 
     author = message.author_name or "someone"
     message.soft_delete()
+    _close_reports_for(message, REPORT_REMOVED)
     record(
         MESSAGE_DELETED,
         f"A message from {author} was deleted in {conversation.title}",
@@ -276,3 +290,91 @@ def archive(conversation_id: int):
 
     flash(MESSAGES["archived"].format(title=conversation.title), "notice")
     return redirect(url_for("messages.index"))
+
+
+
+# ---------------------------------------------------------------------------
+# Reported messages
+#
+# A report is a request for a human, not an automatic takedown. One report
+# does not remove a message, because in a room of twelve people one unhappy
+# reader could silence anybody. Somebody here decides, and the decision is
+# audited.
+# ---------------------------------------------------------------------------
+
+def _close_reports_for(message, status: str) -> int:
+    closed = 0
+    for report in db.session.scalars(
+        db.select(MessageReport).where(
+            MessageReport.message_id == message.id,
+            MessageReport.status == REPORT_OPEN,
+        )
+    ):
+        report.resolve(status, current_user)
+        closed += 1
+    return closed
+
+
+@bp.get("/reports/")
+@login_required
+@min_role("leader")
+def reports():
+    return render_template(
+        "messages/reports.html",
+        church=g.church,
+        content=MESSAGES,
+        open_reports=db.session.scalars(MessageReport.open_for_church(g.church.id)).all(),
+        closed_reports=db.session.scalars(MessageReport.recent_closed(g.church.id)).all(),
+        conversations={
+            c.id: c for c in db.session.scalars(
+                Conversation.for_church(g.church.id, include_archived=True)
+            )
+        },
+        active="messages",
+    )
+
+
+@bp.post("/reports/<int:report_id>/<decision>/")
+@login_required
+@min_role("leader")
+def decide_report(report_id: int, decision: str):
+    report = MessageReport.get_for_church(g.church.id, report_id)
+    if report is None:
+        abort(404)
+    if decision not in ("remove", "keep"):
+        abort(400)
+
+    message = report.message
+    conversation = Conversation.get_for_church(g.church.id, report.conversation_id)
+    room = conversation.title if conversation else "a room"
+
+    if decision == "remove":
+        if message is not None and not message.is_deleted:
+            author = message.author_name or "someone"
+            message.soft_delete()
+            record(
+                MESSAGE_DELETED,
+                f"A message from {author} was deleted in {room}",
+                actor=current_user,
+                subject_type="message", subject_id=message.id, subject_label=room,
+                detail="Removed after a report.",
+            )
+        # Every report on the same message closes together. Three people
+        # reporting one message is one decision, not three.
+        if message is not None:
+            _close_reports_for(message, REPORT_REMOVED)
+        report.resolve(REPORT_REMOVED, current_user)
+        flash(MESSAGES["report_removed"], "notice")
+    else:
+        report.resolve(REPORT_DISMISSED, current_user)
+        flash(MESSAGES["report_kept"], "notice")
+
+    record(
+        REPORT_RESOLVED,
+        f"A report in {room} was decided: "
+        + ("removed" if decision == "remove" else "kept"),
+        actor=current_user,
+        subject_type="message_report", subject_id=report.id, subject_label=room,
+    )
+    db.session.commit()
+    return redirect(url_for("messages.reports"))

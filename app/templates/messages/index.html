@@ -4,6 +4,13 @@
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
 {% block content %}
+{% if open_reports %}
+  <div class="alert error">
+    <a href="{{ url_for('messages.reports') }}">{{ content.reports_link.format(count=open_reports) }}</a>
+  </div>
+{% else %}
+  <p class="muted small"><a href="{{ url_for('messages.reports') }}">{{ content.reports_title }}</a></p>
+{% endif %}
 
 <section class="card">
   <div class="hd"><h2>{{ content.new_heading }}</h2></div>

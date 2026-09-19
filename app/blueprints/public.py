@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from flask import Blueprint, g, render_template
 
-from app.content import PRIVACY, SUPPORT
+from app.content import COMMUNITY, PRIVACY, SUPPORT
 
 bp = Blueprint("public", __name__)
 
@@ -43,4 +43,18 @@ def support():
         "public/support.html",
         church=g.church,
         content=SUPPORT,
+    )
+
+
+@bp.get("/community/")
+def community():
+    """The rules for chat, readable before anybody agrees to them.
+
+    Public because a person deciding whether to join should see the rules
+    first, and because an app reviewer has to be able to read them.
+    """
+    return render_template(
+        "public/community.html",
+        church=g.church,
+        content=COMMUNITY,
     )

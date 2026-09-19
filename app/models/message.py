@@ -103,6 +103,20 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
     def visible_messages(self) -> list["Message"]:
         return [m for m in self.messages if not m.is_deleted]
 
+    def messages_for(self, person_id: int, blocked: set[int] | None = None) -> list["Message"]:
+        """What this person sees: not deleted, and nothing from anybody they
+        blocked.
+
+        A block acts here, at read time, rather than by touching the message.
+        The other members of the room still see it; only the person who
+        blocked is protected from it, which is what they asked for.
+        """
+        blocked = blocked or set()
+        return [
+            m for m in self.messages
+            if not m.is_deleted and m.author_person_id not in blocked
+        ]
+
     @property
     def member_count(self) -> int:
         return len(self.members)
@@ -145,7 +159,7 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
                 return member
         return None
 
-    def unread_for(self, person_id: int) -> int:
+    def unread_for(self, person_id: int, blocked: set[int] | None = None) -> int:
         """Messages since this person last opened it.
 
         An announcement has no membership row for most people, so there is no
@@ -156,11 +170,16 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         if membership is None:
             return 0
         since = membership.last_read_at
+        blocked = blocked or set()
+        # A message from somebody you blocked is not waiting for you, so it
+        # does not count. Otherwise the badge keeps pointing at the thing you
+        # asked never to see.
         return sum(
             1
             for message in self.messages
             if not message.is_deleted
             and message.author_person_id != person_id
+            and message.author_person_id not in blocked
             and (since is None or message.sent_at > since)
         )
 
@@ -342,6 +361,8 @@ class Message(TenantScoped, TimestampMixin, db.Model):
     @classmethod
     def unread_total(cls, church_id: int, person_id: int) -> int:
         """One query for the badge, not one per conversation."""
+        from app.models.moderation import PersonBlock
+
         rows = db.session.execute(
             db.select(func.count(cls.id))
             .join(
@@ -353,6 +374,17 @@ class Message(TenantScoped, TimestampMixin, db.Model):
                 cls.is_deleted.is_(False),
                 cls.author_person_id != person_id,
                 ConversationMember.person_id == person_id,
+                # Messages from people this person blocked are not unread.
+                # The null check keeps authorless messages counted: NOT IN
+                # against a NULL is NULL, which would silently drop them.
+                db.or_(
+                    cls.author_person_id.is_(None),
+                    cls.author_person_id.notin_(
+                        db.select(PersonBlock.blocked_person_id).where(
+                            PersonBlock.blocker_person_id == person_id
+                        )
+                    ),
+                ),
                 db.or_(
                     ConversationMember.last_read_at.is_(None),
                     cls.sent_at > ConversationMember.last_read_at,

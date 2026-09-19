@@ -38,6 +38,9 @@ BRAND_CHANGED = "brand_changed"
 CREDENTIAL_CHANGED = "credential_changed"
 GIFT_MATCHED = "gift_matched"
 MESSAGE_DELETED = "message_deleted"
+MESSAGE_REPORTED = "message_reported"
+PERSON_BLOCKED = "person_blocked"
+REPORT_RESOLVED = "report_resolved"
 CHILD_CHECKED_OUT = "child_checked_out"
 PIN_ROTATED = "pin_rotated"
 SEQUENCE_STOPPED = "sequence_stopped"
@@ -52,6 +55,9 @@ ACTIONS = (
     CREDENTIAL_CHANGED,
     GIFT_MATCHED,
     MESSAGE_DELETED,
+    MESSAGE_REPORTED,
+    PERSON_BLOCKED,
+    REPORT_RESOLVED,
     CHILD_CHECKED_OUT,
     PIN_ROTATED,
     SEQUENCE_STOPPED,
@@ -67,6 +73,9 @@ ACTION_LABELS = {
     CREDENTIAL_CHANGED: "Provider keys changed",
     GIFT_MATCHED: "Gift matched to a person",
     MESSAGE_DELETED: "Message deleted",
+    MESSAGE_REPORTED: "Message reported",
+    PERSON_BLOCKED: "Person blocked",
+    REPORT_RESOLVED: "Report decided",
     CHILD_CHECKED_OUT: "Child collected",
     PIN_ROTATED: "Check-in code rotated",
     SEQUENCE_STOPPED: "Sequence stopped by staff",

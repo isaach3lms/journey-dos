@@ -89,6 +89,24 @@
 </section>
 
 <section class="mcard">
+  <div class="mlbl">{{ msg.blocks_heading }}</div>
+  {% if blocks %}
+    <p class="mnote">{{ msg.blocks_hint }}</p>
+    {% for block in blocks %}
+      <div class="mrow">
+        <span>{{ block.blocked_name or "Someone" }}</span>
+        <form method="post" class="inline" action="{{ url_for('member.unblock', block_id=block.id) }}">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn tiny" type="submit">{{ msg.unblock }}</button>
+        </form>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p class="mnote">{{ msg.blocks_none }}</p>
+  {% endif %}
+</section>
+
+<section class="mcard">
   <div class="mlbl">{{ content.delete_heading }}</div>
   <p class="mnote">{{ content.delete_body }}</p>
   <p class="mnote">{{ content.delete_record.format(church=church.name) }}</p>

@@ -1441,6 +1441,39 @@ out they are playing by reading it on Sunday.
 The row already names the key. "Key G, capo 0, play G" is noise on the one
 screen a musician reads while setting up.
 
+
+---
+
+## Reporting, blocking, and the community standards
+
+App Store Guideline 1.2 asks four things of any app where people post content
+others read. All four are here, and each is tested as behaviour.
+
+**People agree before chat opens.** `/community/` is public and says there is
+no tolerance for objectionable content. A member sees the standards the first
+time they open Chat and cannot post until they tap I agree.
+
+**A filter stops the obvious at the keyboard.** `app/moderation.py`, a short
+list written for a church: "hell" and "damn" are not on it, because a filter
+that rejects Matthew 10 is one people learn to route around. A refused message
+is never stored, and nothing is logged with its text.
+
+**Anybody can report a message.** A report asks a human to look; it does not
+remove the message, because one unhappy reader could otherwise silence anybody.
+Every staff member is emailed at once, without the words of the message in the
+email, and the report waits in Messages, Reported messages.
+
+**Anybody can block the person who wrote it.** It acts immediately and needs
+nobody's permission. Their messages disappear for the person who blocked them,
+stop counting as unread, and a report is filed so staff know. Undo it on the
+You screen. No route takes a person id: a block is made from a message.
+
+**The migration also replaces two CHECK constraints.** Adding the "moderation"
+notification category changed the model but not the database, and every staff
+alert failed with an IntegrityError in a running app while all tests passed.
+`test_config.py` now builds the schema from migrations and fails if any model
+CHECK constraint is missing from it, across every table.
+
 ---
 
 ## Deploying to Render

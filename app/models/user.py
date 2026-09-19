@@ -183,6 +183,13 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Boolean, nullable=False, default=False, server_default=false()
     )
 
+    # When this person agreed to the community standards. Chat is closed to
+    # them until they have, because App Store Guideline 1.2 requires people
+    # to agree to terms with no tolerance for objectionable content before
+    # they can post, and because a room works better when everybody in it has
+    # read the same short page.
+    community_accepted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0
@@ -425,3 +432,12 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
 
     def clear_password_change_requirement(self) -> None:
         self.must_change_password = False
+
+
+    @property
+    def has_accepted_community(self) -> bool:
+        return self.community_accepted_at is not None
+
+    def accept_community(self) -> None:
+        if self.community_accepted_at is None:
+            self.community_accepted_at = utcnow()

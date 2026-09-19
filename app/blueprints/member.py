@@ -50,6 +50,9 @@ from app.audit import record as audit_record
 from app.models import PushSubscription
 from app.models.audit import PERSON_ARCHIVED
 from app.models.message import Conversation, Message
+from app.models import MessageReport, PersonBlock
+from app.models.moderation import SOURCE_BLOCK, SOURCE_REPORT
+from app.moderation import objectionable_terms
 from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
 from app.stages import STAGE_BY_CODE, stages_for
 
@@ -136,6 +139,8 @@ def you():
         categories=CATEGORIES,
         optional_categories=OPTIONAL_CATEGORIES,
         push_devices=PushSubscription.device_count(g.church.id, current_user.id),
+        blocks=db.session.scalars(PersonBlock.for_blocker(g.church.id, person.id)).all(),
+        msg=MESSAGES,
         vapid_public_key=current_app.config.get("VAPID_PUBLIC_KEY", ""),
         tab="you",
         **_base_context(person),
@@ -434,13 +439,17 @@ def chat():
     if person is None:
         return render_template("member/unlinked.html", church=g.church, content=MEMBER)
 
+    if not current_user.has_accepted_community:
+        return _agreement_page(person)
+
     conversations = db.session.scalars(
         Conversation.visible_to(g.church.id, person)
     ).all()
+    blocked = PersonBlock.blocked_ids(g.church.id, person.id)
     return render_template(
         "member/chat.html",
         conversations=conversations,
-        unread={c.id: c.unread_for(person.id) for c in conversations},
+        unread={c.id: c.unread_for(person.id, blocked) for c in conversations},
         msg=MESSAGES,
         tab="chat",
         **_base_context(person),
@@ -462,14 +471,24 @@ def chat_thread(conversation_id: int):
     if not conversation.can_read(person):
         abort(404)
 
+    if not current_user.has_accepted_community:
+        return _agreement_page(person)
+
     membership = conversation.membership_for(person.id)
     if membership is not None:
         membership.mark_read()
         db.session.commit()
 
+    blocked = PersonBlock.blocked_ids(g.church.id, person.id)
+    shown = conversation.messages_for(person.id, blocked)
+    hidden = len(conversation.visible_messages) - len(shown)
+
     return render_template(
         "member/thread.html",
         conversation=conversation,
+        messages=shown,
+        hidden_count=hidden,
+        me=person,
         can_post=conversation.can_post(person, is_staff=current_user.is_staff),
         msg=MESSAGES,
         tab="chat",
@@ -490,9 +509,19 @@ def chat_post(conversation_id: int):
     if not conversation.can_post(person, is_staff=current_user.is_staff):
         abort(403)
 
+    if not current_user.has_accepted_community:
+        return redirect(url_for("member.chat"))
+
     body = (request.form.get("body") or "").strip()
     if not body:
         flash(MESSAGES["post_empty"], "error")
+        return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
+    # Refused before it is stored. Nothing is logged with the text: a record
+    # of things people almost said is not something a church should keep.
+    terms = objectionable_terms(body)
+    if terms:
+        flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
         return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
 
     Message.post(conversation, person, body[:4000])
@@ -625,3 +654,206 @@ def delete_account():
     return render_template(
         "member/deleted.html", church=g.church, content=MEMBER
     )
+
+
+
+# ---------------------------------------------------------------------------
+# Community standards, reporting, and blocking
+#
+# App Store Guideline 1.2: people agree to terms with no tolerance for
+# objectionable content before they post, can report what gets through, and
+# can block the person who wrote it. Staff are told about every report and
+# every block, because blocking usually means something happened.
+#
+# No route here takes a person id. A block is made from a message, so the
+# person being blocked is whoever wrote something this person could see, and
+# an unblock goes by the block's own id, scoped to whoever is asking.
+# ---------------------------------------------------------------------------
+
+def _agreement_page(person):
+    from app.content import COMMUNITY
+
+    return render_template(
+        "member/agree.html",
+        community=COMMUNITY,
+        msg=MESSAGES,
+        tab="chat",
+        **_base_context(person),
+    )
+
+
+@bp.post("/chat/agree/")
+@login_required
+def chat_agree():
+    current_user.accept_community()
+    db.session.commit()
+    flash(MESSAGES["agree_done"], "notice")
+    return redirect(url_for("member.chat"))
+
+
+def _message_this_person_can_see(conversation_id: int, message_id: int):
+    """Load a message only if this person could read it.
+
+    404 for anything else, including a message in a private room they are not
+    in. Reporting or blocking must not become a way to learn a room exists.
+    """
+    person = current_user.person
+    if person is None:
+        abort(404)
+    conversation = Conversation.get_for_church(g.church.id, conversation_id)
+    message = Message.get_for_church(g.church.id, message_id)
+    if (
+        conversation is None
+        or message is None
+        or message.conversation_id != conversation.id
+        or message.is_deleted
+        or not conversation.can_read(person)
+    ):
+        abort(404)
+    return person, conversation, message
+
+
+def _alert_staff(report, reporter, message, conversation, source: str) -> None:
+    """Email every active staff member. Caller commits.
+
+    "Timely responses to concerns" is part of Guideline 1.2, and a report that
+    waits for somebody to happen to open a screen is not timely.
+    """
+    from app.mail import NotQueued, queue
+    from app.models import User
+
+    action = (
+        MESSAGES["alert_action_block"] if source == SOURCE_BLOCK
+        else MESSAGES["alert_action_report"]
+    )
+    reason = (
+        MESSAGES["alert_reason"].format(reason=report.reason) if report.reason else ""
+    )
+    link = url_for("messages.reports", _external=True,
+                   _scheme="https" if request.is_secure else "http")
+    staff = db.session.scalars(
+        db.select(User).where(
+            User.church_id == g.church.id,
+            User.role == "staff",
+            User.is_active_account.is_(True),
+        )
+    ).all()
+    for user in staff:
+        try:
+            queue(
+                church_id=g.church.id,
+                category="moderation",
+                subject=MESSAGES["alert_subject"].format(room=conversation.title),
+                # The words of the message are deliberately not in the email.
+                # Staff read them in the app, where removing them removes them
+                # everywhere; a copy in forty inboxes cannot be taken back.
+                body_text=MESSAGES["alert_body"].format(
+                    reporter=reporter.full_name,
+                    action=action,
+                    author=message.author_name or "someone",
+                    room=conversation.title,
+                    reason=reason,
+                    link=link,
+                    church=g.church.name,
+                ),
+                to_email=user.email,
+                to_name=user.name,
+                dedupe_key=f"report:{report.id}:{source}:{user.id}",
+            )
+        except NotQueued:
+            continue
+
+
+@bp.post("/chat/<int:conversation_id>/messages/<int:message_id>/report/")
+@login_required
+def report_message(conversation_id: int, message_id: int):
+    from app.models.audit import MESSAGE_REPORTED
+
+    person, conversation, message = _message_this_person_can_see(conversation_id, message_id)
+    back = url_for("member.chat_thread", conversation_id=conversation.id)
+
+    if message.author_person_id == person.id:
+        flash(MESSAGES["report_own"], "error")
+        return redirect(back)
+
+    report, created = MessageReport.file(
+        message, person, request.form.get("reason"), source=SOURCE_REPORT
+    )
+    db.session.flush()
+
+    if created:
+        audit_record(
+            MESSAGE_REPORTED,
+            f"A message in {conversation.title} was reported",
+            actor=current_user,
+            subject_type="message", subject_id=message.id,
+            subject_label=conversation.title,
+        )
+        _alert_staff(report, person, message, conversation, SOURCE_REPORT)
+        db.session.commit()
+        flash(MESSAGES["report_done"], "notice")
+    else:
+        db.session.commit()
+        flash(MESSAGES["report_again"], "notice")
+
+    return redirect(back)
+
+
+@bp.post("/chat/<int:conversation_id>/messages/<int:message_id>/block/")
+@login_required
+def block_author(conversation_id: int, message_id: int):
+    """Block whoever wrote this message.
+
+    Acts immediately and needs nobody's permission. Staff are told and a
+    report is filed, so a block is never the only record that something
+    happened.
+    """
+    from app.models.audit import PERSON_BLOCKED
+
+    person, conversation, message = _message_this_person_can_see(conversation_id, message_id)
+    back = url_for("member.chat_thread", conversation_id=conversation.id)
+
+    author = message.author
+    if author is None:
+        flash(MESSAGES["block_staff_author"], "error")
+        return redirect(back)
+    if author.id == person.id:
+        flash(MESSAGES["block_self"], "error")
+        return redirect(back)
+
+    _, created = PersonBlock.add(person, author)
+    report, _ = MessageReport.file(message, person, None, source=SOURCE_BLOCK)
+    db.session.flush()
+
+    if created:
+        audit_record(
+            PERSON_BLOCKED,
+            f"{person.full_name} blocked {author.full_name}",
+            actor=current_user,
+            subject_type="person", subject_id=author.id,
+            subject_label=author.full_name,
+            detail=f"From a message in {conversation.title}.",
+        )
+        _alert_staff(report, person, message, conversation, SOURCE_BLOCK)
+
+    db.session.commit()
+    flash(MESSAGES["block_done"].format(name=author.full_name), "notice")
+    return redirect(back)
+
+
+@bp.post("/you/blocks/<int:block_id>/remove/")
+@login_required
+def unblock(block_id: int):
+    person = current_user.person
+    if person is None:
+        abort(404)
+    block = PersonBlock.get_for_blocker(g.church.id, person.id, block_id)
+    if block is None:
+        abort(404)
+
+    name = block.blocked_name or "them"
+    db.session.delete(block)
+    db.session.commit()
+
+    flash(MESSAGES["unblocked"].format(name=name), "notice")
+    return redirect(url_for("member.you"))

@@ -71,6 +71,13 @@ from app.models.group import (  # noqa: F401
     MeetingRSVP,
 )
 from app.models.email_verification import EmailVerificationToken  # noqa: F401
+from app.models.moderation import (  # noqa: F401
+    REPORT_DISMISSED,
+    REPORT_OPEN,
+    REPORT_REMOVED,
+    MessageReport,
+    PersonBlock,
+)
 from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.push import PushSubscription  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
@@ -130,6 +137,8 @@ __all__ = [
     "OutboxMessage",
     "NotificationPreference",
     "PasswordResetToken",
+    "MessageReport",
+    "PersonBlock",
     "EmailVerificationToken",
     "PushSubscription",
     "Service",

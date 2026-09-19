@@ -6,20 +6,47 @@
 <p class="msub">{{ conversation.kind_label }}</p>
 
 <section class="mcard">
-  {% if conversation.visible_messages %}
+  {% if messages %}
     <ol class="thread">
-      {% for message in conversation.visible_messages %}
+      {% for message in messages %}
         <li>
           <div class="mfrom">
             {{ message.author_name or "Someone" }}
             <span class="muted">{{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
           </div>
           <div class="mbody">{{ message.rendered }}</div>
+
+          {# On every message somebody else wrote. Reporting asks a human to
+             look; blocking acts immediately and needs nobody's permission. #}
+          {% if message.author_person_id != me.id %}
+            <div class="mactions">
+              <details>
+                <summary>{{ msg.report }}</summary>
+                <form method="post" action="{{ url_for('member.report_message', conversation_id=conversation.id, message_id=message.id) }}">
+                  {{ csrf_field() }}
+                  <label class="mnote" for="reason-{{ message.id }}">{{ msg.report_reason }}</label>
+                  <textarea class="input" id="reason-{{ message.id }}" name="reason" rows="2" maxlength="1000"></textarea>
+                  <button class="btn wide" type="submit">{{ msg.report_submit }}</button>
+                </form>
+              </details>
+              {% if message.author_person_id %}
+                <form method="post" class="inline"
+                      action="{{ url_for('member.block_author', conversation_id=conversation.id, message_id=message.id) }}"
+                      onsubmit='return confirm({{ msg.block_confirm.format(name=message.author_name or "this person") | tojson }})'>
+                  {{ csrf_field() }}
+                  <button class="link" type="submit">{{ msg.block.format(name=message.author_name or "this person") }}</button>
+                </form>
+              {% endif %}
+            </div>
+          {% endif %}
         </li>
       {% endfor %}
     </ol>
   {% else %}
     <p class="mnote">{{ msg.no_messages }}</p>
+  {% endif %}
+  {% if hidden_count %}
+    <p class="mnote">{{ msg.blocked_hidden.format(count=hidden_count) }}</p>
   {% endif %}
 </section>
 

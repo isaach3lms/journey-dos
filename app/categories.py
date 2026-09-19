@@ -46,6 +46,12 @@ CATEGORIES: tuple[Category, ...] = (
         is_transactional=True,
     ),
     Category(
+        "moderation",
+        "Chat reports",
+        "Sent to staff when somebody reports a message. These always send.",
+        is_transactional=True,
+    ),
+    Category(
         "giving_receipt",
         "Giving receipts",
         "Receipts and year-end statements. These always send.",

@@ -1381,6 +1381,80 @@ MESSAGES = {
 
     "post_placeholder": "Write something.",
     "post": "Send",
+    # Reporting and blocking
+    "report": "Report",
+    "report_heading": "Report this message",
+    "report_reason": "What is wrong with it (optional)",
+    "report_submit": "Send the report",
+    "report_reason_label": "Their reason",
+    "report_done": (
+        "Reported. Church staff will look at it. It stays visible to others "
+        "until they decide, so one reader cannot remove anybody's message."
+    ),
+    "report_again": "You already reported this. Staff have it.",
+    "report_own": "That is your own message. You can ask staff to remove it.",
+
+    "block": "Block {name}",
+    "block_confirm": (
+        "Block {name}? You will stop seeing their messages everywhere in the "
+        "app, straight away. They are not told. Staff are, so they can help."
+    ),
+    "block_done": "Blocked. You will not see messages from {name}.",
+    "block_self": "You cannot block yourself.",
+    "block_staff_author": "Messages with no person behind them cannot be blocked. Report it instead.",
+    "blocked_hidden": "{count} hidden from people you blocked.",
+
+    "blocks_heading": "People you blocked",
+    "blocks_none": "You have not blocked anybody.",
+    "blocks_hint": "Their messages are hidden from you everywhere in the app.",
+    "unblock": "Unblock",
+    "unblocked": "Unblocked {name}. You will see their messages again.",
+
+    "filter_refused": (
+        "That was not posted. \"{terms}\" is not allowed in chat here. "
+        "Change it and send again."
+    ),
+
+    # Agreeing to the community standards before chat opens
+    "agree_title": "Before you open chat",
+    "agree_intro": (
+        "Chat is for the people of {church}. Please read these and agree "
+        "before you post."
+    ),
+    "agree_submit": "I agree",
+    "agree_done": "Thanks. Chat is open.",
+    "agree_full": "Read the full standards",
+
+    # Staff: reports
+    "reports_title": "Reported messages",
+    "reports_subtitle": "Decide each one. Every decision is recorded.",
+    "reports_waiting": "{count} waiting",
+    "reports_none": "Nothing waiting. Nobody has reported a message.",
+    "reports_link": "Reported messages ({count})",
+    "report_from": "Reported by {name}",
+    "report_from_block": "{name} blocked the author",
+    "report_in": "In {room}",
+    "report_by_author": "Written by {name}",
+    "report_already_removed": "The message has already been removed.",
+    "report_remove": "Remove the message",
+    "report_keep": "Keep it",
+    "report_removed": "Removed. The report is closed.",
+    "report_kept": "Kept. The report is closed.",
+    "reports_recent": "Recently decided",
+    "report_decided_by": "{status} by {name}",
+
+    "alert_subject": "A message was reported in {room}",
+    "alert_body": (
+        "{reporter} {action} a message by {author} in {room}.\n\n"
+        "{reason}"
+        "Open the app to decide what happens to it:\n{link}\n\n"
+        "The report stays open until somebody on staff removes the message "
+        "or keeps it.\n\n{church}"
+    ),
+    "alert_action_report": "reported",
+    "alert_action_block": "blocked the author of",
+    "alert_reason": "Their reason: {reason}\n\n",
+
     "post_empty": "Say something first.",
     "post_forbidden": "You cannot post here.",
     "posted": "Sent.",
@@ -1787,7 +1861,11 @@ PRIVACY = {
         },
         {
             "name": "Messages you send in the app",
-            "why": "Announcements, rooms, and direct conversations.",
+            "why": (
+                "Announcements, rooms, and direct conversations, plus any "
+                "report you file and anybody you block, so staff can act on "
+                "them. A report never copies the words of the message."
+            ),
         },
         {
             "name": "Sign-in records",
@@ -1893,6 +1971,15 @@ SUPPORT = {
             ),
         },
         {
+            "q": "Someone is being unkind in chat",
+            "a": (
+                "Tap Report under the message and church staff are told "
+                "straight away. Tap Block and you stop seeing that person's "
+                "messages immediately, without waiting for anybody. You can "
+                "undo a block on the You screen."
+            ),
+        },
+        {
             "q": "Giving is not working",
             "a": (
                 "Giving happens on {church}'s own giving platform. This app "
@@ -1917,7 +2004,63 @@ SUPPORT = {
     ),
 
     "privacy_link": "What is stored about you",
+    "community_link": "Community standards",
     "sign_in_link": "Back to sign in",
+}
+
+
+# The community standards. Public, because Apple's reviewer needs to read
+# them, and because a person deciding whether to join should be able to see
+# the rules before they agree to them.
+#
+# Short on purpose. Standards nobody reads protect nobody, and every line here
+# is one staff will actually enforce.
+COMMUNITY = {
+    "title": "Community standards",
+    "subtitle": "For chat at {church}.",
+    "intro": (
+        "Chat is where the people of {church} talk to each other. These are "
+        "the rules for it. There is no tolerance for content or behaviour "
+        "that breaks them."
+    ),
+    "rules": (
+        (
+            "Be kind",
+            "No insults, harassment, threats, or bullying, including in jest.",
+        ),
+        (
+            "Keep it clean",
+            "No sexual content, graphic violence, hate speech, or language "
+            "you would not use in the lobby on a Sunday.",
+        ),
+        (
+            "Protect each other",
+            "Never share somebody else's private details, and nothing about "
+            "children beyond what their own parent posts.",
+        ),
+        (
+            "No selling",
+            "No advertising, spam, fundraising for outside causes, or links "
+            "posted to get clicks.",
+        ),
+        (
+            "Be yourself",
+            "Post as you. Do not pretend to be somebody else.",
+        ),
+    ),
+    "enforcement_heading": "What happens if they are broken",
+    "enforcement": (
+        "Anybody can report a message or block the person who wrote it, from "
+        "the message itself. A block works immediately. Church staff read "
+        "every report, normally within a day, and can remove messages and "
+        "remove somebody from chat or the app entirely."
+    ),
+    "contact": (
+        "If something needs attention faster than that, contact {church} "
+        "directly."
+    ),
+    "support_link": "Help",
+    "privacy_link": "Privacy",
 }
 
 ERRORS = {

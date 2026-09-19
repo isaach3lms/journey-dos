@@ -66,6 +66,7 @@ def app():
             # behaviour rather than an inconvenience to work around.
             if verified:
                 u.mark_verified()
+            u.accept_community()
             return u
 
         _db.session.add_all(

@@ -230,3 +230,59 @@ class TestAMigratedSchemaMatchesTheModels:
                 f"The migrated CHECK constraint on service_item does not allow "
                 f"{kind!r}, but the model does."
             )
+
+
+class TestEveryCheckConstraintSurvivesMigration:
+    """Tests build the schema with `create_all` from the models. Production
+    builds it with migrations. Alembic does not diff CHECK constraints, so the
+    two drift silently whenever an allowed value is added.
+
+    It has happened twice: section headers in service plans, then a new
+    notification category that made every staff report alert fail with an
+    IntegrityError. Both passed the whole suite and failed in a running app.
+    The earlier guard checked only the constraint that had bitten; this one
+    checks all of them.
+    """
+
+    def test_the_migrated_schema_carries_every_model_constraint(self, tmp_path):
+        import re
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        import sqlalchemy as sa
+
+        from app.extensions import db
+
+        root = Path(__file__).resolve().parent.parent
+        uri = f"sqlite:///{tmp_path / 'migrated.sqlite'}"
+        result = subprocess.run(
+            [sys.executable, "-m", "flask", "db", "upgrade"],
+            cwd=root,
+            env={"PATH": "/usr/bin:/bin:/usr/local/bin", "FLASK_APP": "wsgi.py",
+                 "FLASK_ENV": "development", "DATABASE_URL": uri},
+            capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr[-1500:]
+
+        with sa.create_engine(uri).connect() as connection:
+            ddl = {
+                name: sql for name, sql in connection.execute(
+                    sa.text("SELECT name, sql FROM sqlite_master WHERE type='table'")
+                )
+            }
+
+        def norm(text) -> str:
+            return re.sub(r"[\s\"'()]", "", str(text)).lower()
+
+        drifted = [
+            f"{table.name}: {str(constraint.sqltext)[:80]}"
+            for table in db.metadata.sorted_tables
+            for constraint in table.constraints
+            if isinstance(constraint, sa.CheckConstraint)
+            and norm(constraint.sqltext) not in norm(ddl.get(table.name, ""))
+        ]
+        assert not drifted, (
+            "The models allow values the migrated database refuses. Replace "
+            "these constraints in a migration:\n" + "\n".join(drifted)
+        )

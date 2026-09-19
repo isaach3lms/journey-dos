@@ -341,6 +341,11 @@ class TestNoWayToSeeSomeoneElse:
     CONTENT_IDS = {
         "resource_id", "session_id", "meeting_id", "assignment_id",
         "conversation_id",
+        # Reporting and blocking. A block is made from a message, so the
+        # person blocked is whoever wrote something this person could already
+        # see, and an unblock goes by the block's own id, scoped to whoever
+        # is asking. Neither lets anybody name a person.
+        "message_id", "block_id",
     }
 
     def test_no_member_route_accepts_a_person_id(self, app):

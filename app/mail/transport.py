@@ -27,6 +27,13 @@ import urllib.request
 from dataclasses import dataclass, field
 
 RESEND_ENDPOINT = "https://api.resend.com/emails"
+
+# Sent on every outbound API call. Without it Python announces itself as
+# "Python-urllib/3.x", and Resend's Cloudflare front door rejects that
+# signature with "HTTP 403: error code: 1010" before the request ever reaches
+# Resend. The key, the domain, and the payload can all be perfect and nothing
+# sends.
+USER_AGENT = "JourneyDOS/1.0 (+https://betweensundaysconsulting.com)"
 DEFAULT_TIMEOUT = 15
 
 
@@ -89,6 +96,8 @@ class ResendTransport(Transport):
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
+                "Accept": "application/json",
+                "User-Agent": USER_AGENT,
             },
             method="POST",
         )

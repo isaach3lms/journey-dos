@@ -31,6 +31,8 @@ import json
 import urllib.error
 import urllib.parse
 import urllib.request
+
+from app.mail.transport import USER_AGENT
 from dataclasses import dataclass, field
 
 from app.models.bible import WEB_CODE, WEB_NAME, BibleVerse
@@ -121,7 +123,13 @@ class YouVersionProvider(BibleProvider):
         request = urllib.request.Request(
             f"{YOUVERSION_ENDPOINT}?reference={urllib.parse.quote(str(reference))}"
             f"&version={self.translation}",
-            headers={"X-YouVersion-Developer-Token": self.app_key},
+            headers={
+                "X-YouVersion-Developer-Token": self.app_key,
+                # See app/mail/transport.py: the default urllib signature is
+                # blocked by Cloudflare-fronted APIs.
+                "User-Agent": USER_AGENT,
+                "Accept": "application/json",
+            },
             method="GET",
         )
         with urllib.request.urlopen(request, timeout=self.timeout) as response:

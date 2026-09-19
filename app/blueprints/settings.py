@@ -438,3 +438,62 @@ def email_test():
             text += " " + SETTINGS[f"email_why_{why}"]
         flash(text, "error")
     return redirect(url_for("settings.index", _anchor="email"))
+
+
+RETRY_WINDOW_DAYS = 3
+
+
+@bp.post("/email/retry/")
+@login_required
+@min_role("staff")
+def email_retry():
+    """Put recently failed email back in line and send it now.
+
+    For the morning after a delivery problem is fixed: the people who signed
+    up while it was broken should get their link without signing up again.
+    Limited to three days, which is how long a confirmation link lasts; older
+    mail is stale and resending it would confuse more than it helps.
+    """
+    from datetime import timedelta
+
+    from app.mail import send_pending
+    from app.models import OutboxMessage
+    from app.models.base import utcnow
+
+    cutoff = utcnow() - timedelta(days=RETRY_WINDOW_DAYS)
+    stuck = db.session.scalars(
+        db.select(OutboxMessage).where(
+            OutboxMessage.church_id == g.church.id,
+            OutboxMessage.status == "failed",
+            OutboxMessage.queued_at >= cutoff,
+        )
+    ).all()
+    if not stuck:
+        flash(SETTINGS["email_retry_none"], "notice")
+        return redirect(url_for("settings.index", _anchor="email"))
+
+    ids = []
+    for message in stuck:
+        message.status = "queued"
+        message.attempts = 0
+        message.claim_token = None
+        message.claimed_at = None
+        ids.append(message.id)
+    db.session.commit()
+
+    try:
+        counts = send_pending(limit=len(ids), message_ids=ids)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Retry send failed; left for the worker")
+        counts = {"sent": 0, "failed": 0, "retrying": len(ids)}
+
+    flash(
+        SETTINGS["email_retry_done"].format(
+            total=len(ids),
+            sent=counts.get("sent", 0),
+            failed=counts.get("failed", 0) + counts.get("retrying", 0),
+        ),
+        "notice" if counts.get("sent") == len(ids) else "error",
+    )
+    return redirect(url_for("settings.index", _anchor="email"))

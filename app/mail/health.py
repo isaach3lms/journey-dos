@@ -25,6 +25,7 @@ STALE_AFTER = timedelta(minutes=10)
 # Plain-language readings of what the provider says, most specific first.
 # Matched against the lowercased error text.
 _EXPLANATIONS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("error code: 10",), "blocked_client"),
     (("domain", "not verified"), "domain_unverified"),
     (("verify a domain",), "domain_unverified"),
     (("only send testing emails",), "test_mode"),

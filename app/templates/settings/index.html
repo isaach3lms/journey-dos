@@ -197,6 +197,13 @@
         {% endfor %}
       </ul>
     {% endif %}
+    {% if email.failed %}
+      <form method="post" action="{{ url_for('settings.email_retry') }}">
+        {{ csrf_field() }}
+        <button class="btn ghostbtn" type="submit">{{ content.email_retry_button }}</button>
+        <p class="muted small">{{ content.email_retry_hint }}</p>
+      </form>
+    {% endif %}
     <form method="post" action="{{ url_for('settings.email_test') }}">
       {{ csrf_field() }}
       <button class="btn" type="submit">{{ content.email_test_button }}</button>

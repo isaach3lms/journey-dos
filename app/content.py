@@ -1827,6 +1827,16 @@ SETTINGS = {
     "email_test_console": "Written to the server log, not sent. This server is not set up to send real email.",
     "email_test_failed": "Not sent. The provider said: {error}",
     "email_test_not_queued": "Could not send a test: {reason}",
+    "email_why_blocked_client": (
+        "Resend's firewall turned the request away before it reached your "
+        "account. This was a bug in how the app identified itself, fixed in "
+        "the September 19 update. Once that is deployed, use Retry below to "
+        "send what was stuck."
+    ),
+    "email_retry_button": "Retry the ones that failed",
+    "email_retry_hint": "Sends failed email from the last 3 days again, now. Confirmation links stay valid for 3 days.",
+    "email_retry_done": "Retried {total}: {sent} sent, {failed} still failing.",
+    "email_retry_none": "Nothing from the last 3 days needs retrying.",
     "email_why_domain_unverified": (
         "Your sending domain is not verified with Resend. In Resend, open "
         "Domains, add thejourneychurchsemo.com, and add the DNS records it "

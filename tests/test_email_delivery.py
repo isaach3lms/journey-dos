@@ -336,3 +336,99 @@ class TestWorkerTick:
         text = (Path(__file__).resolve().parents[1] / "render.yaml").read_text()
         assert "startCommand: flask worker-tick" in text
         assert "&& flask send-outbox" not in text
+
+
+class TestCloudflareBlock:
+    """HTTP 403 "error code: 1010" is Cloudflare refusing Python's default
+    User-Agent before the request reaches Resend. Seen in production."""
+
+    def capture(self, monkeypatch):
+        import io
+        import json
+        import urllib.request
+
+        seen = {}
+
+        class Response(io.BytesIO):
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(request, timeout=None):
+            seen["headers"] = {k.lower(): v for k, v in request.header_items()}
+            return Response(json.dumps({"id": "abc"}).encode())
+
+        monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+        return seen
+
+    def test_resend_requests_carry_a_real_user_agent(self, monkeypatch):
+        from app.mail import ResendTransport
+
+        seen = self.capture(monkeypatch)
+        ResendTransport("re_test").send(
+            to_email="a@example.com", to_name=None, subject="s",
+            body_text="b", body_html=None, from_address="x@example.com",
+        )
+        agent = seen["headers"].get("user-agent", "")
+        assert agent and "python-urllib" not in agent.lower()
+
+    def test_1010_is_explained(self):
+        assert explain("HTTP 403: error code: 1010") == "blocked_client"
+
+
+class TestRetryButton:
+    def failed_row(self, db, days_ago=0, email="stuck@example.com"):
+        from datetime import timedelta
+
+        row = OutboxMessage(
+            church_id=journey(db).id, to_email=email, category="account",
+            subject="Confirm your email", body_text="link", status="failed",
+            attempts=1, last_error="HTTP 403: error code: 1010",
+            queued_at=utcnow() - timedelta(days=days_ago),
+        )
+        db.session.add(row)
+        db.session.commit()
+        return row
+
+    def test_resends_recent_failures(self, staff, db, transport):
+        row = self.failed_row(db)
+        response = staff.post(
+            "/settings/email/retry/", headers={"Host": JOURNEY_HOST}, follow_redirects=True
+        )
+        assert b"1 sent" in response.data
+        assert [m.to_email for m in transport.sent] == ["stuck@example.com"]
+        db.session.refresh(row)
+        assert row.status == "sent"
+
+    def test_leaves_stale_mail_alone(self, staff, db, transport):
+        self.failed_row(db, days_ago=5)
+        response = staff.post(
+            "/settings/email/retry/", headers={"Host": JOURNEY_HOST}, follow_redirects=True
+        )
+        assert b"Nothing from the last 3 days" in response.data
+        assert transport.sent == []
+
+    def test_only_this_church(self, staff, db, transport):
+        other = db.session.scalar(db.select(Church).where(Church.slug != "journey"))
+        db.session.add(OutboxMessage(
+            church_id=other.id, to_email="other@example.com", category="account",
+            subject="x", body_text="x", status="failed", attempts=1,
+            queued_at=utcnow(), last_error="HTTP 403",
+        ))
+        db.session.commit()
+        staff.post("/settings/email/retry/", headers={"Host": JOURNEY_HOST})
+        assert transport.sent == []
+
+    def test_members_cannot_retry(self, member, db, transport):
+        self.failed_row(db)
+        member.post("/settings/email/retry/", headers={"Host": JOURNEY_HOST})
+        assert transport.sent == []
+
+    def test_button_shows_only_when_something_failed(self, staff, db):
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST})
+        assert b"Retry the ones that failed" not in page.data
+        self.failed_row(db)
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST})
+        assert b"Retry the ones that failed" in page.data

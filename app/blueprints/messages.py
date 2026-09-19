@@ -131,7 +131,9 @@ def post(conversation_id: int):
 
     person = _acting_person()
     if not conversation.can_post(
-        getattr(person, "id", -1), is_staff=current_user.is_staff
+        person,
+        is_staff=current_user.is_staff,
+        is_leader=current_user.at_least("leader"),
     ):
         abort(403)
 
@@ -145,7 +147,7 @@ def post(conversation_id: int):
         flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
         return redirect(url_for("messages.thread", conversation_id=conversation.id))
 
-    Message.post(conversation, person, body[:4000])
+    Message.post(conversation, person, body[:4000], author_name=current_user.name)
 
     queued = 0
     if request.form.get("also_email") == "on" and conversation.is_announcement:

@@ -489,7 +489,11 @@ def chat_thread(conversation_id: int):
         messages=shown,
         hidden_count=hidden,
         me=person,
-        can_post=conversation.can_post(person, is_staff=current_user.is_staff),
+        can_post=conversation.can_post(
+            person,
+            is_staff=current_user.is_staff,
+            is_leader=current_user.at_least("leader"),
+        ),
         msg=MESSAGES,
         tab="chat",
         **_base_context(person),
@@ -506,7 +510,11 @@ def chat_post(conversation_id: int):
     conversation = Conversation.get_for_church(g.church.id, conversation_id)
     if conversation is None or not conversation.can_read(person):
         abort(404)
-    if not conversation.can_post(person, is_staff=current_user.is_staff):
+    if not conversation.can_post(
+            person,
+            is_staff=current_user.is_staff,
+            is_leader=current_user.at_least("leader"),
+        ):
         abort(403)
 
     if not current_user.has_accepted_community:

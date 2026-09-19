@@ -141,16 +141,26 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
 
         return any(m.person_id == person_id for m in self.members)
 
-    def can_post(self, person, is_staff: bool = False) -> bool:
-        """Only staff post to an announcement.
+    def can_post(self, person, is_staff: bool = False, is_leader: bool = False) -> bool:
+        """Who may write here.
 
-        A church-wide broadcast that anyone can reply to stops being an
-        announcement and becomes a room nobody chose to join.
+        Announcements: staff only. A church-wide broadcast that anyone can
+        reply to stops being an announcement and becomes a room nobody chose
+        to join.
+
+        Rooms: everyone in the room, plus staff and leaders whether or not
+        they were added. The room belongs to the church, the people running it
+        already read every word from the staff side, and a pastor who cannot
+        answer a question asked in his own group chat is the bug this rule
+        exists to prevent. It also covers a staff login with no roster record,
+        which can never be a room member.
         """
         if self.is_archived:
             return False
         if self.is_announcement:
             return is_staff
+        if is_staff or is_leader:
+            return True
         return self.can_read(person)
 
     def membership_for(self, person_id: int) -> "ConversationMember | None":
@@ -345,12 +355,15 @@ class Message(TenantScoped, TimestampMixin, db.Model):
         )
 
     @classmethod
-    def post(cls, conversation, author_person, body: str) -> "Message":
+    def post(cls, conversation, author_person, body: str,
+             author_name: str | None = None) -> "Message":
+        """`author_name` is the fallback for a staff login with no roster
+        record, so the room still sees who wrote it rather than "Someone"."""
         message = cls(
             church_id=conversation.church_id,
             conversation_id=conversation.id,
             author_person_id=getattr(author_person, "id", None),
-            author_name=getattr(author_person, "full_name", None),
+            author_name=getattr(author_person, "full_name", None) or author_name,
             body=body,
             sent_at=utcnow(),
         )
@@ -372,7 +385,13 @@ class Message(TenantScoped, TimestampMixin, db.Model):
             .where(
                 cls.church_id == church_id,
                 cls.is_deleted.is_(False),
-                cls.author_person_id != person_id,
+                # Staff without a roster record post with no person id.
+                # `!=` against NULL is NULL, which would hide every one of
+                # their messages from the badge.
+                db.or_(
+                    cls.author_person_id.is_(None),
+                    cls.author_person_id != person_id,
+                ),
                 ConversationMember.person_id == person_id,
                 # Messages from people this person blocked are not unread.
                 # The null check keeps authorless messages counted: NOT IN

@@ -593,6 +593,74 @@ form.inline .select{min-width:170px}
   .mtabs{position:sticky;bottom:0}
 }
 
+/* ---------- The member app on a computer ----------
+   Members only (.memberfull). Staff previews keep the phone frame on
+   purpose. Tabs move from the bottom to a top bar beside the logo, the
+   frame disappears, and content sits in a readable column. Home spreads
+   its cards two across because there is room to. */
+@media (min-width:701px) and (max-width:899px){
+  .memberfull .phonewrap{padding:0}
+  .memberfull .phone{
+    max-width:none;min-height:100vh;border:none;border-radius:0;box-shadow:none;
+  }
+  .memberfull .mbody{width:100%;max-width:720px;margin:0 auto;padding:28px 28px 40px}
+  .memberfull .mtabs{position:sticky;bottom:0}
+}
+
+@media (min-width:900px){
+  /* Lines the logo and the last tab up with the edges of the content. */
+  .memberfull{--mgutter:calc(max(0px, (100vw - 1080px) / 2) + 32px)}
+  .memberfull .phonewrap{display:block;padding:0}
+  .memberfull .phone{
+    max-width:none;min-height:100vh;
+    border:none;border-radius:0;box-shadow:none;overflow:visible;
+    background:var(--bone);
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr);
+    grid-template-rows:auto 1fr;
+    grid-template-areas:"head tabs" "body body";
+  }
+  .memberfull .mhead{
+    grid-area:head;position:sticky;top:0;z-index:5;
+    display:flex;align-items:center;
+    padding:16px 24px 16px var(--mgutter);
+  }
+  .memberfull .mhead .mark{width:132px}
+  .memberfull .mtabs{
+    grid-area:tabs;position:sticky;top:0;z-index:5;
+    background:var(--chrome);border-top:none;
+    justify-content:flex-end;align-items:stretch;gap:4px;
+    padding:0 calc(var(--mgutter) - 14px) 0 0;
+  }
+  .memberfull .mtabs a{
+    flex:none;display:flex;align-items:center;padding:0 14px;
+    font-size:14px;color:rgba(255,255,255,.72);
+  }
+  .memberfull .mtabs a:hover{color:#fff}
+  .memberfull .mtabs a[aria-current="page"]{
+    color:#fff;box-shadow:inset 0 -3px 0 var(--gold);
+  }
+
+  .memberfull .mbody{
+    grid-area:body;width:100%;max-width:760px;margin:0 auto;
+    padding:44px 32px 72px;gap:18px;
+  }
+  .memberfull .mgreet{font-size:30px}
+  .memberfull .msub{font-size:14.5px;margin-bottom:10px}
+  .memberfull .mcard{padding:22px 24px;border-radius:14px}
+  .memberfull .mbig{font-size:28px}
+  .memberfull .mtitle{font-size:16px}
+  .memberfull .mnote{font-size:14px}
+  .memberfull .mlbl{font-size:11px}
+
+  /* Home: two across. Headings, notices, and anything marked wide span. */
+  .memberfull .mbody.tab-home{
+    max-width:1080px;grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .memberfull .mbody.tab-home > *{grid-column:1 / -1}
+  .memberfull .mbody.tab-home > .mcard:not(.mwide){grid-column:auto}
+}
+
 /* ---------- Reading ---------- */
 .mlink{display:block}
 .mlink:hover{border-color:var(--line)}

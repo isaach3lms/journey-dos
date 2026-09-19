@@ -1,8 +1,10 @@
 {# The member app.
 
-   Phone-shaped on a desktop so staff can see exactly what a member sees, and
-   full-bleed on a phone where the frame would be absurd. One template, one
-   stylesheet, the same brand tokens as the staff view. #}<!doctype html>
+   A member on a computer gets a full-width layout with the tabs across the
+   top. Staff previewing it keep the phone frame, because the point of the
+   preview is to see what most members see, which is a phone. Full-bleed on a
+   phone either way. One template, one stylesheet, the same brand tokens as
+   the staff view. #}<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -11,7 +13,7 @@
 <title>{% block title %}{{ church.name }}{% endblock %}</title>
 {% include "partials/head_meta.html" %}
 </head>
-<body class="memberbody">
+<body class="memberbody{% if not is_preview %} memberfull{% endif %}">
 
 {% if is_preview %}
   <div class="previewbar">
@@ -31,7 +33,7 @@
       {% endif %}
     </header>
 
-    <main class="mbody">
+    <main class="mbody tab-{{ tab|default('none') }}">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% for category, message in messages %}
           <div class="alert {{ category }}" role="alert">{{ message }}</div>

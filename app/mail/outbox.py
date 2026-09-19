@@ -9,7 +9,10 @@ from __future__ import annotations
 
 import secrets
 
-from flask import current_app
+from sqlalchemy import event
+from sqlalchemy.orm import Session
+
+from flask import current_app, g, has_request_context
 
 from app.categories import CATEGORY_BY_CODE, category_label, is_transactional
 from app.extensions import db
@@ -26,6 +29,12 @@ from app.models.base import utcnow
 
 class NotQueued(Exception):
     """Raised when a message cannot even be queued, with the reason."""
+
+
+# Sent the moment the request commits, not on the next worker run. Only mail
+# a person is standing there waiting for: confirm your address, reset your
+# password, set up your account.
+SEND_NOW_CATEGORIES = frozenset({"account"})
 
 
 def queue(
@@ -90,10 +99,52 @@ def queue(
         created_by_user_id=getattr(actor, "id", None),
     )
     db.session.add(message)
+    if category in SEND_NOW_CATEGORIES and has_request_context():
+        g.setdefault("_outbox_send_now", []).append(message)
     return message
 
 
-def _claim(limit: int, church_id: int | None = None) -> tuple[str, list]:
+@event.listens_for(Session, "after_commit")
+def _mark_ready_to_send(session) -> None:
+    """Only a committed message is sent now. A request that rolled back its
+    sign-up must not email a link to an account that does not exist."""
+    if has_request_context() and "_outbox_send_now" in g:
+        g.setdefault("_outbox_ready", []).extend(g.pop("_outbox_send_now"))
+
+
+def deliver_queued_now() -> dict | None:
+    """Send this request's account emails now instead of waiting for cron.
+
+    Runs after every request (see create_app). A confirmation link that arrives five minutes
+    later, or never because the worker is down, is a person who gives up on
+    the sign-up form. Everything stays in the outbox first, so if this send
+    fails for any reason the row is still queued and the worker retries it.
+    Nothing here can fail the request.
+    """
+    if not has_request_context():
+        return None
+    pending = g.pop("_outbox_ready", None) or []
+    if not pending or not current_app.config.get("MAIL_SEND_NOW", True):
+        return None
+    ids = []
+    for message in pending:
+        try:
+            if message.id is not None:
+                ids.append(message.id)
+        except Exception:  # detached or rolled back: the worker has it
+            continue
+    if not ids:
+        return None
+    try:
+        return send_pending(limit=len(ids), message_ids=ids)
+    except Exception:
+        current_app.logger.exception("Immediate send failed; left for the worker")
+        db.session.rollback()
+        return None
+
+
+def _claim(limit: int, church_id: int | None = None,
+           message_ids: list[int] | None = None) -> tuple[str, list]:
     """Take up to `limit` queued rows for this worker, atomically.
 
     A conditional UPDATE that stamps a token, then a read of only what carries
@@ -109,6 +160,10 @@ def _claim(limit: int, church_id: int | None = None) -> tuple[str, list]:
     )
     if church_id is not None:
         selectable = selectable.where(OutboxMessage.church_id == church_id)
+    if message_ids is not None:
+        if not message_ids:
+            return token, []
+        selectable = selectable.where(OutboxMessage.id.in_(message_ids))
     ids = [
         row for row in db.session.scalars(
             selectable.order_by(OutboxMessage.queued_at, OutboxMessage.id).limit(limit)
@@ -136,15 +191,21 @@ def _claim(limit: int, church_id: int | None = None) -> tuple[str, list]:
     return token, claimed
 
 
-def send_pending(limit: int = 50, church_id: int | None = None, transport=None) -> dict:
-    """Send what is queued. Returns a count per outcome."""
+def send_pending(limit: int = 50, church_id: int | None = None, transport=None,
+                 message_ids: list[int] | None = None) -> dict:
+    """Send what is queued. Returns a count per outcome.
+
+    `message_ids` narrows the run to specific rows, which is how a request
+    sends its own account email immediately. The claim works the same way, so
+    the cron worker and a request can never both send one message.
+    """
     transport = transport or build_transport(current_app.config)
     from_address = current_app.config.get(
         "MAIL_FROM", "The Journey Church <no-reply@example.com>"
     )
 
     counts = {"sent": 0, "suppressed": 0, "failed": 0, "retrying": 0}
-    _, claimed = _claim(limit, church_id)
+    _, claimed = _claim(limit, church_id, message_ids)
 
     for message in claimed:
         person = (

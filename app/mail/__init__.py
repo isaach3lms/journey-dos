@@ -1,6 +1,13 @@
 """Email. Resend over HTTPS, queued through the outbox, never sent inline."""
 
-from app.mail.outbox import NotQueued, opt_in, opt_out, queue, send_pending
+from app.mail.outbox import (
+    NotQueued,
+    deliver_queued_now,
+    opt_in,
+    opt_out,
+    queue,
+    send_pending,
+)
 from app.mail.transport import (
     ConsoleTransport,
     MemoryTransport,
@@ -12,6 +19,7 @@ from app.mail.transport import (
 __all__ = [
     "queue",
     "send_pending",
+    "deliver_queued_now",
     "opt_in",
     "opt_out",
     "NotQueued",

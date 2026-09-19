@@ -147,6 +147,64 @@
   </div>
 </section>
 
+<section class="card" id="email">
+  <div class="hd">
+    <h2>{{ content.email_heading }}</h2>
+    <div class="spacer"></div>
+    {% set email_bad = (not email.real) or (not email.key_present) or email.stale or email.problems %}
+    <span class="pill {% if email_bad %}pending{% endif %}">
+      {% if not email.real %}{{ content.email_off }}{% elif email_bad %}{{ content.email_problem }}{% else %}{{ content.email_ok }}{% endif %}
+    </span>
+  </div>
+  <div class="bd">
+    <p>{{ content.email_intro }}</p>
+    {% if not email.real %}
+      <p class="alert error">{{ content.email_off_body }}</p>
+    {% elif not email.key_present %}
+      <p class="alert error">{{ content.email_no_key }}</p>
+    {% endif %}
+    {% if email.stale %}
+      <p class="alert error">{{ content.email_stale.format(minutes=email.waiting_minutes) }}</p>
+    {% endif %}
+    {% if email.latest_reason %}
+      <p class="alert error">{{ content['email_why_' ~ email.latest_reason] }}</p>
+    {% endif %}
+    <div class="metrics">
+      <div><span class="mono mv">{{ email.sent }}</span> {{ content.email_sent }}</div>
+      <div><span class="mono mv">{{ email.queued }}</span> {{ content.email_waiting }}</div>
+      <div><span class="mono mv">{{ email.failed }}</span> {{ content.email_failed }}</div>
+    </div>
+    <p class="muted small">
+      {% if email.last_sent %}{{ content.email_last_sent.format(when=email.last_sent|church_time("%b %-d, %-I:%M%p")) }}
+      {% else %}{{ content.email_never_sent }}{% endif %}
+      &middot; {{ content.email_from.format(address=email.from_address) }}
+    </p>
+    {% if email.problems %}
+      <h3>{{ content.email_problems_heading }}</h3>
+      <ul class="flaglist">
+        {% for problem in email.problems %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ problem.subject }}</span>
+              <span class="pe">
+                {{ problem.to_email }} &middot; {{ problem.status }} &middot;
+                {{ content.email_attempts.format(count=problem.attempts) }}
+                {% if problem.when %}&middot; {{ problem.when|church_time("%b %-d, %-I:%M%p") }}{% endif %}
+              </span>
+              <span class="pe mono small">{{ problem.error }}</span>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    <form method="post" action="{{ url_for('settings.email_test') }}">
+      {{ csrf_field() }}
+      <button class="btn" type="submit">{{ content.email_test_button }}</button>
+      <p class="muted small">{{ content.email_test_hint.format(email=current_user.email) }}</p>
+    </form>
+  </div>
+</section>
+
 <section class="card">
   <div class="hd"><h2>{{ content.replaces_heading }}</h2></div>
   <div class="bd">

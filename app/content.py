@@ -1781,6 +1781,76 @@ SETTINGS = {
         "World English Bible and the page says so."
     ),
 
+    # Email delivery
+    "email_heading": "Email delivery",
+    "email_intro": (
+        "Whether confirmation links, password resets, and church email are "
+        "actually leaving. Check here first when somebody says they never got "
+        "the link."
+    ),
+    "email_ok": "Working",
+    "email_problem": "Needs attention",
+    "email_off": "Not sending real email",
+    "email_sent": "Sent",
+    "email_waiting": "Waiting",
+    "email_failed": "Gave up",
+    "email_last_sent": "Last email left {when}.",
+    "email_never_sent": "No email has left this church yet.",
+    "email_from": "Sent from {address}",
+    "email_off_body": (
+        "This server is set to write email to its log instead of sending it. "
+        "Nobody receives anything. Set MAIL_TRANSPORT to resend on the web "
+        "service and the outbox job in Render."
+    ),
+    "email_no_key": (
+        "There is no Resend API key on this server. Add RESEND_API_KEY to the "
+        "web service and to the outbox job in Render, both of them."
+    ),
+    "email_stale": (
+        "The oldest email has been waiting {minutes} minutes. The sending job "
+        "runs every 5, so it is not running or not finishing. In Render, open "
+        "journey-dos-outbox and read its latest log."
+    ),
+    "email_problems_heading": "Recent problems",
+    "email_attempts": "{count} tries",
+    "email_test_button": "Send a test email to me",
+    "email_test_hint": "Goes to {email} immediately and shows you exactly what the provider said.",
+    "email_test_subject": "Test email from {church}",
+    "email_test_body": (
+        "Hello {name},\n\n"
+        "This is a test from the email settings at {church}. If you are "
+        "reading it, confirmation links and password resets are reaching "
+        "people.\n\n"
+        "{church}"
+    ),
+    "email_test_sent": "Sent. Check {email}, including spam. If it is not there in two minutes, the address is being filtered on the receiving end.",
+    "email_test_console": "Written to the server log, not sent. This server is not set up to send real email.",
+    "email_test_failed": "Not sent. The provider said: {error}",
+    "email_test_not_queued": "Could not send a test: {reason}",
+    "email_why_domain_unverified": (
+        "Your sending domain is not verified with Resend. In Resend, open "
+        "Domains, add thejourneychurchsemo.com, and add the DNS records it "
+        "shows at your domain registrar. Nothing sends until it says Verified."
+    ),
+    "email_why_test_mode": (
+        "Resend is still in test mode, which only delivers to the account "
+        "owner's own address. Verifying your domain in Resend ends test mode."
+    ),
+    "email_why_bad_key": (
+        "Resend does not recognise the API key. Create a new sending key in "
+        "Resend and paste it into RESEND_API_KEY on both Render services."
+    ),
+    "email_why_restricted_key": (
+        "The API key is not allowed to send. Create one with Sending access "
+        "in Resend and replace RESEND_API_KEY on both Render services."
+    ),
+    "email_why_bad_from": (
+        "The From address is not one Resend accepts. It must be on your "
+        "verified domain, like no-reply@thejourneychurchsemo.com."
+    ),
+    "email_why_rate_limited": "Resend is limiting how fast we send. These retry on their own.",
+    "email_why_network": "The server could not reach Resend. These retry on their own.",
+
     "support_heading": "Getting help",
     "support_body": (
         "Email isaac@betweensundaysconsulting.com and a person will answer. "

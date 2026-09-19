@@ -720,6 +720,49 @@ a{{
             for message in stuck:
                 click.echo(f"  {message.to_email:34} {(message.last_error or '')[:70]}")
 
+    @app.cli.command("worker-tick")
+    def worker_tick():
+        """Everything the five minute job does, where no step can stop another.
+
+        This used to be six commands joined with &&, which meant a failure in
+        the first one (sequences) silently stopped every email, including
+        sign-up confirmations. Each step now runs in its own try, sending
+        always runs, and the job still exits non-zero if anything failed so
+        Render shows it red.
+        """
+        import sys
+        import traceback
+
+        steps = (
+            ("run-sequences", ["run-sequences"]),
+            ("release-claims", ["release-claims", "--minutes", "15"]),
+            ("send-outbox", ["send-outbox"]),
+            ("purge-reset-tokens", ["purge-reset-tokens"]),
+            ("purge-audit", ["purge-audit"]),
+            ("purge-push", ["purge-push"]),
+        )
+        failed = []
+        for name, args in steps:
+            command = app.cli.get_command(click.get_current_context(), args[0])
+            try:
+                with command.make_context(name, list(args[1:])) as ctx:
+                    command.invoke(ctx)
+            except SystemExit as exc:
+                if exc.code in (0, None):
+                    continue
+                db.session.rollback()
+                failed.append(name)
+                click.echo(f"[{name}] FAILED (exit {exc.code})", err=True)
+            except Exception:
+                db.session.rollback()
+                failed.append(name)
+                click.echo(f"[{name}] FAILED", err=True)
+                traceback.print_exc()
+        if failed:
+            click.echo(f"worker-tick finished with failures: {', '.join(failed)}", err=True)
+            sys.exit(1)
+        click.echo("worker-tick finished")
+
     @app.cli.command("release-claims")
     @click.option("--minutes", default=15, help="Older than this many minutes.")
     def release_claims(minutes):

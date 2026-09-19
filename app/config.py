@@ -75,6 +75,9 @@ class BaseConfig:
     MAIL_FROM = os.environ.get("MAIL_FROM", "The Journey Church <no-reply@example.com>")
     MAIL_TIMEOUT = 15
     OUTBOX_BATCH_SIZE = 50
+    # Account email (confirm, reset, set up) goes out inside the request that
+    # queued it, rather than waiting up to five minutes for the worker.
+    MAIL_SEND_NOW = True
 
     # Push. VAPID identifies this application to the push services, so one key
     # pair covers every church. It lives here rather than in a column because
@@ -121,6 +124,9 @@ class TestingConfig(BaseConfig):
     # Only ever lowered here. See User._hash_method.
     PASSWORD_HASH_METHOD = "pbkdf2:sha256:1"
     MAIL_TRANSPORT = "memory"
+    # Off so tests can see what was queued. Tests of immediate delivery turn
+    # it on themselves.
+    MAIL_SEND_NOW = False
     PUSH_TRANSPORT = "memory"
 
 

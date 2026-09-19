@@ -163,6 +163,19 @@ def create_app(config_name: str | None = None) -> Flask:
         return format_local(value, getattr(g, "church", None), fmt)
 
     @app.after_request
+    def _deliver_account_mail(response):
+        """Account email leaves in the request that committed it.
+
+        The outbox row is written first either way, so a failure here leaves
+        it for the worker and never costs the person their response.
+        """
+        if response.status_code < 500:
+            from app.mail import deliver_queued_now
+
+            deliver_queued_now()
+        return response
+
+    @app.after_request
     def security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")

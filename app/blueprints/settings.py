@@ -9,6 +9,7 @@ from __future__ import annotations
 from flask import (
     Blueprint,
     abort,
+    current_app,
     flash,
     g,
     redirect,
@@ -23,6 +24,7 @@ from app.audit import record
 from app.brand import assert_accent_readable
 from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES, SETTINGS
 from app.extensions import db
+from app.mail.health import email_health, explain
 from app.models import AuditEvent, BibleVerse, Church, PasswordResetToken, User
 from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
@@ -69,6 +71,7 @@ def index():
         users=db.session.scalars(User.for_church(g.church.id)).all(),
         roles=ROLES,
         bible_verses=BibleVerse.verse_count(),
+        email=email_health(g.church.id),
         bible_books=len(BibleVerse.loaded_books()),
         **_cost_context(),
     )
@@ -379,3 +382,59 @@ def temporary_password(user_id: int):
         "notice",
     )
     return redirect(url_for("settings.index"))
+
+
+@bp.post("/email/test/")
+@login_required
+@min_role("staff")
+def email_test():
+    """Send one email to the person pressing the button, right now.
+
+    The answer on screen is the provider's own, so "domain not verified" or
+    "invalid API key" shows up here instead of in a log nobody opens. It goes
+    through the outbox like everything else, so a test that fails is visible
+    in the list below with the same error.
+    """
+    from app.mail import NotQueued, queue, send_pending
+    from app.models import OutboxMessage
+
+    try:
+        message = queue(
+            church_id=g.church.id,
+            category="account",
+            subject=SETTINGS["email_test_subject"].format(church=g.church.name),
+            body_text=SETTINGS["email_test_body"].format(
+                name=current_user.name, church=g.church.name
+            ),
+            to_email=current_user.email,
+            to_name=current_user.name,
+            actor=current_user,
+        )
+    except NotQueued as exc:
+        flash(SETTINGS["email_test_not_queued"].format(reason=exc), "error")
+        return redirect(url_for("settings.index", _anchor="email"))
+
+    db.session.commit()
+    # Sent here rather than after the request, so the result can be shown.
+    g.pop("_outbox_ready", None)
+    message_id = message.id
+
+    try:
+        send_pending(limit=1, message_ids=[message_id])
+    except Exception as exc:  # the provider, the network, or the key
+        db.session.rollback()
+        current_app.logger.exception("Test email failed")
+        flash(SETTINGS["email_test_failed"].format(error=str(exc)[:300]), "error")
+        return redirect(url_for("settings.index", _anchor="email"))
+
+    sent = db.session.get(OutboxMessage, message_id)
+    if sent.status == "sent":
+        key = "email_test_sent" if sent.provider_message_id != "console" else "email_test_console"
+        flash(SETTINGS[key].format(email=sent.to_email), "notice")
+    else:
+        why = explain(sent.last_error)
+        text = SETTINGS["email_test_failed"].format(error=(sent.last_error or "")[:300])
+        if why:
+            text += " " + SETTINGS[f"email_why_{why}"]
+        flash(text, "error")
+    return redirect(url_for("settings.index", _anchor="email"))

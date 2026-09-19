@@ -115,9 +115,11 @@ services:
     branch: main
     schedule: "*/5 * * * *"
     buildCommand: pip install -r requirements.txt
-    # Sequences queue first, then the outbox sends. Two steps in one job so
-    # a step that falls due is emailed in the same five minute window.
-    startCommand: flask run-sequences && flask send-outbox && flask release-claims --minutes 15 && flask purge-reset-tokens && flask purge-audit && flask purge-push
+    # One command that runs every step in order: sequences queue, abandoned
+    # claims are released, the outbox sends, then housekeeping. Each step is
+    # isolated, so one failing never stops email from going out. It used to
+    # be a chain joined with &&, where any early failure stopped all sending.
+    startCommand: flask worker-tick
     envVars:
       - key: FLASK_ENV
         value: production

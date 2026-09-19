@@ -144,9 +144,8 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
     def can_post(self, person, is_staff: bool = False, is_leader: bool = False) -> bool:
         """Who may write here.
 
-        Announcements: staff only. A church-wide broadcast that anyone can
-        reply to stops being an announcement and becomes a room nobody chose
-        to join.
+        Announcements: staff always. Leaders and approved members too when the
+        church has switched that on in Settings (Church.members_can_announce).
 
         Rooms: everyone in the room, plus staff and leaders whether or not
         they were added. The room belongs to the church, the people running it
@@ -158,10 +157,25 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         if self.is_archived:
             return False
         if self.is_announcement:
-            return is_staff
+            if is_staff:
+                return True
+            if not self.members_may_announce():
+                return False
+            # Leaders, and members the church has approved. can_read is the
+            # approval check, so a stranger who signed up this morning cannot
+            # broadcast to the whole church.
+            # Needs the Person itself: a bare id carries no approval, and
+            # defaulting that to "approved" would let anyone broadcast.
+            return is_leader or bool(getattr(person, "is_approved", False))
         if is_staff or is_leader:
             return True
         return self.can_read(person)
+
+    def members_may_announce(self) -> bool:
+        from app.models.church import Church
+
+        church = db.session.get(Church, self.church_id)
+        return bool(church and church.members_can_announce)
 
     def membership_for(self, person_id: int) -> "ConversationMember | None":
         for member in self.members:
@@ -370,6 +384,20 @@ class Message(TenantScoped, TimestampMixin, db.Model):
         db.session.add(message)
         conversation.last_message_at = message.sent_at
         return message
+
+    @classmethod
+    def recent_for_church(cls, church_id: int, limit: int = 40):
+        """The newest messages across every chat, for staff to watch.
+
+        One list rather than one room at a time, because monitoring that
+        requires opening twelve rooms is monitoring that does not happen.
+        """
+        return (
+            db.select(cls)
+            .where(cls.church_id == church_id, cls.is_deleted.is_(False))
+            .order_by(cls.sent_at.desc(), cls.id.desc())
+            .limit(limit)
+        )
 
     @classmethod
     def unread_total(cls, church_id: int, person_id: int) -> int:

@@ -1,7 +1,103 @@
 {% extends "base.html" %}
-{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
-{% block heading %}{{ content.title }}{% endblock %}
-{% block subheading %}{{ content.subtitle }}{% endblock %}
+{% block title %}{{ content.title }} | {{ church.name }}
+<section class="card" id="recent">
+  <div class="hd"><h2>{{ content.recent_heading }}</h2></div>
+  <div class="bd">
+    <p class="muted small">{{ content.recent_hint }}</p>
+    {% if recent %}
+      <ul class="flaglist">
+        {% for message in recent %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ message.author_name or "Someone" }}
+                <span class="muted">&middot;
+                  <a href="{{ url_for('messages.thread', conversation_id=message.conversation_id) }}">{{ message.conversation.title }}</a>
+                  &middot; {{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+              </span>
+              <span class="pe">{{ message.body|truncate(220) }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_message', conversation_id=message.conversation_id, message_id=message.id) }}"
+                  onsubmit='return confirm({{ content.delete_confirm | tojson }})'>
+              {{ csrf_field() }}
+              <input type="hidden" name="back" value="recent">
+              <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.recent_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block heading %}{{ content.title }}
+<section class="card" id="recent">
+  <div class="hd"><h2>{{ content.recent_heading }}</h2></div>
+  <div class="bd">
+    <p class="muted small">{{ content.recent_hint }}</p>
+    {% if recent %}
+      <ul class="flaglist">
+        {% for message in recent %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ message.author_name or "Someone" }}
+                <span class="muted">&middot;
+                  <a href="{{ url_for('messages.thread', conversation_id=message.conversation_id) }}">{{ message.conversation.title }}</a>
+                  &middot; {{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+              </span>
+              <span class="pe">{{ message.body|truncate(220) }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_message', conversation_id=message.conversation_id, message_id=message.id) }}"
+                  onsubmit='return confirm({{ content.delete_confirm | tojson }})'>
+              {{ csrf_field() }}
+              <input type="hidden" name="back" value="recent">
+              <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.recent_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
+{% block subheading %}{{ content.subtitle }}
+<section class="card" id="recent">
+  <div class="hd"><h2>{{ content.recent_heading }}</h2></div>
+  <div class="bd">
+    <p class="muted small">{{ content.recent_hint }}</p>
+    {% if recent %}
+      <ul class="flaglist">
+        {% for message in recent %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ message.author_name or "Someone" }}
+                <span class="muted">&middot;
+                  <a href="{{ url_for('messages.thread', conversation_id=message.conversation_id) }}">{{ message.conversation.title }}</a>
+                  &middot; {{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+              </span>
+              <span class="pe">{{ message.body|truncate(220) }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_message', conversation_id=message.conversation_id, message_id=message.id) }}"
+                  onsubmit='return confirm({{ content.delete_confirm | tojson }})'>
+              {{ csrf_field() }}
+              <input type="hidden" name="back" value="recent">
+              <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.recent_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}
 
 {% block content %}
 {% if open_reports %}
@@ -56,6 +152,38 @@
         <div class="t">{{ content.empty }}</div>
         <div class="d">{{ content.empty_hint }}</div>
       </div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card" id="recent">
+  <div class="hd"><h2>{{ content.recent_heading }}</h2></div>
+  <div class="bd">
+    <p class="muted small">{{ content.recent_hint }}</p>
+    {% if recent %}
+      <ul class="flaglist">
+        {% for message in recent %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ message.author_name or "Someone" }}
+                <span class="muted">&middot;
+                  <a href="{{ url_for('messages.thread', conversation_id=message.conversation_id) }}">{{ message.conversation.title }}</a>
+                  &middot; {{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+              </span>
+              <span class="pe">{{ message.body|truncate(220) }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_message', conversation_id=message.conversation_id, message_id=message.id) }}"
+                  onsubmit='return confirm({{ content.delete_confirm | tojson }})'>
+              {{ csrf_field() }}
+              <input type="hidden" name="back" value="recent">
+              <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.recent_empty }}</p>
     {% endif %}
   </div>
 </section>

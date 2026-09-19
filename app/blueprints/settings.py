@@ -195,6 +195,34 @@ def toggle_signup():
     return redirect(url_for("settings.index"))
 
 
+@bp.post("/announcements/")
+@login_required
+@min_role("staff")
+def toggle_member_announcements():
+    """Let members post church-wide announcements, or stop them.
+
+    One switch, audited, so a church can turn it off in a bad week without a
+    deploy and turn it back on after.
+    """
+    church = g.church
+    church.members_can_announce = not church.members_can_announce
+    record(
+        BRAND_CHANGED,
+        "Member announcements turned " + ("on" if church.members_can_announce else "off"),
+        actor=current_user,
+        subject_type="church",
+        subject_id=church.id,
+        subject_label=church.name,
+    )
+    db.session.commit()
+    flash(
+        SETTINGS["announce_changed_on"] if church.members_can_announce
+        else SETTINGS["announce_changed_off"],
+        "notice",
+    )
+    return redirect(url_for("settings.index", _anchor="announcements"))
+
+
 # ---------------------------------------------------------------------------
 # Accounts
 #

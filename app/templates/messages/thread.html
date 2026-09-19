@@ -105,6 +105,14 @@
       {{ csrf_field() }}
       <button class="btn ghostbtn" type="submit">{{ content.archive }}</button>
     </form>
+    {% if current_user.is_staff %}
+      <form method="post" action="{{ url_for('messages.delete_chat', conversation_id=conversation.id) }}" class="inline"
+            onsubmit='return confirm({{ content.delete_chat_confirm.format(title=conversation.title) | tojson }})'>
+        {{ csrf_field() }}
+        <button class="btn ghostbtn" type="submit">{{ content.delete_chat }}</button>
+      </form>
+      <p class="muted small">{{ content.delete_chat_hint }}</p>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

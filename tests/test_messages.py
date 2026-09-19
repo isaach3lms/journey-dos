@@ -155,8 +155,12 @@ class TestWhoCanPost:
         assert announcement.can_post(alicia.id, is_staff=True)
 
     def test_a_member_posting_to_an_announcement_is_refused(
-        self, announcement, alicia, member
+        self, announcement, alicia, member, db
     ):
+        """When the church has member announcements switched off."""
+        church = db.session.get(Church, announcement.church_id)
+        church.members_can_announce = False
+        db.session.commit()
         r = member.post(
             f"/me/chat/{announcement.id}/",
             data={"body": "Can I reply?"},

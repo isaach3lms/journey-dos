@@ -1466,6 +1466,16 @@ MESSAGES = {
     "members_empty": "Nobody added yet.",
     "already_in": "{name} is already in this room.",
 
+    "delete_confirm": "Delete this message? Everyone stops seeing it straight away.",
+    "delete_chat": "Delete this chat",
+    "delete_chat_confirm": "Delete {title}? Every message in it is cleared and it disappears for everyone. This cannot be undone.",
+    "delete_chat_hint": "Archive hides a chat and keeps its messages. Delete clears every message too. Both are recorded in Settings under What happened here.",
+    "chat_deleted": "{title} deleted. {count} messages cleared.",
+    "recent_heading": "Latest messages everywhere",
+    "recent_hint": "Every chat and announcement in one list, newest first, so you can keep an eye on things without opening each room.",
+    "recent_empty": "Nobody has posted yet.",
+    "announce_limit": "You have posted {count} church-wide announcements today. Try again tomorrow, or ask the church office to share it.",
+    "announce_member_note": "This goes to everyone at {church}. Staff can remove anything posted here.",
     "delete": "Delete",
     "deleted": "Message removed.",
     "deleted_placeholder": "This message was removed.",
@@ -1780,6 +1790,21 @@ SETTINGS = {
         "translation, so if that service is unavailable your people read the "
         "World English Bible and the page says so."
     ),
+
+    # Member announcements
+    "announce_heading": "Who can post church-wide announcements",
+    "announce_on": "Staff, leaders, and members",
+    "announce_off": "Staff only",
+    "announce_hint": (
+        "With this on, approved members can post to church-wide announcement "
+        "chats, up to 5 a day each. The word filter applies, anyone can "
+        "report a post, and staff can delete anything from Messages. Only "
+        "staff can email an announcement."
+    ),
+    "announce_toggle_on": "Let members post announcements",
+    "announce_toggle_off": "Only staff post announcements",
+    "announce_changed_on": "Members can now post church-wide announcements.",
+    "announce_changed_off": "Only staff can post announcements now.",
 
     # Email delivery
     "email_heading": "Email delivery",

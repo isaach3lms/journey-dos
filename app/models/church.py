@@ -17,7 +17,7 @@ from typing import Optional
 
 import re
 
-from sqlalchemy import String, Boolean, UniqueConstraint, false
+from sqlalchemy import String, Boolean, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -74,6 +74,15 @@ class Church(TimestampMixin, db.Model):
     # deliberately by somebody who understands what it opens.
     allow_self_signup: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
+    )
+
+    # Whether members, not only staff, can post church-wide announcements.
+    # On by the church's choice. Only members staff have approved can post,
+    # the word filter applies, every post can be reported, and staff can
+    # delete any of it. Emailing an announcement stays staff only, because an
+    # inbox is harder to take back than a screen.
+    members_can_announce: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
     )
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

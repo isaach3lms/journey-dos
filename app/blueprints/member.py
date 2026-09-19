@@ -494,6 +494,7 @@ def chat_thread(conversation_id: int):
             is_staff=current_user.is_staff,
             is_leader=current_user.at_least("leader"),
         ),
+        can_moderate=current_user.at_least("leader"),
         msg=MESSAGES,
         tab="chat",
         **_base_context(person),
@@ -532,9 +533,64 @@ def chat_post(conversation_id: int):
         flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
         return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
 
+    if (
+        conversation.is_announcement
+        and not current_user.at_least("leader")
+        and _announcements_today(person) >= MEMBER_ANNOUNCEMENTS_PER_DAY
+    ):
+        flash(MESSAGES["announce_limit"].format(count=MEMBER_ANNOUNCEMENTS_PER_DAY), "error")
+        return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
     Message.post(conversation, person, body[:4000])
     db.session.commit()
 
+    return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
+
+# A member can post to the whole church, but not flood it. Staff and leaders
+# are not limited: they are the ones who would be cleaning up after it.
+MEMBER_ANNOUNCEMENTS_PER_DAY = 5
+
+
+def _announcements_today(person) -> int:
+    from datetime import timedelta
+
+    from sqlalchemy import func
+
+    from app.models.base import utcnow
+    from app.models.message import KIND_ANNOUNCEMENT
+
+    return db.session.scalar(
+        db.select(func.count(Message.id))
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .where(
+            Message.church_id == person.church_id,
+            Message.author_person_id == person.id,
+            Conversation.kind == KIND_ANNOUNCEMENT,
+            Message.sent_at >= utcnow() - timedelta(hours=24),
+        )
+    ) or 0
+
+
+@bp.post("/chat/<int:conversation_id>/messages/<int:message_id>/delete/")
+@login_required
+def delete_message(conversation_id: int, message_id: int):
+    """Staff and leaders deleting from the member app, on their phone.
+
+    Same rule and same code path as the staff screen, so a pastor who sees
+    something in the group chat on Sunday can take it down without finding
+    a laptop.
+    """
+    from app.blueprints.messages import remove_message
+
+    if not current_user.at_least("leader"):
+        abort(403)
+    person, conversation, message = _message_this_person_can_see(
+        conversation_id, message_id
+    )
+    remove_message(conversation, message, current_user)
+    db.session.commit()
+    flash(MESSAGES["deleted"], "notice")
     return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
 
 

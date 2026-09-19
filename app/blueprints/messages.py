@@ -22,7 +22,7 @@ from flask_login import current_user, login_required
 
 from app.audit import record
 from app.content import MESSAGES
-from app.models.audit import MESSAGE_DELETED, REPORT_RESOLVED
+from app.models.audit import CHAT_DELETED, MESSAGE_DELETED, REPORT_RESOLVED
 from app.models.moderation import (
     REPORT_DISMISSED,
     REPORT_OPEN,
@@ -65,6 +65,7 @@ def index():
         church=g.church,
         content=MESSAGES,
         conversations=db.session.scalars(Conversation.for_church(g.church.id)).all(),
+        recent=db.session.scalars(Message.recent_for_church(g.church.id)).all(),
         kinds=(KIND_ANNOUNCEMENT, KIND_ROOM),
         open_reports=MessageReport.open_count(g.church.id),
         active="messages",
@@ -202,21 +203,69 @@ def delete_message(conversation_id: int, message_id: int):
     if conversation is None or message is None or message.conversation_id != conversation.id:
         abort(404)
 
+    remove_message(conversation, message, current_user)
+    db.session.commit()
+
+    flash(MESSAGES["deleted"], "notice")
+    # From the monitoring list, go back to the list, not into the room.
+    if request.form.get("back") == "recent":
+        return redirect(url_for("messages.index", _anchor="recent"))
+    return redirect(url_for("messages.thread", conversation_id=conversation.id))
+
+
+def remove_message(conversation, message, actor) -> None:
+    """Delete one message, close its reports, and record who did it.
+
+    The one path for every delete, from the staff screen, the monitoring
+    list, or a leader's phone, so they cannot drift apart. Caller commits.
+    """
     author = message.author_name or "someone"
     message.soft_delete()
     _close_reports_for(message, REPORT_REMOVED)
     record(
         MESSAGE_DELETED,
         f"A message from {author} was deleted in {conversation.title}",
-        actor=current_user,
+        actor=actor,
         subject_type="message",
         subject_id=message.id,
         subject_label=conversation.title,
     )
+
+
+@bp.post("/<int:conversation_id>/delete/")
+@login_required
+@min_role("staff")
+def delete_chat(conversation_id: int):
+    """Remove a whole chat.
+
+    Staff only. Every message is cleared the same way a single delete clears
+    one, the chat is closed so nobody can post, and it drops off every
+    member's list. The rows stay so the audit log and any report still point
+    at something, which is also why this is not a hard delete.
+    """
+    conversation = Conversation.get_for_church(g.church.id, conversation_id)
+    if conversation is None:
+        abort(404)
+
+    cleared = 0
+    for message in conversation.messages:
+        if not message.is_deleted:
+            message.soft_delete()
+            _close_reports_for(message, REPORT_REMOVED)
+            cleared += 1
+    conversation.is_archived = True
+    record(
+        CHAT_DELETED,
+        f"{conversation.title} was deleted with {cleared} messages",
+        actor=current_user,
+        subject_type="conversation",
+        subject_id=conversation.id,
+        subject_label=conversation.title,
+    )
     db.session.commit()
 
-    flash(MESSAGES["deleted"], "notice")
-    return redirect(url_for("messages.thread", conversation_id=conversation.id))
+    flash(MESSAGES["chat_deleted"].format(title=conversation.title, count=cleared), "notice")
+    return redirect(url_for("messages.index"))
 
 
 @bp.post("/<int:conversation_id>/members/")

@@ -147,6 +147,25 @@
   </div>
 </section>
 
+<section class="card" id="announcements">
+  <div class="hd">
+    <h2>{{ content.announce_heading }}</h2>
+    <div class="spacer"></div>
+    <span class="pill {% if not church.members_can_announce %}pending{% endif %}">
+      {% if church.members_can_announce %}{{ content.announce_on }}{% else %}{{ content.announce_off }}{% endif %}
+    </span>
+  </div>
+  <div class="bd">
+    <p>{{ content.announce_hint }}</p>
+    <form method="post" action="{{ url_for('settings.toggle_member_announcements') }}">
+      {{ csrf_field() }}
+      <button class="btn {% if church.members_can_announce %}ghostbtn{% endif %}" type="submit">
+        {% if church.members_can_announce %}{{ content.announce_toggle_off }}{% else %}{{ content.announce_toggle_on }}{% endif %}
+      </button>
+    </form>
+  </div>
+</section>
+
 <section class="card" id="email">
   <div class="hd">
     <h2>{{ content.email_heading }}</h2>

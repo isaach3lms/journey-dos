@@ -79,7 +79,9 @@ class TestStaffCanPostInRooms:
         assert response.status_code == 302
         assert messages_in(db, convo)[0].author_name == "Dana Webb"
 
-    def test_leaders_still_cannot_post_announcements(self, client, sign_in, db):
+    def test_leaders_cannot_post_announcements_when_switched_off(self, client, sign_in, db):
+        church(db).members_can_announce = False
+        db.session.commit()
         convo = room(db, kind=KIND_ANNOUNCEMENT)
         sign_in("leader@journeychurchsemo.com")
         response = client.post(f"/messages/{convo.id}/post/", data={"body": "Hi everyone"}, headers=H)
@@ -165,5 +167,13 @@ class TestTheRuleItself:
         assert r.can_post(outsider) is False
         assert r.can_post(None, is_leader=True) is True
         assert r.can_post(None, is_staff=True) is True
+        assert a.can_post(None, is_staff=True) is True
+        # Member announcements on (the default).
+        assert a.can_post(outsider) is True
+        assert a.can_post(None, is_leader=True) is True
+        # And off.
+        c.members_can_announce = False
+        db.session.commit()
+        assert a.can_post(outsider) is False
         assert a.can_post(None, is_leader=True) is False
         assert a.can_post(None, is_staff=True) is True

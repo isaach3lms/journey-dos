@@ -1,60 +1,106 @@
 {% extends "base.html" %}
+{% from "resources/_glyph.html" import glyph %}
 {% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
+{% block actions %}
+  <button class="btn ghostbtn" type="button" data-search-toggle>{{ content.search }}</button>
+  <button class="btn" type="button" data-open="new-resource">{{ content.add_resource }}</button>
+{% endblock %}
+
 {% block content %}
+<div class="ressearch" data-search hidden>
+  <input class="input" type="search" placeholder="{{ content.search_placeholder }}"
+         aria-label="{{ content.search_placeholder }}" data-search-input>
+  <p class="muted small" data-search-none hidden>{{ content.search_none }}</p>
+</div>
 
 <section class="card">
-  <div class="hd"><h2>{{ content.new_heading }}</h2></div>
-  <div class="bd">
-    <form method="post" action="{{ url_for('resources.create') }}">
-      {{ csrf_field() }}
-      <div class="filters">
-        <input class="input" type="text" name="title"
-               placeholder="{{ content.new_title_placeholder }}"
-               aria-label="{{ content.new_title }}">
-        <select class="input select" name="kind" aria-label="{{ content.new_kind }}">
-          {% for kind in kinds %}
-            <option value="{{ kind }}">{{ kind_labels[kind] }}</option>
-          {% endfor %}
-        </select>
-        <button class="btn" type="submit">{{ content.create }}</button>
-      </div>
-      <input class="input" type="text" name="summary"
-             placeholder="{{ content.new_summary_placeholder }}"
-             aria-label="{{ content.new_summary }}">
-    </form>
+  <div class="hd">
+    <h2>{{ content.library_heading }}</h2>
+    <div class="spacer"></div>
+    <button class="btn ghostbtn tiny" type="button" data-open="new-resource">{{ content.add_resource }}</button>
   </div>
-</section>
-
-<section class="card">
   <div class="bd">
-    <p>{{ content.intro.format(church=church.name) }}</p>
-    {% if resources %}
-      <ul class="flaglist">
-        {% for resource in resources %}
-          <li>
-            <a href="{{ url_for('resources.edit', resource_id=resource.id) }}">
-              <span class="fl">
-                <span class="pn">{{ resource.title }}</span>
-                <span class="pe">
-                  {{ resource.kind_label }} &middot;
-                  {% if resource.session_count == 0 %}{{ content.no_sessions }}
-                  {% elif resource.session_count == 1 %}{{ content.one_session }}
-                  {% else %}{{ content.sessions.format(count=resource.session_count) }}{% endif %}
-                  &middot;
-                  {% set count = started.get(resource.id, 0) %}
-                  {% if count %}{{ content.started.format(count=count) }}
-                  {% else %}{{ content.started_none }}{% endif %}
-                </span>
+    <p>{{ content.library_intro.format(church=church.name) }}</p>
+
+    <div class="resgrid">
+      {% for resource in resources %}
+        {% set count = started.get(resource.id, 0) %}
+        <article class="rescard" data-title="{{ resource.title|lower }}">
+          <button class="rescover {{ resource.cover_class }}" type="button"
+                  data-open="plan-{{ resource.id }}" aria-label="{{ resource.title }}">
+            {{ glyph(resource.kind) }}
+            <span class="resbadge">{{ resource.status_label }}</span>
+          </button>
+          <div class="resbody">
+            <button class="rt" type="button" data-open="plan-{{ resource.id }}">{{ resource.title }}</button>
+            <p class="rd">{{ resource.summary or "" }}</p>
+            <div class="rf">
+              <span class="kindchip">{{ resource.kind_label }}</span>
+              <span class="m">
+                {% if resource.session_count == 1 %}{{ content.card_one_session }}
+                {% else %}{{ content.card_sessions.format(count=resource.session_count) }}{% endif %}
+                {% if count %} &middot; {{ content.card_started.format(count=count) }}{% endif %}
               </span>
-              <span class="pill {% if not resource.is_published %}pending{% endif %}">{{ resource.status_label }}</span>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
+            </div>
+            <div class="rf">
+              <a class="btn ghostbtn tiny" href="{{ url_for('resources.edit', resource_id=resource.id) }}">{{ content.edit_plan }}</a>
+              <span class="m">{{ content.click_to_open }}</span>
+            </div>
+          </div>
+        </article>
+
+        {# The plan overview, as in the demo: cover, description, the sessions
+           in order, and a way into the editor. #}
+        <dialog class="plandialog" id="plan-{{ resource.id }}" aria-label="{{ resource.title }}">
+          <div class="planbanner {{ resource.cover_class }}">
+            {{ glyph(resource.kind) }}
+            <button class="planx" type="button" data-close aria-label="{{ content.close }}">&times;</button>
+          </div>
+          <div class="planhead">
+            <div class="eyebrow">{{ resource.kind_label }} &middot;
+              {% if resource.session_count == 1 %}{{ content.card_one_session }}{% else %}{{ content.card_sessions.format(count=resource.session_count) }}{% endif %}
+              &middot; {{ resource.status_label }}</div>
+            <h3>{{ resource.title }}</h3>
+            {% if resource.summary %}<p>{{ resource.summary }}</p>{% endif %}
+          </div>
+          <div class="plandays">
+            {% for session in resource.sessions %}
+              <a class="dayrow" href="{{ url_for('resources.edit', resource_id=resource.id, session=session.id) }}#s{{ session.id }}">
+                <span class="dn">{{ session.position }}</span>
+                <span class="dtext">
+                  <span class="dt">{{ session.title }}</span>
+                  <span class="ds">{{ session.passage_ref or content.no_passage }}{% if session.minutes %} &middot; {{ content.minutes.format(count=session.minutes) }}{% endif %}</span>
+                </span>
+                <span class="dpill">{{ content.session_edit }}</span>
+              </a>
+            {% else %}
+              <p class="muted small planempty">{{ content.session_none }}</p>
+            {% endfor %}
+          </div>
+          <div class="planfoot">
+            <span class="note">
+              {% if count == 1 %}{{ content.started_people_one }}
+              {% elif count %}{{ content.started_people.format(count=count) }}
+              {% else %}{{ content.started_people_none }}{% endif %}
+            </span>
+            {% if resource.is_published %}
+              <a class="btn ghostbtn" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">{{ content.open_member }}</a>
+            {% endif %}
+            <a class="btn" href="{{ url_for('resources.edit', resource_id=resource.id) }}">{{ content.edit_plan }}</a>
+          </div>
+        </dialog>
+      {% endfor %}
+
+      <button class="rescard resadd" type="button" data-open="new-resource">
+        <span class="plus">+</span>
+        <span>{{ content.add_resource }}</span>
+      </button>
+    </div>
+
+    {% if not resources %}
       <div class="empty">
         <div class="t">{{ content.empty }}</div>
         <div class="d">{{ content.empty_hint }}</div>
@@ -62,4 +108,91 @@
     {% endif %}
   </div>
 </section>
+
+{% if archived %}
+<section class="card">
+  <div class="hd"><h2>{{ content.archived_heading }}</h2></div>
+  <div class="bd">
+    <p>{{ content.archived_hint }}</p>
+    <ul class="flaglist">
+      {% for resource in archived %}
+        <li>
+          <span class="fl"><span class="pn">{{ resource.title }}</span><span class="pe">{{ resource.kind_label }}</span></span>
+          <form method="post" class="inline" action="{{ url_for('resources.restore', resource_id=resource.id) }}">
+            {{ csrf_field() }}
+            <button class="btn ghostbtn tiny" type="submit">{{ content.restore }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+
+<dialog class="plandialog formdialog" id="new-resource" aria-label="{{ content.add_resource }}">
+  <form method="post" action="{{ url_for('resources.create') }}">
+    {{ csrf_field() }}
+    <div class="formhead">
+      <h3>{{ content.add_resource }}</h3>
+      <button class="planx dark" type="button" data-close aria-label="{{ content.close }}">&times;</button>
+    </div>
+    <div class="formbody">
+      {% include "resources/_cover_picker.html" %}
+      <label class="flabel" for="new-title">{{ content.field_title }}</label>
+      <input class="input" id="new-title" type="text" name="title" required
+             placeholder="{{ content.new_title_placeholder }}">
+      <label class="flabel" for="new-kind">{{ content.field_kind }}</label>
+      <select class="input select" id="new-kind" name="kind">
+        {% for kind in kinds %}<option value="{{ kind }}">{{ kind_labels[kind] }}</option>{% endfor %}
+      </select>
+      <label class="flabel" for="new-summary">{{ content.field_summary }}</label>
+      <textarea class="input" id="new-summary" name="summary" rows="2"
+                placeholder="{{ content.field_summary_placeholder }}"></textarea>
+    </div>
+    <div class="planfoot">
+      <span class="note">{{ content.created_hint }}</span>
+      <button class="btn ghostbtn" type="button" data-close>{{ content.cancel }}</button>
+      <button class="btn" type="submit">{{ content.create }}</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* Opening the plan overview and the add form, and filtering by title. The
+   page works without it: every card also has an Edit plan link. */
+(function () {
+  document.addEventListener("click", function (event) {
+    var opener = event.target.closest("[data-open]");
+    if (opener) {
+      var dialog = document.getElementById(opener.getAttribute("data-open"));
+      if (dialog && dialog.showModal) { dialog.showModal(); }
+      return;
+    }
+    if (event.target.closest("[data-close]")) {
+      var open = event.target.closest("dialog");
+      if (open) { open.close(); }
+      return;
+    }
+    if (event.target.tagName === "DIALOG") { event.target.close(); }
+    if (event.target.closest("[data-search-toggle]")) {
+      var box = document.querySelector("[data-search]");
+      box.hidden = !box.hidden;
+      if (!box.hidden) { box.querySelector("input").focus(); }
+    }
+  });
+  var input = document.querySelector("[data-search-input]");
+  if (input) {
+    input.addEventListener("input", function () {
+      var q = input.value.trim().toLowerCase(), shown = 0;
+      document.querySelectorAll(".rescard[data-title]").forEach(function (card) {
+        var hit = !q || card.getAttribute("data-title").indexOf(q) !== -1;
+        card.hidden = !hit; if (hit) { shown++; }
+      });
+      document.querySelector("[data-search-none]").hidden = shown > 0;
+    });
+  }
+})();
+</script>
 {% endblock %}

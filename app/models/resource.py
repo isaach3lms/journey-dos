@@ -66,6 +66,11 @@ STATUS_LABELS = {
     STATUS_ARCHIVED: "Archived",
 }
 
+# Cover artwork: six gradient presets drawn from the church's own brand
+# tokens in CSS (.cover-0 to .cover-5), so a rebrand in app/brand.py recolours
+# every cover without touching a row. Stored as a number, not a colour.
+COVER_COUNT = 6
+
 _KIND_LIST = ", ".join(f"'{k}'" for k in RESOURCE_KINDS)
 _STATUS_LIST = ", ".join(f"'{s}'" for s in RESOURCE_STATUSES)
 
@@ -84,6 +89,7 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
     summary: Mapped[Optional[str]] = mapped_column(Text)
     kind: Mapped[str] = mapped_column(String(30), nullable=False, default=KIND_READING_PLAN)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=STATUS_DRAFT)
+    cover: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     published_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     created_by_user_id: Mapped[Optional[int]] = mapped_column(
@@ -136,6 +142,47 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
 
     def next_position(self) -> int:
         return max((s.position for s in self.sessions), default=0) + 1
+
+    @property
+    def cover_class(self) -> str:
+        return f"cover-{self.cover if 0 <= (self.cover or 0) < COVER_COUNT else 0}"
+
+    @property
+    def total_minutes(self) -> int:
+        return sum(s.minutes or 0 for s in self.sessions)
+
+    def move_session(self, session, direction: int) -> bool:
+        """Swap a session with its neighbour. Returns False at either end.
+
+        Positions are unique per resource, so the swap goes through a
+        temporary slot rather than writing a duplicate for an instant.
+        """
+        ordered = sorted(self.sessions, key=lambda s: s.position)
+        index = ordered.index(session)
+        target = index + direction
+        if target < 0 or target >= len(ordered):
+            return False
+        other = ordered[target]
+        mine, theirs = session.position, other.position
+        session.position = -1
+        db.session.flush()
+        other.position = mine
+        db.session.flush()
+        session.position = theirs
+        db.session.flush()
+        return True
+
+    def renumber(self) -> None:
+        """Close gaps after a delete so members read Day 1, 2, 3, not 1, 3, 4."""
+        ordered = sorted(self.sessions, key=lambda s: s.position)
+        # Move everything out of the way first, then back in order, so the
+        # unique constraint never sees two rows on one position.
+        for i, session in enumerate(ordered):
+            session.position = -(i + 1)
+        db.session.flush()
+        for i, session in enumerate(ordered):
+            session.position = i + 1
+        db.session.flush()
 
     # -- lookups, all tenant scoped -----------------------------------------
 
@@ -194,6 +241,9 @@ class ResourceSession(TenantScoped, TimestampMixin, db.Model):
 
     body: Mapped[Optional[str]] = mapped_column(Text)
     question: Mapped[Optional[str]] = mapped_column(Text)
+    # Rough reading time. Optional: a plan reads fine without it, and a
+    # guessed number is worse than none.
+    minutes: Mapped[Optional[int]] = mapped_column(Integer)
 
     def __repr__(self) -> str:
         return f"<ResourceSession {self.position}. {self.title!r}>"

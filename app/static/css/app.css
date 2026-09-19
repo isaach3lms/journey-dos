@@ -878,3 +878,150 @@ ul.policy span{color:var(--muted)}
 .rules li{padding:9px 0;border-top:1px solid var(--line-soft);font-size:13.5px;line-height:1.55}
 .rules li:first-child{border-top:none}
 .rules b{display:block}
+
+/* ============================================================
+   Resources library, laid out like the approved demo.
+   Covers are built from brand tokens only, so a rebrand in
+   app/brand.py recolours every cover with no row changes.
+   ============================================================ */
+.topline{display:flex;align-items:flex-start;gap:16px}
+.topline > div:first-child{flex:1}
+.toplineactions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toplineactions form.inline{margin:0}
+
+.cover-0{background:linear-gradient(135deg,var(--accent) 0%,var(--deep) 100%);color:#fff}
+.cover-1{background:linear-gradient(135deg,var(--deep) 0%,var(--ink) 100%);color:#fff}
+.cover-2{background:linear-gradient(135deg,var(--deep) 0%,var(--gold) 140%);color:#fff}
+.cover-3{background:linear-gradient(135deg,var(--bone) 0%,var(--mist) 100%);color:var(--deep)}
+.cover-4{background:radial-gradient(circle at 30% 25%,var(--accent) 0%,var(--deep) 70%);color:#fff}
+.cover-5{background:linear-gradient(160deg,var(--accent) 0%,var(--ink) 100%);color:#fff}
+
+.ressearch{margin-bottom:14px}
+.ressearch .input{max-width:420px}
+
+.resgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media (max-width:1100px){.resgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.resgrid{grid-template-columns:minmax(0,1fr)}}
+
+.rescard{
+  background:var(--white);border:1px solid var(--line-soft);border-radius:var(--r);
+  box-shadow:var(--shadow-sm);overflow:hidden;display:flex;flex-direction:column;
+  text-align:left;transition:box-shadow .15s,border-color .15s;
+}
+.rescard:hover{box-shadow:var(--shadow-md);border-color:var(--line)}
+.rescover{
+  aspect-ratio:16/9;display:grid;place-items:center;position:relative;
+  border:none;cursor:pointer;width:100%;padding:0;margin:0;
+}
+.rescover .glyph{width:44px;height:44px}
+.resbadge{
+  position:absolute;top:9px;right:9px;font-size:10.5px;font-weight:600;
+  padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);
+}
+.resbody{padding:14px 16px 16px;flex:1;display:flex;flex-direction:column}
+.resbody .rt{
+  font-family:var(--font-body);font-size:14.5px;font-weight:600;line-height:1.3;
+  text-align:left;background:none;border:none;padding:0;color:var(--ink);cursor:pointer;
+}
+.resbody .rd{font-size:12.5px;color:var(--muted);margin:5px 0 0;line-height:1.45;flex:1;max-width:none}
+.resbody .rf{display:flex;align-items:center;gap:8px;margin-top:12px}
+.resbody .rf .m{font-size:11.5px;color:var(--muted-2);margin-left:auto;text-align:right}
+.kindchip{
+  font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px;
+  background:var(--mist);color:var(--deep);
+}
+.resadd{
+  display:grid;place-items:center;align-content:center;gap:6px;min-height:240px;
+  border-style:dashed;color:var(--muted);cursor:pointer;font-size:13.5px;font-weight:500;
+  font-family:var(--font-body);
+}
+.resadd .plus{font-size:26px;line-height:1}
+
+/* Plan overview and the add form: native <dialog>. */
+.plandialog{
+  border:none;padding:0;border-radius:var(--r-lg);width:min(560px,calc(100vw - 32px));
+  max-height:calc(100vh - 48px);box-shadow:var(--shadow-lg);background:var(--white);color:var(--ink);
+  overflow:hidden;
+}
+.plandialog[open]{display:flex;flex-direction:column}
+.plandialog::backdrop{background:rgba(20,20,20,.45)}
+.planbanner{aspect-ratio:3/1;display:grid;place-items:center;position:relative;flex:none}
+.planbanner .glyph{width:52px;height:52px}
+.planbanner.small{aspect-ratio:4/1;border-radius:var(--r) var(--r) 0 0}
+.planbanner.small .glyph{width:40px;height:40px}
+.planx{
+  position:absolute;top:10px;right:12px;color:#fff;font-size:22px;line-height:1;
+  background:rgba(26,26,26,.42);border:none;border-radius:8px;padding:4px 10px;cursor:pointer;
+}
+.planx.dark{position:static;background:var(--mist);color:var(--ink)}
+.planhead{padding:18px 22px 10px}
+.planhead .eyebrow{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--accent)}
+.planhead h3{margin:6px 0 0;font-family:var(--font-display);font-size:21px;font-weight:600;letter-spacing:-.01em}
+.planhead p{margin:7px 0 0;font-size:13.5px;color:var(--muted);line-height:1.55}
+.plandays{overflow-y:auto;flex:1}
+.planempty{padding:4px 22px 14px}
+.dayrow,.sessrow{
+  display:flex;align-items:center;gap:13px;padding:12px 22px;
+  border-top:1px solid var(--line-soft);width:100%;text-align:left;color:var(--ink);
+}
+.dayrow:hover{background:var(--surface-alt)}
+.dn{
+  width:34px;height:34px;border-radius:50%;background:var(--mist);color:var(--deep);
+  display:grid;place-items:center;font-size:12.5px;font-weight:600;flex:none;font-family:var(--font-display);
+}
+.dtext{flex:1;min-width:0}
+.dt{display:block;font-size:13.5px;font-weight:500}
+.ds{display:block;font-size:11.5px;color:var(--muted);margin-top:1px}
+.dpill{
+  font-size:11.5px;font-weight:500;color:var(--muted);border:1px solid var(--line);
+  border-radius:999px;padding:3px 11px;flex:none;
+}
+.planfoot{
+  display:flex;align-items:center;gap:9px;padding:14px 22px;flex:none;
+  border-top:1px solid var(--line);background:var(--surface-alt);
+}
+.planfoot .note{flex:1;font-size:12px;color:var(--muted-2)}
+.formhead{display:flex;align-items:center;justify-content:space-between;padding:18px 22px 4px}
+.formhead h3{margin:0;font-family:var(--font-display);font-size:19px;font-weight:600}
+.formbody{padding:8px 22px 16px;overflow-y:auto}
+.formdialog form{display:flex;flex-direction:column;max-height:inherit}
+.flabel{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 6px}
+.coverpick{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;max-width:360px}
+.coverchip{aspect-ratio:1;border-radius:11px;cursor:pointer;border:2px solid transparent;position:relative}
+.coverchip input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.coverchip:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 2px #fff inset}
+.coverchip:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* Editor */
+.livebar{
+  font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:var(--r-sm);
+  margin:0 0 14px;background:var(--flag-bg);color:var(--flag);
+}
+.livebar.live{background:var(--good-bg);color:var(--good)}
+.resedit{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1000px){.resedit{grid-template-columns:minmax(0,1fr)}}
+.resedit .card{overflow:hidden}
+.resedit form .btn{margin-top:12px}
+.sesslist{list-style:none;margin:0 0 12px;padding:0}
+.sesslist li{border:1px solid var(--line-soft);border-radius:var(--r);margin-bottom:9px;overflow:hidden}
+.sesslist summary{list-style:none;cursor:pointer;border-top:none;padding:11px 14px}
+.sesslist summary::-webkit-details-marker{display:none}
+.sesslist details[open] summary{background:var(--surface-alt)}
+.sesslist details[open] .dpill{background:var(--ink);color:#fff;border-color:var(--ink)}
+.sessform{padding:12px 14px 0}
+.sessactions{display:flex;align-items:center;gap:8px;padding:0 14px 12px;flex-wrap:wrap}
+.sessform .sessactions{padding:0 0 12px}
+.mininput{max-width:110px;flex:0 0 110px !important;min-width:0 !important}
+.addsession > summary{list-style:none;display:inline-block}
+.addsession > summary::-webkit-details-marker{display:none}
+.addsession[open] > summary{margin-bottom:10px}
+.addsession .sessform{padding:0}
+.btn.danger{color:var(--flag)}
+.btn[disabled]{opacity:.45;cursor:default}
+
+/* Member reading list: the same covers staff pick. */
+.mcovered{overflow:hidden;padding-top:0}
+.mcover{margin:0 -16px 13px;height:88px;display:grid;place-items:center}
+.mcover .glyph{width:34px;height:34px}
+.memberfull .mcover{margin:0 -24px 16px;height:120px}

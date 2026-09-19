@@ -1,4 +1,5 @@
 {% extends "member/base.html" %}
+{% from "resources/_glyph.html" import glyph %}
 {% block title %}{{ res.member_heading }} | {{ church.name }}{% endblock %}
 {% block content %}
 <h1 class="mgreet">{{ res.member_heading }}</h1>
@@ -7,7 +8,8 @@
   {% for resource in resources %}
     {% set done = progress.get(resource.id, 0) %}
     {% set total = resource.session_count %}
-    <a class="mcard mlink" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">
+    <a class="mcard mlink mcovered" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">
+      <div class="mcover {{ resource.cover_class }}">{{ glyph(resource.kind) }}</div>
       <div class="mlbl">{{ resource.kind_label }}</div>
       <div class="mtitle">{{ resource.title }}</div>
       {% if resource.summary %}<p class="mnote">{{ resource.summary }}</p>{% endif %}

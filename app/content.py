@@ -813,8 +813,8 @@ RESOURCES = {
     "archive": "Archive",
     "archived": "{title} archived.",
 
-    "session_heading": "The days",
-    "session_add": "Add a day",
+    "session_heading": "Sessions",
+    "session_add": "Add a session",
     "session_title": "Title for this day",
     "session_title_placeholder": "Day 1: Known before you were born",
     "session_passage": "Passage",
@@ -826,17 +826,71 @@ RESOURCES = {
     ),
     "session_question": "A question to sit with",
     "session_question_placeholder": "Where have you been trying to be known?",
-    "session_save": "Save the day",
+    "session_save": "Add session",
     "session_saved": "Added.",
     "session_delete": "Delete",
     "session_deleted": "Deleted.",
-    "session_none": "No days yet. Add the first one below.",
+    "session_none": "No sessions yet. Add the first one below.",
     "session_title_required": "Every day needs a title.",
 
     "format_help": (
         "Formatting: a blank line starts a paragraph, # for a heading, "
         "> for scripture, - for a list, **bold** and *italic*."
     ),
+
+    # Staff library, laid out like the approved demo
+    "library_heading": "Published to your people",
+    "library_intro": (
+        "Written for {church} and delivered inside your app. Members never see "
+        "another brand. Click any resource to see the plan."
+    ),
+    "add_resource": "Add a resource",
+    "created_hint": "Next you add the sessions, then publish.",
+    "cancel": "Cancel",
+    "search": "Search",
+    "search_placeholder": "Search by title",
+    "search_none": "Nothing matches that.",
+    "edit_plan": "Edit plan",
+    "click_to_open": "Click card to open",
+    "card_sessions": "{count} sessions",
+    "card_one_session": "1 session",
+    "card_started": "{count} started",
+    "started_people": "{count} people started this plan",
+    "started_people_one": "1 person started this plan",
+    "started_people_none": "Nobody has started this yet",
+    "open_member": "Open in member app",
+    "minutes": "{count} min",
+    "no_passage": "No passage set",
+    "close": "Close",
+    "archived_heading": "Archived",
+    "archived_hint": "Hidden from members and from the list above. Restore brings one back as a draft.",
+    "restore": "Restore",
+    "restored": "{title} restored as a draft.",
+
+    # Editing, before and after publishing
+    "details_heading": "Details",
+    "field_title": "Title",
+    "field_kind": "Type",
+    "field_summary": "Description",
+    "field_summary_placeholder": "One or two lines members see under the title",
+    "field_cover": "Cover",
+    "save_details": "Save",
+    "live_banner": "Live. Members see every change the moment you save.",
+    "draft_banner": "Draft. Only staff can see this until you publish it.",
+    "saved_live": "Saved. Members see the change now.",
+    "saved_draft": "Saved.",
+    "session_saved_live": "Added. Members see the new session now.",
+    "session_edit": "Edit",
+    "session_save_changes": "Save changes",
+    "session_minutes": "Minutes",
+    "move_up": "Move up",
+    "move_down": "Move down",
+    "session_delete_confirm": "Delete this session? Anyone who marked it done loses that tick.",
+    "session_last_live": (
+        "That is the only session in a live plan. Unpublish it first, or add "
+        "another session before deleting this one."
+    ),
+    "sessions_total": "{count} sessions, about {minutes} minutes",
 
     # Member side
     "member_heading": "Reading",

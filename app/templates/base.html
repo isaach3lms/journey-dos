@@ -28,6 +28,7 @@
         <h1>{% block heading %}{% endblock %}</h1>
         <p class="sub">{% block subheading %}{% endblock %}</p>
       </div>
+      <div class="toplineactions">{% block actions %}{% endblock %}</div>
     </div>
     <div class="content">
       {# Rendered here rather than per page. Eleven staff templates each
@@ -45,5 +46,6 @@
 </div>
 
 {% include "partials/pwa_script.html" %}
+{% block extra_script %}{% endblock %}
 </body>
 </html>

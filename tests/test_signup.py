@@ -370,7 +370,7 @@ class TestExistingAccountsAreUnaffected:
             headers={"Host": JOURNEY_HOST},
             follow_redirects=True,
         )
-        assert b"Foundation" in r.data
+        assert b"Welcome To Your Dashboard" in r.data
 
     def test_a_deactivated_account_is_not_the_same_as_unverified(self, db, client):
         """Different states, different fixes, different messages."""

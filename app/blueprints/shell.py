@@ -9,6 +9,7 @@ from flask import Blueprint, abort, g, redirect, render_template, url_for
 from flask_login import current_user, login_required
 
 from app.content import (
+    DASHBOARD,
     INCREMENT_NAMES,
     AUTOMATION,
     NAV_ITEMS,
@@ -18,7 +19,12 @@ from app.content import (
 )
 from app.models import Person, SequenceEnrollment
 from app.extensions import db
+from app.dashboard import build as build_dashboard
 from app.stages import CONTACT_WINDOW_DAYS, stages_for
+
+# Where "Request support" goes. Between Sundays supports every church on the
+# platform, so this is the platform's address, not a church setting.
+SUPPORT_EMAIL = "isaac@betweensundaysconsulting.com"
 
 bp = Blueprint("shell", __name__)
 
@@ -38,30 +44,23 @@ def index():
     # else, which is not a thing a member should be handed.
     show_rail = current_user.at_least("leader")
 
+    data = build_dashboard(g.church) if show_rail else {}
     return render_template(
         "shell/index.html",
         church=g.church,
         content=SHELL,
+        dash=DASHBOARD,
         people_content=PEOPLE,
         show_rail=show_rail,
-        stages=stages_for(g.church) if show_rail else (),
-        counts=Person.stage_counts(g.church.id) if show_rail else {},
-        total=Person.total_for_church(g.church.id) if show_rail else 0,
-        active_stage=None,
         stuck_content=STUCK,
         flagged=db.session.scalars(Person.stuck(g.church.id, limit=5)).all()
         if show_rail else [],
-        stuck_count=Person.stuck_count(g.church.id) if show_rail else 0,
-        contacted_count=Person.contacted_since(g.church.id, 7) if show_rail else 0,
-        unowned_count=Person.unowned_count(g.church.id) if show_rail else 0,
         contact_window=CONTACT_WINDOW_DAYS,
         automation=AUTOMATION,
-        auto_sent=SequenceEnrollment.sent_last_days(g.church.id, 7) if show_rail else 0,
-        auto_running=SequenceEnrollment.active_count(g.church.id) if show_rail else 0,
-        auto_stopped=SequenceEnrollment.stopped_by_contact_count(g.church.id)
-        if show_rail else 0,
         active="dashboard",
         user=current_user,
+        support_email=SUPPORT_EMAIL,
+        **data,
     )
 
 

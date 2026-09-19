@@ -187,6 +187,22 @@
   </div>
 
   <div>
+    <section class="card" id="headcount">
+      <div class="hd"><h2>{{ content.headcount_heading }}</h2></div>
+      <div class="bd">
+        <form method="post" action="{{ url_for('services.save_headcount', service_id=service.id) }}">
+          {{ csrf_field() }}
+          <div class="filters">
+            <input class="input" type="number" min="0" max="100000" name="headcount"
+                   value="{{ service.headcount if service.headcount is not none else '' }}"
+                   placeholder="{{ content.headcount_placeholder }}" aria-label="{{ content.headcount_heading }}">
+            <button class="btn" type="submit">{{ content.headcount_save }}</button>
+          </div>
+        </form>
+        <p class="muted small">{{ content.headcount_hint }}</p>
+      </div>
+    </section>
+
     <section class="card">
       <div class="hd">
         <h2>{{ content.open_roles_heading }}</h2>

@@ -142,6 +142,31 @@ def plan(service_id: int):
     )
 
 
+@bp.post("/<int:service_id>/headcount/")
+@login_required
+@min_role("leader")
+def save_headcount(service_id: int):
+    """How many were in the room. Feeds the dashboard attendance tile."""
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+    raw = (request.form.get("headcount") or "").strip()
+    if not raw:
+        service.headcount = None
+    else:
+        try:
+            value = int(raw)
+        except ValueError:
+            value = -1
+        if not 0 <= value <= 100000:
+            flash(SERVICES["headcount_bad"], "error")
+            return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+        service.headcount = value
+    db.session.commit()
+    flash(SERVICES["headcount_saved"], "notice")
+    return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+
+
 @bp.post("/<int:service_id>/items/")
 @login_required
 @min_role("leader")

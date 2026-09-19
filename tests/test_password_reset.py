@@ -212,7 +212,7 @@ class TestSettingANewPassword:
             headers={"Host": JOURNEY_HOST},
             follow_redirects=True,
         )
-        assert b"Foundation" in new.data
+        assert b"Welcome To Your Dashboard" in new.data
 
     def test_mismatched_confirmation_is_refused(self, db, client):
         request_reset(client, STAFF)
@@ -258,7 +258,7 @@ class TestSettingANewPassword:
 
     def test_the_user_is_signed_in_afterwards(self, db, client):
         r = self._reset_to(db, client, NEW_PASSWORD)
-        assert b"Foundation" in r.data
+        assert b"Welcome To Your Dashboard" in r.data
 
 
 class TestOtherSessionsAreSignedOut:

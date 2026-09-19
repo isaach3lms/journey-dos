@@ -371,6 +371,10 @@ class Service(TenantScoped, TimestampMixin, db.Model):
         String(20), nullable=False, default=STATUS_DRAFT
     )
     plan_sent_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+    # How many people were in the room. Entered by staff after the service;
+    # the dashboard's attendance tile reads nothing else, so an empty week is
+    # shown as empty rather than guessed.
+    headcount: Mapped[Optional[int]] = mapped_column(Integer)
 
     items: Mapped[list["ServiceItem"]] = relationship(
         back_populates="service",

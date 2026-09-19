@@ -377,11 +377,11 @@ class TestAccess:
         naive search for "stages" matches on every page.
         """
         r = member.get("/", headers={"Host": JOURNEY_HOST})
-        assert b'class="stages"' not in r.data
+        assert b'class="railrow"' not in r.data
 
     def test_the_dashboard_rail_is_shown_to_staff(self, staff, roster):
         r = staff.get("/", headers={"Host": JOURNEY_HOST})
-        assert b'class="stages"' in r.data
+        assert b'class="railrow"' in r.data
 
 
 class TestElapsedTime:

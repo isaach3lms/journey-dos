@@ -132,7 +132,7 @@ ICONS: dict[str, str] = {
 SHIPPED_INCREMENTS = set(range(16))
 
 SHELL = {
-    "title": "Foundation",
+    "title": "Welcome To Your Dashboard",
     "subtitle": "The roster is live. Click any stage to see who is in it.",
     "placeholder_lead": "Not built yet.",
     "placeholder_body": (
@@ -140,6 +140,68 @@ SHELL = {
         "item is here now so the shape of the finished product is visible "
         "while it is being built."
     ),
+}
+
+
+# The staff dashboard, laid out like the approved demo. See app/dashboard.py.
+DASHBOARD = {
+    "title": "Welcome To Your Dashboard",
+    "sunday_today": "Sunday, {date} is today",
+    "sunday_tomorrow": "Sunday, {date} is tomorrow",
+    "sunday_out": "Sunday, {date} is {days} days out",
+    "search": "Search",
+    "search_placeholder": "Find a person by name or email",
+    "request_support": "Request support",
+    "support_subject": "Support request from {church}",
+
+    "rail_heading": "The Journey",
+    "rail_intro": "Where all {total} people at {church} are right now. Click a stage to see who is in it.",
+    "rail_empty": "Nobody is on the roster yet. Add people from the People tab.",
+    "open_people": "Open People",
+    "stage_stuck": "{count} stuck",
+    "stage_moving": "Moving",
+    "footer_stuck": "people flagged as stuck too long",
+    "footer_steps": "next steps taken in the last 7 days",
+    "footer_unowned": "people with no owner",
+
+    "tile_attendance": "Attendance last Sunday",
+    "tile_guests": "First time guests",
+    "tile_next_steps": "Next steps taken",
+    "tile_giving": "Giving month to date",
+    "trend_attendance_up": "Up {n}% over 4 weeks",
+    "trend_attendance_down": "Down {n}% over 4 weeks",
+    "trend_attendance_flat": "Level with the last 4 weeks",
+    "trend_week_up": "Up {n} from last week",
+    "trend_week_down": "Down {n} from last week",
+    "trend_week_flat": "Same as last week",
+    "trend_giving_up": "Up {n}% vs last month",
+    "trend_giving_down": "Down {n}% vs last month",
+    "trend_giving_flat": "Level with last month",
+    "empty_attendance": "Add last Sunday's headcount",
+    "empty_giving": "Connect giving to see this",
+
+    "health_heading": "Church health",
+    "health_of": "{score} of 100",
+    "health_next_step": "People taking a next step",
+    "health_grouped": "Members in a group",
+    "health_serving": "Adults serving",
+    "health_guests_48h": "Guests contacted within 48 hours",
+    "health_hint_next_step": "Moved a stage or finished a next step in the last 90 days.",
+    "health_hint_grouped": "Of the people at Member or beyond, how many are in an active group.",
+    "health_hint_serving": "Of everyone who is not a child, how many are on an active team.",
+    "health_hint_guests_48h": "Of first time guests in the last 90 days, how many had a logged contact within two days.",
+    "weakest_next_step": "People taking a next step is the weakest number. {gap} people have not moved in 90 days.",
+    "weakest_grouped": "Members in a group is the weakest number. {gap} members are not in a group yet.",
+    "weakest_serving": "Adults serving is the weakest number. {gap} adults are not on a team yet.",
+    "weakest_guests_48h": "Guest follow up is the weakest number. {gap} recent guests waited more than two days to hear from anyone.",
+    "health_empty": "Health fills in as people, groups, and teams are added.",
+
+    "auto_intro": "{count} messages went out this week. None of them were written on a Monday morning.",
+    "auto_intro_none": "Nothing has gone out on its own this week yet.",
+    "auto_all_active": "All active",
+    "auto_badge": "AUTO",
+    "auto_trigger": "Starts when someone becomes a {stage}, {steps} messages over {days} days",
+    "auto_sent": "{count} sent this week",
 }
 
 
@@ -1088,6 +1150,12 @@ GROUPS = {
 
 
 SERVICES = {
+    "headcount_heading": "Headcount",
+    "headcount_placeholder": "How many were here",
+    "headcount_save": "Save",
+    "headcount_hint": "Everyone in the room, kids included. The dashboard's attendance number comes from here.",
+    "headcount_saved": "Headcount saved.",
+    "headcount_bad": "That is not a headcount. Use a whole number.",
     "title": "Services",
     "subtitle": "Plan Sunday and fill the team.",
 

@@ -27,7 +27,7 @@ class TestSigningIn:
     def test_correct_credentials_reach_the_dashboard(self, sign_in):
         r = sign_in(STAFF)
         assert r.status_code == 200
-        assert b"Foundation" in r.data
+        assert b"Welcome To Your Dashboard" in r.data
         assert b"Pastor Reed" in r.data
 
     def test_a_wrong_password_is_rejected(self, sign_in):

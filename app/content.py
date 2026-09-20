@@ -1160,6 +1160,14 @@ GROUPS = {
 
 
 SERVICES = {
+    "status_draft_hint": "Draft. Only staff and leaders can see this plan.",
+    "status_published_hint": "Published. Everyone serving sees this plan in their Serve tab.",
+    "publish": "Publish",
+    "unpublish": "Unpublish",
+    "published": "{name} is published. The team sees the plan in the app.",
+    "unpublished": "{name} is back to a draft. The team no longer sees the plan.",
+    "publish_empty": "Add items to the running order before publishing it.",
+    "member_plan_pending": "The running order is still being put together. It shows here once it is published.",
     "savetemplate_heading": "Save as a template",
     "savetemplate_hint": (
         "Keep this running order for next time. New services on the Services "

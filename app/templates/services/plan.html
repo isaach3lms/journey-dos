@@ -7,8 +7,23 @@
   {{ service.name }} &middot; {{ content.plan_ends.format(time=service.ends_at|church_time("%-I:%M%p")) }}
 {% endblock %}
 
+{% block actions %}
+  <span class="pill plain {% if not service.is_published %}pending{% endif %}">{{ service.status_label }}</span>
+  <form method="post" class="inline" action="{{ url_for('services.toggle_publish', service_id=service.id) }}">
+    {{ csrf_field() }}
+    <button class="btn {% if service.is_published %}ghostbtn{% endif %}" type="submit"
+            {% if not service.is_published and not service.items %}disabled{% endif %}>
+      {% if service.is_published %}{{ content.unpublish }}{% else %}{{ content.publish }}{% endif %}
+    </button>
+  </form>
+{% endblock %}
+
 {% block content %}
 <a class="ghost back" href="{{ url_for('services.index') }}">{{ content.title }}</a>
+
+<div class="livebar {% if service.is_published %}live{% endif %}">
+  {% if service.is_published %}{{ content.status_published_hint }}{% else %}{{ content.status_draft_hint }}{% endif %}
+</div>
 
 
 {% set current = service %}

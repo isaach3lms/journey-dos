@@ -49,7 +49,7 @@ from app.models import (
     TeamPosition,
 )
 from app.models.base import utcnow
-from app.models.service import STATUS_SENT
+from app.models.service import STATUS_PUBLISHED, STATUS_SENT
 from app.music import UnknownKey, key_choices, normalize_key
 from app.security import min_role
 from app.timeutil import format_local, from_local
@@ -225,6 +225,35 @@ def save_template(service_id: int):
 
     flash(SERVICES[verb].format(name=service_type.name, count=count), "notice")
     return back
+
+
+@bp.post("/<int:service_id>/publish/")
+@login_required
+@min_role("leader")
+def toggle_publish(service_id: int):
+    """Draft to published and back.
+
+    Publishing shows the running order to everyone on the team in their Serve
+    tab. It sends nothing; "Send plan to team" is the email. Unpublishing
+    hides it again, for a plan that went out too early.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    if service.is_published:
+        service.unpublish()
+        message = SERVICES["unpublished"]
+    else:
+        if not service.items:
+            flash(SERVICES["publish_empty"], "error")
+            return redirect(url_for("services.plan", service_id=service.id))
+        service.publish()
+        message = SERVICES["published"]
+    db.session.commit()
+
+    flash(message.format(name=service.name), "notice")
+    return redirect(url_for("services.plan", service_id=service.id))
 
 
 @bp.post("/<int:service_id>/items/")

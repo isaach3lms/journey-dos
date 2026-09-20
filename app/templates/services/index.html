@@ -46,7 +46,7 @@
                   {% if service.unfilled_count %} &middot; <b>short {{ service.unfilled_count }}</b>{% endif %}
                 </span>
               </span>
-              <span class="pill {% if service.status != 'sent' %}pending{% endif %}">{{ service.status|title }}</span>
+              <span class="pill plain {% if not service.is_published %}pending{% endif %}">{{ service.status_label }}</span>
             </a>
           </li>
         {% endfor %}

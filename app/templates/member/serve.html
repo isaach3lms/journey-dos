@@ -10,7 +10,9 @@
       <div class="mtitle">{{ assignment.role_name }}</div>
       <p class="mnote">{{ assignment.service.name }}</p>
 
-      {% if assignment.service.items %}
+      {% if not assignment.service.is_published %}
+        <p class="mnote muted">{{ svc.member_plan_pending }}</p>
+      {% elif assignment.service.items %}
         <div class="mlbl">{{ svc.member_plan }}</div>
         <ol class="mplan">
           {% for item in assignment.service.items %}

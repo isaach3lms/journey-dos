@@ -46,9 +46,15 @@ ITEM_ELEMENT = "element"
 ITEM_HEADER = "header"
 ITEM_KINDS = (ITEM_SONG, ITEM_ELEMENT, ITEM_HEADER)
 
+# Draft: staff are still building it. Volunteers can be asked to serve, but
+# the running order stays off their Serve tab. Published: the team sees the
+# plan in the app. Emailing the plan publishes it too, because an emailed plan
+# that the app still hides would contradict itself.
 STATUS_DRAFT = "draft"
-STATUS_SENT = "sent"
-SERVICE_STATUSES = (STATUS_DRAFT, STATUS_SENT)
+STATUS_PUBLISHED = "published"
+STATUS_SENT = STATUS_PUBLISHED  # the old name, kept for callers
+SERVICE_STATUSES = (STATUS_DRAFT, STATUS_PUBLISHED)
+SERVICE_STATUS_LABELS = {STATUS_DRAFT: "Draft", STATUS_PUBLISHED: "Published"}
 
 INVITED = "invited"
 ACCEPTED = "accepted"
@@ -390,6 +396,20 @@ class Service(TenantScoped, TimestampMixin, db.Model):
 
     def __repr__(self) -> str:
         return f"<Service {self.name!r} at={self.starts_at}>"
+
+    @property
+    def is_published(self) -> bool:
+        return self.status == STATUS_PUBLISHED
+
+    @property
+    def status_label(self) -> str:
+        return SERVICE_STATUS_LABELS.get(self.status, self.status.title())
+
+    def publish(self) -> None:
+        self.status = STATUS_PUBLISHED
+
+    def unpublish(self) -> None:
+        self.status = STATUS_DRAFT
 
     @property
     def is_past(self) -> bool:

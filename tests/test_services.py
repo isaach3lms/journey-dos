@@ -493,6 +493,7 @@ class TestMemberServing:
                 kind="song", title="Known", key_override="A",
             )
         )
+        service.publish()
         db.session.commit()
         self._assign(db, journey, service, volunteer)
 

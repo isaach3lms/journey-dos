@@ -5,57 +5,73 @@
 <h1 class="mgreet">{{ conversation.title }}</h1>
 <p class="msub">{{ conversation.kind_label }}</p>
 
-<section class="mcard">
+{# iMessage-style: your messages on the right in the church colour, everyone
+   else on the left in grey. The name shows only when the sender changes, and
+   a timestamp only when the conversation pauses, so a run of short messages
+   reads as one exchange rather than a list of records. Report, block, and
+   (for staff and leaders) delete sit behind a small menu on each bubble. #}
+<section class="bubblewrap" data-bubbles>
   {% if messages %}
-    <ol class="thread">
+    <ol class="bubbles">
       {% for message in messages %}
-        <li>
-          <div class="mfrom">
-            {{ message.author_name or "Someone" }}
-            <span class="muted">{{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
-          </div>
-          <div class="mbody">{{ message.rendered }}</div>
-
-          {% if can_moderate %}
-            <form method="post" class="inline mmod"
-                  action="{{ url_for('member.delete_message', conversation_id=conversation.id, message_id=message.id) }}"
-                  onsubmit='return confirm({{ msg.delete_confirm | tojson }})'>
-              {{ csrf_field() }}
-              <button class="link" type="submit">{{ msg.delete }}</button>
-            </form>
+        {% set mine = message.author_person_id == me.id %}
+        {% set prev = messages[loop.index0 - 1] if not loop.first else none %}
+        {% set nxt = messages[loop.index0 + 1] if not loop.last else none %}
+        {% set new_sender = loop.first or prev.author_person_id != message.author_person_id or prev.author_name != message.author_name %}
+        {% set gap = loop.first or (message.sent_at - prev.sent_at).total_seconds() > 900 %}
+        {% set last_in_run = loop.last or nxt.author_person_id != message.author_person_id or nxt.author_name != message.author_name or (nxt.sent_at - message.sent_at).total_seconds() > 900 %}
+        {% if gap %}
+          <li class="bstamp">{{ message.sent_at|church_time("%a %b %-d, %-I:%M%p") }}</li>
+        {% endif %}
+        <li class="bmsg {% if mine %}mine{% else %}theirs{% endif %} {% if last_in_run %}tail{% endif %}" id="m{{ message.id }}">
+          {% if not mine and (new_sender or gap) %}
+            <div class="bname">{{ message.author_name or "Someone" }}</div>
           {% endif %}
-
-          {# On every message somebody else wrote. Reporting asks a human to
-             look; blocking acts immediately and needs nobody's permission. #}
-          {% if message.author_person_id != me.id %}
-            <div class="mactions">
-              <details>
-                <summary>{{ msg.report }}</summary>
-                <form method="post" action="{{ url_for('member.report_message', conversation_id=conversation.id, message_id=message.id) }}">
-                  {{ csrf_field() }}
-                  <label class="mnote" for="reason-{{ message.id }}">{{ msg.report_reason }}</label>
-                  <textarea class="input" id="reason-{{ message.id }}" name="reason" rows="2" maxlength="1000"></textarea>
-                  <button class="btn wide" type="submit">{{ msg.report_submit }}</button>
-                </form>
+          <div class="brow">
+            <div class="bubble" title="{{ message.sent_at|church_time('%-I:%M%p') }}">{{ message.rendered }}</div>
+            {% if not mine or can_moderate %}
+              <details class="bmenu">
+                <summary aria-label="{{ msg.message_options }}">&middot;&middot;&middot;</summary>
+                <div class="bmenupanel">
+                  {% if not mine %}
+                    <details class="breport">
+                      <summary>{{ msg.report }}</summary>
+                      <form method="post" action="{{ url_for('member.report_message', conversation_id=conversation.id, message_id=message.id) }}">
+                        {{ csrf_field() }}
+                        <label class="mnote" for="reason-{{ message.id }}">{{ msg.report_reason }}</label>
+                        <textarea class="input" id="reason-{{ message.id }}" name="reason" rows="2" maxlength="1000"></textarea>
+                        <button class="btn wide" type="submit">{{ msg.report_submit }}</button>
+                      </form>
+                    </details>
+                    {% if message.author_person_id %}
+                      <form method="post"
+                            action="{{ url_for('member.block_author', conversation_id=conversation.id, message_id=message.id) }}"
+                            onsubmit='return confirm({{ msg.block_confirm.format(name=message.author_name or "this person") | tojson }})'>
+                        {{ csrf_field() }}
+                        <button class="link" type="submit">{{ msg.block.format(name=message.author_name or "this person") }}</button>
+                      </form>
+                    {% endif %}
+                  {% endif %}
+                  {% if can_moderate %}
+                    <form method="post"
+                          action="{{ url_for('member.delete_message', conversation_id=conversation.id, message_id=message.id) }}"
+                          onsubmit='return confirm({{ msg.delete_confirm | tojson }})'>
+                      {{ csrf_field() }}
+                      <button class="link danger" type="submit">{{ msg.delete }}</button>
+                    </form>
+                  {% endif %}
+                </div>
               </details>
-              {% if message.author_person_id %}
-                <form method="post" class="inline"
-                      action="{{ url_for('member.block_author', conversation_id=conversation.id, message_id=message.id) }}"
-                      onsubmit='return confirm({{ msg.block_confirm.format(name=message.author_name or "this person") | tojson }})'>
-                  {{ csrf_field() }}
-                  <button class="link" type="submit">{{ msg.block.format(name=message.author_name or "this person") }}</button>
-                </form>
-              {% endif %}
-            </div>
-          {% endif %}
+            {% endif %}
+          </div>
         </li>
       {% endfor %}
     </ol>
   {% else %}
-    <p class="mnote">{{ msg.no_messages }}</p>
+    <p class="mnote bempty">{{ msg.no_messages }}</p>
   {% endif %}
   {% if hidden_count %}
-    <p class="mnote">{{ msg.blocked_hidden.format(count=hidden_count) }}</p>
+    <p class="mnote bempty">{{ msg.blocked_hidden.format(count=hidden_count) }}</p>
   {% endif %}
 </section>
 
@@ -63,12 +79,37 @@
   {% if conversation.is_announcement %}
     <p class="mnote">{{ msg.announce_member_note.format(church=church.name) }}</p>
   {% endif %}
-  <form method="post" action="{{ url_for('member.chat_post', conversation_id=conversation.id) }}">
+  <form method="post" class="composer" action="{{ url_for('member.chat_post', conversation_id=conversation.id) }}">
     {{ csrf_field() }}
-    <textarea class="input" name="body" rows="3" placeholder="{{ msg.post_placeholder }}" aria-label="{{ msg.post }}"></textarea>
-    <button class="btn wide" type="submit">{{ msg.post }}</button>
+    <textarea class="composerinput" name="body" rows="1" required
+              placeholder="{{ msg.member_compose_placeholder }}" aria-label="{{ msg.post }}"></textarea>
+    <button class="composersend" type="submit" aria-label="{{ msg.post }}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+    </button>
   </form>
 {% else %}
   <p class="mnote">{{ msg.member_readonly }}</p>
 {% endif %}
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* Open at the newest message, like any messaging app, and let the box grow
+   as you type. Enter sends; Shift+Enter makes a new line. */
+(function () {
+  function toBottom() { window.scrollTo(0, document.documentElement.scrollHeight); }
+  toBottom();
+  window.addEventListener("load", toBottom);
+  var box = document.querySelector(".composerinput");
+  if (!box) { return; }
+  function fit() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
+  box.addEventListener("input", fit);
+  box.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      if (box.value.trim()) { box.form.requestSubmit ? box.form.requestSubmit() : box.form.submit(); }
+    }
+  });
+})();
+</script>
 {% endblock %}

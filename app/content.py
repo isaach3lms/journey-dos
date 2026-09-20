@@ -1509,6 +1509,8 @@ KIDS = {
 
 
 MESSAGES = {
+    "message_options": "Message options",
+    "member_compose_placeholder": "Message",
     "title": "Messages",
     "subtitle": "Announcements, rooms, and direct conversations.",
 

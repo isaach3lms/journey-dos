@@ -32,6 +32,7 @@ from app.models import (
     ServiceType,
     ServiceTypeNeed,
     build_from_type,
+    save_as_template,
     copy_plan,
     ACCEPTED,
     DECLINED,
@@ -138,6 +139,7 @@ def plan(service_id: int):
         ).all(),
         people=db.session.scalars(Person.for_church(g.church.id)).all(),
         keys=key_choices(),
+        types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         active="services",
     )
 
@@ -165,6 +167,64 @@ def save_headcount(service_id: int):
     db.session.commit()
     flash(SERVICES["headcount_saved"], "notice")
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+
+
+@bp.post("/<int:service_id>/save-template/")
+@login_required
+@min_role("leader")
+def save_template(service_id: int):
+    """Keep this running order for next time.
+
+    Either as a new template with a name, or over the top of an existing one.
+    New services can then start from it on the Services page.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+    back = redirect(url_for("services.plan", service_id=service.id, _anchor="template"))
+
+    if not service.items:
+        flash(SERVICES["savetemplate_empty"], "error")
+        return back
+
+    target = (request.form.get("target") or "new").strip()
+    include_needs = request.form.get("include_needs") == "on"
+
+    if target == "new":
+        name = (request.form.get("name") or "").strip()[:120]
+        if not name:
+            flash(SERVICES["savetemplate_name_required"], "error")
+            return back
+        taken = db.session.scalar(
+            db.select(ServiceType).where(
+                ServiceType.church_id == g.church.id,
+                db.func.lower(ServiceType.name) == name.lower(),
+            )
+        )
+        if taken is not None:
+            flash(SERVICES["savetemplate_name_taken"].format(name=taken.name), "error")
+            return back
+        service_type = ServiceType(church_id=g.church.id, name=name)
+        db.session.add(service_type)
+        db.session.flush()
+        verb = "savetemplate_created"
+    else:
+        try:
+            type_id = int(target)
+        except ValueError:
+            abort(400)
+        service_type = ServiceType.get_for_church(g.church.id, type_id)
+        if service_type is None:
+            abort(404)
+        verb = "savetemplate_replaced"
+
+    count = save_as_template(service, service_type, include_needs=include_needs)
+    if service.service_type_id is None:
+        service.service_type_id = service_type.id
+    db.session.commit()
+
+    flash(SERVICES[verb].format(name=service_type.name, count=count), "notice")
+    return back
 
 
 @bp.post("/<int:service_id>/items/")

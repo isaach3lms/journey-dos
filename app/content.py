@@ -234,31 +234,12 @@ AUTH = {
 
     "forgot_link": "Forgot your password?",
     "help_link": "Help",
-    "join_link": "New here? Create an account",
 
     # Creating an account
-    "join_title": "Create your account",
-    "join_subtitle": (
-        "We will email you a link to confirm the address. Nothing shows up in "
-        "your account until you click it."
-    ),
-    "join_name": "Your name",
-    "join_submit": "Create it",
-    "join_back": "Already have an account? Sign in",
-    "join_closed_title": "Accounts are set up by the church",
-    "join_closed": (
-        "This church creates accounts for its people rather than letting "
-        "anyone sign themselves up. Ask the office and they will set yours up."
-    ),
     # One message whether or not the address already has an account. Otherwise
     # the form is a way to find out who attends.
-    "join_sent": (
-        "Check your email. If that address can have an account here, a "
-        "confirmation link is on its way. It works once and lasts three days."
-    ),
     "join_name_required": "We need a name to put on your account.",
 
-    "verify_done": "Your account is ready. You are signed in.",
     "joined_event": "Created their own account",
     "joined_detail": "Signed up through the app and confirmed their email.",
     "verify_bad_title": "That link will not work",
@@ -266,7 +247,6 @@ AUTH = {
         "Confirmation links last three days and work once. This one has "
         "expired, has already been used, or was mistyped."
     ),
-    "verify_resend": "Send me a new link",
 
     "change_title": "Choose your own password",
     "change_body": (
@@ -285,17 +265,6 @@ AUTH = {
     "unverified_resend": "Send it again",
     "unverified_sent": "On its way. Check your inbox and your spam folder.",
 
-    "verify_email_subject": "Confirm your {church} account",
-    "verify_email_body": (
-        "Hello {name},\n\n"
-        "Somebody created an account at {church} with this address. Open this "
-        "link to confirm it and finish signing up:\n\n"
-        "{link}\n\n"
-        "The link works once and expires in three days.\n\n"
-        "If this was not you, ignore this message. Nothing was created that "
-        "can be used without opening the link above.\n\n"
-        "{church}"
-    ),
     "join_link": "New here? Create an account",
 
     # Creating an account
@@ -1191,6 +1160,22 @@ GROUPS = {
 
 
 SERVICES = {
+    "savetemplate_heading": "Save as a template",
+    "savetemplate_hint": (
+        "Keep this running order for next time. New services on the Services "
+        "page can start from it, and changing this service later never changes "
+        "the template."
+    ),
+    "savetemplate_new": "A new template",
+    "savetemplate_replace": "Replace {name}",
+    "savetemplate_name_placeholder": "Template name, like Sunday 10:30",
+    "savetemplate_include_needs": "Include the roles this service needs",
+    "savetemplate_save": "Save template",
+    "savetemplate_created": "{name} saved as a template with {count} items. Pick it when you plan the next service.",
+    "savetemplate_replaced": "{name} now uses this running order ({count} items).",
+    "savetemplate_empty": "Add items to the running order before saving it as a template.",
+    "savetemplate_name_required": "Give the template a name.",
+    "savetemplate_name_taken": "There is already a template called {name}. Pick Replace {name} to update it, or use a different name.",
     "headcount_heading": "Headcount",
     "headcount_placeholder": "How many were here",
     "headcount_save": "Save",
@@ -1729,83 +1714,14 @@ SETTINGS = {
     "subtitle": "Your brand, your data, your app.",
 
     # Accounts staff create
-    "accounts_heading": "People who can sign in",
-    "accounts_hint": (
-        "Create an account and we email them a link to set their own "
-        "password. You never type one, so it is never a password two people "
-        "know."
-    ),
-    "accounts_name": "Their name",
-    "accounts_email": "Their email",
-    "accounts_role": "What they can do",
-    "accounts_create": "Create the account",
-    "accounts_created": "{name} can sign in. We emailed them a link to set a password.",
-    "accounts_exists": "{email} already has an account here.",
-    "accounts_name_required": "We need a name and an email address.",
-    "accounts_empty": "Nobody has an account yet.",
 
-    "role_member": "Member: their own record only",
-    "role_leader": "Leader: the roster, groups, services, kids",
-    "role_staff": "Staff: everything, including giving and settings",
-    "role_changed": "{name} is now {role}.",
-    "role_change": "Change",
 
-    "account_active": "Active",
-    "account_off": "Switched off",
-    "account_unverified": "Has not confirmed their email",
-    "account_never": "Never signed in",
-    "account_last_seen": "Last in {when}",
-    "account_deactivate": "Switch off",
-    "account_reactivate": "Switch back on",
-    "account_deactivated": "{name} can no longer sign in.",
-    "account_reactivated": "{name} can sign in again.",
-    "account_resend": "Send a set-password link",
-    "account_temp": "Give them a temporary password",
-    "account_temp_hint": (
-        "For somebody whose email is dead or who is standing in front of you. "
-        "We generate it, you read it out, and they have to change it before "
-        "they can do anything. You never choose it, so it never becomes a "
-        "password two people know."
-    ),
-    "account_temp_made": (
-        "Temporary password for {name}: {password}. Read it to them now. It "
-        "is not shown again and they must change it at sign-in."
-    ),
-    "account_temp_self": (
-        "Use the forgot-password link for your own account rather than "
-        "issuing yourself a temporary one."
-    ),
-    "account_resent": "Sent to {email}.",
 
-    "account_self": "You cannot change your own access.",
-    "account_last_staff": (
-        "That would leave nobody with staff access, and nobody able to undo "
-        "it. Make somebody else staff first."
-    ),
 
-    "invite_subject": "Your {church} account",
-    "invite_body": (
-        "Hello {name},\n\n"
-        "{actor} has set up an account for you at {church}.\n\n"
-        "Open this link to choose a password and sign in:\n\n"
-        "{link}\n\n"
-        "The link works once and expires in {minutes} minutes. If it has "
-        "expired by the time you open this, ask them to send another.\n\n"
-        "{church}"
-    ),
 
-    "signup_heading": "Who can create an account",
-    "signup_off": "Only the church",
-    "signup_on": "Anyone with the link",
     "signup_hint": (
         "With this off, staff create accounts. With it on, anyone who reaches "
         "your sign-in page can make one and confirm it by email."
-    ),
-    "signup_warning": (
-        "Turning this on means a stranger who finds your address can read "
-        "your church-wide announcements. Rooms, giving, and kids check-in "
-        "stay closed to them. Nobody is ever attached to an existing person "
-        "on your roster without confirming that email address."
     ),
     "signup_toggle_on": "Let anyone create an account",
     "signup_toggle_off": "Only the church creates accounts",

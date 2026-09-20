@@ -187,6 +187,30 @@
   </div>
 
   <div>
+    <section class="card" id="template">
+      <div class="hd"><h2>{{ content.savetemplate_heading }}</h2></div>
+      <div class="bd">
+        <p class="muted small">{{ content.savetemplate_hint }}</p>
+        <form method="post" class="stackform" action="{{ url_for('services.save_template', service_id=service.id) }}">
+          {{ csrf_field() }}
+          <select class="input select" name="target" aria-label="{{ content.savetemplate_heading }}" data-template-target>
+            <option value="new">{{ content.savetemplate_new }}</option>
+            {% for option in types %}
+              <option value="{{ option.id }}">{{ content.savetemplate_replace.format(name=option.name) }}</option>
+            {% endfor %}
+          </select>
+          <input class="input" type="text" name="name" maxlength="120" data-template-name
+                 value="{{ service.name }}" placeholder="{{ content.savetemplate_name_placeholder }}"
+                 aria-label="{{ content.savetemplate_name_placeholder }}">
+          <label class="check small">
+            <input type="checkbox" name="include_needs" checked>
+            <span>{{ content.savetemplate_include_needs }}</span>
+          </label>
+          <button class="btn" type="submit" {% if not service.items %}disabled{% endif %}>{{ content.savetemplate_save }}</button>
+        </form>
+      </div>
+    </section>
+
     <section class="card" id="headcount">
       <div class="hd"><h2>{{ content.headcount_heading }}</h2></div>
       <div class="bd">
@@ -282,4 +306,17 @@
     </section>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* The name box only matters for a new template. */
+(function () {
+  var target = document.querySelector("[data-template-target]");
+  var name = document.querySelector("[data-template-name]");
+  if (!target || !name) { return; }
+  function sync() { name.hidden = target.value !== "new"; name.required = !name.hidden; }
+  target.addEventListener("change", sync); sync();
+})();
+</script>
 {% endblock %}

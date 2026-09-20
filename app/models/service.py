@@ -836,6 +836,59 @@ def build_from_type(church_id: int, service_type, name: str, starts_at) -> Servi
     return service
 
 
+def save_as_template(service: Service, service_type: "ServiceType",
+                     include_needs: bool = True) -> int:
+    """Make `service_type`'s template match this service's running order.
+
+    The reverse of `build_from_type`, and a copy in the same way: editing
+    this service next week does not touch the template, and the template
+    changing does not touch services already planned from it. Replaces
+    whatever the template held before. Returns how many items were saved.
+    Caller commits.
+    """
+    for old in list(service_type.template_items):
+        service_type.template_items.remove(old)
+        db.session.delete(old)
+    if include_needs:
+        for old in list(service_type.needs):
+            service_type.needs.remove(old)
+            db.session.delete(old)
+    db.session.flush()
+
+    ordered = sorted(service.items, key=lambda item: item.position)
+    for position, item in enumerate(ordered, start=1):
+        service_type.template_items.append(
+            ServiceTemplateItem(
+                church_id=service.church_id,
+                position=position,
+                kind=item.kind,
+                title=item.title,
+                minutes=item.minutes,
+                notes=item.notes,
+                song_id=item.song_id,
+            )
+        )
+
+    if include_needs:
+        # One row per position on a template (a unique constraint), so two
+        # needs for the same position on this service are added together.
+        wanted: dict[int, int] = {}
+        for need in service.needs:
+            if need.position_id:
+                wanted[need.position_id] = wanted.get(need.position_id, 0) + (need.wanted or 1)
+        for position_id, count in wanted.items():
+            service_type.needs.append(
+                ServiceTypeNeed(
+                    church_id=service.church_id,
+                    position_id=position_id,
+                    wanted=count,
+                )
+            )
+
+    service_type.default_minutes = service.total_minutes or service_type.default_minutes
+    return len(ordered)
+
+
 def copy_plan(source: Service, target: Service) -> int:
     """Copy a running order from one service onto another.
 

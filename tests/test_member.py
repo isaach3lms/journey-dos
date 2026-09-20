@@ -346,6 +346,9 @@ class TestNoWayToSeeSomeoneElse:
         # see, and an unblock goes by the block's own id, scoped to whoever
         # is asking. Neither lets anybody name a person.
         "message_id", "block_id",
+        # A team's PDF, by the file's own id. The route checks the person is
+        # on that team, so the id names a file, never a person.
+        "file_id",
     }
 
     def test_no_member_route_accepts_a_person_id(self, app):

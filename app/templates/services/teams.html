@@ -12,6 +12,7 @@
     <div class="metrics">
       <div><span class="mono mv">{{ serving }}</span> people are on a team</div>
       <div><span class="mono mv">{{ teams|length }}</span> teams</div>
+      <div><span class="mono mv">{{ used_mb }}</span> MB of {{ quota_mb }} MB used by team files</div>
     </div>
     <form method="post" action="{{ url_for('services.add_team') }}">
       {{ csrf_field() }}
@@ -24,7 +25,7 @@
 </section>
 
 {% for team in teams %}
-  <section class="card">
+  <section class="card" id="team{{ team.id }}">
     <div class="hd"><h2>{{ team.name }}</h2></div>
     <div class="bd">
       <div class="mlbl">Positions</div>
@@ -39,6 +40,43 @@
           <input class="input" type="text" name="name" placeholder="{{ content.position_placeholder }}" aria-label="{{ content.position_add }}">
           <button class="btn ghostbtn" type="submit">{{ content.position_add }}</button>
         </div>
+      </form>
+
+      <div class="mlbl">{{ content.files_heading }}</div>
+      {% if team.files %}
+        <ul class="flaglist">
+          {% for file in team.files %}
+            <li>
+              <span class="filemark" aria-hidden="true">PDF</span>
+              <span class="fl">
+                <span class="pn"><a href="{{ url_for('services.team_file', file_id=file.id) }}" target="_blank" rel="noopener">{{ file.title }}</a></span>
+                <span class="pe">{{ file.size_label }}
+                  {% if file.uploaded_by_name %}&middot; {{ content.file_by.format(name=file.uploaded_by_name) }}{% endif %}
+                  &middot; {{ file.created_at|church_time("%b %-d, %Y") }}</span>
+              </span>
+              <form method="post" class="inline"
+                    action="{{ url_for('services.delete_team_file', file_id=file.id) }}"
+                    onsubmit='return confirm({{ content.file_delete_confirm | tojson }})'>
+                {{ csrf_field() }}
+                <button class="btn ghostbtn tiny danger" type="submit">{{ content.file_delete }}</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">{{ content.files_empty }}</p>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data" class="fileform"
+            action="{{ url_for('services.upload_team_file', team_id=team.id) }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <input class="input" type="text" name="title" maxlength="200"
+                 placeholder="{{ content.file_title_placeholder }}" aria-label="{{ content.file_title }}">
+          <input class="input" type="file" name="file" accept="application/pdf,.pdf" required
+                 aria-label="{{ content.file_choose }}">
+          <button class="btn" type="submit">{{ content.file_upload }}</button>
+        </div>
+        <p class="muted small">{{ content.files_hint.format(max=max_mb) }}</p>
       </form>
 
       <div class="mlbl">People</div>

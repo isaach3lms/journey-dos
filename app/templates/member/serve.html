@@ -3,6 +3,21 @@
 {% block content %}
 <h1 class="mgreet">{{ svc.member_heading }}</h1>
 
+{% if team_files %}
+  <section class="mcard">
+    <div class="mlbl">{{ svc.member_files_heading }}</div>
+    {% for file in team_files %}
+      <a class="mfile" href="{{ url_for('member.team_file', file_id=file.id) }}" target="_blank" rel="noopener">
+        <span class="filemark" aria-hidden="true">PDF</span>
+        <span class="fl">
+          <span class="pn">{{ file.title }}</span>
+          <span class="pe">{{ file.team.name }} &middot; {{ file.size_label }}</span>
+        </span>
+      </a>
+    {% endfor %}
+  </section>
+{% endif %}
+
 {% if assignments %}
   {% for assignment in assignments %}
     <section class="mcard">

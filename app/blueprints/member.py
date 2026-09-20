@@ -387,13 +387,46 @@ def serve():
     assignments = db.session.scalars(
         ServiceAssignment.upcoming_for_person(g.church.id, person.id)
     ).all()
+    from app.models import TeamFile
+
     return render_template(
         "member/serve.html",
         assignments=assignments,
+        team_files=db.session.scalars(TeamFile.for_person(g.church.id, person.id)).all(),
         svc=SERVICES,
         tab="serve",
         **_base_context(person),
     )
+
+
+@bp.get("/serve/files/<int:file_id>/")
+@login_required
+def team_file(file_id: int):
+    """A team's PDF, for the people on that team.
+
+    404 rather than 403 for everyone else: whether the kids team has a
+    curriculum file is the kids team's business.
+    """
+    from app.blueprints.services import serve_file
+    from app.models import TeamFile
+    from app.models.service import TeamMembership
+
+    person = current_user.person
+    if person is None:
+        abort(404)
+    record = TeamFile.get_for_church(g.church.id, file_id)
+    if record is None:
+        abort(404)
+    on_team = db.session.scalar(
+        db.select(TeamMembership).where(
+            TeamMembership.church_id == g.church.id,
+            TeamMembership.team_id == record.team_id,
+            TeamMembership.person_id == person.id,
+        )
+    )
+    if on_team is None and not current_user.at_least("leader"):
+        abort(404)
+    return serve_file(record)
 
 
 @bp.post("/serve/<int:assignment_id>/")

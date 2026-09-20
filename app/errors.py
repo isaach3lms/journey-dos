@@ -75,6 +75,17 @@ def register_error_handlers(app) -> None:
             403,
         )
 
+    @app.errorhandler(413)
+    def too_large(error):
+        """An upload over MAX_CONTENT_LENGTH. Send them back where they were
+        with an explanation instead of a bare error page."""
+        from flask import flash, redirect, request
+
+        from app.content import SERVICES
+
+        flash(SERVICES["file_413"], "error")
+        return redirect(request.referrer or "/"), 302
+
     @app.errorhandler(500)
     @app.errorhandler(Exception)
     def server_error(error):

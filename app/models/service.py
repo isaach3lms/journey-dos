@@ -277,6 +277,10 @@ class Team(TenantScoped, TimestampMixin, db.Model):
     positions: Mapped[list["TeamPosition"]] = relationship(
         back_populates="team", cascade="all, delete-orphan", order_by="TeamPosition.name"
     )
+    files: Mapped[list["TeamFile"]] = relationship(  # noqa: F821
+        back_populates="team", cascade="all, delete-orphan",
+        order_by="TeamFile.created_at.desc()",
+    )
     members: Mapped[list["TeamMembership"]] = relationship(
         back_populates="team", cascade="all, delete-orphan"
     )

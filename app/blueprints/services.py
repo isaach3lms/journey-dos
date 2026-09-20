@@ -8,6 +8,7 @@ the shape of code where one unscoped lookup slips through unnoticed.
 from __future__ import annotations
 
 from datetime import datetime
+from io import BytesIO
 
 from flask import (
     Blueprint,
@@ -19,7 +20,7 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import login_required
+from flask_login import current_user, login_required
 
 from app.content import SERVICES
 from app.extensions import db
@@ -47,7 +48,9 @@ from app.models import (
     Team,
     TeamMembership,
     TeamPosition,
+    TeamFile,
 )
+from app.files import CHURCH_QUOTA_BYTES, MAX_FILE_BYTES, RefusedFile, check_pdf, safe_filename
 from app.models.base import utcnow
 from app.models.service import STATUS_PUBLISHED, STATUS_SENT
 from app.music import UnknownKey, key_choices, normalize_key
@@ -550,6 +553,9 @@ def teams():
         teams=db.session.scalars(Team.for_church(g.church.id)).all(),
         people=db.session.scalars(Person.for_church(g.church.id)).all(),
         serving=Team.people_serving(g.church.id),
+        used_mb=round(TeamFile.bytes_used(g.church.id) / (1024 * 1024), 1),
+        quota_mb=CHURCH_QUOTA_BYTES // (1024 * 1024),
+        max_mb=MAX_FILE_BYTES // (1024 * 1024),
         active="services",
     )
 
@@ -569,6 +575,94 @@ def add_team():
 
     flash(SERVICES["team_added"].format(name=team.name), "notice")
     return redirect(url_for("services.teams"))
+
+
+@bp.post("/teams/<int:team_id>/files/")
+@login_required
+@min_role("leader")
+def upload_team_file(team_id: int):
+    """Put a PDF where the team can find it.
+
+    The file is checked by its contents, not its name, and stored in the
+    database so a deploy cannot wipe it. See app/files.py.
+    """
+    team = Team.get_for_church(g.church.id, team_id)
+    if team is None:
+        abort(404)
+
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        flash(SERVICES["file_missing"], "error")
+        return redirect(url_for("services.teams", _anchor=f"team{team.id}"))
+
+    data = upload.read()
+    try:
+        check_pdf(data, upload.filename, TeamFile.bytes_used(g.church.id))
+    except RefusedFile as refusal:
+        flash(SERVICES[refusal.reason].format(**refusal.fields), "error")
+        return redirect(url_for("services.teams", _anchor=f"team{team.id}"))
+
+    name = safe_filename(upload.filename)
+    db.session.add(
+        TeamFile(
+            church_id=g.church.id,
+            team_id=team.id,
+            title=(request.form.get("title") or "").strip()[:200] or name,
+            filename=name,
+            content_type="application/pdf",
+            size_bytes=len(data),
+            data=data,
+            uploaded_by_user_id=current_user.id,
+            uploaded_by_name=current_user.name,
+        )
+    )
+    db.session.commit()
+
+    flash(SERVICES["file_added"].format(team=team.name), "notice")
+    return redirect(url_for("services.teams", _anchor=f"team{team.id}"))
+
+
+@bp.get("/teams/files/<int:file_id>/")
+@login_required
+@min_role("leader")
+def team_file(file_id: int):
+    record = TeamFile.get_for_church(g.church.id, file_id)
+    if record is None:
+        abort(404)
+    return serve_file(record)
+
+
+@bp.post("/teams/files/<int:file_id>/delete/")
+@login_required
+@min_role("leader")
+def delete_team_file(file_id: int):
+    record = TeamFile.get_for_church(g.church.id, file_id)
+    if record is None:
+        abort(404)
+    team_id, title = record.team_id, record.title
+    db.session.delete(record)
+    db.session.commit()
+    flash(SERVICES["file_deleted"].format(title=title), "notice")
+    return redirect(url_for("services.teams", _anchor=f"team{team_id}"))
+
+
+def serve_file(record):
+    """Hand the PDF back, always as a PDF.
+
+    The stored content type is never echoed from the upload, and the filename
+    was rewritten before storage, so neither can steer the browser.
+    """
+    from flask import send_file
+
+    response = send_file(
+        BytesIO(record.data),
+        mimetype="application/pdf",
+        as_attachment=False,
+        download_name=record.filename,
+        max_age=0,
+    )
+    response.headers["Content-Security-Policy"] = "default-src 'none'; object-src 'self'"
+    return response
 
 
 @bp.post("/teams/<int:team_id>/positions/")

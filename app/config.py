@@ -73,6 +73,10 @@ class BaseConfig:
     MAIL_TRANSPORT = os.environ.get("MAIL_TRANSPORT", "console")
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
     MAIL_FROM = os.environ.get("MAIL_FROM", "The Journey Church <no-reply@example.com>")
+    # A hair above the 15 MB per-file cap in app/files.py, so an oversized
+    # upload is refused with our message rather than Werkzeug's.
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+
     MAIL_TIMEOUT = 15
     OUTBOX_BATCH_SIZE = 50
     # Account email (confirm, reset, set up) goes out inside the request that

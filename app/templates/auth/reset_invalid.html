@@ -1,7 +1,0 @@
-{% extends "public.html" %}
-{% block title %}{{ content.reset_bad_link_title }} | {{ church.name }}{% endblock %}
-{% block inner %}
-  <h1>{{ content.reset_bad_link_title }}</h1>
-  <p>{{ content.reset_bad_link }}</p>
-  <a class="btn wide center" href="{{ url_for('auth.forgot') }}">{{ content.reset_try_again }}</a>
-{% endblock %}

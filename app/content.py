@@ -1528,6 +1528,15 @@ KIDS = {
 
 
 MESSAGES = {
+    "chat_email_subject": "{name} posted in {room}",
+    "chat_email_body": (
+        "Hello {first_name},\n\n"
+        "{name} posted in {room}:\n\n"
+        "  {excerpt}\n\n"
+        "Open the app to read the rest and reply:\n{link}\n\n"
+        "You get one of these at most every half hour per room. To stop them, "
+        "open the app, go to You, and turn off Chat messages."
+    ),
     "message_options": "Message options",
     "member_compose_placeholder": "Message",
     "title": "Messages",

@@ -33,6 +33,7 @@ from flask_login import current_user, login_required, logout_user
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.content import GIVING, GROUPS, MEMBER, MESSAGES, PRIVACY, RESOURCES, SERVICES
 from app.extensions import db
+from app.chat_notify import notify_new_message
 from app.mail import opt_in, opt_out
 from app.bible import parse as parse_reference
 from app.bible.providers import fetch_passage
@@ -578,7 +579,9 @@ def chat_post(conversation_id: int):
         flash(MESSAGES["announce_limit"].format(count=MEMBER_ANNOUNCEMENTS_PER_DAY), "error")
         return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
 
-    Message.post(conversation, person, body[:4000])
+    posted = Message.post(conversation, person, body[:4000])
+    db.session.flush()
+    notify_new_message(conversation, posted, author_person=person)
     db.session.commit()
 
     return redirect(url_for("member.chat_thread", conversation_id=conversation.id))

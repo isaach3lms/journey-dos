@@ -29,6 +29,7 @@ from app.models.moderation import (
     REPORT_REMOVED,
     MessageReport,
 )
+from app.chat_notify import notify_new_message
 from app.moderation import objectionable_terms
 from app.extensions import db
 from app.mail import NotQueued, queue
@@ -148,7 +149,9 @@ def post(conversation_id: int):
         flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
         return redirect(url_for("messages.thread", conversation_id=conversation.id))
 
-    Message.post(conversation, person, body[:4000], author_name=current_user.name)
+    posted = Message.post(conversation, person, body[:4000], author_name=current_user.name)
+    db.session.flush()
+    notify_new_message(conversation, posted, author_person=person, author_name=current_user.name)
 
     queued = 0
     if request.form.get("also_email") == "on" and conversation.is_announcement:

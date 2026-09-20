@@ -493,4 +493,9 @@ class TestEmailingAnAnnouncement:
             data={"body": "Rehearsal moved", "also_email": "on"},
             headers={"Host": JOURNEY_HOST},
         )
-        assert db.session.scalars(db.select(OutboxMessage)).all() == []
+        # The room's own members get a chat notification, which is the point
+        # of that feature. Nobody gets the church-wide announcement blast,
+        # which is the point of this test: ticking the box on a room does not
+        # turn a room into an announcement.
+        sent = db.session.scalars(db.select(OutboxMessage)).all()
+        assert [m.category for m in sent if m.category != "chat"] == []

@@ -78,6 +78,12 @@ CATEGORIES: tuple[Category, ...] = (
         is_transactional=False,
     ),
     Category(
+        "chat",
+        "Chat messages",
+        "An email when somebody posts in a room you are in.",
+        is_transactional=False,
+    ),
+    Category(
         "announcement",
         "Church announcements",
         "Church-wide news, sent rarely.",

@@ -1140,3 +1140,8 @@ ul.policy span{color:var(--muted)}
   .memberfull .mtabs a[aria-current="page"]{color:#fff;box-shadow:inset 0 -3px 0 var(--gold)}
   .memberfull .growswitch{max-width:360px}
 }
+
+/* Latest messages list on Messages: one line of who and where, then the words. */
+.flaglist a.inlinelink{display:inline;padding:0;color:var(--accent);font-weight:500}
+.recentwhere{font-weight:400;font-size:12.5px;color:var(--muted)}
+.recentbody{display:block;font-size:13.5px;color:var(--ink);margin-top:3px;line-height:1.45}

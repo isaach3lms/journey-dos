@@ -280,3 +280,17 @@ class TestDeleteWholeChat:
         db.session.commit()
         sign_in("pastor@journeychurchsemo.com")
         assert client.post(f"/messages/{convo.id}/delete/", headers=H).status_code == 404
+
+
+class TestMessagesPageLayout:
+    def test_latest_messages_appears_once_and_not_in_the_title(self, client, sign_in, db):
+        alicia = link(db, "member@journeychurchsemo.com")
+        room = a_room(db, alicia)
+        Message.post(room, alicia, "Only once please")
+        db.session.commit()
+        sign_in("pastor@journeychurchsemo.com")
+        page = client.get("/messages/", headers=H).data.decode()
+        assert page.count("Latest messages everywhere") == 1
+        assert page.count("Only once please") == 1
+        title = page[page.index("<title>"):page.index("</title>")]
+        assert "Latest" not in title and "<section" not in title

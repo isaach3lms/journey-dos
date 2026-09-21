@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ content.songs_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.songs_title }}{% endblock %}
+{% block subheading %}{{ content.songs_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('services.index') }}">{{ content.title }}</a>
+
+
+<section class="card" id="import">
+  <div class="hd">
+    <h2>{{ content.import_heading }}</h2>
+    <div class="spacer"></div>
+    <a class="btn ghostbtn" href="https://songselect.ccli.com/search/results" target="_blank" rel="noopener">{{ content.import_browse }} ↗</a>
+  </div>
+  <div class="bd">
+    <p>{{ content.import_steps.format(max=max_files) }}</p>
+    <p class="muted small">{{ content.import_why_api }}</p>
+    <form method="post" action="{{ url_for('services.import_songs') }}" enctype="multipart/form-data">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="file" name="files" multiple accept="{{ accept }}" aria-label="{{ content.import_choose }}">
+        <button class="btn" type="submit">{{ content.import_submit }}</button>
+      </div>
+    </form>
+    <p class="muted small">
+      {% if church.ccli_license_number %}{{ content.licence_line.format(number=church.ccli_license_number) }}{% else %}{{ content.licence_missing }}{% endif %}
+    </p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="bd">
+    <p>{{ content.songs_why }}</p>
+    <form method="post" action="{{ url_for('services.add_song') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="title" placeholder="{{ content.song_title }}" aria-label="{{ content.song_title }}">
+        <input class="input" type="text" name="author" placeholder="{{ content.song_author }}" aria-label="{{ content.song_author }}">
+      </div>
+      <div class="filters">
+        <select class="input select" name="default_key" aria-label="{{ content.song_key }}">
+          <option value="">{{ content.no_key }}</option>
+          {% for key in keys %}<option value="{{ key }}">{{ key }}</option>{% endfor %}
+        </select>
+        <input class="input dateinput" type="text" name="ccli_number" placeholder="{{ content.song_ccli }}" aria-label="{{ content.song_ccli }}">
+        <input class="input dateinput" type="number" name="tempo_bpm" min="40" max="220" placeholder="{{ content.song_tempo }}" aria-label="{{ content.song_tempo }}">
+        <button class="btn" type="submit">{{ content.song_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="bd">
+    {% if songs %}
+      <ul class="flaglist">
+        {% for song in songs %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ song.title }}</span>
+              <span class="pe">
+                {{ song.author or "" }}
+                {% if song.default_key %} &middot; {{ song.default_key }}
+                  {% for option in song.capo_options[:2] %}
+                    &middot; {{ content.capo.format(capo=option.capo, shape=option.shape) }}
+                  {% endfor %}
+                {% endif %}
+                {% if song.tempo_bpm %} &middot; {{ song.tempo_bpm }} bpm{% endif %}
+                {% if song.ccli_number %} &middot; CCLI {{ song.ccli_number }}
+                  &middot; <a href="{{ song.songselect_url }}" target="_blank" rel="noopener">{{ content.songselect_link }} ↗</a>
+                {% endif %}
+              </span>
+            </span>
+            {% set count = used.get(song.id, 0) %}
+            <span class="pill {% if not count %}pending{% endif %}">
+              {% if count %}{{ content.song_used.format(count=count) }}{% else %}{{ content.song_unused }}{% endif %}
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.songs_empty }}</div>
+        <div class="d">{{ content.songs_empty_hint }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

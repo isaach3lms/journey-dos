@@ -1364,6 +1364,43 @@ SERVICES = {
     "songs_empty": "No songs yet.",
     "songs_empty_hint": "Add the ones you actually sing. Ten is a good start.",
 
+    # SongSelect import
+    "import_heading": "Import from SongSelect",
+    "import_steps": (
+        "In SongSelect, open a song and download it as a USR file, a text "
+        "file, or ChordPro. Drop up to {max} files here at once. We read the "
+        "title, writers, CCLI number, and key, and leave the words behind."
+    ),
+    "import_why_api": (
+        "CCLI only opens a direct SongSelect connection to a short list of "
+        "approved software partners, so downloads are the way in."
+    ),
+    "import_browse": "Find songs on SongSelect",
+    "import_choose": "SongSelect files",
+    "import_submit": "Import the songs",
+    "import_none_chosen": "Choose at least one file downloaded from SongSelect.",
+    "import_too_many": "That is {count} files. Import up to {max} at a time.",
+    "import_added": "{count} added to your songs.",
+    "import_updated": "{count} already here, details filled in.",
+    "import_unchanged": "{count} already here with nothing new.",
+    "import_skipped": "{name}: {why}",
+    "import_why_empty": "the file is empty.",
+    "import_why_too_big": "too big to be a SongSelect download.",
+    "import_why_pdf": (
+        "a PDF is a chord chart or lead sheet. Put those in the team's files "
+        "on the Teams page."
+    ),
+    "import_why_wrong_type": "not a SongSelect download. Use USR, TXT, or ChordPro.",
+    "import_why_unreadable": "we could not find a song title in it.",
+    "import_why_no_title": "we could not find a song title in it.",
+    "import_why_no_ccli": (
+        "no CCLI song number in it, so it does not look like a SongSelect "
+        "download."
+    ),
+    "songselect_link": "SongSelect",
+    "licence_line": "CCLI License #{number}",
+    "licence_missing": "Add your CCLI license number in Settings so it shows here.",
+
     # Teams
     "teams_title": "Teams",
     "teams_subtitle": "Who serves, and what they do.",
@@ -1920,6 +1957,20 @@ SETTINGS = {
         "it directly."
     ),
     "giving_setup": "Giving setup and reports",
+
+    # CCLI
+    "ccli_heading": "CCLI license",
+    "ccli_hint": (
+        "Your Church Copyright License number. It shows on the songs page and "
+        "on every service plan so whoever builds the slides has it for the "
+        "lyric footer. Find it in your CCLI profile under Licenses."
+    ),
+    "ccli_label": "License number",
+    "ccli_save": "Save the number",
+    "ccli_saved": "CCLI license number saved.",
+    "ccli_cleared": "CCLI license number removed.",
+    "ccli_bad": "A CCLI license number is 4 to 10 digits.",
+    "ccli_songs": "Songs and SongSelect import",
 
     # Member announcements
     "announce_heading": "Who can post church-wide announcements",

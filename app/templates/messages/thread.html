@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ conversation.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ conversation.title }}{% endblock %}
+{% block subheading %}{{ conversation.kind_label }}{% if conversation.topic %} &middot; {{ conversation.topic }}{% endif %}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('messages.index') }}">{{ content.title }}</a>
+
+
+{% if conversation.is_archived %}
+  <div class="alert error">{{ content.archived_note }}</div>
+{% endif %}
+
+<section class="card">
+  <div class="bd">
+    <p class="muted small">
+      {% if conversation.is_announcement %}{{ content.announcement_note.format(church=church.name) }}
+      {% else %}{{ content.room_note }}{% endif %}
+    </p>
+
+    {% if conversation.messages %}
+      <ol class="thread">
+        {% for message in conversation.messages %}
+          <li>
+            <div class="mfrom">
+              {{ message.author_name or "Someone" }}
+              <span class="muted">{{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
+            </div>
+            <div class="mbody">
+              {% if message.is_deleted %}
+                <p class="muted">{{ content.deleted_placeholder }}</p>
+              {% else %}
+                {{ message.rendered }}
+              {% endif %}
+            </div>
+            {% if not message.is_deleted %}
+              <form method="post" class="inline"
+                    action="{{ url_for('messages.delete_message', conversation_id=conversation.id, message_id=message.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
+              </form>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ol>
+      <p class="muted small">{{ content.delete_note }}</p>
+    {% else %}
+      <p class="muted small">{{ content.no_messages }}</p>
+    {% endif %}
+
+    {% if not conversation.is_archived %}
+      <form method="post" action="{{ url_for('messages.post', conversation_id=conversation.id) }}">
+        {{ csrf_field() }}
+        <textarea class="input" name="body" rows="3" placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}"></textarea>
+        {% if conversation.is_announcement %}
+          <label class="check">
+            <input type="checkbox" name="also_email">
+            <span>{{ content.email_it }} &middot; <span class="muted">{{ content.email_hint }}</span></span>
+          </label>
+        {% endif %}
+        <button class="btn" type="submit">{{ content.post }}</button>
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if not conversation.is_announcement %}
+<section class="card">
+  <div class="hd"><h2>{{ content.members.format(count=conversation.member_count) }}</h2></div>
+  <div class="bd">
+    {% if conversation.members %}
+      <ul class="flaglist">
+        {% for membership in conversation.members %}
+          <li>
+            <span class="av">{{ membership.person.initials }}</span>
+            <span class="fl"><span class="pn">{{ membership.person.full_name }}</span></span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.remove_member', conversation_id=conversation.id, member_id=membership.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.member_remove }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.members_empty }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('messages.add_member', conversation_id=conversation.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="person_id" aria-label="{{ content.member_add }}">
+          {% for person in candidates %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}
+        </select>
+        <button class="btn ghostbtn" type="submit">{{ content.member_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="bd">
+    <form method="post" action="{{ url_for('messages.archive', conversation_id=conversation.id) }}" class="inline">
+      {{ csrf_field() }}
+      <button class="btn ghostbtn" type="submit">{{ content.archive }}</button>
+    </form>
+    {% if current_user.is_staff %}
+      <form method="post" action="{{ url_for('messages.delete_chat', conversation_id=conversation.id) }}" class="inline"
+            onsubmit='return confirm({{ content.delete_chat_confirm.format(title=conversation.title) | tojson }})'>
+        {{ csrf_field() }}
+        <button class="btn ghostbtn" type="submit">{{ content.delete_chat }}</button>
+      </form>
+      <p class="muted small">{{ content.delete_chat_hint }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

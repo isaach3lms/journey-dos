@@ -1,0 +1,36 @@
+{# The kiosk. Full screen, big targets, nothing to navigate away to.
+
+   It renders on a tablet a volunteer signs in once on a Sunday morning; the
+   families using it never see a login. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ church.name }}{% endblock %}</title>
+{% include "partials/head_meta.html" %}
+</head>
+<body class="kioskbody">
+<header class="kioskhead">
+  {% if palette.logo_reversed %}
+    <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}" alt="{{ church.name }}">
+  {% else %}
+    <div class="crest">{{ church.name[:2]|upper }}</div>
+  {% endif %}
+  <div class="spacer"></div>
+  <a class="kioskexit" href="{{ url_for('kids.index') }}">{{ content.kiosk_exit }}</a>
+</header>
+
+<main class="kioskwrap">
+  <div class="kioskcard">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="alert {{ category }}" role="alert">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </div>
+</main>
+{% include "partials/pwa_script.html" %}
+</body>
+</html>

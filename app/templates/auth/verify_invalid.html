@@ -1,0 +1,7 @@
+{% extends "public.html" %}
+{% block title %}{{ content.verify_bad_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.verify_bad_title }}</h1>
+  <p>{{ content.verify_bad }}</p>
+  <p class="footnote"><a href="{{ url_for('auth.login') }}">{{ content.join_back }}</a></p>
+{% endblock %}

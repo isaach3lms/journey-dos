@@ -1,0 +1,7 @@
+{% extends "public.html" %}
+{% block title %}{{ content.join_closed_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.join_closed_title }}</h1>
+  <p>{{ content.join_closed }}</p>
+  <p class="footnote"><a href="{{ url_for('auth.login') }}">{{ content.join_back }}</a></p>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends "kids/kiosk_base.html" %}
+{% block title %}{{ content.label_heading }} | {{ church.name }}{% endblock %}
+{% block content %}
+  <h1>{{ content.label_heading }}</h1>
+  <p class="lede">{{ content.label_children.format(names=checked_in|map(attribute='full_name')|join(', ')) }}</p>
+
+  <div class="mlbl">{{ content.label_code }}</div>
+  <div class="pickupcode mono">{{ code }}</div>
+  <p class="lede">{{ content.label_hint }}</p>
+
+  <a class="btn wide center" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
+{% endblock %}

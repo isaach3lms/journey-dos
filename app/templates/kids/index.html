@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+
+{% if open_session %}
+  <section class="card">
+    <div class="hd">
+      <h2>{{ open_session.name }}</h2>
+      <div class="spacer"></div>
+      <span class="pill">{{ content.still_in.format(count=open_session.present_count) }}</span>
+    </div>
+    <div class="bd">
+      <div class="filters">
+        <a class="btn" href="{{ url_for('kids.kiosk') }}">{{ content.open_kiosk }}</a>
+        <a class="btn ghostbtn" href="{{ url_for('kids.checkout') }}">{{ content.checkout_heading }}</a>
+      </div>
+      <p class="muted small">{{ content.collected.format(count=open_session.collected_count) }}</p>
+      {% if open_session.present_count %}
+        <p class="muted small">{{ content.close_warning.format(count=open_session.present_count) }}</p>
+      {% endif %}
+      <form method="post" action="{{ url_for('kids.toggle_session', session_id=open_session.id) }}" class="inline">
+        {{ csrf_field() }}
+        <button class="btn ghostbtn" type="submit">{{ content.close }}</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="hd"><h2>{{ content.present_heading }}</h2></div>
+    <div class="bd">
+      {% if open_session.checkins %}
+        <ul class="flaglist">
+          {% for checkin in open_session.checkins %}
+            <li>
+              <span class="av">{{ checkin.person.initials }}</span>
+              <span class="fl">
+                <span class="pn">{{ checkin.person.full_name }}</span>
+                <span class="pe">
+                  {{ checkin.household_name or "" }} &middot;
+                  {% if checkin.is_present %}
+                    {{ content.checked_in_at.format(time=checkin.checked_in_at|church_time("%-I:%M%p")) }}
+                  {% elif checkin.collected_by %}
+                    {{ content.collected_by.format(name=checkin.collected_by, time=checkin.checked_out_at|church_time("%-I:%M%p")) }}
+                  {% else %}
+                    {{ content.collected_unknown.format(time=checkin.checked_out_at|church_time("%-I:%M%p")) }}
+                  {% endif %}
+                </span>
+              </span>
+              <span class="pill {% if checkin.is_present %}pending{% endif %} mono">{{ checkin.pickup_code }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">{{ content.present_empty }}</p>
+      {% endif %}
+    </div>
+  </section>
+{% else %}
+  <section class="card">
+    <div class="bd">
+      <div class="empty">
+        <div class="t">{{ content.no_open_session }}</div>
+        <div class="d">{{ content.no_open_session_hint }}</div>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<section class="card">
+  <div class="hd"><h2>{{ content.open_heading }}</h2></div>
+  <div class="bd">
+    <form method="post" action="{{ url_for('kids.open_session') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input" type="text" name="name" placeholder="{{ content.session_placeholder }}" aria-label="{{ content.session_name }}">
+        <input class="input dateinput" type="datetime-local" name="starts_at" aria-label="{{ content.session_when }}">
+        <button class="btn" type="submit">{{ content.open_it }}</button>
+      </div>
+    </form>
+
+    {% if sessions %}
+      <ul class="flaglist">
+        {% for item in sessions %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ item.starts_at|church_time("%A, %B %-d at %-I:%M%p") }}</span>
+              <span class="pe">
+                {{ item.name }} &middot;
+                {{ content.collected.format(count=item.collected_count) }}
+                {% if item.present_count %} &middot; {{ content.still_in.format(count=item.present_count) }}{% endif %}
+              </span>
+            </span>
+            <form method="post" class="inline" action="{{ url_for('kids.toggle_session', session_id=item.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">
+                {% if item.is_open %}{{ content.close }}{% else %}{{ content.reopen }}{% endif %}
+              </button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

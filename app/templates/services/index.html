@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+
+<section class="card">
+  <div class="bd">
+    <div class="filters">
+      <a class="ghost" href="{{ url_for('services.songs') }}">{{ content.songs_title }}</a>
+      <a class="ghost" href="{{ url_for('services.teams') }}">{{ content.teams_title }}</a>
+      <a class="ghost" href="{{ url_for('services.types') }}">{{ content.types_title }}</a>
+    </div>
+    <form method="post" action="{{ url_for('services.create') }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="service_type_id" aria-label="{{ content.use_type }}">
+          <option value="">{{ content.no_type }}</option>
+          {% for service_type in types %}
+            <option value="{{ service_type.id }}">{{ service_type.name }}</option>
+          {% endfor %}
+        </select>
+        <input class="input" type="text" name="name" placeholder="{{ content.name_placeholder }}" aria-label="{{ content.name }}">
+        <input class="input dateinput" type="datetime-local" name="starts_at" aria-label="{{ content.when }}">
+        <button class="btn" type="submit">{{ content.create }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.upcoming }}</h2></div>
+  <div class="bd">
+    {% if upcoming %}
+      <ul class="flaglist">
+        {% for service in upcoming %}
+          <li>
+            <a href="{{ url_for('services.plan', service_id=service.id) }}">
+              <span class="fl">
+                <span class="pn">{{ service.starts_at|church_time("%A, %B %-d at %-I:%M%p") }}</span>
+                <span class="pe">
+                  {{ service.name }} &middot;
+                  {{ content.team_status.format(accepted=service.accepted_count, waiting=service.waiting_count, declined=service.declined_count) }}
+                  {% if service.total_minutes %} &middot; {{ content.runtime.format(minutes=service.total_minutes) }}{% endif %}
+                  {% if service.unfilled_count %} &middot; <b>short {{ service.unfilled_count }}</b>{% endif %}
+                </span>
+              </span>
+              <span class="pill plain {% if not service.is_published %}pending{% endif %}">{{ service.status_label }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ content.empty }}</div>
+        <div class="d">{{ content.empty_hint }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% if past %}
+<section class="card">
+  <div class="hd"><h2>{{ content.past }}</h2></div>
+  <div class="bd">
+    <ul class="flaglist">
+      {% for service in past %}
+        <li>
+          <a href="{{ url_for('services.plan', service_id=service.id) }}">
+            <span class="fl">
+              <span class="pn">{{ service.starts_at|church_time("%B %-d") }}</span>
+              <span class="pe">{{ service.name }}</span>
+            </span>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

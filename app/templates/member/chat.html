@@ -1,0 +1,26 @@
+{% extends "member/base.html" %}
+{% block title %}{{ msg.member_heading }} | {{ church.name }}{% endblock %}
+{% block content %}
+<h1 class="mgreet">{{ msg.member_heading }}</h1>
+
+{% if conversations %}
+  {% for conversation in conversations %}
+    <a class="mcard mlink" href="{{ url_for('member.chat_thread', conversation_id=conversation.id) }}">
+      <div class="mlbl">{{ conversation.kind_label }}</div>
+      <div class="mtitle">{{ conversation.title }}</div>
+      <div class="mmeta">
+        {% if conversation.last_message_at %}
+          {{ conversation.last_message_at|church_time("%b %-d, %-I:%M%p") }}
+        {% else %}{{ msg.no_messages }}{% endif %}
+        {% set count = unread.get(conversation.id, 0) %}
+        {% if count %} &middot; <b>{{ msg.unread.format(count=count) }}</b>{% endif %}
+      </div>
+    </a>
+  {% endfor %}
+{% else %}
+  <section class="mcard">
+    <div class="mtitle">{{ msg.member_none }}</div>
+    <p class="mnote">{{ msg.member_none_hint }}</p>
+  </section>
+{% endif %}
+{% endblock %}

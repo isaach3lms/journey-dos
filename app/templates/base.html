@@ -1,0 +1,51 @@
+{#
+  Base layout.
+
+  This file contains no colors and no font names. Everything visual arrives
+  as CSS custom properties from app/brand.py, injected below. To reskin a
+  tenant, change its church row. Never edit this file to change how a church
+  looks.
+
+  The 500 page deliberately does not extend this template. See app/errors.py.
+#}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{{ church.name }}{% endblock %}</title>
+{% include "partials/head_meta.html" %}
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<div class="shell">
+  {% include "partials/sidebar.html" %}
+
+  <main class="main" id="main">
+    <div class="topline">
+      <div>
+        <h1>{% block heading %}{% endblock %}</h1>
+        <p class="sub">{% block subheading %}{% endblock %}</p>
+      </div>
+      <div class="toplineactions">{% block actions %}{% endblock %}</div>
+    </div>
+    <div class="content">
+      {# Rendered here rather than per page. Eleven staff templates each
+         had their own copy and the roster never got one, so every flash that
+         redirected there vanished. #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+
+{% include "partials/pwa_script.html" %}
+{% block extra_script %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}{{ group.name }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ group.name }}{% endblock %}
+{% block subheading %}
+  {{ group.meeting_pattern or "" }}{% if group.location %} &middot; {{ group.location }}{% endif %}
+{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('groups.index') }}">{{ content.title }}</a>
+
+
+<section class="card">
+  <div class="hd"><h2>{{ content.roster_heading }}</h2></div>
+  <div class="bd">
+    {% if group.memberships %}
+      <ul class="flaglist">
+        {% for membership in group.memberships %}
+          <li>
+            <span class="av">{{ membership.person.initials }}</span>
+            <span class="fl">
+              <span class="pn">{{ membership.person.full_name }}</span>
+              <span class="pe">{{ membership.role|title }}</span>
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('groups.set_role', group_id=group.id, membership_id=membership.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">
+                {% if membership.is_leader %}{{ content.make_member }}{% else %}{{ content.make_leader }}{% endif %}
+              </button>
+            </form>
+            <form method="post" class="inline"
+                  action="{{ url_for('groups.remove_member', group_id=group.id, membership_id=membership.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.remove }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.roster_empty }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('groups.add_member', group_id=group.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="person_id" aria-label="{{ content.add_person }}">
+          {% for person in candidates %}
+            <option value="{{ person.id }}">{{ person.full_name }}</option>
+          {% endfor %}
+        </select>
+        <select class="input select" name="role" aria-label="Role">
+          <option value="member">Member</option>
+          <option value="leader">Leader</option>
+        </select>
+        <button class="btn" type="submit">{{ content.add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.meetings_heading }}</h2></div>
+  <div class="bd">
+    {% if group.meetings %}
+      <ul class="flaglist">
+        {% for meeting in group.meetings %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ meeting.meets_at|church_time("%A, %B %-d at %-I:%M%p") }}</span>
+              <span class="pe">
+                {{ meeting.location or "" }}
+                {% if meeting.going_count %} &middot; {{ content.going_count.format(count=meeting.going_count) }}
+                {% else %} &middot; {{ content.going_none }}{% endif %}
+              </span>
+            </span>
+            {% if meeting.is_past %}<span class="pill pending">{{ content.meeting_past }}</span>{% endif %}
+            <form method="post" class="inline"
+                  action="{{ url_for('groups.delete_meeting', group_id=group.id, meeting_id=meeting.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.meeting_delete }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.meeting_none }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('groups.add_meeting', group_id=group.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <input class="input dateinput" type="datetime-local" name="meets_at" aria-label="{{ content.meeting_when }}">
+        <input class="input" type="text" name="location" placeholder="{{ content.location_placeholder }}" aria-label="{{ content.location }}">
+        <button class="btn" type="submit">{{ content.meeting_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

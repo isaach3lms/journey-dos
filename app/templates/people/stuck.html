@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ stuck.card_heading }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ stuck.card_heading }}{% endblock %}
+{% block subheading %}{{ stuck.card_intro }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('people.index') }}">{{ content.back_to_roster }}</a>
+
+<section class="card">
+  <div class="bd">
+    {% if people %}
+      <ul class="flaglist">
+        {% for person in people %}
+          <li>
+            <a href="{{ url_for('people.detail', person_id=person.id) }}">
+              <span class="av">{{ person.initials }}</span>
+              <span class="fl">
+                <span class="pn">{{ person.full_name }}</span>
+                <span class="pe">{{ person.stuck_reason }}</span>
+              </span>
+              <span class="pill pending">{{ stuck.flag }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="empty">
+        <div class="t">{{ stuck.card_empty }}</div>
+        <div class="d">{{ stuck.card_empty_hint.format(window=window) }}</div>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

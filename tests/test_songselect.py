@@ -122,7 +122,9 @@ class TestParsing:
         assert meta.title  # the rest still imports
 
     @pytest.mark.parametrize("name,body,reason", [
-        ("chart.pdf", b"%PDF-1.7 chart", "pdf"),
+        ("scan.pdf", b"%PDF-1.7 no text here", "pdf_unreadable"),
+        ("fake.pdf", b"<html>not a pdf</html>", "wrong_type"),
+        ("renamed.txt", b"%PDF-1.7 a pdf called txt", "wrong_type"),
         ("notes.txt", b"Things to bring Sunday\nCoffee\n", "no_ccli"),
         ("song.docx", b"PK\x03\x04", "wrong_type"),
         ("song", b"no extension", "wrong_type"),
@@ -137,7 +139,8 @@ class TestParsing:
 
     def test_every_reason_has_copy(self):
         from app.content import SERVICES
-        for reason in ("empty", "too_big", "pdf", "wrong_type", "unreadable", "no_title", "no_ccli"):
+        for reason in ("empty", "too_big", "wrong_type", "unreadable", "no_title", "no_ccli",
+                       "pdf_unreadable", "pdf_no_ccli"):
             assert f"import_why_{reason}" in SERVICES
 
 
@@ -194,10 +197,10 @@ class TestImport:
         assert songs(db)[0].is_active is True
 
     def test_one_bad_file_does_not_stop_the_rest(self, db, leader):
-        response = upload(leader, ("chart.pdf", b"%PDF-1.7"), ("b.txt", TXT.encode()))
+        response = upload(leader, ("scan.pdf", b"%PDF-1.7"), ("b.txt", TXT.encode()))
         assert b"1 added to your songs." in response.data
-        assert b"chart.pdf" in response.data
-        assert b"Teams page" in response.data
+        assert b"scan.pdf" in response.data
+        assert b"attach the PDF on its row" in response.data
         assert [s.title for s in songs(db)] == ["Way Maker"]
 
     def test_nothing_chosen(self, db, leader):

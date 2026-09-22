@@ -56,26 +56,55 @@
     {% if songs %}
       <ul class="flaglist">
         {% for song in songs %}
-          <li>
+          <li id="song{{ song.id }}" class="songitem">
             <span class="fl">
               <span class="pn">{{ song.title }}</span>
               <span class="pe">
-                {{ song.author or "" }}
-                {% if song.default_key %} &middot; {{ song.default_key }}
-                  {% for option in song.capo_options[:2] %}
-                    &middot; {{ content.capo.format(capo=option.capo, shape=option.shape) }}
-                  {% endfor %}
-                {% endif %}
-                {% if song.tempo_bpm %} &middot; {{ song.tempo_bpm }} bpm{% endif %}
-                {% if song.ccli_number %} &middot; CCLI {{ song.ccli_number }}
-                  &middot; <a href="{{ song.songselect_url }}" target="_blank" rel="noopener">{{ content.songselect_link }} ↗</a>
-                {% endif %}
+                {%- set parts = [] %}
+                {%- if song.author %}{% set _ = parts.append(song.author) %}{% endif %}
+                {%- if song.default_key %}{% set _ = parts.append(song.default_key) %}
+                  {%- for option in song.capo_options[:2] %}{% set _ = parts.append(content.capo.format(capo=option.capo, shape=option.shape)) %}{% endfor %}
+                {%- endif %}
+                {%- if song.tempo_bpm %}{% set _ = parts.append(song.tempo_bpm ~ " bpm") %}{% endif %}
+                {%- if song.ccli_number %}{% set _ = parts.append("CCLI " ~ song.ccli_number) %}{% endif %}
+                {%- for part in parts %}{% if not loop.first %} &middot; {% endif %}{{ part }}{% endfor %}
+                {%- if song.songselect_url %}{% if parts %} &middot; {% endif %}<a href="{{ song.songselect_url }}" target="_blank" rel="noopener">{{ content.songselect_link }} ↗</a>{% endif %}
               </span>
             </span>
             {% set count = used.get(song.id, 0) %}
             <span class="pill {% if not count %}pending{% endif %}">
               {% if count %}{{ content.song_used.format(count=count) }}{% else %}{{ content.song_unused }}{% endif %}
             </span>
+            <div class="songcharts">
+              {% for chart in song.charts %}
+                <div class="chartrow">
+                  <a class="mfile" href="{{ url_for('services.song_chart', chart_id=chart.id) }}" target="_blank" rel="noopener">
+                    <span class="filemark" aria-hidden="true">PDF</span>
+                    <span class="fl">
+                      <span class="pn">{{ chart.title }}</span>
+                      <span class="pe">{{ chart.size_label }}{% if chart.uploaded_by_name %} &middot; {{ chart.uploaded_by_name }}{% endif %}</span>
+                    </span>
+                  </a>
+                  <form method="post" action="{{ url_for('services.delete_chart', chart_id=chart.id) }}"
+                        onsubmit="return confirm({{ content.chart_delete_confirm|tojson|forceescape }});">
+                    {{ csrf_field() }}
+                    <button class="btn ghostbtn tiny" type="submit">{{ content.chart_delete }}</button>
+                  </form>
+                </div>
+              {% endfor %}
+              <details class="chartadd">
+                <summary>{{ content.chart_attach }}</summary>
+                <form method="post" action="{{ url_for('services.attach_chart', song_id=song.id) }}" enctype="multipart/form-data">
+                  {{ csrf_field() }}
+                  <div class="filters">
+                    <input class="input" type="text" name="title" maxlength="200"
+                           placeholder="{{ content.chart_label_placeholder }}" aria-label="{{ content.chart_label }}">
+                    <input class="input" type="file" name="file" accept=".pdf,application/pdf" aria-label="{{ content.chart_attach }}">
+                    <button class="btn" type="submit">{{ content.chart_upload }}</button>
+                  </div>
+                </form>
+              </details>
+            </div>
           </li>
         {% endfor %}
       </ul>

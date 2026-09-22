@@ -349,6 +349,10 @@ class TestNoWayToSeeSomeoneElse:
         # A team's PDF, by the file's own id. The route checks the person is
         # on that team, so the id names a file, never a person.
         "file_id",
+        # A song's chart, by the chart's own id. The route checks the person
+        # is scheduled on a published service that uses the song, and 404s
+        # otherwise. Names a file, never a person.
+        "chart_id",
     }
 
     def test_no_member_route_accepts_a_person_id(self, app):

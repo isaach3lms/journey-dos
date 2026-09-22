@@ -14,10 +14,10 @@ chord shapes can play anything if told "capo 2, play in G". Giving them the
 sounding key alone is technically complete and practically useless, which is
 why `capo_options` exists.
 
-No lyrics and no chord charts are stored anywhere in this system. Reproducing
-either needs a CCLI SongSelect license the church holds, not the vendor. This
-module handles the key, and the `ccli_number` on the song points at the church's
-own licensed copy.
+No lyrics are stored as text anywhere in this system, and charts only as the
+PDF a church attached under its own SongSelect licence (app/models/songchart.py).
+This module handles the key, and the `ccli_number` on the song points at the
+church's own licensed copy.
 """
 
 from __future__ import annotations

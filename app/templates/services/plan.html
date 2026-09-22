@@ -183,9 +183,15 @@
                   {% endfor %}
                 </select>
               </form>
+              {% if item.song %}
+                {% for chart in item.song.charts %}
+                  <a class="btn ghostbtn tiny" target="_blank" rel="noopener"
+                     href="{{ url_for('services.song_chart', chart_id=chart.id) }}"
+                     title="{{ chart.title }}">{{ content.chart_open }}{% if item.song.charts|length > 1 %} {{ loop.index }}{% endif %}</a>
+                {% endfor %}
+              {% endif %}
               {% if item.song and item.song.ccli_number %}
-                {# Charts stay in SongSelect under the church's own licence.
-                   We link, we never store the words or the music. #}
+                {# The church's own licensed copy on SongSelect. #}
                 <a class="btn ghostbtn tiny" target="_blank" rel="noopener noreferrer"
                    href="{{ item.song.songselect_url }}">
                   {{ content.songs_open }}

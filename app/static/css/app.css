@@ -1233,3 +1233,17 @@ ul.policy span{color:var(--muted)}
 .mfile:first-of-type{border-top:none}
 .mfile .pn{display:block;font-size:14px;font-weight:500}
 .mfile .pe{display:block;font-size:12px;color:var(--muted)}
+
+/* Song library: charts sit under the song, full width. */
+.flaglist li.songitem{flex-wrap:wrap}
+.flaglist li.songitem > .fl{flex:1 1 0;min-width:0}
+.flaglist .pe a{display:inline;padding:0;color:var(--accent)}
+.songcharts{flex:1 1 100%;display:flex;flex-direction:column;gap:2px;padding-left:2px}
+.chartrow{display:flex;align-items:center;gap:10px}
+.chartrow .mfile{flex:1 1 auto;padding:6px 0;border-top:none}
+.chartrow form{margin:0;flex:none}
+.chartadd summary{cursor:pointer;font-size:13px;color:var(--accent);padding:4px 0;list-style:none}
+.chartadd summary::-webkit-details-marker{display:none}
+.chartadd summary::before{content:"+ "}
+.chartadd .filters{margin-top:8px}
+.mplan .mchart{display:inline-block;margin-left:6px;padding:1px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--accent);text-decoration:none}

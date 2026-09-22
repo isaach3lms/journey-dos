@@ -430,6 +430,30 @@ def team_file(file_id: int):
     return serve_file(record)
 
 
+@bp.get("/serve/charts/<int:chart_id>/")
+@login_required
+def song_chart(chart_id: int):
+    """A song's chart, for the people scheduled to play it.
+
+    Scheduled and not declined, on a published service whose plan uses the
+    song, until the day of that service is over. Leaders and staff can always
+    open it. 404 for everyone else, so a chart library is not browsable by
+    guessing numbers. See app/models/songchart.py.
+    """
+    from app.blueprints.services import serve_file
+    from app.models import SongChart
+
+    record = SongChart.get_for_church(g.church.id, chart_id)
+    if record is None:
+        abort(404)
+    if current_user.at_least("leader"):
+        return serve_file(record)
+    person = current_user.person
+    if person is None or not SongChart.person_may_open(g.church.id, person.id, record):
+        abort(404)
+    return serve_file(record)
+
+
 @bp.post("/serve/<int:assignment_id>/")
 @login_required
 def respond_to_assignment(assignment_id: int):

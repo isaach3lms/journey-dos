@@ -12,12 +12,19 @@ do is download a song, and these are the three formats that download comes in:
   footer: `CCLI Song # 1234567`, an author line, a `©` line.
 - **ChordPro** (`.cho`, `.chopro`, `.chordpro`, `.pro`). Directives in braces:
   `{title: ...}`, `{key: G}`, `{tempo: 72}`, and a CCLI line in the footer.
+- **PDF** (chord chart, lead sheet, vocal sheet). The title and writers at the
+  top, `Key - G | Tempo - 73` under them, `CCLI Song # 1234567` in the footer.
 
-**Metadata only.** Every format carries the lyrics, and this module throws them
-away on purpose: see the module docstring in app/models/service.py. The church's
-licence covers the church reproducing the words, it does not make this
-platform a lyric store. What a plan needs is the title, the authors, the CCLI
-number, and a key. The words stay in SongSelect and ProPresenter.
+**Metadata only, from the text formats.** USR, TXT and ChordPro carry the
+lyrics as text, and this module throws them away: see the module docstring in
+app/models/service.py. What a plan needs is the title, the authors, the CCLI
+number, and a key.
+
+**A PDF is different, and is kept whole.** It is the chart the band plays
+from, printed under the church's own SongSelect licence, and it is kept as the
+file the church downloaded: attached to its song, shown only to staff, leaders,
+and the people scheduled on a service that uses it. This module reads the
+PDF's first page for the song details; the caller stores the file.
 
 Pure functions. No Flask, no database.
 """
@@ -25,12 +32,16 @@ Pure functions. No Flask, no database.
 from __future__ import annotations
 
 import re
+import warnings
 from dataclasses import dataclass
+from io import BytesIO
 
 from app.music import UnknownKey, normalize_key
 
-MAX_FILE_BYTES = 512 * 1024
+MAX_FILE_BYTES = 512 * 1024      # a text download; real ones are a few KB
+MAX_PDF_BYTES = 15 * 1024 * 1024  # matches app/files.py
 MAX_FILES = 50
+PDF_PAGES_READ = 2                # details are on page one, the footer repeats
 
 EXTENSIONS = {
     "usr": "usr",
@@ -40,6 +51,7 @@ EXTENSIONS = {
     "chordpro": "chordpro",
     "pro": "chordpro",
     "crd": "chordpro",
+    "pdf": "pdf",
 }
 
 # What the upload box accepts. Kept here so the template and the check agree.
@@ -232,19 +244,115 @@ def parse_txt(text: str) -> SongMeta:
     return _finish(title, author=author, ccli=ccli)
 
 
+_KEY_RE = re.compile(r"\bKey\s*[-:]\s*([A-G][#b\u266f\u266d]?m?)(?![A-Za-z#])")
+_TEMPO_RE = re.compile(r"\bTempo\s*[-:]\s*(\d{2,3})")
+_WRITERS_RE = re.compile(r"^(?:Words\s+and\s+Music|Words|Music)\s+by\s+(.+)$", re.I)
+
+
+def pdf_text(data: bytes) -> str:
+    """The text of the first pages, or "" if there is none to read.
+
+    Only the first pages: the details are on page one and a hostile PDF can
+    make a full extraction slow. Any parser failure is an unreadable file,
+    not an error page.
+    """
+    try:
+        from pypdf import PdfReader
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            reader = PdfReader(BytesIO(data))
+            if reader.is_encrypted:
+                return ""
+            parts = []
+            for page in reader.pages[:PDF_PAGES_READ]:
+                parts.append(page.extract_text() or "")
+        return "\n".join(parts)
+    except Exception:  # noqa: BLE001 - a broken PDF is a refusal, not a crash
+        return ""
+
+
+def parse_pdf(data: bytes) -> SongMeta:
+    text = pdf_text(data)
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        # A scan, or a PDF of pictures. Nothing to read, but the file may
+        # still be a perfectly good chart: the caller can say so.
+        raise NotASong("pdf_unreadable")
+
+    ccli = None
+    author = None
+    for index, line in enumerate(lines):
+        if "licen" in line.lower():
+            continue
+        found = _CCLI_RE.search(line)
+        if found and ccli is None:
+            ccli = found.group(1)
+            following = lines[index + 1] if index + 1 < len(lines) else ""
+            if following and not following.startswith(("\u00a9", "(c)", "Copyright", "For use")):
+                author = following
+        writers = _WRITERS_RE.match(line)
+        if writers:
+            author = writers.group(1)
+
+    if ccli is None:
+        raise NotASong("pdf_no_ccli")
+
+    # Some charts list the writers under the title with no "Words and Music
+    # by". Take that line only when it reads like a list of names, because
+    # a wrong guess here fills a blank staff would then have to spot.
+    if author is None and len(lines) > 1:
+        second = lines[1]
+        looks_like_names = (
+            ("," in second or " and " in second or "|" in second)
+            and not re.search(r"\b(Key|Tempo|Time|CCLI)\b|\u00a9|\d", second)
+            and len(second) <= 150
+        )
+        if looks_like_names:
+            author = second
+
+    if author:
+        author = re.sub(r"\s+and\s+", " | ", author)
+        author = re.sub(r"\s*,\s*", " | ", author)
+
+    key = _KEY_RE.search(text)
+    tempo = _TEMPO_RE.search(text)
+    raw_key = key.group(1).replace("\u266f", "#").replace("\u266d", "b") if key else None
+    return _finish(
+        lines[0],
+        author=author,
+        ccli=ccli,
+        key=raw_key,
+        tempo=tempo.group(1) if tempo else None,
+    )
+
+
+def is_pdf(data: bytes) -> bool:
+    return bool(data) and data.startswith(b"%PDF-")
+
+
 def parse(filename: str, data: bytes) -> SongMeta:
     """Read one download. Raises NotASong with a reason key."""
     if not data or not data.strip():
         raise NotASong("empty")
-    if len(data) > MAX_FILE_BYTES:
-        raise NotASong("too_big")
-    if data.startswith(b"%PDF-"):
-        raise NotASong("pdf")
 
     ext = (filename or "").rsplit(".", 1)[-1].lower() if "." in (filename or "") else ""
     kind = EXTENSIONS.get(ext)
     if kind is None:
         raise NotASong("wrong_type")
+
+    if kind == "pdf" or is_pdf(data):
+        # Checked by contents as well as name, same rule as app/files.py: a
+        # file called chart.pdf that is not a PDF is refused, and so is a PDF
+        # renamed to .txt.
+        if kind != "pdf" or not is_pdf(data):
+            raise NotASong("wrong_type")
+        if len(data) > MAX_PDF_BYTES:
+            raise NotASong("too_big")
+        return parse_pdf(data)
+
+    if len(data) > MAX_FILE_BYTES:
+        raise NotASong("too_big")
 
     text = _decode(data)
     if kind == "usr":

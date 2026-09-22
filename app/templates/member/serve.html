@@ -31,7 +31,14 @@
         <div class="mlbl">{{ svc.member_plan }}</div>
         <ol class="mplan">
           {% for item in assignment.service.items %}
-            <li>{{ item.title }}{% if item.key %} <b>{{ item.key }}</b>{% endif %}</li>
+            <li>{{ item.title }}{% if item.key %} <b>{{ item.key }}</b>{% endif %}
+              {% if item.song and assignment.status != 'declined' %}
+                {% for chart in item.song.charts %}
+                  <a class="mchart" href="{{ url_for('member.song_chart', chart_id=chart.id) }}"
+                     target="_blank" rel="noopener" title="{{ chart.title }}">{{ svc.chart_open }}{% if item.song.charts|length > 1 %} {{ loop.index }}{% endif %}</a>
+                {% endfor %}
+              {% endif %}
+            </li>
           {% endfor %}
         </ol>
       {% endif %}

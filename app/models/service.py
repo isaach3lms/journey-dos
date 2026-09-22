@@ -1,11 +1,15 @@
 """Services, songs, and teams.
 
-**No lyrics and no chord charts are stored here.** Reproducing either requires
-a CCLI SongSelect licence that the *church* holds, not the vendor, and a
-platform that stores lyrics for every tenant is reproducing copyrighted work at
-scale on behalf of people whose licences it cannot verify. This system stores
-what a plan actually needs: title, author, the church's own CCLI number, and a
-key. The words live wherever the church already licences them.
+**No lyrics are stored here, as text.** Reproducing them requires a CCLI
+SongSelect licence that the *church* holds, not the vendor, and a platform that
+turns downloads into a searchable lyric store for every tenant is reproducing
+copyrighted work at scale. The song record holds what a plan needs: title,
+author, the church's own CCLI number, and a key.
+
+**Charts are the exception, as files.** A church can attach the SongSelect PDF
+it printed under its own licence to a song, so its musicians can open it from
+the plan. It is kept as that file, never extracted, and only the people
+scheduled to play it can open it. See app/models/songchart.py.
 
 Three separate ideas that are easy to collapse and should not be:
 
@@ -218,6 +222,12 @@ class Song(TenantScoped, TimestampMixin, db.Model):
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # SongSelect PDFs the band plays from. See app/models/songchart.py.
+    charts: Mapped[list["SongChart"]] = relationship(  # noqa: F821
+        back_populates="song", cascade="all, delete-orphan",
+        order_by="SongChart.created_at",
+    )
 
     def __repr__(self) -> str:
         return f"<Song {self.title!r} {self.default_key} church={self.church_id}>"

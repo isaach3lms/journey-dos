@@ -7,6 +7,7 @@ the shape of code where one unscoped lookup slips through unnoticed.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from io import BytesIO
 
@@ -51,6 +52,7 @@ from app.models import (
     TeamFile,
 )
 from app.files import CHURCH_QUOTA_BYTES, MAX_FILE_BYTES, RefusedFile, check_pdf, safe_filename
+from app.models.songchart import SongChart, stored_bytes
 from app.models.base import utcnow
 from app.models.service import STATUS_PUBLISHED, STATUS_SENT
 from app.music import UnknownKey, key_choices, normalize_key
@@ -510,14 +512,71 @@ def songs():
     )
 
 
+_CHART_KINDS = (
+    (("lead", "sheet"), "Lead sheet"),
+    (("vocal",), "Vocal sheet"),
+    (("chord",), "Chord chart"),
+    (("piano",), "Piano sheet"),
+)
+
+
+def _chart_title(filename: str, label: str | None = None, key: str | None = None) -> str:
+    """What the chart is called in lists and on the plan.
+
+    A label typed by staff wins. Otherwise the kind of sheet, read from the
+    download's name, and the key read from inside it: "Chord chart in Ab".
+    Two arrangements of one song then read differently at a glance.
+    """
+    if label and label.strip():
+        return label.strip()[:200]
+    words = re.sub(r"[^a-z]+", " ", filename.lower()).split()
+    kind = "Chart"
+    for needles, name in _CHART_KINDS:
+        if all(n in words for n in needles):
+            kind = name
+            break
+    return f"{kind} in {key}" if key else kind
+
+
+def _attach_chart(song: Song, data: bytes, filename: str, label: str | None = None,
+                  key: str | None = None) -> str:
+    """Store a checked PDF on a song. Returns "added" or "duplicate". Caller
+    has already run check_pdf and commits."""
+    name = safe_filename(filename)
+    if key is None and not (label and label.strip()):
+        # A chart attached by hand may still be a SongSelect download with its
+        # key printed on it. If it is not, it is simply called "Chart".
+        try:
+            key = songselect.parse(name, data).default_key
+        except songselect.NotASong:
+            key = None
+    if SongChart.duplicate_of(g.church.id, song.id, name, len(data)):
+        return "duplicate"
+    db.session.add(
+        SongChart(
+            church_id=g.church.id,
+            song=song,
+            title=_chart_title(name, label, key),
+            filename=name,
+            size_bytes=len(data),
+            data=data,
+            uploaded_by_user_id=current_user.id,
+            uploaded_by_name=current_user.name,
+        )
+    )
+    return "added"
+
+
 @bp.post("/songs/import/")
 @login_required
 @min_role("leader")
 def import_songs():
-    """Songs from SongSelect downloads. Metadata only: see app/songselect.py.
+    """Songs from SongSelect downloads. See app/songselect.py.
 
-    One bad file never stops the rest. Each is reported by name with the
-    reason, so a leader who dropped twelve files knows which one to redo.
+    Text formats give the song's details and nothing else. A PDF gives the
+    details and is kept as the song's chart. One bad file never stops the
+    rest: each is reported by name with the reason, so a leader who dropped
+    twelve files knows which one to redo.
     """
     uploads = [f for f in request.files.getlist("files") if f and f.filename]
     if not uploads:
@@ -527,32 +586,99 @@ def import_songs():
         flash(SERVICES["import_too_many"].format(count=len(uploads), max=songselect.MAX_FILES), "error")
         return redirect(url_for("services.songs"))
 
-    counts = {"added": 0, "updated": 0, "unchanged": 0}
+    counts = {"added": 0, "updated": 0, "unchanged": 0, "charts": 0}
     skipped: list[tuple[str, str]] = []
     for upload in uploads:
         # Shown back in a flash message, which Jinja escapes. Path parts dropped.
         name = upload.filename.replace("\\", "/").rsplit("/", 1)[-1][:120]
-        # Read one byte past the cap so an oversized file is refused without
-        # holding the whole thing in memory.
-        data = upload.stream.read(songselect.MAX_FILE_BYTES + 1)
+        # Read one byte past the larger cap so an oversized file is refused
+        # without holding more than that in memory.
+        data = upload.stream.read(songselect.MAX_PDF_BYTES + 1)
+        pdf = songselect.is_pdf(data)
+        if pdf:
+            try:
+                check_pdf(data, upload.filename, stored_bytes(g.church.id))
+            except RefusedFile as refusal:
+                skipped.append((name, SERVICES[refusal.reason].format(**refusal.fields)))
+                continue
         try:
             meta = songselect.parse(upload.filename, data)
         except songselect.NotASong as refused:
-            skipped.append((name, refused.reason))
+            skipped.append((name, SERVICES[f"import_why_{refused.reason}"]))
             continue
-        outcome, _song = Song.import_meta(g.church.id, meta)
+        outcome, song = Song.import_meta(g.church.id, meta)
         # Flush so a second file for the same song in one batch finds the
         # first instead of adding a duplicate.
         db.session.flush()
         counts[outcome] += 1
+        if pdf and _attach_chart(song, data, upload.filename, key=meta.default_key) == "added":
+            counts["charts"] += 1
+            db.session.flush()
     db.session.commit()
 
     for outcome in ("added", "updated", "unchanged"):
         if counts[outcome]:
             flash(SERVICES[f"import_{outcome}"].format(count=counts[outcome]), "notice")
-    for name, reason in skipped:
-        flash(SERVICES["import_skipped"].format(name=name, why=SERVICES[f"import_why_{reason}"]), "error")
+    if counts["charts"]:
+        flash(SERVICES["import_charts"].format(count=counts["charts"]), "notice")
+    for name, why in skipped:
+        flash(SERVICES["import_skipped"].format(name=name, why=why), "error")
     return redirect(url_for("services.songs"))
+
+
+@bp.post("/songs/<int:song_id>/charts/")
+@login_required
+@min_role("leader")
+def attach_chart(song_id: int):
+    """Attach any PDF to a song by hand, for the chart the importer could not
+    read or one that did not come from SongSelect."""
+    song = Song.get_for_church(g.church.id, song_id)
+    if song is None:
+        abort(404)
+    anchor = f"song{song.id}"
+
+    upload = request.files.get("file")
+    if upload is None or not upload.filename:
+        flash(SERVICES["file_missing"], "error")
+        return redirect(url_for("services.songs", _anchor=anchor))
+
+    data = upload.read()
+    try:
+        check_pdf(data, upload.filename, stored_bytes(g.church.id))
+    except RefusedFile as refusal:
+        flash(SERVICES[refusal.reason].format(**refusal.fields), "error")
+        return redirect(url_for("services.songs", _anchor=anchor))
+
+    if _attach_chart(song, data, upload.filename, request.form.get("title")) == "duplicate":
+        flash(SERVICES["chart_duplicate"].format(title=song.title), "notice")
+    else:
+        db.session.commit()
+        flash(SERVICES["chart_added"].format(title=song.title), "notice")
+    return redirect(url_for("services.songs", _anchor=anchor))
+
+
+@bp.get("/songs/charts/<int:chart_id>/")
+@login_required
+@min_role("leader")
+def song_chart(chart_id: int):
+    record = SongChart.get_for_church(g.church.id, chart_id)
+    if record is None:
+        abort(404)
+    return serve_file(record)
+
+
+@bp.post("/songs/charts/<int:chart_id>/delete/")
+@login_required
+@min_role("leader")
+def delete_chart(chart_id: int):
+    record = SongChart.get_for_church(g.church.id, chart_id)
+    if record is None:
+        abort(404)
+    song_id, title = record.song_id, record.title
+    db.session.delete(record)
+    db.session.commit()
+    flash(SERVICES["chart_deleted"].format(title=title), "notice")
+    return redirect(url_for("services.songs", _anchor=f"song{song_id}"))
 
 
 @bp.post("/songs/")
@@ -645,7 +771,7 @@ def upload_team_file(team_id: int):
 
     data = upload.read()
     try:
-        check_pdf(data, upload.filename, TeamFile.bytes_used(g.church.id))
+        check_pdf(data, upload.filename, stored_bytes(g.church.id))
     except RefusedFile as refusal:
         flash(SERVICES[refusal.reason].format(**refusal.fields), "error")
         return redirect(url_for("services.teams", _anchor=f"team{team.id}"))

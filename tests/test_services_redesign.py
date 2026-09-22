@@ -828,8 +828,10 @@ class TestChangingAKeyFromThePlan:
         )
         assert r.status_code == 404
 
-    def test_charts_are_linked_not_stored(self, db, journey, staff):
-        """Charts stay in SongSelect under the church's own CCLI licence."""
+    def test_songselect_is_linked_and_charts_are_scoped(self, db, journey, staff):
+        """The church's own SongSelect copy is linked. Charts the church
+        attached are only for the people scheduled, and the plan says so.
+        See tests/test_song_charts.py for who can open one."""
         service = a_service(db, journey)
         song = Song(
             church_id=journey.id, title="Known", default_key="G", ccli_number="7070345"
@@ -847,4 +849,4 @@ class TestChangingAKeyFromThePlan:
         r = staff.get(f"/services/{service.id}/", headers={"Host": JOURNEY_HOST})
         assert b"songselect.ccli.com" in r.data
         assert b'rel="noopener noreferrer"' in r.data
-        assert b"never store the words" in r.data
+        assert b"open only for staff, leaders, and the people scheduled" in r.data

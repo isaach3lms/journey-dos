@@ -1246,9 +1246,10 @@ SERVICES = {
     "songs_no_ccli": "No CCLI number on file",
     "songs_open": "Open in SongSelect",
     "songs_licence_note": (
-        "Charts and sheet music stay in SongSelect under your own CCLI "
-        "licence. We never store the words or the music."
+        "Charts attached from SongSelect open only for staff, leaders, and "
+        "the people scheduled on this service."
     ),
+    "chart_open": "Chart",
     "key_set": "{title} is now in {key}.",
     "key_change": "Key",
 
@@ -1346,11 +1347,12 @@ SERVICES = {
 
     # Songs
     "songs_title": "Songs",
-    "songs_subtitle": "Titles, keys, and your CCLI numbers. Not the words.",
+    "songs_subtitle": "Titles, keys, CCLI numbers, and the charts your band plays from.",
     "songs_why": (
-        "We do not store lyrics or chord charts. Reproducing those needs the "
-        "CCLI licence your church holds, so the words stay where you already "
-        "license them. The number here points at your copy."
+        "Add a song by hand here. Lyrics are never stored as text. Charts are "
+        "kept as the PDF you downloaded from SongSelect under your church's "
+        "licence, and open only for staff, leaders, and whoever is scheduled "
+        "on a service that uses the song."
     ),
     "song_title": "Title",
     "song_author": "Author",
@@ -1367,9 +1369,10 @@ SERVICES = {
     # SongSelect import
     "import_heading": "Import from SongSelect",
     "import_steps": (
-        "In SongSelect, open a song and download it as a USR file, a text "
-        "file, or ChordPro. Drop up to {max} files here at once. We read the "
-        "title, writers, CCLI number, and key, and leave the words behind."
+        "In SongSelect, download a song as a PDF chart, a USR file, a text "
+        "file, or ChordPro, and drop up to {max} here at once. Each one adds "
+        "the song with its writers, CCLI number, and key. A PDF is also kept "
+        "as the song's chart for the band."
     ),
     "import_why_api": (
         "CCLI only opens a direct SongSelect connection to a short list of "
@@ -1386,10 +1389,25 @@ SERVICES = {
     "import_skipped": "{name}: {why}",
     "import_why_empty": "the file is empty.",
     "import_why_too_big": "too big to be a SongSelect download.",
-    "import_why_pdf": (
-        "a PDF is a chord chart or lead sheet. Put those in the team's files "
-        "on the Teams page."
+    "import_why_pdf_unreadable": (
+        "this PDF has no text we can read, which usually means a scan. Add "
+        "the song by hand, then attach the PDF on its row."
     ),
+    "import_why_pdf_no_ccli": (
+        "no CCLI song number in this PDF, so it does not look like a "
+        "SongSelect chart. Add the song by hand, then attach the PDF on its row."
+    ),
+    "import_charts": "Charts attached: {count}.",
+    "chart_heading": "Charts",
+    "chart_attach": "Attach a PDF chart",
+    "chart_label": "What is it (optional)",
+    "chart_label_placeholder": "Chord chart in G",
+    "chart_upload": "Attach",
+    "chart_added": "Chart attached to {title}.",
+    "chart_duplicate": "That chart is already on {title}.",
+    "chart_deleted": "{title} removed.",
+    "chart_delete": "Remove",
+    "chart_delete_confirm": "Remove this chart? Anyone scheduled will lose it from their plan.",
     "import_why_wrong_type": "not a SongSelect download. Use USR, TXT, or ChordPro.",
     "import_why_unreadable": "we could not find a song title in it.",
     "import_why_no_title": "we could not find a song title in it.",

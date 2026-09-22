@@ -106,6 +106,7 @@ from app.models.service import (  # noqa: F401
     TeamPosition,
 )
 from app.models.teamfile import TeamFile  # noqa: F401
+from app.models.songchart import SongChart, stored_bytes  # noqa: F401
 from app.models.verse import WeeklyVerse, week_of  # noqa: F401
 from app.models.resource import (  # noqa: F401
     RESOURCE_KINDS,
@@ -132,6 +133,8 @@ from app.models.user import ROLES, User  # noqa: F401
 
 __all__ = [
     "TeamFile",
+    "SongChart",
+    "stored_bytes",
     "WeeklyVerse",
     "week_of",
     "Church",

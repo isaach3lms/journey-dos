@@ -1,0 +1,20 @@
+{# Shared by the staff and member threads: open at the newest message, let the
+   box grow as you type, Enter sends and Shift+Enter makes a new line. One copy
+   so the two sides cannot drift apart. #}
+<script>
+(function () {
+  function toBottom() { window.scrollTo(0, document.documentElement.scrollHeight); }
+  toBottom();
+  window.addEventListener("load", toBottom);
+  var box = document.querySelector(".composerinput");
+  if (!box) { return; }
+  function fit() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
+  box.addEventListener("input", fit);
+  box.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      if (box.value.trim()) { box.form.requestSubmit ? box.form.requestSubmit() : box.form.submit(); }
+    }
+  });
+})();
+</script>

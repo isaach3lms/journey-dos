@@ -1168,8 +1168,11 @@ ul.policy span{color:var(--muted)}
   padding:8px 13px;border-radius:19px;font-size:15px;line-height:1.38;
   word-wrap:break-word;overflow-wrap:anywhere;
 }
-.bubble p{margin:0}
-.bubble p + p{margin-top:6px}
+/* Card styles set a bottom margin on every paragraph, which would make each
+   bubble a line taller than its text. Named through .bubbles so this wins in
+   both the staff card and the member screen. */
+.bubbles .bubble p{margin:0;font-size:inherit;color:inherit;max-width:none}
+.bubbles .bubble p + p{margin-top:6px}
 .bubble a{color:inherit;text-decoration:underline}
 .bmsg.theirs .bubble{background:var(--mist);color:var(--ink)}
 .bmsg.mine .bubble{background:var(--accent);color:#fff}
@@ -1247,3 +1250,13 @@ ul.policy span{color:var(--muted)}
 .chartadd summary::before{content:"+ "}
 .chartadd .filters{margin-top:8px}
 .mplan .mchart{display:inline-block;margin-left:6px;padding:1px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;font-weight:600;color:var(--accent);text-decoration:none}
+
+/* The staff thread uses the same bubbles as the member side. The page is bone
+   rather than white, so the composer and the menus match that, and the thread
+   gets a ceiling so a long chat does not push the members card off screen. */
+.staffbubbles{max-height:60vh;overflow-y:auto;padding:4px 2px 2px;margin:14px 0 4px}
+.staffbubbles .bmsg{max-width:min(80%,560px)}
+.bubble.gone{background:transparent;border:1px dashed var(--line);color:var(--muted);font-size:13.5px}
+.staffcomposer{flex-direction:column;align-items:stretch;gap:8px;background:var(--white);padding-top:8px}
+.staffcomposer .composerrow{display:flex;align-items:flex-end;gap:8px}
+.staffcomposer .emailit{margin:0}

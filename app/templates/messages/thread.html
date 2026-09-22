@@ -19,46 +19,72 @@
     </p>
 
     {% if conversation.messages %}
-      <ol class="thread">
-        {% for message in conversation.messages %}
-          <li>
-            <div class="mfrom">
-              {{ message.author_name or "Someone" }}
-              <span class="muted">{{ message.sent_at|church_time("%b %-d, %-I:%M%p") }}</span>
-            </div>
-            <div class="mbody">
-              {% if message.is_deleted %}
-                <p class="muted">{{ content.deleted_placeholder }}</p>
-              {% else %}
-                {{ message.rendered }}
-              {% endif %}
-            </div>
-            {% if not message.is_deleted %}
-              <form method="post" class="inline"
-                    action="{{ url_for('messages.delete_message', conversation_id=conversation.id, message_id=message.id) }}">
-                {{ csrf_field() }}
-                <button class="btn ghostbtn" type="submit">{{ content.delete }}</button>
-              </form>
+      {# Same bubbles as the member side, so staff read a thread the way the
+         church does. Your messages sit right in the church colour, everyone
+         else left in grey. Delete sits behind the small menu on each bubble,
+         and a removed message keeps its place so the thread still reads. #}
+      <div class="bubblewrap staffbubbles">
+        <ol class="bubbles">
+          {% for message in conversation.messages %}
+            {% set is_mine = message.id in mine %}
+            {% set prev = conversation.messages[loop.index0 - 1] if not loop.first else none %}
+            {% set nxt = conversation.messages[loop.index0 + 1] if not loop.last else none %}
+            {% set new_sender = loop.first or prev.author_person_id != message.author_person_id or prev.author_name != message.author_name %}
+            {% set gap = loop.first or (message.sent_at - prev.sent_at).total_seconds() > 900 %}
+            {% set last_in_run = loop.last or nxt.author_person_id != message.author_person_id or nxt.author_name != message.author_name or (nxt.sent_at - message.sent_at).total_seconds() > 900 %}
+            {% if gap %}
+              <li class="bstamp">{{ message.sent_at|church_time("%a %b %-d, %-I:%M%p") }}</li>
             {% endif %}
-          </li>
-        {% endfor %}
-      </ol>
+            <li class="bmsg {% if is_mine %}mine{% else %}theirs{% endif %} {% if last_in_run %}tail{% endif %}" id="m{{ message.id }}">
+              {% if not is_mine and (new_sender or gap) %}
+                <div class="bname">{{ message.author_name or "Someone" }}</div>
+              {% endif %}
+              <div class="brow">
+                {% if message.is_deleted %}
+                  <div class="bubble gone">{{ content.deleted_placeholder }}</div>
+                {% else %}
+                  <div class="bubble" title="{{ message.sent_at|church_time('%-I:%M%p') }}">{{ message.rendered }}</div>
+                  <details class="bmenu">
+                    <summary aria-label="{{ content.message_options }}">&middot;&middot;&middot;</summary>
+                    <div class="bmenupanel">
+                      <form method="post"
+                            action="{{ url_for('messages.delete_message', conversation_id=conversation.id, message_id=message.id) }}">
+                        {{ csrf_field() }}
+                        <button class="link danger" type="submit">{{ content.delete }}</button>
+                      </form>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      </div>
       <p class="muted small">{{ content.delete_note }}</p>
     {% else %}
-      <p class="muted small">{{ content.no_messages }}</p>
+      <p class="muted small bempty">{{ content.no_messages }}</p>
     {% endif %}
 
-    {% if not conversation.is_archived %}
-      <form method="post" action="{{ url_for('messages.post', conversation_id=conversation.id) }}">
+    {% if conversation.is_archived %}
+      <p class="muted small">{{ content.archived_note }}</p>
+    {% elif not can_post %}
+      <p class="muted small">{{ content.staff_readonly }}</p>
+    {% else %}
+      <form method="post" class="composer staffcomposer" action="{{ url_for('messages.post', conversation_id=conversation.id) }}">
         {{ csrf_field() }}
-        <textarea class="input" name="body" rows="3" placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}"></textarea>
         {% if conversation.is_announcement %}
-          <label class="check">
+          <label class="check emailit">
             <input type="checkbox" name="also_email">
             <span>{{ content.email_it }} &middot; <span class="muted">{{ content.email_hint }}</span></span>
           </label>
         {% endif %}
-        <button class="btn" type="submit">{{ content.post }}</button>
+        <div class="composerrow">
+          <textarea class="composerinput" name="body" rows="1" required
+                    placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}"></textarea>
+          <button class="composersend" type="submit" aria-label="{{ content.post }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+          </button>
+        </div>
       </form>
     {% endif %}
   </div>
@@ -116,3 +142,5 @@
   </div>
 </section>
 {% endblock %}
+
+{% block extra_script %}{% include "_composer.html" %}{% endblock %}

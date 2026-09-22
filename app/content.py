@@ -1743,6 +1743,7 @@ MESSAGES = {
     "member_none": "Nothing here yet.",
     "member_none_hint": "Announcements and any rooms you are in show up here.",
     "member_readonly": "Only staff post here.",
+    "staff_readonly": "You cannot post in this chat.",
     "member_back": "All messages",
     "direct_start": "Message someone",
     "direct_started": "Talking to {name}.",

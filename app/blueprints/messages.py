@@ -106,6 +106,13 @@ def thread(conversation_id: int):
     if conversation is None:
         abort(404)
 
+    person = _acting_person()
+    mine = {
+        message.id
+        for message in conversation.messages
+        if _is_own(message, person, current_user.name)
+    }
+
     in_room = {m.person_id for m in conversation.members}
     candidates = [
         person
@@ -119,8 +126,29 @@ def thread(conversation_id: int):
         content=MESSAGES,
         conversation=conversation,
         candidates=candidates,
+        mine=mine,
+        can_post=conversation.can_post(
+            person,
+            is_staff=current_user.is_staff,
+            is_leader=current_user.at_least("leader"),
+        ),
         active="messages",
     )
+
+
+def _is_own(message, person, name: str | None) -> bool:
+    """Is this staff member the one who wrote it?
+
+    A staff login may have no roster record, in which case the only trace of
+    who wrote a message is the name stored on it. Matching on that is enough
+    to decide which side of the thread a bubble sits on, and it decides
+    nothing else.
+    """
+    if person is not None and message.author_person_id is not None:
+        return message.author_person_id == person.id
+    if message.author_person_id is None:
+        return bool(name) and message.author_name == name
+    return False
 
 
 @bp.post("/<int:conversation_id>/post/")

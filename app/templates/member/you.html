@@ -2,22 +2,140 @@
 {% block title %}{{ content.tab_you }} | {{ church.name }}{% endblock %}
 
 {% block content %}
-<h1 class="mgreet">{{ person.full_name }}</h1>
-<p class="msub">{{ person.stage_label }} at {{ church.name }}</p>
+{# The profile: who the church has on file, how far along they are, and the
+   fields they can put right themselves. Editing is one form rather than a
+   pencil on every row, because a member usually fixes two things at once and
+   a row that turns into a field is a lot of markup for one line of text. #}
+<section class="mcard mprofile">
+  <div class="phead">
+    <span class="pav" aria-hidden="true">{{ person.initials }}</span>
+    <span class="pwho">
+      <span class="pname">{{ person.full_name }}</span>
+      <span class="pmeta">
+        {%- if person.days_known -%}
+          {{ content.profile_member_for.format(stage=person.stage_label, days=person.days_known) }}
+        {%- else -%}
+          {{ content.profile_member_new.format(stage=person.stage_label) }}
+        {%- endif -%}
+      </span>
+    </span>
+  </div>
 
-<section class="mcard">
-  <div class="mlbl">{{ content.pin_label }}</div>
-  {% if pin %}
-    {# Permanently visible, per spec v3 B.2: the member app is the first of
-       four places a generated PIN reaches the parent who did not choose it. #}
-    <div class="mpin mono">{{ pin }}</div>
-    <p class="mnote">{{ content.pin_hint }}</p>
-  {% else %}
-    <p class="mnote">{{ content.pin_none }}</p>
-  {% endif %}
+  <div class="mlbl">{{ content.journey_label }}</div>
+  <ol class="jbar" aria-label="{{ content.journey_label }}">
+    {% for stage in stages %}
+      <li class="jstep {% if loop.index0 <= person.stage_order %}done{% endif %}
+                 {% if stage.code == person.stage %}here{% endif %}"
+          title="{{ stage.label }}"><span class="vis">{{ stage.label }}</span></li>
+    {% endfor %}
+  </ol>
+  {% set current = stages | selectattr("code", "equalto", person.stage) | first %}
+  {% if current %}<p class="mnote">{{ content.journey_hint.format(meaning=current.meaning) }}</p>{% endif %}
 </section>
 
-<section class="mcard">
+<section class="mcard mrows">
+  <a class="mrowlink" href="#family">
+    <span class="fl">
+      <span class="pn">{{ content.row_family }}</span>
+      <span class="pe">
+        {%- if household_members -%}
+          {% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+        {%- elif person.household -%}
+          {{ content.household_alone }}
+        {%- else -%}
+          {{ content.row_family_none }}
+        {%- endif -%}
+      </span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <a class="mrowlink" href="{{ url_for('member.groups') }}">
+    <span class="fl">
+      <span class="pn">{{ content.row_groups }}</span>
+      <span class="pe">
+        {%- if group_names -%}{{ group_names | join(", ") }}{%- else -%}{{ content.row_groups_none }}{%- endif -%}
+      </span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <a class="mrowlink" href="{{ url_for('member.serve') }}">
+    <span class="fl">
+      <span class="pn">{{ content.row_serving }}</span>
+      <span class="pe">
+        {%- if serving_count -%}{{ content.row_serving_count.format(count=serving_count) }}
+        {%- else -%}{{ content.row_serving_none }}{%- endif -%}
+      </span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <a class="mrowlink" href="#notifications">
+    <span class="fl">
+      <span class="pn">{{ content.row_notifications }}</span>
+      <span class="pe">{{ content.row_notifications_hint }}</span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+</section>
+
+<section class="mcard" id="details">
+  <div class="mlbl">{{ content.details_heading }}</div>
+  <p class="mnote">{{ content.details_hint }}</p>
+  <form method="post" action="{{ url_for('member.save_details') }}">
+    {{ csrf_field() }}
+    <div class="field2">
+      <div class="field">
+        <label for="first_name">{{ content.details_first }}</label>
+        <input class="input" id="first_name" name="first_name" maxlength="80"
+               value="{{ person.first_name }}" autocomplete="given-name" required>
+      </div>
+      <div class="field">
+        <label for="last_name">{{ content.details_last }}</label>
+        <input class="input" id="last_name" name="last_name" maxlength="80"
+               value="{{ person.last_name }}" autocomplete="family-name" required>
+      </div>
+    </div>
+    <div class="field">
+      <label for="phone">{{ content.details_phone }}</label>
+      <input class="input" id="phone" name="phone" type="tel" maxlength="40"
+             value="{{ person.phone or '' }}" autocomplete="tel">
+      <p class="mnote">{{ content.details_phone_hint }}</p>
+    </div>
+    <div class="field">
+      <label for="birthdate">{{ content.details_birthday }}</label>
+      <input class="input" id="birthdate" name="birthdate" type="date"
+             value="{{ person.birthdate.isoformat() if person.birthdate else '' }}">
+      <p class="mnote">{{ content.details_birthday_hint }}</p>
+    </div>
+
+    {% if person.household %}
+      <div class="field">
+        <label for="address_line">{{ content.details_address }}</label>
+        <input class="input" id="address_line" name="address_line" maxlength="200"
+               value="{{ person.household.address_line or '' }}" autocomplete="street-address">
+      </div>
+      <div class="field2">
+        <div class="field">
+          <label for="city">{{ content.details_city }}</label>
+          <input class="input" id="city" name="city" maxlength="80"
+                 value="{{ person.household.city or '' }}" autocomplete="address-level2">
+        </div>
+        <div class="field">
+          <label for="postal_code">{{ content.details_postal }}</label>
+          <input class="input" id="postal_code" name="postal_code" maxlength="20"
+                 value="{{ person.household.postal_code or '' }}" autocomplete="postal-code">
+        </div>
+      </div>
+      <p class="mnote">{{ content.details_address_note }}</p>
+    {% endif %}
+
+    <div class="mrow"><span>{{ content.email_label }}</span><b>{{ person.email or content.no_email }}</b></div>
+    <p class="mnote">{{ content.details_email_locked }}</p>
+
+    <button class="btn wide" type="submit">{{ content.details_save }}</button>
+  </form>
+</section>
+
+<section class="mcard" id="family">
   <div class="mlbl">{{ content.household_label }}</div>
   {% if person.household %}
     <div class="mtitle">{{ person.household.name }}</div>
@@ -28,19 +146,21 @@
     {% else %}
       <p class="mnote">{{ content.household_alone }}</p>
     {% endif %}
+    <div class="mlbl">{{ content.pin_label }}</div>
+    {% if pin %}
+      {# Permanently visible, per spec v3 B.2: the member app is the first of
+         four places a generated PIN reaches the parent who did not choose it. #}
+      <div class="mpin mono">{{ pin }}</div>
+      <p class="mnote">{{ content.pin_hint }}</p>
+    {% else %}
+      <p class="mnote">{{ content.pin_none }}</p>
+    {% endif %}
   {% else %}
     <p class="mnote">{{ content.household_none }}</p>
   {% endif %}
 </section>
 
-<section class="mcard">
-  <div class="mlbl">{{ content.profile_label }}</div>
-  <div class="mrow"><span>{{ content.email_label }}</span><b>{{ person.email or content.no_email }}</b></div>
-  <div class="mrow"><span>{{ content.phone_label }}</span><b>{{ person.phone or content.no_phone }}</b></div>
-  <p class="mnote">{{ content.fix_details }}</p>
-</section>
-
-<section class="mcard">
+<section class="mcard" id="notifications">
   <div class="mlbl">{{ content.prefs_label }}</div>
   <p class="mnote">{{ content.prefs_hint }}</p>
 

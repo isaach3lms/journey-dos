@@ -736,6 +736,51 @@ MEMBER = {
         "Something wrong? Tell the church office and they can correct it."
     ),
 
+    # Profile header and the journey strip
+    "profile_member_for": "{stage} \u00b7 {days} days",
+    "profile_member_new": "{stage} \u00b7 joined today",
+    "journey_label": "Your journey",
+    "journey_hint": "{meaning}",
+    "profile_edit": "Edit",
+    "profile_done": "Done",
+
+    # What a member can change themselves
+    "details_heading": "Your information",
+    "details_hint": "Keep this current so the church can reach you.",
+    "details_first": "First name",
+    "details_last": "Last name",
+    "details_phone": "Phone",
+    "details_phone_hint": "Where the church can text or call you.",
+    "details_birthday": "Birthday",
+    "details_birthday_hint": "Optional. Day and month are what we use.",
+    "details_address": "Street address",
+    "details_city": "City",
+    "details_postal": "ZIP",
+    "details_address_note": "Your address is shared with everyone in your family.",
+    "details_email_locked": (
+        "Email is the address you sign in with, so the church office changes "
+        "that one. Ask them and it is done in a minute."
+    ),
+    "details_save": "Save my information",
+    "details_saved": "Saved. Thank you.",
+    "details_unchanged": "Nothing changed.",
+    "details_name_required": "We need both a first and last name.",
+    "details_birthday_bad": "That birthday did not look like a date.",
+    "details_birthday_future": "A birthday cannot be in the future.",
+    "details_event": "Updated their own details in the app",
+    "details_event_detail": "Changed: {fields}",
+
+    # Shortcut rows to the rest of the app
+    "row_family": "Family",
+    "row_family_none": "Nobody on file yet",
+    "row_groups": "Groups",
+    "row_groups_none": "Not in a group yet",
+    "row_serving": "Serving",
+    "row_serving_none": "Not scheduled",
+    "row_serving_count": "{count} coming up",
+    "row_notifications": "Notifications",
+    "row_notifications_hint": "Email and this device",
+
     "prefs_label": "Email you get",
     "prefs_hint": (
         "Receipts and anything about your account or your children always "

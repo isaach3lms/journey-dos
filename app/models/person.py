@@ -270,6 +270,21 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         return stage_order(self.stage)
 
     @property
+    def days_known(self) -> int:
+        """Whole days since the church first met them.
+
+        `first_seen_on` when staff recorded a first Sunday, otherwise the day
+        the record was created. Shown on the member's own profile, so it reads
+        as "Member, 176 days" rather than a date nobody remembers.
+        """
+        from datetime import date as _date
+
+        start = self.first_seen_on or (self.created_at.date() if self.created_at else None)
+        if start is None:
+            return 0
+        return max(0, (_date.today() - start).days)
+
+    @property
     def days_in_stage(self) -> int:
         """Whole days since entering the current stage.
 

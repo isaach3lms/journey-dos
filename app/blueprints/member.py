@@ -15,7 +15,7 @@ private view with no audit trail, and nothing in this increment needs it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from flask import (
     Blueprint,
@@ -55,6 +55,7 @@ from app.models import MessageReport, PersonBlock
 from app.models.moderation import SOURCE_BLOCK, SOURCE_REPORT
 from app.moderation import objectionable_terms
 from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
+from app.models.person_event import KIND_NOTE, PersonEvent
 from app.stages import STAGE_BY_CODE, stages_for
 
 bp = Blueprint("member", __name__, url_prefix="/me")
@@ -141,6 +142,17 @@ def you():
         "member/you.html",
         household_members=household_members,
         pin=pin,
+        stages=stages_for(g.church),
+        group_names=[g_.name for g_ in db.session.scalars(
+            Group.for_person(g.church.id, person.id)
+        ).all()],
+        serving_count=db.session.scalar(
+            db.select(db.func.count(ServiceAssignment.id)).where(
+                ServiceAssignment.church_id == g.church.id,
+                ServiceAssignment.person_id == person.id,
+                ServiceAssignment.status != DECLINED,
+            )
+        ) or 0,
         categories=CATEGORIES,
         optional_categories=OPTIONAL_CATEGORIES,
         push_devices=PushSubscription.device_count(g.church.id, current_user.id),
@@ -150,6 +162,83 @@ def you():
         tab="you",
         **_base_context(person),
     )
+
+
+@bp.post("/you/details/")
+@login_required
+def save_details():
+    """A member correcting their own record.
+
+    Only their own: the person comes from the session, never from the form, so
+    there is no id anybody could change. Email is not here. It is the address
+    they sign in with, and letting somebody retype it in a profile screen is
+    how an account gets locked out of itself. The church office changes that.
+
+    An address belongs to the household, so editing it changes what the rest
+    of the family sees too. The screen says so rather than hiding it.
+    """
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.you"))
+
+    first = (request.form.get("first_name") or "").strip()
+    last = (request.form.get("last_name") or "").strip()
+    if not first or not last:
+        flash(MEMBER["details_name_required"], "error")
+        return redirect(url_for("member.you", _anchor="details"))
+
+    birthdate = person.birthdate
+    raw_birthday = (request.form.get("birthdate") or "").strip()
+    if raw_birthday:
+        try:
+            birthdate = datetime.strptime(raw_birthday, "%Y-%m-%d").date()
+        except ValueError:
+            flash(MEMBER["details_birthday_bad"], "error")
+            return redirect(url_for("member.you", _anchor="details"))
+        if birthdate > date.today():
+            flash(MEMBER["details_birthday_future"], "error")
+            return redirect(url_for("member.you", _anchor="details"))
+    else:
+        birthdate = None
+
+    before = {
+        "name": person.full_name,
+        "phone": person.phone,
+        "birthday": person.birthdate,
+    }
+    person.first_name = first[:80]
+    person.last_name = last[:80]
+    person.phone = (request.form.get("phone") or "").strip()[:40] or None
+    person.birthdate = birthdate
+
+    changed = []
+    if before["name"] != person.full_name:
+        changed.append("name")
+    if before["phone"] != person.phone:
+        changed.append("phone")
+    if before["birthday"] != person.birthdate:
+        changed.append("birthday")
+
+    household = person.household
+    if household is not None:
+        was = (household.address_line, household.city, household.postal_code)
+        household.address_line = (request.form.get("address_line") or "").strip()[:200] or None
+        household.city = (request.form.get("city") or "").strip()[:80] or None
+        household.postal_code = (request.form.get("postal_code") or "").strip()[:20] or None
+        if was != (household.address_line, household.city, household.postal_code):
+            changed.append("address")
+
+    if changed:
+        # Staff see this on the person's timeline, so a name that changed in
+        # the app is not a mystery when somebody asks about it later.
+        PersonEvent.record(
+            person, KIND_NOTE, MEMBER["details_event"],
+            detail=MEMBER["details_event_detail"].format(fields=", ".join(changed)),
+        )
+    db.session.commit()
+
+    flash(MEMBER["details_saved"] if changed else MEMBER["details_unchanged"], "notice")
+    return redirect(url_for("member.you", _anchor="details"))
 
 
 @bp.post("/you/preferences/")

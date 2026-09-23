@@ -1260,3 +1260,35 @@ ul.policy span{color:var(--muted)}
 .staffcomposer{flex-direction:column;align-items:stretch;gap:8px;background:var(--white);padding-top:8px}
 .staffcomposer .composerrow{display:flex;align-items:flex-end;gap:8px}
 .staffcomposer .emailit{margin:0}
+
+/* ============================================================
+   The member profile. A header that reads like a card in a
+   contacts app, a journey strip, tappable rows, and a form.
+   ============================================================ */
+.mprofile{padding-top:16px}
+.phead{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.pav{
+  width:54px;height:54px;border-radius:50%;flex:none;display:grid;place-items:center;
+  background:var(--accent);color:#fff;font-size:19px;font-weight:600;letter-spacing:.5px;
+}
+.pwho{display:flex;flex-direction:column;gap:3px;min-width:0}
+.pname{font-size:19px;font-weight:600;color:var(--ink);line-height:1.2}
+.pmeta{font-size:13px;color:var(--muted)}
+.jbar{list-style:none;display:flex;gap:4px;margin:8px 0 10px;padding:0}
+.jstep{flex:1;height:6px;border-radius:99px;background:var(--mist)}
+.jstep.done{background:var(--accent)}
+.jstep.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--accent)}
+.vis{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mrows{padding-top:4px;padding-bottom:4px}
+.mrowlink{
+  display:flex;align-items:center;gap:12px;padding:13px 0;color:var(--ink);
+  border-top:1px solid var(--line-soft);text-decoration:none;
+}
+.mrows .mrowlink:first-of-type{border-top:none}
+.mrowlink .fl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mrowlink .pn{font-size:15px;font-weight:500}
+/* A narrow-screen rule hides .pe for the staff roster, so say display here. */
+.mrowlink .pe{display:block;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mrowlink .chev{color:var(--muted-2);font-size:20px;line-height:1}
+.mrowlink:hover .pn{color:var(--accent)}
+.field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}

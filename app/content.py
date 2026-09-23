@@ -780,6 +780,11 @@ MEMBER = {
     "row_serving_count": "{count} coming up",
     "row_notifications": "Notifications",
     "row_notifications_hint": "Email and this device",
+    "row_details_sub": "Name, phone, birthday, address",
+    "row_email_sub": "What the church emails you",
+    "row_blocked_count": "{count} blocked",
+    "row_account": "Account and privacy",
+    "row_account_sub": "Password, privacy, delete your account",
 
     "prefs_label": "Email you get",
     "prefs_hint": (

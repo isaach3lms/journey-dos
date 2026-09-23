@@ -77,12 +77,57 @@ class TestTheRows:
         assert b"Not in a group yet" in page
         assert b"Not scheduled" in page
 
-    def test_they_point_at_the_right_screens(self, db, client, alicia):
+    def test_groups_and_serving_open_their_own_screens(self, db, client, alicia):
         page = client.get("/me/you/", headers=H).data
         assert b'href="/me/groups/"' in page
         assert b'href="/me/serve/"' in page
-        assert b'href="#family"' in page
-        assert b'href="#notifications"' in page
+
+
+class TestRowsOpenInPlace:
+    """Everything on this screen is a closed row until it is tapped."""
+
+    def rows(self, client):
+        page = client.get("/me/you/", headers=H).data.decode()
+        return page[page.index('class="mcard mrows"'):page.index("</section>", page.index('class="mcard mrows"'))]
+
+    def test_every_section_is_a_row(self, db, client, alicia):
+        rows = self.rows(client)
+        for key in ("details", "family", "notifications", "push", "blocked", "account"):
+            assert f'<details class="mrowbox" id="{key}"' in rows
+
+    def test_they_start_closed(self, db, client, alicia):
+        assert " open>" not in self.rows(client)
+
+    def test_the_form_is_still_on_the_page_inside_its_row(self, db, client, alicia):
+        rows = self.rows(client)
+        assert 'name="first_name"' in rows
+        assert 'action="/me/you/details/"' in rows
+
+    @pytest.mark.parametrize("key", ["details", "family", "notifications", "account"])
+    def test_a_link_can_ask_for_one_to_be_open(self, db, client, alicia, key):
+        page = client.get(f"/me/you/?open={key}", headers=H).data.decode()
+        assert f'id="{key}" open>' in page
+        # Only that one.
+        assert page.count(" open>") == 1
+
+    def test_saving_leaves_the_row_open(self, db, client, alicia):
+        response = save(client, phone="573-555-0123")
+        assert b'id="details" open>' in response.data
+
+    def test_a_refused_save_leaves_the_row_open(self, db, client, alicia):
+        response = save(client, first_name="")
+        assert b'id="details" open>' in response.data
+        assert b"We need both a first and last name." in response.data
+
+    def test_saving_preferences_leaves_notifications_open(self, db, client, alicia):
+        response = client.post("/me/you/preferences/", data={"cat_welcome": "on"},
+                               headers=H, follow_redirects=True)
+        assert b'id="notifications" open>' in response.data
+
+    def test_nonsense_in_the_query_opens_nothing(self, db, client, alicia):
+        page = client.get("/me/you/?open=<script>", headers=H).data
+        assert b" open>" not in page
+        assert b"<script>alert" not in page
 
 
 class TestChangingYourOwnDetails:

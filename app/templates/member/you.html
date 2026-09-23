@@ -33,53 +33,21 @@
   {% if current %}<p class="mnote">{{ content.journey_hint.format(meaning=current.meaning) }}</p>{% endif %}
 </section>
 
+{# One tappable row per thing. Closed to start, so the screen is a short
+   list rather than a wall of forms, and a row opens in place when tapped.
+   Groups and Serving have screens of their own, so those two go there
+   instead of opening. A save comes back with ?open= so the row the member
+   was working in is still open when the page reloads. #}
 <section class="mcard mrows">
-  <a class="mrowlink" href="#family">
-    <span class="fl">
-      <span class="pn">{{ content.row_family }}</span>
-      <span class="pe">
-        {%- if household_members -%}
-          {% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-        {%- elif person.household -%}
-          {{ content.household_alone }}
-        {%- else -%}
-          {{ content.row_family_none }}
-        {%- endif -%}
+  <details class="mrowbox" id="details"{% if request.args.get("open") == "details" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ content.details_heading }}</span>
+        <span class="pe">{{ content.row_details_sub }}</span>
       </span>
-    </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
-  </a>
-  <a class="mrowlink" href="{{ url_for('member.groups') }}">
-    <span class="fl">
-      <span class="pn">{{ content.row_groups }}</span>
-      <span class="pe">
-        {%- if group_names -%}{{ group_names | join(", ") }}{%- else -%}{{ content.row_groups_none }}{%- endif -%}
-      </span>
-    </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
-  </a>
-  <a class="mrowlink" href="{{ url_for('member.serve') }}">
-    <span class="fl">
-      <span class="pn">{{ content.row_serving }}</span>
-      <span class="pe">
-        {%- if serving_count -%}{{ content.row_serving_count.format(count=serving_count) }}
-        {%- else -%}{{ content.row_serving_none }}{%- endif -%}
-      </span>
-    </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
-  </a>
-  <a class="mrowlink" href="#notifications">
-    <span class="fl">
-      <span class="pn">{{ content.row_notifications }}</span>
-      <span class="pe">{{ content.row_notifications_hint }}</span>
-    </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
-  </a>
-</section>
-
-<section class="mcard" id="details">
-  <div class="mlbl">{{ content.details_heading }}</div>
-  <p class="mnote">{{ content.details_hint }}</p>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   <form method="post" action="{{ url_for('member.save_details') }}">
     {{ csrf_field() }}
     <div class="field2">
@@ -133,10 +101,17 @@
 
     <button class="btn wide" type="submit">{{ content.details_save }}</button>
   </form>
-</section>
-
-<section class="mcard" id="family">
-  <div class="mlbl">{{ content.household_label }}</div>
+    </div>
+  </details>
+  <details class="mrowbox" id="family"{% if request.args.get("open") == "family" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ content.row_family }}</span>
+        <span class="pe">{%- if household_members -%}{% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}{%- elif person.household -%}{{ content.household_alone }}{%- else -%}{{ content.row_family_none }}{%- endif -%}</span>
+      </span>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   {% if person.household %}
     <div class="mtitle">{{ person.household.name }}</div>
     {% if household_members %}
@@ -158,10 +133,31 @@
   {% else %}
     <p class="mnote">{{ content.household_none }}</p>
   {% endif %}
-</section>
-
-<section class="mcard" id="notifications">
-  <div class="mlbl">{{ content.prefs_label }}</div>
+    </div>
+  </details>
+  <a class="mrowlink standalone" href="{{ url_for('member.groups') }}">
+    <span class="fl">
+      <span class="pn">{{ content.row_groups }}</span>
+      <span class="pe">{%- if group_names -%}{{ group_names | join(", ") }}{%- else -%}{{ content.row_groups_none }}{%- endif -%}</span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <a class="mrowlink standalone" href="{{ url_for('member.serve') }}">
+    <span class="fl">
+      <span class="pn">{{ content.row_serving }}</span>
+      <span class="pe">{%- if serving_count -%}{{ content.row_serving_count.format(count=serving_count) }}{%- else -%}{{ content.row_serving_none }}{%- endif -%}</span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
+  <details class="mrowbox" id="notifications"{% if request.args.get("open") == "notifications" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ content.prefs_label }}</span>
+        <span class="pe">{{ content.row_email_sub }}</span>
+      </span>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   <p class="mnote">{{ content.prefs_hint }}</p>
 
   {% if person.has_opted_out %}
@@ -187,10 +183,17 @@
       {% if person.has_opted_out %}{{ content.resubscribe }}{% else %}{{ content.unsubscribe_all }}{% endif %}
     </button>
   </form>
-</section>
-
-<section class="mcard">
-  <div class="mlbl">{{ content.push_heading }}</div>
+    </div>
+  </details>
+  <details class="mrowbox" id="push"{% if request.args.get("open") == "push" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ content.push_heading }}</span>
+        <span class="pe">{%- if push_devices -%}{{ content.push_devices.format(count=push_devices) }}{%- else -%}{{ content.push_none }}{%- endif -%}</span>
+      </span>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   <p class="mnote">{{ content.push_hint }}</p>
   <div class="mrow">
     <span id="pushstate">
@@ -206,10 +209,17 @@
     {{ content.push_off }}
   </button>
   <p class="mnote" id="pushnote" hidden></p>
-</section>
-
-<section class="mcard">
-  <div class="mlbl">{{ msg.blocks_heading }}</div>
+    </div>
+  </details>
+  <details class="mrowbox" id="blocked"{% if request.args.get("open") == "blocked" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ msg.blocks_heading }}</span>
+        <span class="pe">{%- if blocks -%}{{ content.row_blocked_count.format(count=blocks|length) }}{%- else -%}{{ msg.blocks_none }}{%- endif -%}</span>
+      </span>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   {% if blocks %}
     <p class="mnote">{{ msg.blocks_hint }}</p>
     {% for block in blocks %}
@@ -224,9 +234,17 @@
   {% else %}
     <p class="mnote">{{ msg.blocks_none }}</p>
   {% endif %}
-</section>
-
-<section class="mcard">
+    </div>
+  </details>
+  <details class="mrowbox" id="account"{% if request.args.get("open") == "account" %} open{% endif %}>
+    <summary class="mrowlink">
+      <span class="fl">
+        <span class="pn">{{ content.row_account }}</span>
+        <span class="pe">{{ content.row_account_sub }}</span>
+      </span>
+      <span class="chev" aria-hidden="true">&rsaquo;</span>
+    </summary>
+    <div class="mrowbody">
   <div class="mlbl">{{ content.delete_heading }}</div>
   <p class="mnote">{{ content.delete_body }}</p>
   <p class="mnote">{{ content.delete_record.format(church=church.name) }}</p>
@@ -241,6 +259,8 @@
   <p class="mnote">
     <a href="{{ url_for('public.privacy') }}">{{ content.privacy_link }}</a>
   </p>
+    </div>
+  </details>
 </section>
 
 <form method="post" action="{{ url_for('auth.logout') }}">

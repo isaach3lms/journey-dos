@@ -1292,3 +1292,18 @@ ul.policy span{color:var(--muted)}
 .mrowlink .chev{color:var(--muted-2);font-size:20px;line-height:1}
 .mrowlink:hover .pn{color:var(--accent)}
 .field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Rows that open in place. A <details> so it works with no JavaScript, and
+   the row itself is the summary, which is why the marker is turned off. */
+.mrowbox{border-top:1px solid var(--line-soft)}
+.mrows > :first-child{border-top:none}
+.mrowbox > summary{list-style:none;cursor:pointer}
+.mrowbox > summary::-webkit-details-marker{display:none}
+.mrowlink.standalone{border-top:1px solid var(--line-soft)}
+.mrowbox[open] > summary .pn{color:var(--accent)}
+.mrowbox > summary .chev{transition:transform .15s ease}
+.mrowbox[open] > summary .chev{transform:rotate(90deg)}
+.mrowbody{padding:2px 0 16px}
+.mrowbody > :first-child{margin-top:0}
+.mrowbody .mlbl{margin-top:16px}
+.mrowbody .field:last-of-type{margin-bottom:12px}

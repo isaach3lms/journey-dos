@@ -185,7 +185,7 @@ def save_details():
     last = (request.form.get("last_name") or "").strip()
     if not first or not last:
         flash(MEMBER["details_name_required"], "error")
-        return redirect(url_for("member.you", _anchor="details"))
+        return redirect(url_for("member.you", open="details", _anchor="details"))
 
     birthdate = person.birthdate
     raw_birthday = (request.form.get("birthdate") or "").strip()
@@ -194,10 +194,10 @@ def save_details():
             birthdate = datetime.strptime(raw_birthday, "%Y-%m-%d").date()
         except ValueError:
             flash(MEMBER["details_birthday_bad"], "error")
-            return redirect(url_for("member.you", _anchor="details"))
+            return redirect(url_for("member.you", open="details", _anchor="details"))
         if birthdate > date.today():
             flash(MEMBER["details_birthday_future"], "error")
-            return redirect(url_for("member.you", _anchor="details"))
+            return redirect(url_for("member.you", open="details", _anchor="details"))
     else:
         birthdate = None
 
@@ -238,7 +238,7 @@ def save_details():
     db.session.commit()
 
     flash(MEMBER["details_saved"] if changed else MEMBER["details_unchanged"], "notice")
-    return redirect(url_for("member.you", _anchor="details"))
+    return redirect(url_for("member.you", open="details", _anchor="details"))
 
 
 @bp.post("/you/preferences/")
@@ -256,7 +256,7 @@ def set_preferences():
     db.session.commit()
 
     flash(MEMBER["prefs_saved"], "notice")
-    return redirect(url_for("member.you"))
+    return redirect(url_for("member.you", open="notifications", _anchor="notifications"))
 
 
 @bp.post("/you/optout/")
@@ -272,7 +272,7 @@ def toggle_opt_out():
         opt_out(person, reason="Turned off by the member in the app")
     db.session.commit()
 
-    return redirect(url_for("member.you"))
+    return redirect(url_for("member.you", open="notifications", _anchor="notifications"))
 
 
 # ---------------------------------------------------------------------------
@@ -825,7 +825,7 @@ def delete_account():
     # normal case, and an irreversible action deserves more than one tap.
     if not current_user.check_password(request.form.get("password") or ""):
         flash(MEMBER["delete_wrong_password"], "error")
-        return redirect(url_for("member.you"))
+        return redirect(url_for("member.you", open="account", _anchor="account"))
 
     if current_user.is_staff:
         from app.models import User
@@ -1073,4 +1073,4 @@ def unblock(block_id: int):
     db.session.commit()
 
     flash(MESSAGES["unblocked"].format(name=name), "notice")
-    return redirect(url_for("member.you"))
+    return redirect(url_for("member.you", open="blocked", _anchor="blocked"))

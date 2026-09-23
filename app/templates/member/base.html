@@ -57,7 +57,10 @@
         <span>{{ content.tab_home }}</span>
       </a>
       {% if church.giving_form_url %}
-        <a href="{{ url_for('member.give') }}" {% if tab == 'give' %}aria-current="page"{% endif %}>
+        {# Straight out to the church's own giving page. target=_blank so the
+           iOS wrapper hands it to the system browser instead of replacing the
+           app with a page that has no way back. #}
+        <a href="{{ church.giving_form_url }}" target="_blank" rel="noopener noreferrer">
           <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.6A3.9 3.9 0 0 1 12 8a3.9 3.9 0 0 1 7 2.4C19 15.6 12 20 12 20z"/></svg>
           <span>{{ content.tab_give }}</span>
         </a>

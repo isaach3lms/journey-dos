@@ -535,10 +535,20 @@ def toggle_session(resource_id: int, session_id: int):
 @bp.get("/give/")
 @login_required
 def give():
-    """A link out to the church's own giving page. No money moves through here."""
+    """The church's own giving page. No money moves through here.
+
+    The Give tab links to the giving page itself, so this route exists for
+    anything that still points at /me/give/: an old bookmark, a link in an
+    email sent last month. It sends them where the tab would have. When the
+    church has not set a giving link yet, the in-app page explains that
+    rather than redirecting nowhere.
+    """
     person = current_user.person
     if person is None:
         return render_template("member/unlinked.html", church=g.church, content=MEMBER)
+
+    if g.church.giving_form_url:
+        return redirect(g.church.giving_form_url)
 
     return render_template(
         "member/give.html", give=GIVING, tab="give", **_base_context(person)

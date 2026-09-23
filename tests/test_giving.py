@@ -200,25 +200,30 @@ class TestTenantIsolation:
 
 
 class TestMemberGiveTab:
-    def test_the_tab_appears_once_giving_is_configured(
+    def test_the_tab_goes_straight_to_the_giving_page(
         self, db, configured, linked_member, member
     ):
-        r = member.get("/me/", headers={"Host": JOURNEY_HOST})
-        assert b"/me/give/" in r.data
+        """One tap, not two: the tab is the church's giving page."""
+        body = member.get("/me/", headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
+        assert GOOD_FORM in body
+        assert 'rel="noopener noreferrer"' in body
+        # target=_blank so the iOS wrapper opens the system browser rather
+        # than replacing the app with a page that has no way back.
+        assert 'target="_blank"' in body
 
     def test_the_tab_is_hidden_when_it_is_not(self, db, linked_member, member):
         """A tab that leads to an apology is worse than no tab."""
         r = member.get("/me/", headers={"Host": JOURNEY_HOST})
         assert b"/me/give/" not in r.data
+        assert GOOD_FORM.encode() not in r.data
 
-    def test_the_give_page_links_to_the_church_giving_form(
+    def test_an_old_link_to_the_give_page_still_lands_there(
         self, db, configured, linked_member, member
     ):
+        """A bookmark or an emailed link from before the tab changed."""
         r = member.get("/me/give/", headers={"Host": JOURNEY_HOST})
-        assert r.status_code == 200
-        body = r.get_data(as_text=True)
-        assert GOOD_FORM in body
-        assert 'rel="noopener noreferrer"' in body
+        assert r.status_code == 302
+        assert r.headers["Location"] == GOOD_FORM
 
     def test_it_says_so_when_the_church_has_not_set_it_up(
         self, db, linked_member, member

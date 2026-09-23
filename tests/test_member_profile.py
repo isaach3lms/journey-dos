@@ -262,5 +262,7 @@ class TestTheFamilyAddress:
 
     def test_the_check_in_code_moved_into_the_family_card(self, db, client, alicia, with_household):
         page = client.get("/me/you/", headers=H).data.decode()
-        family = page[page.index('id="family"'):]
-        assert "Check-in code" in family[:900]
+        # Between the Family row and the next row: the code belongs with the
+        # family, not on a screen of its own.
+        family = page[page.index('id="family"'):page.index('id="notifications"')]
+        assert "Check-in code" in family

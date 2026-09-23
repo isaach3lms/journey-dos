@@ -783,6 +783,37 @@ MEMBER = {
     "row_details_sub": "Name, phone, birthday, address",
     "row_email_sub": "What the church emails you",
     "row_blocked_count": "{count} blocked",
+    # Adding your own children, ready for check-in
+    "family_add": "Add a family member",
+    "family_add_hint": (
+        "Add your children here so they can be checked in on Sunday. The kids "
+        "team sees their name, their age, and anything you tell us."
+    ),
+    "family_first": "First name",
+    "family_last": "Last name",
+    "family_last_hint": "Leave blank to use yours.",
+    "family_birthday": "Birthday",
+    "family_birthday_hint": "So the kids team puts them in the right room.",
+    "family_is_child": "This is a child, for kids check-in",
+    "family_notes": "Anything the kids team should know",
+    "family_notes_hint": "Allergies, a nickname, how they do with drop-off.",
+    "family_save": "Add them",
+    "family_added": "{name} added to your family.",
+    "family_first_required": "We need at least a first name.",
+    "family_duplicate": "{name} is already on your family.",
+    "family_full": "A family can hold {max} people. Ask the church office if you need more.",
+    "family_household_name": "The {last} family",
+    "family_event": "Added by a parent in the app",
+    "family_event_detail": "By {name}",
+    "family_remove": "Remove",
+    "family_remove_confirm": "Remove this person from your family?",
+    "family_removed": "{name} removed from your family.",
+    "family_removed_event": "Removed by a parent in the app",
+    "family_remove_missing": "We could not find that person on your family.",
+    "family_child_label": "Child",
+    "family_check_in_ready": "Ready for check-in",
+    "family_you": "You",
+
     "row_account": "Account and privacy",
     "row_account_sub": "Password, privacy, delete your account",
 

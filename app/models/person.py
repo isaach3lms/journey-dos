@@ -396,15 +396,20 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         return days is None or days > CONTACT_WINDOW_DAYS
 
     @property
-    def is_stuck(self) -> bool:
+    def is_stuck(self) -> bool:  # noqa: D401 - see _stuck_clause for the SQL twin
         """Both conditions, not either.
 
         Time in a stage alone is not a problem: a Member who has been a Member
         for three years is exactly where they should be. Silence alone is not a
         problem either, on its own. The two together are what a pastor would
-        actually want to look at.
+        actually want to look at. Never a child: see `_stuck_clause`, whose
+        SQL this property has to agree with exactly.
         """
-        return self.is_overdue_in_stage and self.is_out_of_contact
+        return (
+            not self.is_child
+            and self.is_overdue_in_stage
+            and self.is_out_of_contact
+        )
 
     @property
     def stuck_reason(self) -> str | None:
@@ -449,7 +454,11 @@ class Person(TenantScoped, TimestampMixin, db.Model):
             cls.last_contact_at.is_(None),
             cls.last_contact_at <= contact_cutoff,
         )
-        return db.and_(overdue, silent)
+        # Children are never "stuck". A five year old is not somebody staff
+        # failed to follow up with, and parents now add their own children
+        # from the app, so without this every family that signs up would put
+        # its kids on the follow-up list a few weeks later.
+        return db.and_(overdue, silent, cls.is_child.is_(False))
 
     @classmethod
     def stuck(cls, church_id: int, limit: int | None = None):

@@ -112,15 +112,84 @@
       <span class="chev" aria-hidden="true">&rsaquo;</span>
     </summary>
     <div class="mrowbody">
+  {# The family list, then one form to add a child. A parent doing this on
+     Saturday night is what makes Sunday check-in work, so the check-in code
+     sits right under it rather than on another screen. #}
   {% if person.household %}
     <div class="mtitle">{{ person.household.name }}</div>
-    {% if household_members %}
-      <p class="mnote">
-        {% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-      </p>
-    {% else %}
-      <p class="mnote">{{ content.household_alone }}</p>
-    {% endif %}
+  {% endif %}
+
+  <ul class="famlist">
+    <li>
+      <span class="fl">
+        <span class="pn">{{ person.full_name }}</span>
+        <span class="pe">{{ content.family_you }}</span>
+      </span>
+    </li>
+    {% for member in household_members %}
+      {% if not member.is_archived %}
+        <li>
+          <span class="fl">
+            <span class="pn">{{ member.full_name }}</span>
+            <span class="pe">
+              {%- if member.is_child -%}
+                {{ content.family_child_label }}
+                {%- if member.birthdate %} &middot; {{ member.birthdate.strftime("%-d %b %Y") }}{% endif %}
+                {%- if pin %} &middot; {{ content.family_check_in_ready }}{% endif %}
+              {%- else -%}
+                {{ person.household.name }}
+              {%- endif -%}
+            </span>
+          </span>
+          {% if member.is_child %}
+            <form method="post" action="{{ url_for('member.remove_family_member') }}" class="inline"
+                  onsubmit="return confirm({{ content.family_remove_confirm | tojson }});">
+              {{ csrf_field() }}
+              <input type="hidden" name="member_id" value="{{ member.id }}">
+              <button class="btn ghostbtn tiny" type="submit">{{ content.family_remove }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endif %}
+    {% endfor %}
+  </ul>
+
+  <details class="famadd"{% if request.args.get("open") == "family" and request.args.get("add") %} open{% endif %}>
+    <summary class="btn ghostbtn wide">{{ content.family_add }}</summary>
+    <p class="mnote">{{ content.family_add_hint }}</p>
+    <form method="post" action="{{ url_for('member.add_family_member') }}">
+      {{ csrf_field() }}
+      <div class="field2">
+        <div class="field">
+          <label for="fam_first">{{ content.family_first }}</label>
+          <input class="input" id="fam_first" name="first_name" maxlength="80" required>
+        </div>
+        <div class="field">
+          <label for="fam_last">{{ content.family_last }}</label>
+          <input class="input" id="fam_last" name="last_name" maxlength="80"
+                 placeholder="{{ person.last_name }}">
+        </div>
+      </div>
+      <p class="mnote">{{ content.family_last_hint }}</p>
+      <div class="field">
+        <label for="fam_birthday">{{ content.family_birthday }}</label>
+        <input class="input" id="fam_birthday" name="birthdate" type="date">
+        <p class="mnote">{{ content.family_birthday_hint }}</p>
+      </div>
+      <label class="check mcheck">
+        <input type="checkbox" name="is_child" checked>
+        <span>{{ content.family_is_child }}</span>
+      </label>
+      <div class="field">
+        <label for="fam_notes">{{ content.family_notes }}</label>
+        <textarea class="input" id="fam_notes" name="notes" rows="2" maxlength="500"></textarea>
+        <p class="mnote">{{ content.family_notes_hint }}</p>
+      </div>
+      <button class="btn wide" type="submit">{{ content.family_save }}</button>
+    </form>
+  </details>
+
+  {% if person.household %}
     <div class="mlbl">{{ content.pin_label }}</div>
     {% if pin %}
       {# Permanently visible, per spec v3 B.2: the member app is the first of

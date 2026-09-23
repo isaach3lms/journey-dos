@@ -1307,3 +1307,15 @@ ul.policy span{color:var(--muted)}
 .mrowbody > :first-child{margin-top:0}
 .mrowbody .mlbl{margin-top:16px}
 .mrowbody .field:last-of-type{margin-bottom:12px}
+
+/* The family list inside the profile, and the add form behind one button. */
+.famlist{list-style:none;margin:8px 0 14px;padding:0}
+.famlist li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line-soft)}
+.famlist li:first-child{border-top:none}
+.famlist .fl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.famlist .pn{font-size:15px;font-weight:500}
+.famlist .pe{display:block;font-size:12.5px;color:var(--muted)}
+.famlist form{margin:0;flex:none}
+.famadd > summary{list-style:none;text-align:center}
+.famadd > summary::-webkit-details-marker{display:none}
+.famadd[open] > summary{display:none}

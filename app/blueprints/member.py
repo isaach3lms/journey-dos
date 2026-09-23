@@ -3,8 +3,11 @@
 The same database, the same brand, a different reader. A member sees their own
 record and nothing else, and that is enforced by only ever loading
 `current_user.person` rather than by taking an id from a URL. There is no route
-in this blueprint that accepts a person id, so there is no way to ask it for
-somebody else's record.
+in this blueprint that accepts a person id in its URL, so there is no way to
+ask it for somebody else's record. One route takes an id in a form body,
+`remove_family_member`, and it matches that id against the member's own
+household before acting, so it can only name somebody already on their
+screen.
 
 Staff and leaders can reach it too, showing their own record. That is a preview
 of what the church's people see, not impersonation: there is deliberately no
@@ -48,14 +51,14 @@ from app.models import (
     SessionCompletion,
 )
 from app.audit import record as audit_record
-from app.models import PushSubscription
+from app.models import Household, Person, PushSubscription
 from app.models.audit import PERSON_ARCHIVED
 from app.models.message import Conversation, Message
 from app.models import MessageReport, PersonBlock
 from app.models.moderation import SOURCE_BLOCK, SOURCE_REPORT
 from app.moderation import objectionable_terms
 from app.models.service import ACCEPTED, DECLINED, ServiceAssignment
-from app.models.person_event import KIND_NOTE, PersonEvent
+from app.models.person_event import KIND_CREATED, KIND_NOTE, PersonEvent
 from app.stages import STAGE_BY_CODE, stages_for
 
 bp = Blueprint("member", __name__, url_prefix="/me")
@@ -239,6 +242,139 @@ def save_details():
 
     flash(MEMBER["details_saved"] if changed else MEMBER["details_unchanged"], "notice")
     return redirect(url_for("member.you", open="details", _anchor="details"))
+
+
+# A household holds one family. Twelve covers the largest real family and
+# stops a bored member making a hundred records.
+MAX_HOUSEHOLD_MEMBERS = 12
+
+
+@bp.post("/family/add/")
+@login_required
+def add_family_member():
+    """A parent adding their own child, ready for kids check-in.
+
+    Adding a child is the one thing a member cannot do from anywhere else
+    without calling the office, and it is what makes Sunday check-in work: a
+    child needs a record, a household, and that household needs a PIN.
+
+    The household is created here when the member does not have one yet,
+    because a family of one with no household is exactly the state a
+    self-signed-up parent arrives in.
+    """
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.you"))
+
+    first = (request.form.get("first_name") or "").strip()
+    # Most families share a surname, so an empty one follows the parent's
+    # rather than refusing the form over something we can already answer.
+    last = (request.form.get("last_name") or "").strip() or person.last_name
+    if not first:
+        flash(MEMBER["family_first_required"], "error")
+        return redirect(url_for("member.you", open="family", _anchor="family"))
+
+    birthdate = None
+    raw_birthday = (request.form.get("birthdate") or "").strip()
+    if raw_birthday:
+        try:
+            birthdate = datetime.strptime(raw_birthday, "%Y-%m-%d").date()
+        except ValueError:
+            flash(MEMBER["details_birthday_bad"], "error")
+            return redirect(url_for("member.you", open="family", _anchor="family"))
+        if birthdate > date.today():
+            flash(MEMBER["details_birthday_future"], "error")
+            return redirect(url_for("member.you", open="family", _anchor="family"))
+
+    household = person.household
+    if household is None:
+        household = Household(
+            church_id=g.church.id,
+            name=MEMBER["family_household_name"].format(last=person.last_name),
+        )
+        db.session.add(household)
+        db.session.flush()
+        person.household_id = household.id
+
+    living = [m for m in household.members if not m.is_archived]
+    if len(living) >= MAX_HOUSEHOLD_MEMBERS:
+        flash(MEMBER["family_full"].format(max=MAX_HOUSEHOLD_MEMBERS), "error")
+        return redirect(url_for("member.you", open="family", _anchor="family"))
+
+    full_name = f"{first} {last}".strip().lower()
+    if any(m.full_name.strip().lower() == full_name for m in living):
+        flash(MEMBER["family_duplicate"].format(name=f"{first} {last}".strip()), "error")
+        return redirect(url_for("member.you", open="family", _anchor="family"))
+
+    is_child = request.form.get("is_child") == "on"
+    child = Person(
+        church_id=g.church.id,
+        first_name=first[:80],
+        last_name=last[:80],
+        birthdate=birthdate,
+        is_child=is_child,
+        household_id=household.id,
+        # A family arrives together, so the child starts where the parent is
+        # rather than at the front of a follow-up path meant for adults.
+        stage=person.stage,
+        notes=(request.form.get("notes") or "").strip()[:500] or None,
+    )
+    db.session.add(child)
+    db.session.flush()
+
+    PersonEvent.record(
+        child, KIND_CREATED, MEMBER["family_event"],
+        detail=MEMBER["family_event_detail"].format(name=person.full_name),
+    )
+    # The code is what the kiosk asks for, so it exists before they leave
+    # this screen rather than the first time somebody opens the Family row.
+    household.ensure_checkin_pin()
+    db.session.commit()
+
+    flash(MEMBER["family_added"].format(name=child.first_name), "notice")
+    return redirect(url_for("member.you", open="family", _anchor="family"))
+
+
+@bp.post("/family/remove/")
+@login_required
+def remove_family_member():
+    """Undo a mistyped or duplicated child.
+
+    The id arrives in the form rather than the URL, and is checked against
+    this member's own household before anything happens, so it can only ever
+    name somebody already on their own screen. The record is archived, never
+    deleted: a child who has been checked in has a safety history worth
+    keeping, and staff can bring the record back.
+    """
+    person = current_user.person
+    if person is None or person.household is None:
+        return redirect(url_for("member.you"))
+
+    try:
+        wanted = int(request.form.get("member_id") or 0)
+    except ValueError:
+        wanted = 0
+
+    child = next(
+        (
+            m for m in person.household.members
+            if m.id == wanted and m.id != person.id and m.is_child and not m.is_archived
+        ),
+        None,
+    )
+    if child is None:
+        flash(MEMBER["family_remove_missing"], "error")
+        return redirect(url_for("member.you", open="family", _anchor="family"))
+
+    child.is_archived = True
+    PersonEvent.record(
+        child, KIND_NOTE, MEMBER["family_removed_event"],
+        detail=MEMBER["family_event_detail"].format(name=person.full_name),
+    )
+    db.session.commit()
+
+    flash(MEMBER["family_removed"].format(name=child.first_name), "notice")
+    return redirect(url_for("member.you", open="family", _anchor="family"))
 
 
 @bp.post("/you/preferences/")

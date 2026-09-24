@@ -85,6 +85,27 @@
   </div>
 </div>
 
+<script>
+/* The highlight moves the moment a tab is tapped, rather than when the next
+   page finishes loading. On a slow connection that wait is most of what makes
+   a tab feel broken: you tap, and nothing acknowledges it. */
+(function () {
+  var tabs = document.querySelector('.mtabs');
+  if (!tabs) { return; }
+  tabs.addEventListener('click', function (event) {
+    var link = event.target.closest('a');
+    // The giving tab opens the church's own page in the browser; it is not
+    // a place inside the app, so it never takes the highlight.
+    if (!link || link.target === '_blank') { return; }
+    Array.prototype.forEach.call(
+      tabs.querySelectorAll('a[aria-current]'),
+      function (other) { other.removeAttribute('aria-current'); }
+    );
+    link.setAttribute('aria-current', 'page');
+  });
+})();
+</script>
+
 {% include "partials/pwa_script.html" %}
 {% block extra_script %}{% endblock %}
 </body>

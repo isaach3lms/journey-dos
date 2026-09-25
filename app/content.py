@@ -459,6 +459,31 @@ PEOPLE = {
     "household": "Household",
     "no_household": "Not linked to a household",
     "household_alone": "The only person in this household",
+
+    # Linking somebody to a family. The duplicate-profile fix: put the second
+    # record's family on the first, then archive the second.
+    "household_change": "Change",
+    "household_pick": "Move them into a family",
+    "household_none_option": "No household",
+    "household_new_label": "Or start a new family",
+    "household_new_placeholder": "The Tanksley family",
+    "household_save": "Save",
+    "household_count": "{name} ({count})",
+    "household_count_one": "{name} (1)",
+    "household_moved": "{name} is now in {household}.",
+    "household_started": "Started {household} with {name} in it.",
+    "household_removed": "{name} is no longer in a household.",
+    "household_already": "{name} is already in {household}.",
+    "household_needs_name": "A family needs a name.",
+    "household_unknown": "We could not find that household.",
+    "household_event": "Household changed",
+    "household_event_joined": "Moved into {household}",
+    "household_event_left": "Taken out of {household}",
+    "household_emptied": "{household} had nobody left in it, so it is gone.",
+    "household_hint": (
+        "Everyone in a family shares one address and one check-in code. "
+        "Moving somebody here does not change anything else about them."
+    ),
     "contact": "Contact",
     "no_email": "No email on file",
     "no_phone": "No phone on file",

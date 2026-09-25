@@ -39,6 +39,7 @@ from app.models import (
     KIND_STAGE_CHANGE,
     ExternalGift,
     ExternalRecurringGift,
+    Household,
     NextStep,
     OutboxMessage,
     Person,
@@ -169,6 +170,11 @@ def detail(person_id: int):
         ).all(),
         automation=AUTOMATION,
         household_members=household_members,
+        households=db.session.scalars(
+            db.select(Household)
+            .where(Household.church_id == g.church.id)
+            .order_by(Household.name)
+        ).all(),
         stages=stages_for(g.church),
         next_stage=next_stage(person.stage),
         active="people",
@@ -469,6 +475,108 @@ def set_owner(person_id: int):
     flash(
         STUCK["owner_set"].format(owner=owner.name, name=person.first_name), "notice"
     )
+    return redirect(url_for("people.detail", person_id=person.id))
+
+
+MAX_HOUSEHOLD_NAME = 160
+
+
+@bp.post("/<int:person_id>/household/")
+@login_required
+@min_role("leader")
+def set_household(person_id: int):
+    """Move somebody into a family, out of one, or into a brand new one.
+
+    Written for the case that produced it: the same person entered twice, once
+    by the office and once by themselves, with the family on one record and
+    the email on the other. Staff put the family on the record worth keeping
+    and archive the other, and nothing is retyped.
+    """
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    before = person.household
+    new_name = (request.form.get("household_name") or "").strip()
+    raw_id = (request.form.get("household_id") or "").strip()
+
+    if new_name:
+        target = Household(church_id=g.church.id, name=new_name[:MAX_HOUSEHOLD_NAME])
+        db.session.add(target)
+        db.session.flush()
+        started = True
+    elif raw_id:
+        if not raw_id.isdigit():
+            flash(PEOPLE["household_unknown"], "error")
+            return redirect(url_for("people.detail", person_id=person.id))
+        target = Household.get_for_church(g.church.id, int(raw_id))
+        if target is None:
+            flash(PEOPLE["household_unknown"], "error")
+            return redirect(url_for("people.detail", person_id=person.id))
+        started = False
+    else:
+        target, started = None, False
+
+    if target is not None and before is not None and target.id == before.id:
+        flash(
+            PEOPLE["household_already"].format(name=person.first_name,
+                                               household=target.name),
+            "notice",
+        )
+        return redirect(url_for("people.detail", person_id=person.id))
+
+    if target is None and before is None:
+        return redirect(url_for("people.detail", person_id=person.id))
+
+    person.household_id = target.id if target is not None else None
+
+    # A family with a child in it needs a check-in code, and one that has just
+    # gained its first child has not got one yet.
+    if target is not None and any(m.is_child for m in target.members):
+        target.ensure_checkin_pin()
+
+    detail = []
+    if before is not None:
+        detail.append(PEOPLE["household_event_left"].format(household=before.name))
+    if target is not None:
+        detail.append(PEOPLE["household_event_joined"].format(household=target.name))
+    PersonEvent.record(
+        person,
+        KIND_NOTE,
+        PEOPLE["household_event"],
+        detail=". ".join(detail),
+        actor=current_user,
+    )
+
+    # An emptied household is clutter, and its check-in code should not stay
+    # live. Check-in records copy the name rather than reading it, so the
+    # Sunday history keeps saying who collected whom.
+    emptied = None
+    if before is not None:
+        db.session.flush()
+        if not [m for m in before.members if m.id != person.id]:
+            emptied = before.name
+            db.session.delete(before)
+
+    db.session.commit()
+
+    if target is None:
+        flash(PEOPLE["household_removed"].format(name=person.first_name), "notice")
+    elif started:
+        flash(
+            PEOPLE["household_started"].format(household=target.name,
+                                               name=person.first_name),
+            "notice",
+        )
+    else:
+        flash(
+            PEOPLE["household_moved"].format(name=person.first_name,
+                                             household=target.name),
+            "notice",
+        )
+    if emptied:
+        flash(PEOPLE["household_emptied"].format(household=emptied), "notice")
+
     return redirect(url_for("people.detail", person_id=person.id))
 
 

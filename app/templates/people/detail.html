@@ -49,6 +49,33 @@
               <br><span class="muted">{{ content.household_alone }}</span>
             {% endif %}
           {% else %}{{ content.no_household }}{% endif %}
+
+          {# Closed until somebody needs it, so the snapshot stays a snapshot. #}
+          <details class="hhedit">
+            <summary>{{ content.household_change }}</summary>
+            <form method="post" action="{{ url_for('people.set_household', person_id=person.id) }}">
+              {{ csrf_field() }}
+              <label class="fieldlbl" for="household_id">{{ content.household_pick }}</label>
+              <select class="input select" id="household_id" name="household_id">
+                <option value="">{{ content.household_none_option }}</option>
+                {% for home in households %}
+                  <option value="{{ home.id }}" {% if person.household_id == home.id %}selected{% endif %}>
+                    {% if home.members|length == 1 %}
+                      {{ content.household_count_one.format(name=home.name) }}
+                    {% else %}
+                      {{ content.household_count.format(name=home.name, count=home.members|length) }}
+                    {% endif %}
+                  </option>
+                {% endfor %}
+              </select>
+              <label class="fieldlbl" for="household_name">{{ content.household_new_label }}</label>
+              <input class="input" id="household_name" name="household_name" type="text"
+                     placeholder="{{ content.household_new_placeholder }}" maxlength="160"
+                     autocomplete="off">
+              <button class="btn" type="submit">{{ content.household_save }}</button>
+              <p class="muted small">{{ content.household_hint }}</p>
+            </form>
+          </details>
         </dd></div>
       <div><dt>{{ content.first_seen }}</dt>
         <dd>{{ person.first_seen_on.strftime("%B %-d, %Y") if person.first_seen_on else content.never_seen }}</dd></div>

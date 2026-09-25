@@ -65,20 +65,12 @@ bp = Blueprint("member", __name__, url_prefix="/me")
 
 
 def _greeting(name: str) -> str:
-    """Time of day from the server's clock.
+    """The same greeting at every hour.
 
-    A per-church timezone lands with Services at increment 10, which is the
-    first feature where being an hour out actually matters. Until then UTC is
-    honest about being approximate rather than pretending otherwise.
+    It used to read the server clock for morning, afternoon or evening, which
+    was simply wrong for anybody in another timezone. One greeting cannot be.
     """
-    hour = datetime.now(timezone.utc).hour
-    if hour < 12:
-        key = "greeting_morning"
-    elif hour < 17:
-        key = "greeting_afternoon"
-    else:
-        key = "greeting_evening"
-    return MEMBER[key].format(name=name)
+    return MEMBER["greeting"].format(name=name)
 
 
 def _base_context(person):
@@ -101,16 +93,20 @@ def home():
         NextStep.open_for_person(g.church.id, person.id)
     ).all()
 
-    days = None
-    if person.first_seen_on:
-        days = (datetime.now(timezone.utc).date() - person.first_seen_on).days + 1
-
     from app.models.verse import WeeklyVerse
     from app.timeutil import now_local
 
+    # The church's own date, not the server's. In UTC, "Day 11" started at
+    # 7pm on day 10 for anybody in Missouri.
+    today = now_local(g.church).date()
+
+    days = None
+    if person.first_seen_on:
+        days = (today - person.first_seen_on).days + 1
+
     return render_template(
         "member/home.html",
-        verse=WeeklyVerse.current(g.church.id, now_local(g.church).date()),
+        verse=WeeklyVerse.current(g.church.id, today),
         greeting=_greeting(person.first_name),
         waiting_for_approval=person.is_waiting_for_approval,
         days=days,

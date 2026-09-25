@@ -626,12 +626,17 @@ form.inline .select{min-width:170px}
 
 @media (min-width:900px){
   /* Lines the logo and the last tab up with the edges of the content. */
-  .memberfull{--mgutter:calc(max(0px, (100vw - 1080px) / 2) + 32px)}
+  /* The background is the page behind the app, which shows on an overscroll. */
+  .memberfull{
+    background:var(--white);
+    --mgutter:calc(max(0px, (100vw - 1080px) / 2) + 32px);
+  }
   .memberfull .phonewrap{display:block;padding:0}
   .memberfull .phone{
     max-width:none;min-height:100vh;
     border:none;border-radius:0;box-shadow:none;overflow:visible;
-    background:var(--bone);
+    /* White, like the phone. The member app is one surface at every size. */
+    background:var(--white);
     display:grid;
     grid-template-columns:auto minmax(0,1fr);
     grid-template-rows:auto 1fr;
@@ -664,7 +669,8 @@ form.inline .select{min-width:170px}
   }
   .memberfull .mgreet{font-size:30px}
   .memberfull .msub{font-size:14.5px;margin-bottom:10px}
-  .memberfull .mcard{padding:22px 24px;border-radius:14px}
+  /* A white card on a white page needs a line you can actually see. */
+  .memberfull .mcard{padding:22px 24px;border-radius:14px;border-color:var(--line)}
   .memberfull .mbig{font-size:28px}
   .memberfull .mtitle{font-size:16px}
   .memberfull .mnote{font-size:14px}
@@ -1221,7 +1227,9 @@ ul.policy span{color:var(--muted)}
   position:sticky;bottom:0;display:flex;align-items:flex-end;gap:8px;
   padding:10px 0 4px;background:var(--white);
 }
-@media (min-width:900px){.memberfull .composer{background:var(--bone)}}
+/* The composer matches whatever it is pinned over, or the messages scroll
+   out from under a strip of a different colour. */
+@media (min-width:900px){.memberfull .composer{background:var(--white)}}
 .composerinput{
   flex:1;resize:none;border:1px solid var(--line);border-radius:20px;background:var(--white);
   padding:9px 14px;font:inherit;font-size:15px;line-height:1.35;max-height:140px;color:var(--ink);

@@ -694,9 +694,9 @@ MEMBER = {
     "grow_reading": "Reading plans",
     "grow_groups": "My groups",
 
-    "greeting_morning": "Good morning, {name}",
-    "greeting_afternoon": "Good afternoon, {name}",
-    "greeting_evening": "Good evening, {name}",
+    # One greeting at every hour. A clock-based greeting was wrong for
+    # anybody outside the server's timezone, and it read as a novelty.
+    "greeting": "Welcome back, {name}",
     "since": "Day {days} with {church}",
     "since_new": "Welcome to {church}",
 

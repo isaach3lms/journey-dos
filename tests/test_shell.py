@@ -162,3 +162,45 @@ class TestFlashesAreRenderedOnce:
             follow_redirects=True,
         )
         assert b"Tick somebody first" in r.data
+
+
+class TestTheStaffPageIsWhite:
+    """The work area behind the cards, which used to be the cream page
+    colour. Everything else that needs a page colour still has one."""
+
+    CSS = None
+
+    @classmethod
+    def css(cls):
+        from pathlib import Path
+
+        if cls.CSS is None:
+            cls.CSS = (Path(__file__).resolve().parent.parent
+                       / "app" / "static" / "css" / "app.css").read_text()
+        return cls.CSS
+
+    def rule(self, selector):
+        css = self.css()
+        block = css[css.index(selector):]
+        return block[:block.index("}")]
+
+    def test_the_work_area_is_white(self):
+        assert "background:var(--white)" in self.rule(".main{")
+
+    def test_the_sidebar_is_untouched(self):
+        assert "background:var(--chrome)" in self.rule(".sidebar{")
+
+    def test_the_error_page_keeps_a_page_colour(self):
+        """It has a white card on it, and it must not touch the database, so
+        it cannot be fixed later by a template change."""
+        assert "background:var(--bone)" in self.rule(".errwrap{")
+
+    def test_the_member_preview_keeps_a_page_colour(self):
+        """Staff see the member app inside a white phone frame."""
+        assert "background:var(--bone)" in self.rule(".memberbody{")
+
+    def test_cards_still_read_against_it(self):
+        card = self.rule(".card{")
+        assert "background:var(--white)" in card
+        assert "box-shadow:var(--shadow-sm)" in card
+        assert "border:1px solid var(--line-soft)" in card

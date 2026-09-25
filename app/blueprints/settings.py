@@ -33,9 +33,23 @@ from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
 from app.models.audit import ACTIONS, BRAND_CHANGED, RETENTION_DAYS
 from app.security import min_role
-from app.timeutil import COMMON_TIMEZONES, is_valid_timezone
+from app.timeutil import COMMON_TIMEZONES, is_valid_timezone, zone_for
 
 bp = Blueprint("settings", __name__, url_prefix="/settings")
+
+
+# Every row on the settings screen, in the order they appear. A row opens in
+# place, so these are not addresses; they are what ?open= accepts and what a
+# redirect passes back so staff land on the row they just used.
+ROWS = (
+    "brand", "accounts", "signup", "giving", "ccli",
+    "announcements", "email", "audit", "cost", "bible", "support",
+)
+
+
+def _back(row: str):
+    """Back to settings with one row open and scrolled to."""
+    return redirect(url_for("settings.index", open=row, _anchor=row))
 
 
 def _cost_context() -> dict:
@@ -57,11 +71,25 @@ def index():
     if action and action not in ACTIONS:
         action = None
 
+    # Checked against the list rather than echoed, so nothing a visitor puts
+    # in the query string reaches the markup.
+    open_row = (request.args.get("open") or "").strip()
+    if open_row not in ROWS:
+        open_row = None
+    if action and open_row is None:
+        # Arriving with a filter but no row named: they came from the filter
+        # on the log, so open it.
+        open_row = "audit"
+
     return render_template(
         "settings/index.html",
+        open_row=open_row,
         church=g.church,
         content=SETTINGS,
         timezones=COMMON_TIMEZONES,
+        # What the church actually runs on. A blank column is not "None"
+        # on screen, it is the fallback the rest of the app already uses.
+        current_timezone=str(zone_for(g.church)),
         events=db.session.scalars(
             AuditEvent.recent(g.church.id, action=action)
         ).all(),
@@ -110,13 +138,13 @@ def save_brand():
                 SETTINGS["custom_domain_bad"].format(value=request.form["custom_domain"]),
                 "error",
             )
-            return redirect(url_for("settings.index"))
+            return _back("brand")
 
         if host != (church.custom_domain or ""):
             taken = Church.by_custom_domain(host) if host else None
             if taken is not None and taken.id != church.id:
                 flash(SETTINGS["custom_domain_taken"].format(value=host), "error")
-                return redirect(url_for("settings.index"))
+                return _back("brand")
 
             changes.append(f"web address to {host or 'none'}")
             church.custom_domain = host or None
@@ -133,7 +161,7 @@ def save_brand():
     if timezone and timezone != church.timezone:
         if not is_valid_timezone(timezone):
             flash(SETTINGS["timezone_rejected"].format(value=timezone), "error")
-            return redirect(url_for("settings.index"))
+            return _back("brand")
         changes.append(f"timezone to {timezone}")
         church.timezone = timezone
 
@@ -146,7 +174,7 @@ def save_brand():
             assert_accent_readable(accent)
         except ValueError as exc:
             flash(SETTINGS["accent_rejected"].format(reason=str(exc)), "error")
-            return redirect(url_for("settings.index"))
+            return _back("brand")
         changes.append(f"colour to {accent}")
         church.accent_hex = accent
 
@@ -163,7 +191,7 @@ def save_brand():
     db.session.commit()
 
     flash(SETTINGS["brand_saved"], "notice")
-    return redirect(url_for("settings.index"))
+    return _back("brand")
 
 
 @bp.post("/signup/")
@@ -194,7 +222,7 @@ def toggle_signup():
         else SETTINGS["signup_changed_off"],
         "notice",
     )
-    return redirect(url_for("settings.index"))
+    return _back("signup")
 
 
 @bp.post("/announcements/")
@@ -222,7 +250,7 @@ def toggle_member_announcements():
         else SETTINGS["announce_changed_off"],
         "notice",
     )
-    return redirect(url_for("settings.index", _anchor="announcements"))
+    return _back("announcements")
 
 
 @bp.post("/ccli/")
@@ -234,7 +262,7 @@ def save_ccli():
     digits = re.sub(r"[\s#-]", "", raw)
     if digits and not re.fullmatch(r"\d{4,10}", digits):
         flash(SETTINGS["ccli_bad"], "error")
-        return redirect(url_for("settings.index", _anchor="ccli"))
+        return _back("ccli")
 
     church = g.church
     church.ccli_license_number = digits or None
@@ -248,7 +276,7 @@ def save_ccli():
     )
     db.session.commit()
     flash(SETTINGS["ccli_saved"] if digits else SETTINGS["ccli_cleared"], "notice")
-    return redirect(url_for("settings.index", _anchor="ccli"))
+    return _back("ccli")
 
 
 # ---------------------------------------------------------------------------
@@ -267,13 +295,13 @@ def create_account():
 
     if not name or not email:
         flash(SETTINGS["accounts_name_required"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
     if role not in ROLES:
         abort(400)
 
     if User.by_email(g.church.id, email) is not None:
         flash(SETTINGS["accounts_exists"].format(email=email), "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     user = User(
         church_id=g.church.id, email=email, name=name[:120], role=role
@@ -297,7 +325,7 @@ def create_account():
     db.session.commit()
 
     flash(SETTINGS["accounts_created"].format(name=user.name), "notice")
-    return redirect(url_for("settings.index"))
+    return _back("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/role/")
@@ -316,7 +344,7 @@ def change_role(user_id: int):
         # Changing your own access from this screen is how somebody demotes
         # themselves out of the screen they are standing on.
         flash(SETTINGS["account_self"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     if (
         user.role == "staff"
@@ -324,7 +352,7 @@ def change_role(user_id: int):
         and User.active_staff_count(g.church.id, excluding=user.id) == 0
     ):
         flash(SETTINGS["account_last_staff"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     previous, user.role = user.role, role
     record(
@@ -336,7 +364,7 @@ def change_role(user_id: int):
     db.session.commit()
 
     flash(SETTINGS["role_changed"].format(name=user.name, role=role), "notice")
-    return redirect(url_for("settings.index"))
+    return _back("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/toggle/")
@@ -349,7 +377,7 @@ def toggle_account(user_id: int):
 
     if user.id == current_user.id:
         flash(SETTINGS["account_self"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     if (
         user.is_active_account
@@ -357,7 +385,7 @@ def toggle_account(user_id: int):
         and User.active_staff_count(g.church.id, excluding=user.id) == 0
     ):
         flash(SETTINGS["account_last_staff"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     user.is_active_account = not user.is_active_account
     if not user.is_active_account:
@@ -379,7 +407,7 @@ def toggle_account(user_id: int):
          else SETTINGS["account_deactivated"]).format(name=user.name),
         "notice",
     )
-    return redirect(url_for("settings.index"))
+    return _back("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/resend/")
@@ -394,7 +422,7 @@ def resend_invite(user_id: int):
     db.session.commit()
 
     flash(SETTINGS["account_resent"].format(email=user.email), "notice")
-    return redirect(url_for("settings.index"))
+    return _back("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/temp-password/")
@@ -416,7 +444,7 @@ def temporary_password(user_id: int):
 
     if user.id == current_user.id:
         flash(SETTINGS["account_temp_self"], "error")
-        return redirect(url_for("settings.index"))
+        return _back("accounts")
 
     raw = user.issue_temporary_password()
 
@@ -437,7 +465,7 @@ def temporary_password(user_id: int):
         SETTINGS["account_temp_made"].format(name=user.name, password=raw),
         "notice",
     )
-    return redirect(url_for("settings.index"))
+    return _back("accounts")
 
 
 @bp.post("/email/test/")
@@ -468,7 +496,7 @@ def email_test():
         )
     except NotQueued as exc:
         flash(SETTINGS["email_test_not_queued"].format(reason=exc), "error")
-        return redirect(url_for("settings.index", _anchor="email"))
+        return _back("email")
 
     db.session.commit()
     # Sent here rather than after the request, so the result can be shown.
@@ -481,7 +509,7 @@ def email_test():
         db.session.rollback()
         current_app.logger.exception("Test email failed")
         flash(SETTINGS["email_test_failed"].format(error=str(exc)[:300]), "error")
-        return redirect(url_for("settings.index", _anchor="email"))
+        return _back("email")
 
     sent = db.session.get(OutboxMessage, message_id)
     if sent.status == "sent":
@@ -493,7 +521,7 @@ def email_test():
         if why:
             text += " " + SETTINGS[f"email_why_{why}"]
         flash(text, "error")
-    return redirect(url_for("settings.index", _anchor="email"))
+    return _back("email")
 
 
 RETRY_WINDOW_DAYS = 3
@@ -526,7 +554,7 @@ def email_retry():
     ).all()
     if not stuck:
         flash(SETTINGS["email_retry_none"], "notice")
-        return redirect(url_for("settings.index", _anchor="email"))
+        return _back("email")
 
     ids = []
     for message in stuck:
@@ -552,4 +580,4 @@ def email_retry():
         ),
         "notice" if counts.get("sent") == len(ids) else "error",
     )
-    return redirect(url_for("settings.index", _anchor="email"))
+    return _back("email")

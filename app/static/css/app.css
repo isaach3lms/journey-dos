@@ -175,6 +175,58 @@ a{color:inherit;text-decoration:none}
 .road .item.done .num{color:var(--accent)}
 .road .item.done .name{font-weight:600}
 
+/* ---------- Settings rows ----------
+   One card, one row per setting, closed until it is opened. The member You
+   tab does the same thing with .mrowbox; this is the staff density. */
+.setrows{padding:2px 0}
+.setrow{border-top:1px solid var(--line-soft)}
+.setrow:first-of-type{border-top:none}
+/* Grid, not flex: a pill of any length has its own column, so it can never
+   squeeze the name into a three-line stack on a narrow screen. */
+.setrow > summary{
+  display:grid;align-items:center;gap:12px;
+  grid-template-columns:minmax(0,1fr) auto auto;
+  grid-template-areas:"text pill chev";
+  padding:15px 18px;cursor:pointer;
+  /* The default triangle, in both spellings. The chevron replaces it. */
+  list-style:none;
+}
+.setrow > summary::-webkit-details-marker{display:none}
+.setrow > summary:hover{background:var(--surface-alt)}
+.setrow[open] > summary{background:var(--surface-alt)}
+.setrow .fl{grid-area:text;min-width:0;display:flex;flex-direction:column;gap:2px}
+.setrow .pn{font-size:14.5px;font-weight:600}
+.setrow .pe{
+  /* display:block because a staff-roster rule hides .pe on small screens,
+     and this line is the whole point of a closed row. */
+  display:block;font-size:12.5px;color:var(--muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.setrow[open] > summary .pn{color:var(--accent)}
+.setrow > summary .pill{grid-area:pill}
+.setrow .chev{
+  grid-area:chev;color:var(--muted-2);font-size:20px;line-height:1;
+  transition:transform .15s ease;
+}
+.setrow[open] > summary .chev{transform:rotate(90deg)}
+.setbd{padding:2px 18px 20px}
+.setbd p{margin:0 0 14px;font-size:13px;color:var(--muted);max-width:64ch}
+.setbd h3{font-size:13.5px;font-weight:600;margin:18px 0 8px}
+@media (prefers-reduced-motion:reduce){
+  .setrow .chev{transition:none}
+}
+@media (max-width:640px){
+  /* The pill drops under the name rather than competing with it for width. */
+  .setrow > summary{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"text chev" "pill chev";
+    gap:7px 12px;padding:14px;
+  }
+  .setrow > summary .pill{justify-self:start}
+  .setrow .pe{white-space:normal}
+  .setbd{padding:2px 14px 18px}
+}
+
 /* ---------- Placeholder screens ---------- */
 .empty{
   border:1px dashed var(--line);

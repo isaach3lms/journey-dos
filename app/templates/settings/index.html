@@ -3,357 +3,436 @@
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
+{#
+  One card, one row per setting, every row closed until it is opened. The
+  member You tab works the same way, and for the same reason: eleven panels
+  open at once is a wall, not a screen.
+
+  A row opens on the page it is on, so nothing here is a separate address.
+  ?open=<key> is how a redirect brings staff back to the row they just used.
+#}
+
+{% macro chev() %}<span class="chev" aria-hidden="true">&rsaquo;</span>{% endmacro %}
+
 {% block content %}
 
-<section class="card">
-  <div class="hd">
-    <h2>{{ content.brand_heading }}</h2>
-    <div class="spacer"></div>
-    <span class="pill">White label</span>
-  </div>
-  <div class="bd">
-    <form method="post" action="{{ url_for('settings.save_brand') }}">
-      {{ csrf_field() }}
-      <div class="field">
-        <label for="name">{{ content.church_name }}</label>
-        <input class="input" id="name" type="text" name="name" value="{{ church.name }}">
-      </div>
-      <div class="field">
-        <label for="app_name">{{ content.app_name }}</label>
-        <input class="input" id="app_name" type="text" name="app_name" value="{{ church.app_name or '' }}">
-      </div>
-      <div class="field">
-        <label for="custom_domain">{{ content.custom_domain }}</label>
-        <input class="input" id="custom_domain" type="text" name="custom_domain"
-               value="{{ church.custom_domain or '' }}" placeholder="app.yourchurch.org"
-               autocomplete="off" spellcheck="false">
-        <div class="fieldhelp">{{ content.custom_domain_hint }}</div>
-      </div>
-      <div class="field">
-        <label for="app_domain">{{ content.app_domain }}</label>
-        <input class="input" id="app_domain" type="text" name="app_domain" value="{{ church.app_domain or '' }}">
-      </div>
-      <div class="field">
-        <label for="timezone">{{ content.timezone }}</label>
-        <select class="input select" id="timezone" name="timezone">
-          {% for zone in timezones %}
-            <option value="{{ zone }}" {% if church.timezone == zone %}selected{% endif %}>{{ zone }}</option>
-          {% endfor %}
-        </select>
-        <div class="fieldhelp">{{ content.timezone_hint }}</div>
-      </div>
-      <div class="field">
-        <label for="accent_hex">{{ content.accent }}</label>
-        <input class="input" id="accent_hex" type="text" name="accent_hex"
-               value="{{ church.accent_hex or '' }}" placeholder="{{ content.accent_placeholder }}">
-        <div class="fieldhelp">{{ content.accent_hint }}</div>
-      </div>
-      <button class="btn" type="submit">{{ content.save_brand }}</button>
-    </form>
-  </div>
-</section>
+<section class="card setrows">
 
-<section class="card">
-  <div class="hd">
-    <h2>{{ content.accounts_heading }}</h2>
-    <div class="spacer"></div>
-    <span class="pill">{{ users|length }}</span>
-  </div>
-  <div class="bd">
-    <p>{{ content.accounts_hint }}</p>
-    <p class="muted small">{{ content.account_temp_hint }}</p>
-
-    <form method="post" action="{{ url_for('settings.create_account') }}">
-      {{ csrf_field() }}
-      <div class="filters">
-        <input class="input" type="text" name="name" placeholder="{{ content.accounts_name }}" aria-label="{{ content.accounts_name }}">
-        <input class="input" type="email" name="email" placeholder="{{ content.accounts_email }}" aria-label="{{ content.accounts_email }}">
-        <select class="input select" name="role" aria-label="{{ content.accounts_role }}">
-          {% for role in roles %}
-            <option value="{{ role }}">{{ content['role_' + role] }}</option>
-          {% endfor %}
-        </select>
-        <button class="btn" type="submit">{{ content.accounts_create }}</button>
-      </div>
-    </form>
-
-    {% if users %}
-      <ul class="flaglist">
-        {% for account in users %}
-          <li>
-            <span class="av">{{ account.name[:2]|upper }}</span>
-            <span class="fl">
-              <span class="pn">{{ account.name }}</span>
-              <span class="pe">
-                {{ account.email }} &middot;
-                {% if not account.is_active_account %}{{ content.account_off }}
-                {% elif not account.is_verified %}{{ content.account_unverified }}
-                {% elif account.last_login_at %}{{ content.account_last_seen.format(when=account.last_login_at|church_time("%b %-d")) }}
-                {% else %}{{ content.account_never }}{% endif %}
-              </span>
-            </span>
-
-            <form method="post" class="inline" action="{{ url_for('settings.change_role', user_id=account.id) }}">
-              {{ csrf_field() }}
-              <select class="input select" name="role" aria-label="{{ content.accounts_role }}" onchange="this.form.submit()">
-                {% for role in roles %}
-                  <option value="{{ role }}" {% if account.role == role %}selected{% endif %}>{{ role|title }}</option>
-                {% endfor %}
-              </select>
-            </form>
-
-            <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
-              {{ csrf_field() }}
-              <button class="btn ghostbtn tiny" type="submit">{{ content.account_resend }}</button>
-            </form>
-
-            <form method="post" class="inline" action="{{ url_for('settings.temporary_password', user_id=account.id) }}">
-              {{ csrf_field() }}
-              <button class="btn ghostbtn tiny" type="submit">{{ content.account_temp }}</button>
-            </form>
-
-            <form method="post" class="inline" action="{{ url_for('settings.toggle_account', user_id=account.id) }}">
-              {{ csrf_field() }}
-              <button class="btn ghostbtn tiny" type="submit">
-                {% if account.is_active_account %}{{ content.account_deactivate }}{% else %}{{ content.account_reactivate }}{% endif %}
-              </button>
-            </form>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted small">{{ content.accounts_empty }}</p>
-    {% endif %}
-  </div>
-</section>
-
-<section class="card">
-  <div class="hd">
-    <h2>{{ content.signup_heading }}</h2>
-    <div class="spacer"></div>
-    <span class="pill {% if not church.allow_self_signup %}pending{% endif %}">
-      {% if church.allow_self_signup %}{{ content.signup_on }}{% else %}{{ content.signup_off }}{% endif %}
-    </span>
-  </div>
-  <div class="bd">
-    <p>{{ content.signup_hint }}</p>
-    <p class="muted small">{{ content.signup_warning }}</p>
-    <form method="post" action="{{ url_for('settings.toggle_signup') }}">
-      {{ csrf_field() }}
-      <button class="btn {% if church.allow_self_signup %}ghostbtn{% endif %}" type="submit">
-        {% if church.allow_self_signup %}{{ content.signup_toggle_off }}{% else %}{{ content.signup_toggle_on }}{% endif %}
-      </button>
-    </form>
-  </div>
-</section>
-
-<section class="card" id="giving">
-  <div class="hd"><h2>{{ content.giving_heading }}</h2></div>
-  <div class="bd">
-    <p>{% if church.giving_admin_url %}{{ content.giving_linked.format(url=church.giving_admin_url) }}{% else %}{{ content.giving_unlinked }}{% endif %}</p>
-    <a class="btn ghostbtn" href="{{ url_for('giving.index') }}">{{ content.giving_setup }}</a>
-  </div>
-</section>
-
-<section class="card" id="ccli">
-  <div class="hd"><h2>{{ content.ccli_heading }}</h2></div>
-  <div class="bd">
-    <p>{{ content.ccli_hint }}</p>
-    <form method="post" action="{{ url_for('settings.save_ccli') }}">
-      {{ csrf_field() }}
-      <div class="filters">
-        <input class="input" type="text" inputmode="numeric" name="ccli_license_number"
-               value="{{ church.ccli_license_number or '' }}" placeholder="{{ content.ccli_label }}"
-               aria-label="{{ content.ccli_label }}" maxlength="20">
-        <button class="btn" type="submit">{{ content.ccli_save }}</button>
-      </div>
-    </form>
-    <a class="btn ghostbtn" href="{{ url_for('services.songs') }}">{{ content.ccli_songs }}</a>
-  </div>
-</section>
-
-<section class="card" id="announcements">
-  <div class="hd">
-    <h2>{{ content.announce_heading }}</h2>
-    <div class="spacer"></div>
-    <span class="pill {% if not church.members_can_announce %}pending{% endif %}">
-      {% if church.members_can_announce %}{{ content.announce_on }}{% else %}{{ content.announce_off }}{% endif %}
-    </span>
-  </div>
-  <div class="bd">
-    <p>{{ content.announce_hint }}</p>
-    <form method="post" action="{{ url_for('settings.toggle_member_announcements') }}">
-      {{ csrf_field() }}
-      <button class="btn {% if church.members_can_announce %}ghostbtn{% endif %}" type="submit">
-        {% if church.members_can_announce %}{{ content.announce_toggle_off }}{% else %}{{ content.announce_toggle_on }}{% endif %}
-      </button>
-    </form>
-  </div>
-</section>
-
-<section class="card" id="email">
-  <div class="hd">
-    <h2>{{ content.email_heading }}</h2>
-    <div class="spacer"></div>
-    {% set email_bad = (not email.real) or (not email.key_present) or email.stale or email.problems %}
-    <span class="pill {% if email_bad %}pending{% endif %}">
-      {% if not email.real %}{{ content.email_off }}{% elif email_bad %}{{ content.email_problem }}{% else %}{{ content.email_ok }}{% endif %}
-    </span>
-  </div>
-  <div class="bd">
-    <p>{{ content.email_intro }}</p>
-    {% if not email.real %}
-      <p class="alert error">{{ content.email_off_body }}</p>
-    {% elif not email.key_present %}
-      <p class="alert error">{{ content.email_no_key }}</p>
-    {% endif %}
-    {% if email.stale %}
-      <p class="alert error">{{ content.email_stale.format(minutes=email.waiting_minutes) }}</p>
-    {% endif %}
-    {% if email.latest_reason %}
-      <p class="alert error">{{ content['email_why_' ~ email.latest_reason] }}</p>
-    {% endif %}
-    <div class="metrics">
-      <div><span class="mono mv">{{ email.sent }}</span> {{ content.email_sent }}</div>
-      <div><span class="mono mv">{{ email.queued }}</span> {{ content.email_waiting }}</div>
-      <div><span class="mono mv">{{ email.failed }}</span> {{ content.email_failed }}</div>
-    </div>
-    <p class="muted small">
-      {% if email.last_sent %}{{ content.email_last_sent.format(when=email.last_sent|church_time("%b %-d, %-I:%M%p")) }}
-      {% else %}{{ content.email_never_sent }}{% endif %}
-      &middot; {{ content.email_from.format(address=email.from_address) }}
-    </p>
-    {% if email.problems %}
-      <h3>{{ content.email_problems_heading }}</h3>
-      <ul class="flaglist">
-        {% for problem in email.problems %}
-          <li>
-            <span class="fl">
-              <span class="pn">{{ problem.subject }}</span>
-              <span class="pe">
-                {{ problem.to_email }} &middot; {{ problem.status }} &middot;
-                {{ content.email_attempts.format(count=problem.attempts) }}
-                {% if problem.when %}&middot; {{ problem.when|church_time("%b %-d, %-I:%M%p") }}{% endif %}
-              </span>
-              <span class="pe mono small">{{ problem.error }}</span>
-            </span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% endif %}
-    {% if email.failed %}
-      <form method="post" action="{{ url_for('settings.email_retry') }}">
+  <details class="setrow" id="brand" {% if open_row == 'brand' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.brand_heading }}</span>
+        <span class="pe">{{ content.brand_sub.format(name=church.name, timezone=current_timezone) }}</span>
+      </span>
+      <span class="pill">{{ content.brand_pill }}</span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <form method="post" action="{{ url_for('settings.save_brand') }}">
         {{ csrf_field() }}
-        <button class="btn ghostbtn" type="submit">{{ content.email_retry_button }}</button>
-        <p class="muted small">{{ content.email_retry_hint }}</p>
+        <div class="field">
+          <label for="name">{{ content.church_name }}</label>
+          <input class="input" id="name" type="text" name="name" value="{{ church.name }}">
+        </div>
+        <div class="field">
+          <label for="app_name">{{ content.app_name }}</label>
+          <input class="input" id="app_name" type="text" name="app_name" value="{{ church.app_name or '' }}">
+        </div>
+        <div class="field">
+          <label for="custom_domain">{{ content.custom_domain }}</label>
+          <input class="input" id="custom_domain" type="text" name="custom_domain"
+                 value="{{ church.custom_domain or '' }}" placeholder="app.yourchurch.org"
+                 autocomplete="off" spellcheck="false">
+          <div class="fieldhelp">{{ content.custom_domain_hint }}</div>
+        </div>
+        <div class="field">
+          <label for="app_domain">{{ content.app_domain }}</label>
+          <input class="input" id="app_domain" type="text" name="app_domain" value="{{ church.app_domain or '' }}">
+        </div>
+        <div class="field">
+          <label for="timezone">{{ content.timezone }}</label>
+          <select class="input select" id="timezone" name="timezone">
+            {% for zone in timezones %}
+              <option value="{{ zone }}" {% if current_timezone == zone %}selected{% endif %}>{{ zone }}</option>
+            {% endfor %}
+          </select>
+          <div class="fieldhelp">{{ content.timezone_hint }}</div>
+        </div>
+        <div class="field">
+          <label for="accent_hex">{{ content.accent }}</label>
+          <input class="input" id="accent_hex" type="text" name="accent_hex"
+                 value="{{ church.accent_hex or '' }}" placeholder="{{ content.accent_placeholder }}">
+          <div class="fieldhelp">{{ content.accent_hint }}</div>
+        </div>
+        <button class="btn" type="submit">{{ content.save_brand }}</button>
       </form>
-    {% endif %}
-    <form method="post" action="{{ url_for('settings.email_test') }}">
-      {{ csrf_field() }}
-      <button class="btn" type="submit">{{ content.email_test_button }}</button>
-      <p class="muted small">{{ content.email_test_hint.format(email=current_user.email) }}</p>
-    </form>
-  </div>
-</section>
-
-<section class="card">
-  <div class="hd"><h2>{{ content.replaces_heading }}</h2></div>
-  <div class="bd">
-    <ul class="flaglist">
-      {% for item in replaces %}
-        <li>
-          <span class="fl">
-            <span class="pn">{{ item.name }}</span>
-            <span class="pe">{{ item.note }}</span>
-          </span>
-          <span class="pill mono">
-            {% if item.cents %}${{ "%.0f"|format(item.cents / 100) }}/mo{% else %}unchanged{% endif %}
-          </span>
-        </li>
-      {% endfor %}
-    </ul>
-
-    <div class="costline">
-      <span>{{ content.replaces_total }}</span>
-      <b class="mono">${{ "%.0f"|format(replaced_cents / 100) }} / mo</b>
     </div>
-    <div class="costline">
-      <span>{{ content.replaces_ours }}</span>
-      <b class="mono">${{ "%.0f"|format(ours_cents / 100) }} / mo</b>
+  </details>
+
+  <details class="setrow" id="accounts" {% if open_row == 'accounts' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.accounts_heading }}</span>
+        <span class="pe">
+          {% if not users %}{{ content.accounts_sub_none }}
+          {% elif users|length == 1 %}{{ content.accounts_sub_one }}
+          {% else %}{{ content.accounts_sub.format(count=users|length) }}{% endif %}
+        </span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.accounts_hint }}</p>
+      <p class="muted small">{{ content.account_temp_hint }}</p>
+
+      <form method="post" action="{{ url_for('settings.create_account') }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <input class="input" type="text" name="name" placeholder="{{ content.accounts_name }}" aria-label="{{ content.accounts_name }}">
+          <input class="input" type="email" name="email" placeholder="{{ content.accounts_email }}" aria-label="{{ content.accounts_email }}">
+          <select class="input select" name="role" aria-label="{{ content.accounts_role }}">
+            {% for role in roles %}
+              <option value="{{ role }}">{{ content['role_' + role] }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" type="submit">{{ content.accounts_create }}</button>
+        </div>
+      </form>
+
+      {% if users %}
+        <ul class="flaglist">
+          {% for account in users %}
+            <li>
+              <span class="av">{{ account.name[:2]|upper }}</span>
+              <span class="fl">
+                <span class="pn">{{ account.name }}</span>
+                <span class="pe">
+                  {{ account.email }} &middot;
+                  {% if not account.is_active_account %}{{ content.account_off }}
+                  {% elif not account.is_verified %}{{ content.account_unverified }}
+                  {% elif account.last_login_at %}{{ content.account_last_seen.format(when=account.last_login_at|church_time("%b %-d")) }}
+                  {% else %}{{ content.account_never }}{% endif %}
+                </span>
+              </span>
+
+              <form method="post" class="inline" action="{{ url_for('settings.change_role', user_id=account.id) }}">
+                {{ csrf_field() }}
+                <select class="input select" name="role" aria-label="{{ content.accounts_role }}" onchange="this.form.submit()">
+                  {% for role in roles %}
+                    <option value="{{ role }}" {% if account.role == role %}selected{% endif %}>{{ role|title }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn tiny" type="submit">{{ content.account_resend }}</button>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.temporary_password', user_id=account.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn tiny" type="submit">{{ content.account_temp }}</button>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.toggle_account', user_id=account.id) }}">
+                {{ csrf_field() }}
+                <button class="btn ghostbtn tiny" type="submit">
+                  {% if account.is_active_account %}{{ content.account_deactivate }}{% else %}{{ content.account_reactivate }}{% endif %}
+                </button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted small">{{ content.accounts_empty }}</p>
+      {% endif %}
     </div>
-    <p class="muted small">
-      {{ content.replaces_saving.format(
-           monthly="$%.0f"|format(saving_cents / 100),
-           yearly="$%.0f"|format(saving_cents * 12 / 100)) }}
-    </p>
+  </details>
 
-    <div class="mlbl">{{ content.included_heading }}</div>
-    {% for item in included %}
-      <p class="muted small"><b>{{ item.name }}</b> &middot; {{ item.note }}</p>
-    {% endfor %}
-  </div>
-</section>
+  <details class="setrow" id="signup" {% if open_row == 'signup' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.signup_heading }}</span>
+        <span class="pe">
+          {% if church.allow_self_signup %}{{ content.signup_sub_on }}{% else %}{{ content.signup_sub_off }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.allow_self_signup %}pending{% endif %}">
+        {% if church.allow_self_signup %}{{ content.signup_on }}{% else %}{{ content.signup_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.signup_hint }}</p>
+      <p class="muted small">{{ content.signup_warning }}</p>
+      <form method="post" action="{{ url_for('settings.toggle_signup') }}">
+        {{ csrf_field() }}
+        <button class="btn {% if church.allow_self_signup %}ghostbtn{% endif %}" type="submit">
+          {% if church.allow_self_signup %}{{ content.signup_toggle_off }}{% else %}{{ content.signup_toggle_on }}{% endif %}
+        </button>
+      </form>
+    </div>
+  </details>
 
-<section class="card">
-  <div class="hd">
-    <h2>{{ content.audit_heading }}</h2>
-    <div class="spacer"></div>
-    <span class="pill">{{ content.audit_count.format(count=audit_count) }}</span>
-  </div>
-  <div class="bd">
-    <p>{{ content.audit_intro }}</p>
+  <details class="setrow" id="giving" {% if open_row == 'giving' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.giving_heading }}</span>
+        <span class="pe">
+          {% if church.giving_admin_url %}{{ content.giving_sub_on }}{% else %}{{ content.giving_sub_off }}{% endif %}
+        </span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{% if church.giving_admin_url %}{{ content.giving_linked.format(url=church.giving_admin_url) }}{% else %}{{ content.giving_unlinked }}{% endif %}</p>
+      <a class="btn ghostbtn" href="{{ url_for('giving.index') }}">{{ content.giving_setup }}</a>
+    </div>
+  </details>
 
-    <form method="get" class="filters">
-      <select class="input select" name="action" aria-label="{{ content.audit_filter }}">
-        <option value="">{{ content.audit_all }}</option>
-        {% for action in actions %}
-          <option value="{{ action }}" {% if active_action == action %}selected{% endif %}>
-            {{ action.replace('_', ' ')|title }}
-          </option>
-        {% endfor %}
-      </select>
-      <button class="btn ghostbtn" type="submit">{{ content.audit_filter }}</button>
-    </form>
+  <details class="setrow" id="ccli" {% if open_row == 'ccli' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.ccli_heading }}</span>
+        <span class="pe">
+          {% if church.ccli_license_number %}{{ content.ccli_sub.format(number=church.ccli_license_number) }}
+          {% else %}{{ content.ccli_sub_none }}{% endif %}
+        </span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.ccli_hint }}</p>
+      <form method="post" action="{{ url_for('settings.save_ccli') }}">
+        {{ csrf_field() }}
+        <div class="filters">
+          <input class="input" type="text" inputmode="numeric" name="ccli_license_number"
+                 value="{{ church.ccli_license_number or '' }}" placeholder="{{ content.ccli_label }}"
+                 aria-label="{{ content.ccli_label }}" maxlength="20">
+          <button class="btn" type="submit">{{ content.ccli_save }}</button>
+        </div>
+      </form>
+      <a class="btn ghostbtn" href="{{ url_for('services.songs') }}">{{ content.ccli_songs }}</a>
+    </div>
+  </details>
 
-    {% if events %}
-      <ol class="tl">
-        {% for event in events %}
+  <details class="setrow" id="announcements" {% if open_row == 'announcements' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.announce_heading }}</span>
+        <span class="pe">
+          {% if church.members_can_announce %}{{ content.announce_sub_on }}{% else %}{{ content.announce_sub_off }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.members_can_announce %}pending{% endif %}">
+        {% if church.members_can_announce %}{{ content.announce_on }}{% else %}{{ content.announce_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.announce_hint }}</p>
+      <form method="post" action="{{ url_for('settings.toggle_member_announcements') }}">
+        {{ csrf_field() }}
+        <button class="btn {% if church.members_can_announce %}ghostbtn{% endif %}" type="submit">
+          {% if church.members_can_announce %}{{ content.announce_toggle_off }}{% else %}{{ content.announce_toggle_on }}{% endif %}
+        </button>
+      </form>
+    </div>
+  </details>
+
+  {% set email_bad = (not email.real) or (not email.key_present) or email.stale or email.problems %}
+  <details class="setrow" id="email" {% if open_row == 'email' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.email_heading }}</span>
+        <span class="pe">{{ content.email_sub.format(sent=email.sent, queued=email.queued, failed=email.failed) }}</span>
+      </span>
+      <span class="pill {% if email_bad %}pending{% endif %}">
+        {% if not email.real %}{{ content.email_off }}{% elif email_bad %}{{ content.email_problem }}{% else %}{{ content.email_ok }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.email_intro }}</p>
+      {% if not email.real %}
+        <p class="alert error">{{ content.email_off_body }}</p>
+      {% elif not email.key_present %}
+        <p class="alert error">{{ content.email_no_key }}</p>
+      {% endif %}
+      {% if email.stale %}
+        <p class="alert error">{{ content.email_stale.format(minutes=email.waiting_minutes) }}</p>
+      {% endif %}
+      {% if email.latest_reason %}
+        <p class="alert error">{{ content['email_why_' ~ email.latest_reason] }}</p>
+      {% endif %}
+      <div class="metrics">
+        <div><span class="mono mv">{{ email.sent }}</span> {{ content.email_sent }}</div>
+        <div><span class="mono mv">{{ email.queued }}</span> {{ content.email_waiting }}</div>
+        <div><span class="mono mv">{{ email.failed }}</span> {{ content.email_failed }}</div>
+      </div>
+      <p class="muted small">
+        {% if email.last_sent %}{{ content.email_last_sent.format(when=email.last_sent|church_time("%b %-d, %-I:%M%p")) }}
+        {% else %}{{ content.email_never_sent }}{% endif %}
+        &middot; {{ content.email_from.format(address=email.from_address) }}
+      </p>
+      {% if email.problems %}
+        <h3>{{ content.email_problems_heading }}</h3>
+        <ul class="flaglist">
+          {% for problem in email.problems %}
+            <li>
+              <span class="fl">
+                <span class="pn">{{ problem.subject }}</span>
+                <span class="pe">
+                  {{ problem.to_email }} &middot; {{ problem.status }} &middot;
+                  {{ content.email_attempts.format(count=problem.attempts) }}
+                  {% if problem.when %}&middot; {{ problem.when|church_time("%b %-d, %-I:%M%p") }}{% endif %}
+                </span>
+                <span class="pe mono small">{{ problem.error }}</span>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% if email.failed %}
+        <form method="post" action="{{ url_for('settings.email_retry') }}">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn" type="submit">{{ content.email_retry_button }}</button>
+          <p class="muted small">{{ content.email_retry_hint }}</p>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('settings.email_test') }}">
+        {{ csrf_field() }}
+        <button class="btn" type="submit">{{ content.email_test_button }}</button>
+        <p class="muted small">{{ content.email_test_hint.format(email=current_user.email) }}</p>
+      </form>
+    </div>
+  </details>
+
+  <details class="setrow" id="audit" {% if open_row == 'audit' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.audit_heading }}</span>
+        <span class="pe">{{ content.audit_sub.format(count=audit_count) }}</span>
+      </span>
+      <span class="pill">{{ content.audit_count.format(count=audit_count) }}</span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.audit_intro }}</p>
+
+      <form method="get" class="filters">
+        {# Keeps the row open when the filter reloads the page. #}
+        <input type="hidden" name="open" value="audit">
+        <select class="input select" name="action" aria-label="{{ content.audit_filter }}">
+          <option value="">{{ content.audit_all }}</option>
+          {% for action in actions %}
+            <option value="{{ action }}" {% if active_action == action %}selected{% endif %}>
+              {{ action.replace('_', ' ')|title }}
+            </option>
+          {% endfor %}
+        </select>
+        <button class="btn ghostbtn" type="submit">{{ content.audit_filter }}</button>
+      </form>
+
+      {% if events %}
+        <ol class="tl">
+          {% for event in events %}
+            <li>
+              <div class="tlt">{{ event.summary }}</div>
+              <div class="tld muted">
+                {{ event.occurred_at|church_time("%b %-d, %-I:%M%p") }} &middot;
+                {% if event.actor_name %}{{ content.audit_by.format(name=event.actor_name) }}
+                {% else %}{{ content.audit_system }}{% endif %}
+                &middot; {{ event.action_label }}
+                {% if event.detail %} &middot; {{ event.detail }}{% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+        <p class="muted small">{{ content.audit_retention.format(days=retention_days) }}</p>
+      {% else %}
+        <p class="muted small">{{ content.audit_empty }}</p>
+      {% endif %}
+    </div>
+  </details>
+
+  <details class="setrow" id="cost" {% if open_row == 'cost' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.replaces_heading }}</span>
+        <span class="pe">{{ content.replaces_sub.format(amount="$%.0f"|format(replaced_cents / 100)) }}</span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <ul class="flaglist">
+        {% for item in replaces %}
           <li>
-            <div class="tlt">{{ event.summary }}</div>
-            <div class="tld muted">
-              {{ event.occurred_at|church_time("%b %-d, %-I:%M%p") }} &middot;
-              {% if event.actor_name %}{{ content.audit_by.format(name=event.actor_name) }}
-              {% else %}{{ content.audit_system }}{% endif %}
-              &middot; {{ event.action_label }}
-              {% if event.detail %} &middot; {{ event.detail }}{% endif %}
-            </div>
+            <span class="fl">
+              <span class="pn">{{ item.name }}</span>
+              <span class="pe">{{ item.note }}</span>
+            </span>
+            <span class="pill mono">
+              {% if item.cents %}${{ "%.0f"|format(item.cents / 100) }}/mo{% else %}unchanged{% endif %}
+            </span>
           </li>
         {% endfor %}
-      </ol>
-      <p class="muted small">{{ content.audit_retention.format(days=retention_days) }}</p>
-    {% else %}
-      <p class="muted small">{{ content.audit_empty }}</p>
-    {% endif %}
-  </div>
-</section>
+      </ul>
 
-<section class="card">
-  <div class="hd"><h2>{{ content.bible_heading }}</h2></div>
-  <div class="bd">
-    <p>{{ content.bible_body }}</p>
-    <div class="metrics">
-      <div><span class="mono mv">{{ bible_verses }}</span> verses loaded</div>
-      <div><span class="mono mv">{{ bible_books }}</span> books</div>
+      <div class="costline">
+        <span>{{ content.replaces_total }}</span>
+        <b class="mono">${{ "%.0f"|format(replaced_cents / 100) }} / mo</b>
+      </div>
+      <div class="costline">
+        <span>{{ content.replaces_ours }}</span>
+        <b class="mono">${{ "%.0f"|format(ours_cents / 100) }} / mo</b>
+      </div>
+      <p class="muted small">
+        {{ content.replaces_saving.format(
+             monthly="$%.0f"|format(saving_cents / 100),
+             yearly="$%.0f"|format(saving_cents * 12 / 100)) }}
+      </p>
+
+      <div class="mlbl">{{ content.included_heading }}</div>
+      {% for item in included %}
+        <p class="muted small"><b>{{ item.name }}</b> &middot; {{ item.note }}</p>
+      {% endfor %}
     </div>
-    <p class="muted small">{{ content.bible_licensed }}</p>
-  </div>
+  </details>
+
+  <details class="setrow" id="bible" {% if open_row == 'bible' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.bible_heading }}</span>
+        <span class="pe">{{ content.bible_sub.format(verses=bible_verses, books=bible_books) }}</span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.bible_body }}</p>
+      <div class="metrics">
+        <div><span class="mono mv">{{ bible_verses }}</span> verses loaded</div>
+        <div><span class="mono mv">{{ bible_books }}</span> books</div>
+      </div>
+      <p class="muted small">{{ content.bible_licensed }}</p>
+    </div>
+  </details>
+
+  <details class="setrow" id="support" {% if open_row == 'support' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.support_heading }}</span>
+        <span class="pe">{{ content.support_sub }}</span>
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.support_body }}</p>
+      <p class="muted small">{{ content.support_what_to_include }}</p>
+    </div>
+  </details>
+
 </section>
 
-<section class="card">
-  <div class="hd"><h2>{{ content.support_heading }}</h2></div>
-  <div class="bd">
-    <p>{{ content.support_body }}</p>
-    <p class="muted small">{{ content.support_what_to_include }}</p>
-  </div>
-</section>
+<p class="muted small">{{ content.rows_hint }}</p>
 {% endblock %}

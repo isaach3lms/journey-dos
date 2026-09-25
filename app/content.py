@@ -2177,6 +2177,30 @@ SETTINGS = {
         "above gives us the rest."
     ),
     "support_status": "Everything on this page is running.",
+
+    # ---- The rows on this screen -------------------------------------
+    # Every setting is a closed row until it is opened, the way the You tab
+    # works for members. The line under each name is what staff read to
+    # decide whether they need to open it at all.
+    "rows_hint": "Open a setting to change it. Everything is saved where you change it.",
+    "brand_pill": "White label",
+    "brand_sub": "{name} \u00b7 {timezone}",
+    "accounts_sub_one": "1 person can sign in",
+    "accounts_sub": "{count} people can sign in",
+    "accounts_sub_none": "Nobody has an account yet",
+    "signup_sub_on": "Anyone with your address can create their own login",
+    "signup_sub_off": "Only the church creates accounts",
+    "giving_sub_on": "Connected",
+    "giving_sub_off": "Not connected yet",
+    "ccli_sub": "License {number}",
+    "ccli_sub_none": "No license number saved",
+    "announce_sub_on": "Members can post to the whole church",
+    "announce_sub_off": "Staff post announcements",
+    "email_sub": "{sent} sent \u00b7 {queued} waiting \u00b7 {failed} failed",
+    "replaces_sub": "{amount} a month of software you no longer need",
+    "audit_sub": "Who changed what, and when",
+    "bible_sub": "{verses} verses across {books} books",
+    "support_sub": "Email a person. No ticket queue.",
 }
 
 

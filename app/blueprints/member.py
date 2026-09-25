@@ -424,8 +424,21 @@ def reading():
     if person is None:
         return render_template("member/unlinked.html", church=g.church, content=MEMBER)
 
+    # Filters, checked rather than echoed. Anything that is not a real stage
+    # or a theme in use becomes no filter, not an empty screen.
+    from app.models import ResourceTag
+    from app.stages import STAGE_BY_CODE
+
+    themes = ResourceTag.themes_for_church(g.church.id, published_only=True)
+    stage = (request.args.get("stage") or "").strip() or None
+    if stage and stage not in STAGE_BY_CODE:
+        stage = None
+    theme = (request.args.get("theme") or "").strip() or None
+    if theme and theme not in themes:
+        theme = None
+
     resources = db.session.scalars(
-        Resource.for_church(g.church.id, published_only=True)
+        Resource.for_church(g.church.id, published_only=True, stage=stage, theme=theme)
     ).all()
 
     progress = {}
@@ -435,11 +448,18 @@ def reading():
         )
         progress[resource.id] = len(done)
 
+    in_use = ResourceTag.stages_in_use(g.church.id, published_only=True)
     return render_template(
         "member/reading.html",
         resources=resources,
         progress=progress,
         res=RESOURCES,
+        # Only stages something is actually tagged for, so no chip is a
+        # dead end.
+        filter_stages=[s for s in stages_for(g.church) if s.code in in_use],
+        filter_themes=themes,
+        active_stage=stage,
+        active_theme=theme,
         tab="read",
         **_base_context(person),
     )

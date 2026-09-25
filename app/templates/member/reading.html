@@ -1,15 +1,32 @@
 {% extends "member/base.html" %}
 {% from "resources/_glyph.html" import glyph %}
+{% from "resources/_cover.html" import cover %}
 {% block title %}{{ res.member_heading }} | {{ church.name }}{% endblock %}
 {% block content %}
 <h1 class="mgreet">{{ res.member_heading }}</h1>
+
+{% if filter_stages or filter_themes %}
+  {# Links, not a form: one tap per filter, and the back button works. #}
+  <nav class="mfilters" aria-label="{{ res.filter_heading }}">
+    <a class="mchip {% if not active_stage and not active_theme %}on{% endif %}"
+       href="{{ url_for('member.reading') }}">{{ res.member_filter_all }}</a>
+    {% for stage in filter_stages %}
+      <a class="mchip {% if active_stage == stage.code %}on{% endif %}"
+         href="{{ url_for('member.reading', stage=none if active_stage == stage.code else stage.code, theme=active_theme) }}">{{ stage.label }}</a>
+    {% endfor %}
+    {% for theme in filter_themes %}
+      <a class="mchip {% if active_theme == theme %}on{% endif %}"
+         href="{{ url_for('member.reading', theme=none if active_theme == theme else theme, stage=active_stage) }}">{{ theme }}</a>
+    {% endfor %}
+  </nav>
+{% endif %}
 
 {% if resources %}
   {% for resource in resources %}
     {% set done = progress.get(resource.id, 0) %}
     {% set total = resource.session_count %}
     <a class="mcard mlink mcovered" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">
-      <div class="mcover {{ resource.cover_class }}">{{ glyph(resource.kind) }}</div>
+      {{ cover(resource, "mcover") }}
       <div class="mlbl">{{ resource.kind_label }}</div>
       <div class="mtitle">{{ resource.title }}</div>
       {% if resource.summary %}<p class="mnote">{{ resource.summary }}</p>{% endif %}
@@ -24,8 +41,13 @@
   {% endfor %}
 {% else %}
   <section class="mcard">
-    <div class="mtitle">{{ res.member_none }}</div>
-    <p class="mnote">{{ res.member_none_hint }}</p>
+    {% if active_stage or active_theme %}
+      <div class="mtitle">{{ res.filter_none }}</div>
+      <p class="mnote"><a href="{{ url_for('member.reading') }}">{{ res.filter_clear }}</a></p>
+    {% else %}
+      <div class="mtitle">{{ res.member_none }}</div>
+      <p class="mnote">{{ res.member_none_hint }}</p>
+    {% endif %}
   </section>
 {% endif %}
 {% endblock %}

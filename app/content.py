@@ -935,6 +935,52 @@ MEMBER = {
 RESOURCES = {
     "title": "Resources",
     "subtitle": "Content published under your name.",
+
+    # ---- Artwork -----------------------------------------------------------
+    # A gradient drawn from the church's brand is the default. This is for a
+    # church that has its own cover for a plan and wants it used.
+    "art_heading": "Cover artwork",
+    "art_intro": (
+        "A gradient from your brand colours is used unless you upload a "
+        "picture. PNG or JPEG, up to 2 MB. A wide picture works best: covers "
+        "are wider than they are tall, and anything taller is cropped to the "
+        "middle. Around 800 by 450 is plenty."
+    ),
+    "thumb_field": "Upload a picture",
+    "thumb_upload": "Use this picture",
+    "thumb_remove": "Back to the gradient",
+    "thumb_saved": "Saved. Members see the new cover straight away.",
+    "thumb_removed": "Back to the gradient cover.",
+    "thumb_current": "Your picture",
+    "image_empty": "That file was empty.",
+    "image_not_image": "That is not a PNG or a JPEG. Save it as one and try again.",
+    "image_too_big": "That picture is over {limit} MB. Save a smaller copy and try again.",
+
+    # ---- Stages and themes -------------------------------------------------
+    # Two filters, one form. Stages come from app/stages.py; themes are
+    # whatever the church types, and the list is what they have used before.
+    "tags_heading": "Who it is for, and what it is about",
+    "tags_intro": (
+        "Members filter by these. A resource with nothing on it still shows "
+        "in the full list, it just cannot be filtered to."
+    ),
+    "tags_stages": "Stages this is for",
+    "tags_themes": "Themes",
+    "tags_themes_hint": "Separate them with commas. Reuse a theme and members can filter by it.",
+    "tags_themes_placeholder": "Prayer, Marriage, New here",
+    "tags_save": "Save",
+    "tags_none": "Nothing yet",
+    "tags_existing": "Already in use:",
+
+    "filter_heading": "Filter",
+    "filter_stage": "Stage",
+    "filter_theme": "Theme",
+    "filter_all": "All",
+    "filter_clear": "Clear filters",
+    "filter_showing": "{count} of {total}",
+    "filter_none": "Nothing matches that filter yet.",
+    "member_filter_all": "Everything",
+
     "intro": (
         "Written for {church} and delivered inside your app. Members never see "
         "another brand on it."

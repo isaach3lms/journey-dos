@@ -14,6 +14,7 @@ from flask import (
     abort,
     flash,
     g,
+    make_response,
     redirect,
     render_template,
     request,
@@ -23,14 +24,26 @@ from flask_login import current_user, login_required
 
 from app.content import RESOURCES
 from app.extensions import db
+from app.files import RefusedFile, check_image
 from app.models import (
     RESOURCE_KINDS,
     STATUS_ARCHIVED,
+    TAG_STAGE,
+    TAG_THEME,
     Resource,
     ResourceSession,
+    ResourceTag,
     SessionCompletion,
 )
-from app.models.resource import COVER_COUNT, KIND_LABELS, STATUS_DRAFT, STATUS_PUBLISHED
+from app.models.resource import (
+    COVER_COUNT,
+    KIND_LABELS,
+    MAX_THEME_LENGTH,
+    STATUS_DRAFT,
+    STATUS_PUBLISHED,
+)
+from app.models.songchart import stored_bytes
+from app.stages import STAGE_BY_CODE, stages_for
 from app.models.verse import WeeklyVerse, week_of
 from app.security import min_role
 
@@ -41,7 +54,10 @@ bp = Blueprint("resources", __name__, url_prefix="/resources")
 @login_required
 @min_role("leader")
 def index():
-    resources = db.session.scalars(Resource.for_church(g.church.id)).all()
+    stage, theme = _filters_from_request()
+    resources = db.session.scalars(
+        Resource.for_church(g.church.id, stage=stage, theme=theme)
+    ).all()
     # Published first, then drafts, each alphabetical: what members see now
     # leads, work in progress follows.
     resources.sort(key=lambda r: (not r.is_published, r.title.lower()))
@@ -57,6 +73,11 @@ def index():
         resources=resources,
         archived=archived,
         covers=range(COVER_COUNT),
+        stages=stages_for(g.church),
+        stages_in_use=ResourceTag.stages_in_use(g.church.id),
+        themes=ResourceTag.themes_for_church(g.church.id),
+        active_stage=stage,
+        active_theme=theme,
         **_verse_context(),
         started=SessionCompletion.started_counts(g.church.id),
         kinds=RESOURCE_KINDS,
@@ -108,10 +129,49 @@ def edit(resource_id: int):
         kinds=RESOURCE_KINDS,
         kind_labels=KIND_LABELS,
         covers=range(COVER_COUNT),
+        stages=stages_for(g.church),
+        themes=ResourceTag.themes_for_church(g.church.id),
         started=SessionCompletion.started_counts(g.church.id).get(resource.id, 0),
         open_session=request.args.get("session", type=int),
         active="resources",
     )
+
+
+def _filters_from_request(published_only: bool = False) -> tuple[str | None, str | None]:
+    """What the screen is filtered by, checked rather than echoed.
+
+    A stage that is not a stage, or a theme nothing carries, becomes no
+    filter at all instead of an empty screen that looks broken.
+    """
+    stage = (request.args.get("stage") or "").strip() or None
+    if stage and stage not in STAGE_BY_CODE:
+        stage = None
+
+    theme = (request.args.get("theme") or "").strip() or None
+    if theme and theme not in ResourceTag.themes_for_church(
+        g.church.id, published_only=published_only
+    ):
+        theme = None
+    return stage, theme
+
+
+def _themes_from_form() -> list[str]:
+    """Themes as typed, one per line or comma separated.
+
+    Matched against what the church already uses so "Prayer" and "prayer"
+    do not become two filters for the same thing.
+    """
+    raw = (request.form.get("themes") or "").replace("\n", ",")
+    known = {t.lower(): t for t in ResourceTag.themes_for_church(g.church.id)}
+    out = []
+    for piece in raw.split(","):
+        name = " ".join(piece.split())[:MAX_THEME_LENGTH]
+        if not name:
+            continue
+        name = known.get(name.lower(), name)
+        if name not in out:
+            out.append(name)
+    return out[:12]
 
 
 def _cover_from_form() -> int:
@@ -455,3 +515,88 @@ def _verse_saved_message(verse) -> str:
     if verse.starts_on <= _today():
         return RESOURCES["verse_saved_live"].format(reference=verse.reference)
     return RESOURCES["verse_saved_scheduled"].format(reference=verse.reference, date=when)
+
+
+# ---------------------------------------------------------------------------
+# What a resource is for, what it is about, and what it looks like
+# ---------------------------------------------------------------------------
+
+@bp.post("/<int:resource_id>/tags/")
+@login_required
+@min_role("leader")
+def save_tags(resource_id: int):
+    """Stages and themes, saved together because they are one form."""
+    resource, _ = _load(resource_id)
+
+    wanted = [c for c in request.form.getlist("stages") if c in STAGE_BY_CODE]
+    resource.set_tags(TAG_STAGE, wanted)
+    resource.set_tags(TAG_THEME, _themes_from_form())
+    db.session.commit()
+
+    flash(_saved(resource), "notice")
+    return redirect(url_for("resources.edit", resource_id=resource.id, _anchor="tags"))
+
+
+@bp.post("/<int:resource_id>/thumbnail/")
+@login_required
+@min_role("leader")
+def save_thumbnail(resource_id: int):
+    """A church's own artwork in place of the gradient.
+
+    Checked by its first bytes rather than its name, and counted against the
+    same storage quota as every other upload.
+    """
+    resource, _ = _load(resource_id)
+
+    upload = request.files.get("thumbnail")
+    data = upload.read() if upload else b""
+    try:
+        # The image being replaced does not count against the room for the
+        # new one, or replacing a picture with the same picture could fail.
+        used = stored_bytes(g.church.id) - (resource.thumb_bytes or 0)
+        content_type = check_image(data, used_bytes=max(0, used))
+    except RefusedFile as refused:
+        flash(RESOURCES[refused.reason].format(**refused.fields), "error")
+        return redirect(url_for("resources.edit", resource_id=resource.id, _anchor="art"))
+
+    resource.set_thumb(data, content_type)
+    db.session.commit()
+
+    flash(RESOURCES["thumb_saved"], "notice")
+    return redirect(url_for("resources.edit", resource_id=resource.id, _anchor="art"))
+
+
+@bp.post("/<int:resource_id>/thumbnail/remove/")
+@login_required
+@min_role("leader")
+def remove_thumbnail(resource_id: int):
+    resource, _ = _load(resource_id)
+    resource.clear_thumb()
+    db.session.commit()
+    flash(RESOURCES["thumb_removed"], "notice")
+    return redirect(url_for("resources.edit", resource_id=resource.id, _anchor="art"))
+
+
+@bp.get("/<int:resource_id>/thumb/")
+@login_required
+def thumbnail(resource_id: int):
+    """The image itself.
+
+    Not behind min_role: a member has to be able to see the artwork on a
+    plan they can read. A draft stays invisible to them, the same rule the
+    member routes use, so guessing an id reveals nothing.
+    """
+    resource = Resource.get_for_church(g.church.id, resource_id)
+    if resource is None or not resource.has_thumb:
+        abort(404)
+    if not current_user.at_least("leader") and not resource.is_published:
+        abort(404)
+
+    response = make_response(resource.thumb_data)
+    response.headers["Content-Type"] = resource.thumb_type or "image/png"
+    response.headers["Content-Length"] = str(resource.thumb_bytes)
+    # The URL carries thumb_set_at, so a cached copy is always the copy that
+    # URL named. Private: it belongs to one church.
+    response.headers["Cache-Control"] = "private, max-age=604800, immutable"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response

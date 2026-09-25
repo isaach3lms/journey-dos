@@ -23,12 +23,13 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, deferred, mapped_column, relationship
 
 from app.extensions import db
 from app.models.base import TenantScoped, TimestampMixin, UTCDateTime, utcnow
@@ -71,6 +72,19 @@ STATUS_LABELS = {
 # every cover without touching a row. Stored as a number, not a colour.
 COVER_COUNT = 6
 
+# A church can put its own artwork on a resource instead of a gradient. Stored
+# in the database with everything else a church uploads, for the reason in
+# app/models/teamfile.py: Render wipes the disk on every deploy.
+TAG_STAGE = "stage"
+TAG_THEME = "theme"
+TAG_KINDS = (TAG_STAGE, TAG_THEME)
+
+# Themes are whatever a church types. Long enough for "Marriage and family",
+# short enough to stay a label rather than a sentence.
+MAX_THEME_LENGTH = 60
+
+_TAG_KIND_LIST = ", ".join(f"'{k}'" for k in TAG_KINDS)
+
 _KIND_LIST = ", ".join(f"'{k}'" for k in RESOURCE_KINDS)
 _STATUS_LIST = ", ".join(f"'{s}'" for s in RESOURCE_STATUSES)
 
@@ -91,6 +105,17 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=STATUS_DRAFT)
     cover: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
+    # The church's own artwork, when they have uploaded some. Deferred, or
+    # every list of resources would drag every image into memory to print a
+    # title. thumb_set_at is what the URL carries, so a replaced image is not
+    # served from a browser cache for a week.
+    thumb_data: Mapped[Optional[bytes]] = deferred(mapped_column(LargeBinary))
+    thumb_type: Mapped[Optional[str]] = mapped_column(String(40))
+    thumb_bytes: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    thumb_set_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
     published_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     created_by_user_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("user.id", ondelete="SET NULL")
@@ -100,6 +125,12 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
         back_populates="resource",
         cascade="all, delete-orphan",
         order_by="ResourceSession.position",
+    )
+
+    tags: Mapped[list["ResourceTag"]] = relationship(
+        back_populates="resource",
+        cascade="all, delete-orphan",
+        order_by="ResourceTag.value",
     )
 
     def __repr__(self) -> str:
@@ -142,6 +173,61 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
 
     def next_position(self) -> int:
         return max((s.position for s in self.sessions), default=0) + 1
+
+    # -- artwork ------------------------------------------------------------
+
+    @property
+    def has_thumb(self) -> bool:
+        return bool(self.thumb_bytes)
+
+    @property
+    def thumb_version(self) -> str:
+        """Cache key for the image URL. Changes when the image changes."""
+        return str(int(self.thumb_set_at.timestamp())) if self.thumb_set_at else "0"
+
+    def set_thumb(self, data: bytes, content_type: str) -> None:
+        self.thumb_data = data
+        self.thumb_type = content_type
+        self.thumb_bytes = len(data)
+        self.thumb_set_at = utcnow()
+
+    def clear_thumb(self) -> None:
+        """Back to the gradient. The row stays, the bytes go."""
+        self.thumb_data = None
+        self.thumb_type = None
+        self.thumb_bytes = 0
+        self.thumb_set_at = None
+
+    # -- tags ---------------------------------------------------------------
+
+    @property
+    def stage_codes(self) -> list[str]:
+        from app.stages import stage_order
+
+        codes = [t.value for t in self.tags if t.kind == TAG_STAGE]
+        return sorted(codes, key=stage_order)
+
+    @property
+    def stage_labels(self) -> list[str]:
+        from app.stages import stage_label
+
+        return [stage_label(code) for code in self.stage_codes]
+
+    @property
+    def themes(self) -> list[str]:
+        return sorted((t.value for t in self.tags if t.kind == TAG_THEME), key=str.lower)
+
+    def set_tags(self, kind: str, values) -> None:
+        """Replace every tag of one kind. The other kind is left alone."""
+        wanted = list(dict.fromkeys(values))
+        for tag in [t for t in self.tags if t.kind == kind and t.value not in wanted]:
+            self.tags.remove(tag)
+        have = {t.value for t in self.tags if t.kind == kind}
+        for value in wanted:
+            if value not in have:
+                self.tags.append(
+                    ResourceTag(church_id=self.church_id, kind=kind, value=value)
+                )
 
     @property
     def cover_class(self) -> str:
@@ -193,12 +279,33 @@ class Resource(TenantScoped, TimestampMixin, db.Model):
         )
 
     @classmethod
-    def for_church(cls, church_id: int, published_only: bool = False):
+    def for_church(
+        cls,
+        church_id: int,
+        published_only: bool = False,
+        stage: str | None = None,
+        theme: str | None = None,
+    ):
         query = db.select(cls).where(cls.church_id == church_id)
         if published_only:
             query = query.where(cls.status == STATUS_PUBLISHED)
         else:
             query = query.where(cls.status != STATUS_ARCHIVED)
+
+        # A filter per tag kind, each its own EXISTS. Two joins would return
+        # one row per matching tag and silently double a resource carrying
+        # two of them.
+        for kind, value in ((TAG_STAGE, stage), (TAG_THEME, theme)):
+            if value:
+                query = query.where(
+                    db.select(ResourceTag.id)
+                    .where(
+                        ResourceTag.resource_id == cls.id,
+                        ResourceTag.kind == kind,
+                        ResourceTag.value == value,
+                    )
+                    .exists()
+                )
         return query.order_by(cls.status, cls.title)
 
     @classmethod
@@ -358,3 +465,76 @@ class SessionCompletion(TenantScoped, TimestampMixin, db.Model):
             return False
         db.session.delete(existing)
         return True
+
+
+class ResourceTag(TenantScoped, TimestampMixin, db.Model):
+    """What a resource is for, and what it is about.
+
+    One table for both, because they are the same shape: a label attached to
+    a resource that members filter by. `kind` says which list it belongs to.
+    A stage tag holds a stage code from app/stages.py; a theme tag holds
+    whatever the church typed.
+
+    A church's themes are the distinct theme values across its resources.
+    That means a theme nothing is tagged with stops existing, which is the
+    behaviour a church wants: the filter never offers an empty result.
+    """
+
+    __tablename__ = "resource_tag"
+    __table_args__ = (
+        CheckConstraint(f"kind IN ({_TAG_KIND_LIST})", name="ck_resource_tag_kind"),
+        UniqueConstraint("resource_id", "kind", "value", name="uq_resource_tag_value"),
+        Index("ix_resource_tag_church_kind", "church_id", "kind", "value"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    resource_id: Mapped[int] = mapped_column(
+        ForeignKey("resource.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    resource: Mapped["Resource"] = relationship(back_populates="tags")
+
+    kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    value: Mapped[str] = mapped_column(String(MAX_THEME_LENGTH), nullable=False)
+
+    def __repr__(self) -> str:
+        return f"<ResourceTag {self.kind}={self.value!r} resource={self.resource_id}>"
+
+    @classmethod
+    def themes_for_church(cls, church_id: int, published_only: bool = False) -> list[str]:
+        """Every theme in use, alphabetical, case kept as it was typed."""
+        query = (
+            db.select(cls.value)
+            .join(Resource, Resource.id == cls.resource_id)
+            .where(cls.church_id == church_id, cls.kind == TAG_THEME)
+            .distinct()
+        )
+        if published_only:
+            query = query.where(Resource.status == STATUS_PUBLISHED)
+        else:
+            query = query.where(Resource.status != STATUS_ARCHIVED)
+        return sorted(db.session.scalars(query).all(), key=str.lower)
+
+    @classmethod
+    def stages_in_use(cls, church_id: int, published_only: bool = False) -> set[str]:
+        """Which stages have anything tagged for them. Filters offer no
+        dead ends."""
+        query = (
+            db.select(cls.value)
+            .join(Resource, Resource.id == cls.resource_id)
+            .where(cls.church_id == church_id, cls.kind == TAG_STAGE)
+            .distinct()
+        )
+        if published_only:
+            query = query.where(Resource.status == STATUS_PUBLISHED)
+        else:
+            query = query.where(Resource.status != STATUS_ARCHIVED)
+        return set(db.session.scalars(query).all())
+
+
+def bytes_used(church_id: int) -> int:
+    """Thumbnails a church is storing. Part of the one file quota."""
+    return int(db.session.scalar(
+        db.select(func.coalesce(func.sum(Resource.thumb_bytes), 0)).where(
+            Resource.church_id == church_id
+        )
+    ) or 0)

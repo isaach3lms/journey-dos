@@ -1008,11 +1008,30 @@ ul.policy span{color:var(--muted)}
   text-align:left;transition:box-shadow .15s,border-color .15s;
 }
 .rescard:hover{box-shadow:var(--shadow-md);border-color:var(--line)}
+/* The cover is a span or an img now, so the button around it carries the
+   click and the badge. */
+.rescoverbtn{
+  position:relative;display:block;width:100%;
+  border:none;padding:0;margin:0;background:none;cursor:pointer;
+}
 .rescover{
-  aspect-ratio:16/9;display:grid;place-items:center;position:relative;
-  border:none;cursor:pointer;width:100%;padding:0;margin:0;
+  aspect-ratio:16/9;display:grid;place-items:center;
+  width:100%;
 }
 .rescover .glyph{width:44px;height:44px}
+/* A church's own artwork, inside whichever cover box it was put in.
+
+   Positioned out of flow on purpose. A percentage height on an in-flow image
+   resolves against a box the image is itself sizing, so the row grew to the
+   picture's own height and the cover swallowed the card. Pinned to the box's
+   edges there is nothing circular: the box decides, the picture is cropped
+   to it. */
+.rescover,.planbanner,.mcover{position:relative;overflow:hidden}
+.coverart{
+  position:absolute;inset:0;
+  width:100%;height:100%;object-fit:cover;display:block;
+  background:var(--mist);
+}
 .resbadge{
   position:absolute;top:9px;right:9px;font-size:10.5px;font-weight:600;
   padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--ink);
@@ -1036,6 +1055,42 @@ ul.policy span{color:var(--muted)}
 }
 .resadd .plus{font-size:26px;line-height:1}
 
+/* Artwork and filters on the editor. */
+.thumbnow{display:flex;align-items:flex-start;gap:14px;margin-bottom:14px}
+.thumbprev{
+  width:150px;aspect-ratio:16/9;object-fit:cover;
+  border-radius:var(--r-sm);border:1px solid var(--line-soft);display:block;
+}
+.stagepick{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+/* A two word theme must not break across lines mid-chip. */
+.themelist{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:8px 0 14px}
+.kindchip{white-space:nowrap}
+.stagechip{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:12.5px;
+}
+.stagechip:has(input:checked){background:var(--mist);border-color:var(--accent);font-weight:600}
+.stagechip input{margin:0}
+.resfilter{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 16px;
+}
+.resfilter .flabel{margin:0}
+.resfilter .select{width:auto;min-width:150px}
+
+/* Member filter chips: one tap each, and they wrap on a phone. */
+.mfilters{
+  display:flex;gap:7px;overflow-x:auto;margin:0 -18px 14px;padding:0 18px 3px;
+  scrollbar-width:none;
+}
+.mfilters::-webkit-scrollbar{display:none}
+.mchip{
+  flex:none;font-size:12.5px;font-weight:500;padding:7px 13px;border-radius:999px;
+  border:1px solid var(--line);color:var(--muted);white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;
+}
+.mchip:active{opacity:.55}
+.mchip.on{background:var(--deep);border-color:var(--deep);color:#fff;font-weight:600}
+
 /* Plan overview and the add form: native <dialog>. */
 .plandialog{
   border:none;padding:0;border-radius:var(--r-lg);width:min(560px,calc(100vw - 32px));
@@ -1044,7 +1099,8 @@ ul.policy span{color:var(--muted)}
 }
 .plandialog[open]{display:flex;flex-direction:column}
 .plandialog::backdrop{background:rgba(20,20,20,.45)}
-.planbanner{aspect-ratio:3/1;display:grid;place-items:center;position:relative;flex:none}
+.planbannerwrap{position:relative;flex:none}
+.planbanner{aspect-ratio:3/1;display:grid;place-items:center;flex:none;width:100%}
 .planbanner .glyph{width:52px;height:52px}
 .planbanner.small{aspect-ratio:4/1;border-radius:var(--r) var(--r) 0 0}
 .planbanner.small .glyph{width:40px;height:40px}

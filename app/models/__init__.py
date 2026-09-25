@@ -114,8 +114,11 @@ from app.models.resource import (  # noqa: F401
     STATUS_ARCHIVED,
     STATUS_DRAFT,
     STATUS_PUBLISHED,
+    TAG_STAGE,
+    TAG_THEME,
     Resource,
     ResourceSession,
+    ResourceTag,
     SessionCompletion,
 )
 from app.models.person_event import (  # noqa: F401
@@ -209,6 +212,7 @@ __all__ = [
     "ROLE_MEMBER",
     "Resource",
     "ResourceSession",
+    "ResourceTag",
     "SessionCompletion",
     "RESOURCE_KINDS",
     "STATUS_DRAFT",

@@ -1,0 +1,19 @@
+{# One cover, everywhere.
+
+   The wrapper is the same element either way, so a church's own picture
+   lands in exactly the box the gradient occupied and no screen needs its own
+   sizing rule. The URL carries a version, so a replaced picture is never
+   served from a stale cache. #}
+{% from "resources/_glyph.html" import glyph %}
+
+{% macro cover(resource, cls="rescover") -%}
+<span class="{{ cls }}{% if not resource.has_thumb %} {{ resource.cover_class }}{% endif %}">
+  {%- if resource.has_thumb -%}
+    <img class="coverart"
+         src="{{ url_for('resources.thumbnail', resource_id=resource.id, v=resource.thumb_version) }}"
+         alt="" loading="lazy" decoding="async">
+  {%- else -%}
+    {{ glyph(resource.kind) }}
+  {%- endif -%}
+</span>
+{%- endmacro %}

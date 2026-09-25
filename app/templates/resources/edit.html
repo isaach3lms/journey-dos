@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "resources/_glyph.html" import glyph %}
+{% from "resources/_cover.html" import cover %}
 {% block title %}{{ resource.title }} | {{ church.name }}{% endblock %}
 {% block heading %}{{ resource.title }}{% endblock %}
 {% block subheading %}{{ resource.kind_label }} &middot; {{ resource.status_label }}{% endblock %}
@@ -27,7 +28,7 @@
 
 <div class="resedit">
   <section class="card">
-    <div class="planbanner small {{ resource.cover_class }}">{{ glyph(resource.kind) }}</div>
+    {{ cover(resource, "planbanner small") }}
     <div class="hd"><h2>{{ content.details_heading }}</h2></div>
     <div class="bd">
       <form method="post" action="{{ url_for('resources.save_details', resource_id=resource.id) }}">
@@ -62,6 +63,66 @@
           <button class="btn ghostbtn tiny" type="submit">{{ content.restore }}</button>
         </form>
       {% endif %}
+    </div>
+  </section>
+
+  {# Artwork and filters: two small cards under the details, before the
+     sessions, because both are set once and then left alone. #}
+  <section class="card" id="art">
+    <div class="hd"><h2>{{ content.art_heading }}</h2></div>
+    <div class="bd">
+      <p>{{ content.art_intro }}</p>
+      {% if resource.has_thumb %}
+        <div class="thumbnow">
+          <img class="thumbprev"
+               src="{{ url_for('resources.thumbnail', resource_id=resource.id, v=resource.thumb_version) }}"
+               alt="{{ content.thumb_current }}">
+          <form method="post" action="{{ url_for('resources.remove_thumbnail', resource_id=resource.id) }}">
+            {{ csrf_field() }}
+            <button class="btn ghostbtn tiny" type="submit">{{ content.thumb_remove }}</button>
+          </form>
+        </div>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data"
+            action="{{ url_for('resources.save_thumbnail', resource_id=resource.id) }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="r-thumb">{{ content.thumb_field }}</label>
+        <input class="input" id="r-thumb" type="file" name="thumbnail"
+               accept="image/png,image/jpeg" required>
+        <button class="btn" type="submit">{{ content.thumb_upload }}</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" id="tags">
+    <div class="hd"><h2>{{ content.tags_heading }}</h2></div>
+    <div class="bd">
+      <p>{{ content.tags_intro }}</p>
+      <form method="post" action="{{ url_for('resources.save_tags', resource_id=resource.id) }}">
+        {{ csrf_field() }}
+        <span class="flabel">{{ content.tags_stages }}</span>
+        <div class="stagepick">
+          {% for stage in stages %}
+            <label class="stagechip">
+              <input type="checkbox" name="stages" value="{{ stage.code }}"
+                     {% if stage.code in resource.stage_codes %}checked{% endif %}>
+              <span>{{ stage.label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <label class="flabel" for="r-themes">{{ content.tags_themes }}</label>
+        <input class="input" id="r-themes" type="text" name="themes"
+               value="{{ resource.themes|join(', ') }}"
+               placeholder="{{ content.tags_themes_placeholder }}" autocomplete="off">
+        <div class="fieldhelp">{{ content.tags_themes_hint }}</div>
+        {% if themes %}
+          <div class="themelist">
+            <span class="muted small">{{ content.tags_existing }}</span>
+            {% for theme in themes %}<span class="kindchip">{{ theme }}</span>{% endfor %}
+          </div>
+        {% endif %}
+        <button class="btn" type="submit">{{ content.tags_save }}</button>
+      </form>
     </div>
   </section>
 

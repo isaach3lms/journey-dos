@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% from "resources/_glyph.html" import glyph %}
+{% from "resources/_cover.html" import cover %}
 {% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
@@ -112,13 +113,43 @@
   <div class="bd">
     <p>{{ content.library_intro.format(church=church.name) }}</p>
 
+    {% if stages_in_use or themes %}
+      <form class="resfilter" method="get">
+        <span class="flabel">{{ content.filter_heading }}</span>
+        {% if stages_in_use %}
+          <select class="input select" name="stage" aria-label="{{ content.filter_stage }}">
+            <option value="">{{ content.filter_stage }}: {{ content.filter_all }}</option>
+            {% for stage in stages if stage.code in stages_in_use %}
+              <option value="{{ stage.code }}" {% if active_stage == stage.code %}selected{% endif %}>{{ stage.label }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        {% if themes %}
+          <select class="input select" name="theme" aria-label="{{ content.filter_theme }}">
+            <option value="">{{ content.filter_theme }}: {{ content.filter_all }}</option>
+            {% for theme in themes %}
+              <option value="{{ theme }}" {% if active_theme == theme %}selected{% endif %}>{{ theme }}</option>
+            {% endfor %}
+          </select>
+        {% endif %}
+        <button class="btn ghostbtn tiny" type="submit">{{ content.filter_heading }}</button>
+        {% if active_stage or active_theme %}
+          <a class="ghost" href="{{ url_for('resources.index') }}">{{ content.filter_clear }}</a>
+        {% endif %}
+      </form>
+    {% endif %}
+
+    {% if (active_stage or active_theme) and not resources %}
+      <p class="muted small">{{ content.filter_none }}</p>
+    {% endif %}
+
     <div class="resgrid">
       {% for resource in resources %}
         {% set count = started.get(resource.id, 0) %}
         <article class="rescard" data-title="{{ resource.title|lower }}">
-          <button class="rescover {{ resource.cover_class }}" type="button"
+          <button class="rescoverbtn" type="button"
                   data-open="plan-{{ resource.id }}" aria-label="{{ resource.title }}">
-            {{ glyph(resource.kind) }}
+            {{ cover(resource) }}
             <span class="resbadge">{{ resource.status_label }}</span>
           </button>
           <div class="resbody">
@@ -142,8 +173,8 @@
         {# The plan overview, as in the demo: cover, description, the sessions
            in order, and a way into the editor. #}
         <dialog class="plandialog" id="plan-{{ resource.id }}" aria-label="{{ resource.title }}">
-          <div class="planbanner {{ resource.cover_class }}">
-            {{ glyph(resource.kind) }}
+          <div class="planbannerwrap">
+            {{ cover(resource, "planbanner") }}
             <button class="planx" type="button" data-close aria-label="{{ content.close }}">&times;</button>
           </div>
           <div class="planhead">

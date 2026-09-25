@@ -117,6 +117,11 @@ class SongChart(TenantScoped, TimestampMixin, db.Model):
 
 def stored_bytes(church_id: int) -> int:
     """Everything a church keeps in the database as files. One quota."""
+    from app.models import resource as resource_model
     from app.models.teamfile import TeamFile
 
-    return TeamFile.bytes_used(church_id) + SongChart.bytes_used(church_id)
+    return (
+        TeamFile.bytes_used(church_id)
+        + SongChart.bytes_used(church_id)
+        + resource_model.bytes_used(church_id)
+    )

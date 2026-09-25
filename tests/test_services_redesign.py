@@ -653,6 +653,11 @@ class TestHowASundayReadsAtAGlance:
     """The week strip and the status pill are what a leader scans first."""
 
     def _need_and_fill(self, db, journey, service, position, wanted, statuses):
+        """Published, because these tests are about the team.
+
+        An unpublished plan reads as a draft whatever its team looks like,
+        which is the point of the chip and is covered on its own below."""
+        service.publish()
         db.session.add(
             ServiceNeed(
                 church_id=journey.id, service_id=service.id,
@@ -674,8 +679,35 @@ class TestHowASundayReadsAtAGlance:
         db.session.commit()
         db.session.refresh(service)
 
-    def test_an_empty_plan_is_a_draft(self, db, journey):
+    def test_an_unpublished_plan_is_a_draft(self, db, journey):
         service = a_service(db, journey)
+        db.session.refresh(service)
+        assert service.readiness == "draft"
+        assert service.readiness_label == "Draft"
+
+    def test_publishing_stops_it_saying_draft(self, db, journey):
+        """The bug this chip had: a published Sunday with no roles on it yet
+        still said Draft, which reads as "you have not published this"."""
+        service = a_service(db, journey)
+        service.publish()
+        db.session.commit()
+        db.session.refresh(service)
+        assert service.readiness == "published"
+        assert service.readiness_label == "Published"
+
+    def test_a_published_plan_with_a_full_accepted_team_is_still_not_a_draft(
+        self, db, journey, positions
+    ):
+        service = a_service(db, journey)
+        self._need_and_fill(db, journey, service, positions["Vocals"], 1, [ACCEPTED])
+        assert service.readiness == "ready"
+
+    def test_unpublishing_puts_it_back_to_draft(self, db, journey, positions):
+        service = a_service(db, journey)
+        self._need_and_fill(db, journey, service, positions["Vocals"], 1, [ACCEPTED])
+        assert service.readiness == "ready"
+        service.unpublish()
+        db.session.commit()
         db.session.refresh(service)
         assert service.readiness == "draft"
 
@@ -687,12 +719,14 @@ class TestHowASundayReadsAtAGlance:
 
     def test_full_but_unanswered_is_not_ready(self, db, journey, positions):
         """A plan where half the team has not replied is not ready, and calling
-        it ready is how a leader finds out on Saturday night."""
+        it ready is how a leader finds out on Saturday night. It is not a
+        draft either: it is published and waiting on people."""
         service = a_service(db, journey)
         self._need_and_fill(
             db, journey, service, positions["Vocals"], 2, [ACCEPTED, INVITED]
         )
-        assert service.readiness == "draft"
+        assert service.readiness == "waiting"
+        assert service.readiness_label == "Waiting on replies"
 
     def test_full_and_accepted_is_ready(self, db, journey, positions):
         service = a_service(db, journey)
@@ -714,6 +748,7 @@ class TestHowASundayReadsAtAGlance:
     ):
         """Somebody invited to help with no formal slot is still a role."""
         service = a_service(db, journey)
+        service.publish()
         person = Person(
             church_id=journey.id, first_name="Helper", last_name="X", stage="member"
         )
@@ -850,3 +885,53 @@ class TestChangingAKeyFromThePlan:
         assert b"songselect.ccli.com" in r.data
         assert b'rel="noopener noreferrer"' in r.data
         assert b"open only for staff, leaders, and the people scheduled" in r.data
+
+
+class TestTheChipOnTheWeekStrip:
+    """What a leader actually sees, rendered, not just the property.
+
+    The chip answers two questions in one word, and it used to answer the
+    wrong one: a published Sunday with no roles on it said Draft.
+    """
+
+    H = {"Host": JOURNEY_HOST}
+
+    def strip(self, staff, service):
+        page = staff.get(f"/services/{service.id}/", headers=self.H).data.decode()
+        return page[page.index('class="weekstrip"'):page.index("</div>", page.index('class="weekstrip"'))]
+
+    def test_an_unpublished_sunday_says_draft(self, db, journey, staff):
+        service = a_service(db, journey)
+        assert "Draft" in self.strip(staff, service)
+
+    def test_publishing_changes_the_chip(self, db, journey, staff):
+        service = a_service(db, journey)
+        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id,
+                                   position=1, kind="element", title="Welcome"))
+        db.session.commit()
+
+        staff.post(f"/services/{service.id}/publish/", headers=self.H,
+                   follow_redirects=True)
+        strip = self.strip(staff, service)
+        assert "Published" in strip
+        assert "Draft" not in strip
+
+    def test_the_chip_carries_its_own_class(self, db, journey, staff):
+        """So published and draft do not share a colour."""
+        service = a_service(db, journey)
+        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id,
+                                   position=1, kind="element", title="Welcome"))
+        db.session.commit()
+        staff.post(f"/services/{service.id}/publish/", headers=self.H,
+                   follow_redirects=True)
+        assert "r-published" in self.strip(staff, service)
+
+    def test_every_chip_state_has_a_colour(self):
+        """A state with no rule for it falls back to a bare pill, which reads
+        as a rendering fault."""
+        from pathlib import Path
+
+        css = (Path(__file__).resolve().parent.parent
+               / "app" / "static" / "css" / "app.css").read_text()
+        for state in ("draft", "published", "needs_team", "waiting", "ready"):
+            assert f".pill.r-{state}{{" in css, state

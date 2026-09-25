@@ -640,26 +640,39 @@ class Service(TenantScoped, TimestampMixin, db.Model):
 
     @property
     def readiness(self) -> str:
-        """One of: ready, needs_team, draft.
+        """One of: draft, published, needs_team, waiting, ready.
 
-        `ready` means every slot is filled and everybody has answered yes. A
-        plan where half the team has not replied is not ready, and calling it
-        ready is how a leader finds out on Saturday night.
+        Two questions in one chip, in the order they matter. First, can
+        anybody see this? An unpublished plan is a draft whatever state its
+        team is in, because nobody has been asked yet.
+
+        Then, once it is published, how is the team? `ready` means every slot
+        is filled and everybody has answered yes. A plan where half the team
+        has not replied is not ready, and calling it ready is how a leader
+        finds out on Saturday night.
+
+        This used to return "draft" for a published plan with no roles on it,
+        and for a published plan waiting on replies. Both read on screen as
+        "you have not published this yet", which was wrong twice over.
         """
-        if self.roles_total and self.roles_filled >= self.roles_total:
-            if all(a.status == ACCEPTED for a in self.assignments):
-                return "ready"
+        if not self.is_published:
             return "draft"
-        if self.roles_total:
+        if not self.roles_total:
+            return "published"
+        if self.roles_filled < self.roles_total:
             return "needs_team"
-        return "draft"
+        if all(a.status == ACCEPTED for a in self.assignments):
+            return "ready"
+        return "waiting"
 
     @property
     def readiness_label(self) -> str:
         return {
-            "ready": "Ready",
-            "needs_team": "Needs team",
             "draft": "Draft",
+            "published": "Published",
+            "needs_team": "Needs team",
+            "waiting": "Waiting on replies",
+            "ready": "Ready",
         }[self.readiness]
 
     @property

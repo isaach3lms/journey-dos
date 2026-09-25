@@ -902,6 +902,11 @@ ul.policy span{color:var(--muted)}
 .pill.r-ready{background:var(--good-bg);color:var(--good)}
 .pill.r-needs_team{background:var(--flag-bg);color:var(--flag)}
 .pill.r-draft{background:var(--surface-alt);color:var(--muted)}
+/* Published with nothing else to say, and published but still waiting on
+   people. Neither of these used to have a chip of its own, so both said
+   "Draft" on a plan that was live. */
+.pill.r-published{background:var(--mist);color:var(--deep)}
+.pill.r-waiting{background:var(--flag-bg);color:var(--flag)}
 
 /* ---------- Plan layout ----------
    Plan on the left, the two things a leader acts on down the right. */

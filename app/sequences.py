@@ -122,14 +122,16 @@ WELCOME = Sequence(
     ),
 )
 
+# The code is the one in-flight rows already carry, so it stays what it is.
+# The stage it fires on moved when Guest was folded into Visitor and Attender.
 GUEST_FOLLOW_UP = Sequence(
     code="guest_follow_up",
-    name="Guest follow up",
+    name="Attender follow up",
     description=(
-        "Two notes for somebody who has come back but has not taken a next "
-        "step. Stops as soon as they do, or as soon as a person calls."
+        "Two notes for somebody who is here most Sundays but has not taken a "
+        "next step. Stops as soon as they do, or as soon as a person calls."
     ),
-    trigger_stage="guest",
+    trigger_stage="attender",
     target_stage="member",
     steps=(
         Step(

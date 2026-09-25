@@ -234,9 +234,17 @@ class TestHardStopTargetStage:
         assert enrollment.status == STATUS_COMPLETED
 
     def test_moving_to_another_stage_short_of_the_target_stops_it(self, db, visitor):
+        """Backwards, since Guest was retired and there is no stage between
+        Visitor and Attender to move sideways into. An Attender who turns out
+        to have been a one-off visit is aimed at by a sequence they are no
+        longer the subject of."""
+        visitor.stage = "attender"
+        db.session.commit()
         enrollment = enrol(db, visitor)
-        visitor.stage = "guest"
-        on_stage_changed(visitor, "visitor")
+        assert enrollment.sequence.target_stage == "member"
+
+        visitor.stage = "visitor"
+        on_stage_changed(visitor, "attender")
         db.session.commit()
 
         db.session.refresh(enrollment)
@@ -245,7 +253,7 @@ class TestHardStopTargetStage:
 
     def test_moving_stage_may_start_the_next_sequence(self, db, visitor):
         enrol(db, visitor)
-        visitor.stage = "guest"
+        visitor.stage = "attender"
         on_stage_changed(visitor, "visitor")
         db.session.commit()
 

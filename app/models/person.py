@@ -270,6 +270,23 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         return stage_order(self.stage)
 
     @property
+    def age(self) -> int | None:
+        """Whole years, or None when nobody recorded a birthday.
+
+        On the roster this is only shown for children, where it is the thing
+        the kids team actually needs: which room they are in.
+        """
+        from datetime import date as _date
+
+        if self.birthdate is None:
+            return None
+        today = _date.today()
+        years = today.year - self.birthdate.year
+        if (today.month, today.day) < (self.birthdate.month, self.birthdate.day):
+            years -= 1
+        return max(0, years)
+
+    @property
     def days_known(self) -> int:
         """Whole days since the church first met them.
 
@@ -319,8 +336,18 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         term: str | None = None,
         stage: str | None = None,
         include_archived: bool = False,
+        children: bool | None = None,
     ):
+        """`children` is a third state on purpose.
+
+        None is everybody, True is the children on their own, and False is
+        the adults. A stage filter passes False, because a five year old
+        whose family are Members is not a Member the church is discipling.
+        """
         query = cls.for_church(church_id, include_archived)
+
+        if children is not None:
+            query = query.where(cls.is_child.is_(children))
 
         if stage:
             query = query.where(cls.stage == stage)
@@ -344,10 +371,19 @@ class Person(TenantScoped, TimestampMixin, db.Model):
 
         Stages with nobody in them are returned as 0 rather than missing, so
         the rail renders every stage whether or not anyone is standing on it.
+
+        Children are not in these numbers. They carry their family's stage so
+        that check-in and the roster have something to sort by, but a rail
+        that counts them as Members is telling staff that 32 adults have
+        committed to the church when 9 of them are in the kids room.
         """
         rows = db.session.execute(
             db.select(cls.stage, func.count(cls.id))
-            .where(cls.church_id == church_id, cls.is_archived.is_(False))
+            .where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.is_child.is_(False),
+            )
             .group_by(cls.stage)
         ).all()
         counts = {code: 0 for code in STAGE_CODES}
@@ -355,6 +391,17 @@ class Person(TenantScoped, TimestampMixin, db.Model):
             if code in counts:
                 counts[code] = count
         return counts
+
+    @classmethod
+    def child_count(cls, church_id: int) -> int:
+        """Every child on the roster. The last segment of the rail."""
+        return db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.is_child.is_(True),
+            )
+        ) or 0
 
     @classmethod
     def total_for_church(cls, church_id: int) -> int:

@@ -75,12 +75,12 @@ class TestPage:
 class TestNumbers:
     def test_stuck_counted_per_stage(self, db):
         old = utcnow() - timedelta(days=200)
-        person(db, "guest", stage_since=old, last_contact_at=old)
-        person(db, "guest", stage_since=old, last_contact_at=old)
+        person(db, "visitor", stage_since=old, last_contact_at=old)
+        person(db, "visitor", stage_since=old, last_contact_at=old)
         person(db, "attender", stage_since=old, last_contact_at=old)
         person(db, "member", stage_since=old, last_contact_at=old)  # destinations never stick
         db.session.commit()
-        assert dashboard.stuck_by_stage(journey(db).id) == {"guest": 2, "attender": 1}
+        assert dashboard.stuck_by_stage(journey(db).id) == {"visitor": 2, "attender": 1}
 
     def test_attendance_uses_headcounts_and_compares_to_four_weeks(self, db):
         c = journey(db)
@@ -157,7 +157,7 @@ class TestNumbers:
         db.session.commit()
         rows = {r["name"]: r for r in dashboard.automation_rows(c.id)}
         assert rows["First visit welcome"]["sent"] == 2
-        assert rows["Guest follow up"]["sent"] == 0
+        assert rows["Attender follow up"]["sent"] == 0
 
     def test_other_churches_do_not_leak(self, db):
         other = db.session.scalar(db.select(Church).where(Church.slug == "riverbend"))

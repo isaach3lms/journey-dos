@@ -24,6 +24,15 @@
             <div class="bar"><i style="width: {{ share|round(1) }}%"></i></div>
           </a>
         {% endfor %}
+
+        {# Kids on the end, counted on their own. See the dashboard rail. #}
+        <a class="stage kidstage" href="{{ url_for('people.index', stage=kids_filter) }}"
+           {% if active_stage == kids_filter %}aria-current="true"{% endif %}
+           title="{{ content.kids_meaning }}">
+          <div class="sname">{{ content.kids_label }}</div>
+          <div class="scount mono">{{ kids_count }}</div>
+          <div class="bar"><i style="width: {{ ((kids_count / total * 100) if total else 0)|round(1) }}%"></i></div>
+        </a>
       </div>
     {% endif %}
   </div>

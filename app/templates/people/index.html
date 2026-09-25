@@ -96,6 +96,9 @@
             {{ stage.label }}
           </option>
         {% endfor %}
+        <option value="{{ kids_filter }}" {% if active_stage == kids_filter %}selected{% endif %}>
+          {{ content.kids_filter }}
+        </option>
       </select>
       <button class="btn" type="submit">Search</button>
     </form>
@@ -145,10 +148,22 @@
                   </span>
                 </a>
               </td>
-              <td><span class="tag">{{ person.stage_label }}</span></td>
+              <td>
+                {% if person.is_child %}
+                  <span class="tag">{{ content.kids_tag }}</span>
+                {% else %}
+                  <span class="tag">{{ person.stage_label }}</span>
+                {% endif %}
+              </td>
               <td class="muted">{{ person.household.name if person.household else "" }}</td>
               <td class="ta-r muted mono">
-                {% if person.days_in_stage == 0 %}{{ content.today_in_stage }}
+                {# For a child, time in their family's stage says nothing. Age
+                   is what the kids team needs: which room they are in. #}
+                {% if person.is_child %}
+                  {% if person.age is none %}{{ content.kids_no_age }}
+                  {% elif person.age == 1 %}{{ content.kids_age_one }}
+                  {% else %}{{ content.kids_age.format(years=person.age) }}{% endif %}
+                {% elif person.days_in_stage == 0 %}{{ content.today_in_stage }}
                 {% elif person.days_in_stage == 1 %}{{ content.one_day_in_stage }}
                 {% else %}{{ content.days_in_stage.format(days=person.days_in_stage) }}{% endif %}
               </td>

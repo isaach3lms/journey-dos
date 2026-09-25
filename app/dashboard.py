@@ -409,6 +409,9 @@ def build(church) -> dict:
         "stuck_by_stage": stuck,
         "transitional": {s.code for s in TRANSITIONAL_STAGES},
         "total": Person.total_for_church(church.id),
+        # The last segment of the rail. Not a stage, and never counted into
+        # one: see Person.stage_counts.
+        "kids_count": Person.child_count(church.id),
         "stuck_count": sum(stuck.values()),
         "steps_7d": next_steps_done_since(church.id, 7),
         "unowned_count": Person.unowned_count(church.id),

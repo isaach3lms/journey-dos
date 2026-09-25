@@ -28,7 +28,7 @@ def make_person(db, church_slug, first, last, stage="visitor", **kwargs):
 def roster(db):
     """A small roster at Journey and one person at Riverbend."""
     people = {
-        "marcus": make_person(db, "journey", "Marcus", "Webb", "guest",
+        "marcus": make_person(db, "journey", "Marcus", "Webb", "visitor",
                               email="marcus@example.com"),
         "dana": make_person(db, "journey", "Dana", "Webb", "volunteer",
                             email="dana@example.com"),
@@ -51,7 +51,7 @@ class TestStages:
         assert not is_forward("member", "member")
 
     def test_next_stage_runs_out_at_the_end(self):
-        assert next_stage("visitor").code == "guest"
+        assert next_stage("visitor").code == "attender"
         assert next_stage(STAGES[-1].code) is None
 
     def test_an_unknown_code_does_not_crash_ordering(self):
@@ -72,7 +72,7 @@ class TestRailCounts:
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         counts = Person.stage_counts(church.id)
         assert set(counts) == set(STAGE_CODES)
-        assert counts["guest"] == 1
+        assert counts["visitor"] == 1
         assert counts["leader"] == 0
 
     def test_counts_are_scoped_to_one_church(self, db, roster):
@@ -87,7 +87,7 @@ class TestRailCounts:
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         roster["marcus"].is_archived = True
         db.session.commit()
-        assert Person.stage_counts(church.id)["guest"] == 0
+        assert Person.stage_counts(church.id)["visitor"] == 0
         assert Person.total_for_church(church.id) == 2
 
 
@@ -161,7 +161,7 @@ class TestRoster:
 
     def test_stage_filter_narrows_the_list(self, db, roster):
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
-        found = db.session.scalars(Person.search(church.id, stage="guest")).all()
+        found = db.session.scalars(Person.search(church.id, stage="visitor")).all()
         assert [p.first_name for p in found] == ["Marcus"]
 
     def test_an_unknown_stage_in_the_url_is_a_404_not_a_silent_full_list(self, staff):
@@ -185,11 +185,11 @@ class TestStageMoves:
         db.session.refresh(person)
         assert person.stage == "attender"
 
-        events = db.session.scalars(
+        events = [e for e in db.session.scalars(
             PersonEvent.for_person(person.church_id, person.id)
-        ).all()
+        ) if e.kind == KIND_STAGE_CHANGE]
         assert events[0].kind == KIND_STAGE_CHANGE
-        assert "Guest" in events[0].summary and "Attender" in events[0].summary
+        assert "Visitor" in events[0].summary and "Attender" in events[0].summary
 
     def test_moving_restarts_the_clock(self, db, roster, staff):
         """Increment 3's stuck engine measures from stage_since."""
@@ -215,9 +215,9 @@ class TestStageMoves:
             data={"stage": "attender"},
             headers={"Host": JOURNEY_HOST},
         )
-        events = db.session.scalars(
+        events = [e for e in db.session.scalars(
             PersonEvent.for_person(person.church_id, person.id)
-        ).all()
+        ) if e.kind == "stage_change"]
         assert events[0].actor_name == "Pastor Reed"
 
     def test_moving_backwards_is_allowed_and_labelled(self, db, roster, staff):
@@ -230,9 +230,9 @@ class TestStageMoves:
         )
         db.session.refresh(person)
         assert person.stage == "attender"
-        events = db.session.scalars(
+        events = [e for e in db.session.scalars(
             PersonEvent.for_person(person.church_id, person.id)
-        ).all()
+        ) if e.kind == "stage_change"]
         assert "back" in events[0].detail
 
     def test_an_invalid_target_stage_is_rejected(self, db, roster, staff):
@@ -244,13 +244,13 @@ class TestStageMoves:
         )
         assert r.status_code == 400
         db.session.refresh(person)
-        assert person.stage == "guest"
+        assert person.stage == "visitor"
 
     def test_moving_to_the_same_stage_records_nothing(self, db, roster, staff):
         person = roster["marcus"]
         staff.post(
             f"/people/{person.id}/stage/",
-            data={"stage": "guest"},
+            data={"stage": "visitor"},
             headers={"Host": JOURNEY_HOST},
         )
         events = db.session.scalars(
@@ -421,7 +421,7 @@ class TestImport:
         runner = app.test_cli_runner()
         path = self._write(tmp_path, [
             {"first_name": "Good", "last_name": "Row", "email": "g@example.com",
-             "phone": "", "stage": "guest", "household": "", "first_seen_on": ""},
+             "phone": "", "stage": "visitor", "household": "", "first_seen_on": ""},
             {"first_name": "Bad", "last_name": "Row", "email": "b@example.com",
              "phone": "", "stage": "superfan", "household": "", "first_seen_on": ""},
         ])
@@ -456,7 +456,7 @@ class TestImport:
         runner = app.test_cli_runner()
         path = self._write(tmp_path, [
             {"first_name": "Ghost", "last_name": "Row", "email": "gh@example.com",
-             "phone": "", "stage": "guest", "household": "", "first_seen_on": ""},
+             "phone": "", "stage": "visitor", "household": "", "first_seen_on": ""},
         ])
         result = runner.invoke(
             args=["import-people", "--church", "journey", "--file", path, "--dry-run"]
@@ -471,9 +471,9 @@ class TestImport:
         runner = app.test_cli_runner()
         path = self._write(tmp_path, [
             {"first_name": "A", "last_name": "One", "email": "same@example.com",
-             "phone": "", "stage": "guest", "household": "", "first_seen_on": ""},
+             "phone": "", "stage": "visitor", "household": "", "first_seen_on": ""},
             {"first_name": "B", "last_name": "Two", "email": "same@example.com",
-             "phone": "", "stage": "guest", "household": "", "first_seen_on": ""},
+             "phone": "", "stage": "visitor", "household": "", "first_seen_on": ""},
         ])
         result = runner.invoke(args=["import-people", "--church", "journey", "--file", path])
         assert result.exit_code != 0
@@ -483,7 +483,7 @@ class TestImport:
         runner = app.test_cli_runner()
         path = self._write(tmp_path, [
             {"first_name": "Marcus", "last_name": "Webb", "email": "mw@example.com",
-             "phone": "573-555-0000", "stage": "guest", "household": "The Webbs",
+             "phone": "573-555-0000", "stage": "visitor", "household": "The Webbs",
              "first_seen_on": "2026-05-01"},
         ])
         runner.invoke(args=["import-people", "--church", "journey", "--file", path])

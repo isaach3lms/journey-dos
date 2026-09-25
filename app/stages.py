@@ -38,8 +38,8 @@ class Stage:
     # Journey's roster flagged 39 of 54 people, because a Member of three
     # years read as "overdue" against a 365 day expectation. But a Member of
     # three years is not stuck. They are exactly where the church wants them.
-    # Only Visitor, Guest, and Attender are places someone should be moving
-    # out of, so only those three can produce a stage flag.
+    # Only Visitor and Attender are places someone should be moving out of,
+    # so only those two can produce a stage flag.
     is_transitional: bool
 
     # How long someone can sit in a transitional stage before it is worth a
@@ -52,27 +52,29 @@ STAGES: tuple[Stage, ...] = (
     Stage("visitor", "Visitor", 0,
           "Has been here once. We may not know their name yet.",
           is_transitional=True, expected_days=21),
-    Stage("guest", "Guest", 1,
-          "Coming back. Has given us a way to contact them.",
-          is_transitional=True, expected_days=42),
-    Stage("attender", "Attender", 2,
+    Stage("attender", "Attender", 1,
           "Here most Sundays. Not yet committed to anything else.",
           is_transitional=True, expected_days=90),
 
     # Destinations. Staying here for years is the point, not a problem.
-    Stage("member", "Member", 3,
+    Stage("member", "Member", 2,
           "Has committed to this church publicly.",
           is_transitional=False, expected_days=None),
-    Stage("volunteer", "Volunteer", 4,
+    Stage("volunteer", "Volunteer", 3,
           "Serving on a team.",
           is_transitional=False, expected_days=None),
-    Stage("disciple", "Disciple", 5,
+    Stage("disciple", "Disciple", 4,
           "In a group and growing on purpose.",
           is_transitional=False, expected_days=None),
-    Stage("leader", "Leader", 6,
+    Stage("leader", "Leader", 5,
           "Leading others. Reproducing what they were given.",
           is_transitional=False, expected_days=None),
 )
+
+# Children are on nobody's discipleship rail. They are counted on their own,
+# at the end of it, and they are not a stage: a child has whatever stage
+# their family has, and moves through these once they are not a child.
+KIDS = "kids"
 
 TRANSITIONAL_STAGES: tuple[Stage, ...] = tuple(s for s in STAGES if s.is_transitional)
 
@@ -129,7 +131,6 @@ CONTACT_WINDOW_DAYS = 21
 # first so the common case is one click instead of a blank field.
 NEXT_STEP_BY_STAGE = {
     "visitor": "Send a personal thank you for visiting",
-    "guest": "Invite to the next Next Steps lunch",
     "attender": "Invite into a group",
     "member": "Ask them to serve on a team",
     "volunteer": "Invite into a group, or to lead one",

@@ -110,7 +110,7 @@ class TestWhoNeedsApproving:
         queue with people nobody needs to look at."""
         person = Person(
             church_id=journey.id, first_name="Imported", last_name="Person",
-            stage="guest",
+            stage="visitor",
         )
         db.session.add(person)
         db.session.commit()

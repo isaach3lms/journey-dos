@@ -1132,6 +1132,10 @@ ul.policy span{color:var(--muted)}
   background:var(--flag-bg);color:var(--flag);margin-top:4px;
 }
 .rsmoving{font-size:12px;color:var(--muted-2);margin-top:5px}
+/* Kids sit at the end of the rail but are not a stage on it. A heavier
+   rule says so without a second heading. */
+.kidstage{border-left:2px solid var(--line)}
+
 .railfoot{
   display:flex;gap:28px;flex-wrap:wrap;padding:13px 18px;font-size:13px;color:var(--muted);
   background:var(--surface-alt);border-top:1px solid var(--line-soft);

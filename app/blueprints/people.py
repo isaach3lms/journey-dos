@@ -57,6 +57,7 @@ from app.stages import (
     STAGE_BY_CODE,
     is_forward,
     next_stage,
+    KIDS,
     recommended_next_step,
     stage_label,
     stages_for,
@@ -75,12 +76,20 @@ def index():
     stage = (request.args.get("stage") or "").strip() or None
     page = max(1, request.args.get("page", type=int) or 1)
 
-    if stage and stage not in STAGE_BY_CODE:
+    if stage and stage not in STAGE_BY_CODE and stage != KIDS:
         # An unknown stage in the query string is a typo or a probe. Showing
         # everyone would silently misreport the filter, so refuse instead.
         abort(404)
 
-    query = Person.search(g.church.id, term=term, stage=stage)
+    # Kids are a filter, not a stage. Filtering by a real stage excludes them
+    # for the same reason the rail does not count them into one.
+    children = None
+    if stage == KIDS:
+        children, stage = True, None
+    elif stage:
+        children = False
+
+    query = Person.search(g.church.id, term=term, stage=stage, children=children)
     pagination = db.paginate(query, page=page, per_page=PAGE_SIZE, error_out=False)
 
     return render_template(
@@ -91,8 +100,10 @@ def index():
         pagination=pagination,
         stages=stages_for(g.church),
         counts=Person.stage_counts(g.church.id),
+        kids_count=Person.child_count(g.church.id),
+        kids_filter=KIDS,
         total=Person.total_for_church(g.church.id),
-        active_stage=stage,
+        active_stage=request.args.get("stage") or None,
         term=term,
         waiting=db.session.scalars(
             Person.waiting_for_approval(g.church.id)

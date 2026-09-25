@@ -6,7 +6,7 @@ import pytest
 
 from app.models import Church, Household, Person, PersonEvent, User
 from app.models.base import utcnow
-from app.stages import STAGES
+from app.stages import STAGE_BY_CODE, STAGES
 from tests.conftest import JOURNEY_HOST
 
 H = {"Host": JOURNEY_HOST}
@@ -57,8 +57,8 @@ class TestTheProfileHeader:
         page = client.get("/me/you/", headers=H).data.decode()
         bar = page[page.index('class="jbar"'):page.index("</ol>")]
         assert bar.count("<li") == len(STAGES)
-        # Member is the fourth stage, so four segments are filled.
-        assert bar.count("done") == 4
+        # Filled up to and including their own stage, whatever its position.
+        assert bar.count("done") == STAGE_BY_CODE["member"].order + 1
         assert bar.count("here") == 1
         assert "Has committed to this church publicly." in page
 

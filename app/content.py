@@ -157,6 +157,11 @@ DASHBOARD = {
     "rail_heading": "The Journey",
     "rail_intro": "Where all {total} people at {church} are right now. Click a stage to see who is in it.",
     "rail_empty": "Nobody is on the roster yet. Add people from the People tab.",
+    # Children sit at the end of the rail, counted on their own. A child is
+    # not at a stage of anything; they are somebody's kid.
+    "kids_label": "Kids",
+    "kids_meaning": "Children on the roster, ready for check-in.",
+    "kids_note": "In families",
     "open_people": "Open People",
     "stage_stuck": "{count} stuck",
     "stage_moving": "Moving",
@@ -422,6 +427,15 @@ PEOPLE = {
         "Nobody is on the roster yet. Import a CSV or add people one at a "
         "time, and this rail fills in."
     ),
+
+    "kids_label": "Kids",
+    "kids_meaning": "Children on the roster, ready for check-in.",
+    "kids_filter": "Kids",
+    "kids_tag": "Child",
+    "kids_age": "{years} yrs",
+    "kids_age_one": "1 yr",
+    "kids_no_age": "No birthday on file",
+    "kids_empty": "No children on the roster yet. Parents add their own from the app, and staff can add them here.",
 
     "search_placeholder": "Search by name or email",
     "all_stages": "All stages",
@@ -2246,7 +2260,7 @@ PRIVACY = {
         {
             "name": "Where you are in the church's own steps",
             "why": (
-                "Visitor, guest, member and so on, plus notes staff write "
+                "Visitor, attender, member and so on, plus notes staff write "
                 "about conversations they have had with you."
             ),
         },

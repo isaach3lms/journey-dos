@@ -41,7 +41,7 @@ def person(db):
         first_name="Marcus",
         last_name="Webb",
         email="marcus@example.com",
-        stage="guest",
+        stage="visitor",
     )
     db.session.add(p)
     db.session.commit()
@@ -154,7 +154,7 @@ class TestSending:
         )
         other = Person(
             church_id=other_church.id, first_name="Other", last_name="Person",
-            email="other@example.com", stage="guest",
+            email="other@example.com", stage="visitor",
         )
         db.session.add(other)
         db.session.commit()
@@ -450,7 +450,7 @@ class TestRoutes:
         )
         stranger = Person(
             church_id=other_church.id, first_name="Other", last_name="Person",
-            email="other@example.com", stage="guest",
+            email="other@example.com", stage="visitor",
         )
         db.session.add(stranger)
         db.session.commit()

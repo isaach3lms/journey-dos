@@ -51,6 +51,17 @@
         {% endif %}
       </a>
     {% endfor %}
+
+    {# Kids, on the end and on their own. Never a stage: a child carries
+       their family's stage so check-in has something to sort by, and
+       counting them as Members would overstate the adult numbers. #}
+    <a class="railstage kidstage" href="{{ url_for('people.index', stage='kids') }}"
+       title="{{ dash.kids_meaning }}">
+      <span class="rsname">{{ dash.kids_label }}</span>
+      <span class="rscount">{{ kids_count }}</span>
+      <span class="rsbar"><i style="width: {{ ((kids_count / total * 100) if total else 0)|round(1) }}%"></i></span>
+      <span class="rsmoving">{{ dash.kids_note }}</span>
+    </a>
   </div>
   <div class="railfoot">
     <span><b>{{ stuck_count }}</b> {{ dash.footer_stuck }}</span>

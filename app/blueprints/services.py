@@ -8,7 +8,7 @@ the shape of code where one unscoped lookup slips through unnoticed.
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import BytesIO
 
 from flask import (
@@ -34,7 +34,6 @@ from app.models import (
     ServiceType,
     ServiceTypeNeed,
     build_from_type,
-    save_as_template,
     copy_plan,
     ACCEPTED,
     DECLINED,
@@ -58,7 +57,7 @@ from app.models.service import STATUS_PUBLISHED, STATUS_SENT
 from app.music import UnknownKey, key_choices, normalize_key
 from app import songselect
 from app.security import min_role
-from app.timeutil import format_local, from_local
+from app.timeutil import format_local, from_local, to_local
 
 bp = Blueprint("services", __name__, url_prefix="/services")
 
@@ -124,8 +123,15 @@ def plan(service_id: int):
     if service not in upcoming:
         upcoming = sorted(upcoming + [service], key=lambda s: s.starts_at)
 
+    # A week on from this one, at the same time, in the church's own zone.
+    # That is the ask nine times out of ten, and it is only a default.
+    local = to_local(service.starts_at, g.church)
+    next_week = local + timedelta(days=7)
+
     return render_template(
         "services/plan.html",
+        clone_default_date=next_week.date().isoformat(),
+        clone_default_time=local.strftime("%H:%M"),
         upcoming=upcoming,
         church=g.church,
         content=SERVICES,
@@ -175,62 +181,66 @@ def save_headcount(service_id: int):
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
 
 
-@bp.post("/<int:service_id>/save-template/")
+@bp.post("/<int:service_id>/clone/")
 @login_required
 @min_role("leader")
-def save_template(service_id: int):
-    """Keep this running order for next time.
+def clone(service_id: int):
+    """This Sunday again, on a date you pick.
 
-    Either as a new template with a name, or over the top of an existing one.
-    New services can then start from it on the Services page.
+    Copies the running order and the roles the service needs. Never the
+    people: who served last week is not who is free this week, and a plan
+    that arrives pre-filled with names nobody asked is how a volunteer finds
+    out they are playing by reading it on Sunday.
+
+    The copy is always a draft, whatever the original was, so nothing reaches
+    a member until somebody has looked at it.
     """
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
         abort(404)
-    back = redirect(url_for("services.plan", service_id=service.id, _anchor="template"))
+    back = redirect(url_for("services.plan", service_id=service.id, _anchor="clone"))
 
-    if not service.items:
-        flash(SERVICES["savetemplate_empty"], "error")
+    date_raw = (request.form.get("date") or "").strip()
+    time_raw = (request.form.get("time") or "").strip()
+    if not date_raw:
+        flash(SERVICES["clone_date_required"], "error")
         return back
+    try:
+        # The time is the source service's own if the box was left alone.
+        naive = datetime.fromisoformat(f"{date_raw}T{time_raw or '00:00'}")
+    except ValueError:
+        flash(SERVICES["bad_time"], "error")
+        return back
+    if not time_raw:
+        local_source = to_local(service.starts_at, g.church)
+        naive = naive.replace(hour=local_source.hour, minute=local_source.minute)
 
-    target = (request.form.get("target") or "new").strip()
-    include_needs = request.form.get("include_needs") == "on"
+    starts_at = from_local(naive, g.church)
 
-    if target == "new":
-        name = (request.form.get("name") or "").strip()[:120]
-        if not name:
-            flash(SERVICES["savetemplate_name_required"], "error")
-            return back
-        taken = db.session.scalar(
-            db.select(ServiceType).where(
-                ServiceType.church_id == g.church.id,
-                db.func.lower(ServiceType.name) == name.lower(),
-            )
-        )
-        if taken is not None:
-            flash(SERVICES["savetemplate_name_taken"].format(name=taken.name), "error")
-            return back
-        service_type = ServiceType(church_id=g.church.id, name=name)
-        db.session.add(service_type)
-        db.session.flush()
-        verb = "savetemplate_created"
-    else:
-        try:
-            type_id = int(target)
-        except ValueError:
-            abort(400)
-        service_type = ServiceType.get_for_church(g.church.id, type_id)
-        if service_type is None:
-            abort(404)
-        verb = "savetemplate_replaced"
+    copy = Service(
+        church_id=g.church.id,
+        name=service.name,
+        service_type_id=service.service_type_id,
+        starts_at=starts_at,
+        notes=service.notes,
+        # Deliberately not carried over: status, plan_sent_at, headcount.
+        # A clone is a plan for a day that has not happened.
+    )
+    db.session.add(copy)
+    db.session.flush()
 
-    count = save_as_template(service, service_type, include_needs=include_needs)
-    if service.service_type_id is None:
-        service.service_type_id = service_type.id
+    copied = copy_plan(service, copy)
     db.session.commit()
 
-    flash(SERVICES[verb].format(name=service_type.name, count=count), "notice")
-    return back
+    key = "cloned_one" if copied == 1 else "cloned"
+    flash(
+        SERVICES[key].format(
+            count=copied,
+            when=format_local(copy.starts_at, g.church, "%B %-d"),
+        ),
+        "notice",
+    )
+    return redirect(url_for("services.plan", service_id=copy.id))
 
 
 @bp.post("/<int:service_id>/publish/")

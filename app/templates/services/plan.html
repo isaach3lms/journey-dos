@@ -209,27 +209,28 @@
   </div>
 
   <div>
-    <section class="card" id="template">
-      <div class="hd"><h2>{{ content.savetemplate_heading }}</h2></div>
+    <section class="card" id="clone">
+      <div class="hd"><h2>{{ content.clone_heading }}</h2></div>
       <div class="bd">
-        <p class="muted small">{{ content.savetemplate_hint }}</p>
-        <form method="post" class="stackform" action="{{ url_for('services.save_template', service_id=service.id) }}">
-          {{ csrf_field() }}
-          <select class="input select" name="target" aria-label="{{ content.savetemplate_heading }}" data-template-target>
-            <option value="new">{{ content.savetemplate_new }}</option>
-            {% for option in types %}
-              <option value="{{ option.id }}">{{ content.savetemplate_replace.format(name=option.name) }}</option>
-            {% endfor %}
-          </select>
-          <input class="input" type="text" name="name" maxlength="120" data-template-name
-                 value="{{ service.name }}" placeholder="{{ content.savetemplate_name_placeholder }}"
-                 aria-label="{{ content.savetemplate_name_placeholder }}">
-          <label class="check small">
-            <input type="checkbox" name="include_needs" checked>
-            <span>{{ content.savetemplate_include_needs }}</span>
-          </label>
-          <button class="btn" type="submit" {% if not service.items %}disabled{% endif %}>{{ content.savetemplate_save }}</button>
-        </form>
+        <p class="muted small">{{ content.clone_hint }}</p>
+        {% if service.items %}
+          <form method="post" class="stackform"
+                action="{{ url_for('services.clone', service_id=service.id) }}">
+            {{ csrf_field() }}
+            <label class="flabel" for="clone-date">{{ content.clone_date }}</label>
+            {# Defaults to a week on from this one, which is the ask nine
+               times out of ten. #}
+            <input class="input" id="clone-date" type="date" name="date" required
+                   value="{{ clone_default_date }}">
+            <label class="flabel" for="clone-time">{{ content.clone_time }}</label>
+            <input class="input" id="clone-time" type="time" name="time"
+                   value="{{ clone_default_time }}">
+            <div class="fieldhelp">{{ content.clone_time_hint }}</div>
+            <button class="btn" type="submit">{{ content.clone_save }}</button>
+          </form>
+        {% else %}
+          <p class="muted small">{{ content.clone_empty_hint }}</p>
+        {% endif %}
       </div>
     </section>
 
@@ -330,15 +331,3 @@
 </div>
 {% endblock %}
 
-{% block extra_script %}
-<script>
-/* The name box only matters for a new template. */
-(function () {
-  var target = document.querySelector("[data-template-target]");
-  var name = document.querySelector("[data-template-name]");
-  if (!target || !name) { return; }
-  function sync() { name.hidden = target.value !== "new"; name.required = !name.hidden; }
-  target.addEventListener("change", sync); sync();
-})();
-</script>
-{% endblock %}

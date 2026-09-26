@@ -1353,23 +1353,24 @@ SERVICES = {
     "unpublished": "{name} is back to a draft. The team no longer sees the plan.",
     "publish_empty": "Add items to the running order before publishing it.",
     "member_plan_pending": "The running order is still being put together. It shows here once it is published.",
-    "savetemplate_heading": "Save as a template",
-    "savetemplate_hint": (
-        "Keep this running order for next time. New services on the Services "
-        "page can start from it, and changing this service later never changes "
-        "the template."
+    # ---- Clone ------------------------------------------------------------
+    # This replaced "Save as a template". A service type still carries a
+    # running order for new services; cloning is the shortcut staff actually
+    # reach for, which is "this Sunday again, next Sunday".
+    "clone_heading": "Clone this service",
+    "clone_hint": (
+        "Copies the running order and the roles this service needs onto a "
+        "new date. The team is not copied: who served this week is not who "
+        "is free next week."
     ),
-    "savetemplate_new": "A new template",
-    "savetemplate_replace": "Replace {name}",
-    "savetemplate_name_placeholder": "Template name, like Sunday 10:30",
-    "savetemplate_include_needs": "Include the roles this service needs",
-    "savetemplate_save": "Save template",
-    "savetemplate_created": "{name} saved as a template with {count} items. Pick it when you plan the next service.",
-    "savetemplate_replaced": "{name} now uses this running order ({count} items).",
-    "savetemplate_empty": "Add items to the running order before saving it as a template.",
-    "savetemplate_name_required": "Give the template a name.",
-    "savetemplate_name_taken": "There is already a template called {name}. Pick Replace {name} to update it, or use a different name.",
-    "headcount_heading": "Headcount",
+    "clone_date": "The new date",
+    "clone_time": "Start time",
+    "clone_time_hint": "Leave it as it is to keep the same time of day.",
+    "clone_save": "Create the copy",
+    "clone_date_required": "Pick a date for the copy.",
+    "cloned": "Copied {count} items onto {when}. It is a draft until you publish it.",
+    "cloned_one": "Copied 1 item onto {when}. It is a draft until you publish it.",
+    "clone_empty_hint": "There is nothing in the running order yet, so a copy would be empty too.",
     "headcount_placeholder": "How many were here",
     "headcount_save": "Save",
     "headcount_hint": "Everyone in the room, kids included. The dashboard's attendance number comes from here.",

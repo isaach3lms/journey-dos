@@ -51,4 +51,11 @@
     <p class="mnote">{{ content.next_step_none_hint }}</p>
   {% endif %}
 </section>
+
+{# A link, not a form. Asking for a pastor is a screen of its own, so the
+   emergency numbers sit above the box rather than beside it. #}
+<a class="mcard mlink asklink mwide" href="{{ url_for('member.support') }}">
+  <span class="mtitle">{{ content.support_button }}</span>
+  <span class="mnote">{{ content.support_who_sees }}</span>
+</a>
 {% endblock %}

@@ -165,6 +165,15 @@ DASHBOARD = {
     "open_people": "Open People",
     "stage_stuck": "{count} stuck",
     "stage_moving": "Moving",
+    # Somebody asked, rather than a rule noticing. Shown above the flags.
+    "support_heading": "Asked for a pastor",
+    "support_intro": "These people asked. Open their record to read it and mark it dealt with.",
+    "support_urgent": "Urgent",
+    "support_waiting_today": "Asked today",
+    "support_waiting_one": "Waiting 1 day",
+    "support_waiting": "Waiting {days} days",
+    "support_see_all": "All open requests",
+
     "footer_stuck": "people flagged as stuck too long",
     "footer_steps": "next steps taken in the last 7 days",
     "footer_unowned": "people with no owner",
@@ -456,6 +465,29 @@ PEOPLE = {
     # Person detail
     "snapshot": "Snapshot",
     "timeline": "Timeline",
+    # ---- Pastoral requests --------------------------------------------------
+    "support_heading": "Asked for pastoral support",
+    "support_open_pill": "Waiting",
+    "support_answered_pill": "Dealt with",
+    "support_asked_on": "Asked {when}",
+    "support_kind_line": "What would help: {kind}",
+    "support_contact_line": "Prefers: {contact}",
+    "support_answer": "Mark as dealt with",
+    "support_reopen": "Reopen it",
+    "support_answered": "Marked as dealt with. {name}'s request is off the dashboard.",
+    "support_answered_by": "{name} marked this dealt with on {when}.",
+    "support_answered_event": "Answered their pastoral support request",
+    "support_already": "{name} already marked this dealt with.",
+    "support_reopened": "Back on the dashboard.",
+    "support_none": "Nothing asked for yet.",
+    "support_list_title": "Open pastoral requests",
+    "support_list_subtitle": "Oldest first. Urgent at the top.",
+    "support_list_empty": "Nobody is waiting on a pastor right now.",
+    "support_private": (
+        "What somebody writes here is read by staff and leaders on this "
+        "screen only. It is never emailed and never posted."
+    ),
+
     "household": "Household",
     "no_household": "Not linked to a household",
     "household_alone": "The only person in this household",
@@ -738,6 +770,55 @@ MEMBER = {
     "greeting": "Welcome back, {name}",
     "since": "Day {days} with {church}",
     "since_new": "Welcome to {church}",
+
+    # ---- Asking for a pastor ------------------------------------------------
+    # The most sensitive screen in the member app. The copy's job is to make
+    # it obvious who reads this, and to put the emergency numbers where
+    # somebody in trouble sees them before they start typing.
+    "support_button": "Request pastoral support",
+    "support_heading": "Ask for pastoral support",
+    "support_intro": (
+        "This goes to the pastoral staff at {church}. Nobody else at the "
+        "church sees it, and it is not posted anywhere."
+    ),
+    "support_emergency": (
+        "If this is an emergency, call 911. If you are thinking about harming "
+        "yourself, call or text 988 for the Suicide and Crisis Lifeline, any "
+        "hour of any day. They answer faster than we can."
+    ),
+    "support_kind": "What would help",
+    "support_message": "What is going on",
+    "support_message_placeholder": (
+        "As much or as little as you want to say. A pastor will follow up."
+    ),
+    "support_contact": "How should we reach you",
+    "support_send": "Send this to the pastors",
+    "support_cancel": "Never mind",
+    "support_sent": "Sent. A pastor will be in touch.",
+    "support_message_required": "Tell us a little about what is going on, even one line.",
+    "support_open_heading": "You already asked",
+    "support_open_body": (
+        "You asked for pastoral support on {when}. Somebody has it. If "
+        "something has changed, add to it below and we will see that too."
+    ),
+    "support_add": "Add to what you sent",
+    "support_added": "Added. The pastors see this with what you already sent.",
+    "support_who_sees": "Seen by: the pastoral staff.",
+    "support_event": "Asked for pastoral support: {kind}",
+    "support_event_added": "Added to their pastoral support request",
+    "support_alert_subject": "{name} asked for pastoral support",
+    "support_alert_body": (
+        "{name} asked for pastoral support at {church}.\n\n"
+        "What would help: {kind}\n"
+        "How to reach them: {contact}\n\n"
+        "What they wrote is in the app, not in this email. Open their record "
+        "to read it and to mark it dealt with:\n{link}\n\n"
+        "Nobody else has been told."
+    ),
+    "support_no_person": (
+        "Your login is not linked to a record yet, so we cannot route this to "
+        "a pastor. Email the church office and they will sort it in a minute."
+    ),
 
     "next_step_label": "Your next step",
     "waiting_title": "Someone will let you in shortly",

@@ -112,6 +112,39 @@
       {% if stuck_count %}<span class="pill pending plain">{{ stuck_count }} flagged</span>{% endif %}
     </div>
     <div class="bd">
+      {# Above the flags: a rule noticing somebody is quiet is not the same
+         as somebody asking for help. #}
+      {% if support_open %}
+        <h3 class="asksub">{{ dash.support_heading }}</h3>
+        <p class="muted small">{{ dash.support_intro }}</p>
+        <ul class="flaglist asks">
+          {% for ask in support_open %}
+            <li>
+              <a href="{{ url_for('people.detail', person_id=ask.person_id) }}#support">
+                <span class="av">{{ ask.person.initials }}</span>
+                <span class="fl">
+                  <span class="pn">{{ ask.person.full_name }} &middot; {{ ask.kind_label }}</span>
+                  {# The first line only. A dashboard is read over
+                     shoulders; the rest is on their own page. #}
+                  <span class="pe">{{ ask.summary_line }}</span>
+                </span>
+                {% set waited = ask.days_waiting(church) %}
+                <span class="pill {% if ask.is_urgent or waited > 1 %}pending{% endif %} plain">
+                  {% if ask.is_urgent %}{{ dash.support_urgent }}
+                  {% elif waited == 0 %}{{ dash.support_waiting_today }}
+                  {% elif waited == 1 %}{{ dash.support_waiting_one }}
+                  {% else %}{{ dash.support_waiting.format(days=waited) }}{% endif %}
+                </span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+        {% if support_count > support_open|length %}
+          <a class="ghost" href="{{ url_for('people.support_list') }}">{{ dash.support_see_all }} ({{ support_count }})</a>
+        {% endif %}
+        {% if flagged %}<hr class="asksplit">{% endif %}
+      {% endif %}
+
       {% if flagged %}
         <p>{{ stuck_content.card_intro }}</p>
         <ul class="flaglist">
@@ -131,7 +164,7 @@
         {% if stuck_count > flagged|length %}
           <a class="ghost" href="{{ url_for('people.stuck_list') }}">{{ stuck_content.see_all }} ({{ stuck_count }})</a>
         {% endif %}
-      {% else %}
+      {% elif not support_open %}
         <p>{{ stuck_content.card_empty }}</p>
         <p class="muted small">{{ stuck_content.card_empty_hint.format(window=contact_window) }}</p>
       {% endif %}

@@ -120,6 +120,10 @@ from app.models.resource import (  # noqa: F401
     ResourceTag,
     SessionCompletion,
 )
+from app.models.support import (  # noqa: F401
+    SUPPORT_KINDS,
+    SupportRequest,
+)
 from app.models.person_event import (  # noqa: F401
     EVENT_KINDS,
     KIND_CONTACT,
@@ -208,6 +212,7 @@ __all__ = [
     "GROUP_ROLES",
     "ROLE_LEADER",
     "ROLE_MEMBER",
+    "SupportRequest",
     "Resource",
     "ResourceSession",
     "ResourceTag",

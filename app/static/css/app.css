@@ -1200,6 +1200,44 @@ ul.policy span{color:var(--muted)}
 .dangerbox form{margin-top:12px;display:grid;gap:10px;justify-items:start}
 .btn[disabled]{opacity:.45;cursor:default}
 
+/* Pastoral requests on the staff side: the dashboard block and the card on
+   somebody's own page. */
+.asksub{font-size:13.5px;font-weight:600;margin:0 0 4px}
+.asksplit{border:none;border-top:1px solid var(--line-soft);margin:18px 0 14px}
+.flaglist.asks .pn{font-weight:600}
+.askrow{padding:14px 0;border-top:1px solid var(--line-soft)}
+.askrow:first-of-type{border-top:none}
+.askrow.done{opacity:.72}
+.askmeta{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-bottom:8px}
+/* Their own words, wrapped as they typed them. */
+.askbody{
+  white-space:pre-wrap;font-size:13.5px;line-height:1.55;
+  margin:0 0 12px;max-width:68ch;color:var(--ink);
+}
+
+/* Asking for a pastor. The link on Home, the crisis card above the form,
+   and the chips inside it. */
+.asklink{display:block}
+.asklink .mtitle{display:block}
+.asklink .mnote{display:block;margin-top:4px}
+.mcard.crisis{border-color:var(--flag);background:var(--flag-bg)}
+.mcard.crisis .mnote{color:var(--ink);margin:0}
+.mback{
+  display:inline-block;font-size:12.5px;color:var(--accent);
+  font-weight:500;margin-bottom:6px;
+}
+.pickrow{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.pickchip{
+  display:inline-flex;align-items:center;gap:7px;cursor:pointer;
+  border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13.5px;
+  -webkit-tap-highlight-color:transparent;
+}
+.pickchip:has(input:checked){
+  background:var(--mist);border-color:var(--accent);font-weight:600;
+}
+.pickchip input{margin:0}
+.btn.wide{width:100%;margin-top:12px;padding:13px}
+
 /* Member reading list: the same covers staff pick. */
 .mcovered{overflow:hidden;padding-top:0}
 .mcover{margin:0 -16px 13px;height:88px;display:grid;place-items:center}

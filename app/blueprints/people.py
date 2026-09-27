@@ -40,6 +40,7 @@ from app.models import (
     ExternalGift,
     ExternalRecurringGift,
     Household,
+    SupportRequest,
     NextStep,
     OutboxMessage,
     Person,
@@ -170,6 +171,9 @@ def detail(person_id: int):
         ).all(),
         automation=AUTOMATION,
         household_members=household_members,
+        support_requests=db.session.scalars(
+            SupportRequest.for_person(g.church.id, person.id)
+        ).all(),
         households=db.session.scalars(
             db.select(Household)
             .where(Household.church_id == g.church.id)
@@ -284,6 +288,77 @@ def stuck_list():
         window=CONTACT_WINDOW_DAYS,
         active="people",
     )
+
+
+@bp.get("/support/")
+@login_required
+@min_role("leader")
+def support_list():
+    """Every open request, oldest first. The dashboard shows the first five."""
+    from app.models import SupportRequest
+
+    return render_template(
+        "people/support.html",
+        church=g.church,
+        content=PEOPLE,
+        requests=db.session.scalars(
+            SupportRequest.open_for_church(g.church.id)
+        ).all(),
+        active="people",
+    )
+
+
+@bp.post("/support/<int:request_id>/answered/")
+@login_required
+@min_role("leader")
+def answer_support(request_id: int):
+    """Somebody dealt with it, and their name goes on that.
+
+    Not deleted, and not closed by the clock. The record of who asked and
+    who replied is what a church needs if it is ever asked whether somebody
+    was looked after.
+    """
+    from app.models import SupportRequest
+
+    ask = SupportRequest.get_for_church(g.church.id, request_id)
+    if ask is None:
+        abort(404)
+
+    back = redirect(
+        request.form.get("back")
+        or url_for("people.detail", person_id=ask.person_id, _anchor="support")
+    )
+    if not ask.answer(current_user):
+        flash(PEOPLE["support_already"].format(name=ask.answered_by_name or "Somebody"),
+              "notice")
+        return back
+
+    PersonEvent.record(
+        ask.person,
+        KIND_CONTACT,
+        PEOPLE["support_answered_event"],
+        detail=None,
+        actor=current_user,
+    )
+    db.session.commit()
+    flash(PEOPLE["support_answered"].format(name=ask.person.first_name), "notice")
+    return back
+
+
+@bp.post("/support/<int:request_id>/reopen/")
+@login_required
+@min_role("leader")
+def reopen_support(request_id: int):
+    """Closed too soon. It happens, and it should not need a database."""
+    from app.models import SupportRequest
+
+    ask = SupportRequest.get_for_church(g.church.id, request_id)
+    if ask is None:
+        abort(404)
+    ask.reopen()
+    db.session.commit()
+    flash(PEOPLE["support_reopened"], "notice")
+    return redirect(url_for("people.detail", person_id=ask.person_id, _anchor="support"))
 
 
 @bp.post("/<int:person_id>/contact/")

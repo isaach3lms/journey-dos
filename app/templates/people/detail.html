@@ -94,6 +94,53 @@
   </div>
 </section>
 
+{% if support_requests %}
+<section class="card" id="support">
+  <div class="hd">
+    <h2>{{ content.support_heading }}</h2>
+    <div class="spacer"></div>
+    {% if support_requests[0].is_open %}
+      <span class="pill pending plain">{{ content.support_open_pill }}</span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    <p class="muted small">{{ content.support_private }}</p>
+    {% for ask in support_requests %}
+      <article class="askrow {% if not ask.is_open %}done{% endif %}">
+        <div class="askmeta">
+          <span class="tag">{{ ask.kind_label }}</span>
+          <span class="muted small">
+            {{ content.support_asked_on.format(
+                 when=ask.created_at|church_time("%B %-d at %-I:%M%p")) }}
+            &middot; {{ content.support_contact_line.format(contact=ask.contact_label|lower) }}
+          </span>
+        </div>
+        {# Their own words, kept as they typed them, line breaks and all. #}
+        <p class="askbody">{{ ask.message }}</p>
+        {% if ask.is_open %}
+          <form method="post" class="inline"
+                action="{{ url_for('people.answer_support', request_id=ask.id) }}">
+            {{ csrf_field() }}
+            <button class="btn" type="submit">{{ content.support_answer }}</button>
+          </form>
+        {% else %}
+          <p class="muted small">
+            {{ content.support_answered_by.format(
+                 name=ask.answered_by_name or "Somebody",
+                 when=ask.answered_at|church_time("%B %-d")) }}
+          </p>
+          <form method="post" class="inline"
+                action="{{ url_for('people.reopen_support', request_id=ask.id) }}">
+            {{ csrf_field() }}
+            <button class="btn ghostbtn tiny" type="submit">{{ content.support_reopen }}</button>
+          </form>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="card">
   <div class="hd"><h2>{{ content.move_heading }}</h2></div>
   <div class="bd">

@@ -118,6 +118,137 @@ def home():
     )
 
 
+@bp.get("/support/")
+@login_required
+def support():
+    """The form. Deliberately its own screen rather than a card on Home.
+
+    Somebody opening this is not browsing, and a screen of its own is what
+    lets the emergency numbers sit above the box rather than beside it.
+    """
+    person = current_user.person
+    if person is None:
+        flash(MEMBER["support_no_person"], "error")
+        return redirect(url_for("member.home"))
+
+    from app.models import SupportRequest
+    from app.models.support import CONTACT_LABELS, KIND_LABELS, SUPPORT_KINDS
+
+    return render_template(
+        "member/support.html",
+        kinds=[(code, KIND_LABELS[code]) for code in SUPPORT_KINDS],
+        contacts=list(CONTACT_LABELS.items()),
+        existing=SupportRequest.open_for_person(g.church.id, person.id),
+        tab="home",
+        **_base_context(person),
+    )
+
+
+@bp.post("/support/")
+@login_required
+def send_support():
+    """File it, tell the pastors it exists, and say so plainly.
+
+    What they wrote never goes in the email. Staff are told there is a
+    request and given a link into the app: a copy of somebody's worst week
+    sitting in forty inboxes cannot be taken back.
+    """
+    from app.models import SupportRequest
+    from app.models.support import (
+        CONTACT_CHOICES, CONTACT_EITHER, KIND_TALK, MAX_MESSAGE_LENGTH, SUPPORT_KINDS,
+    )
+
+    person = current_user.person
+    if person is None:
+        flash(MEMBER["support_no_person"], "error")
+        return redirect(url_for("member.home"))
+
+    message = (request.form.get("message") or "").strip()
+    if not message:
+        flash(MEMBER["support_message_required"], "error")
+        return redirect(url_for("member.support"))
+
+    kind = (request.form.get("kind") or "").strip()
+    if kind not in SUPPORT_KINDS:
+        kind = KIND_TALK
+    contact = (request.form.get("contact_pref") or "").strip()
+    if contact not in CONTACT_CHOICES:
+        contact = CONTACT_EITHER
+
+    existing = SupportRequest.open_for_person(g.church.id, person.id)
+    if existing is not None:
+        # Adding to an open ask is the same conversation, not a second one.
+        # Two rows would have two pastors calling about one thing.
+        existing.message = f"{existing.message}\n\n---\n{message}"[:MAX_MESSAGE_LENGTH]
+        PersonEvent.record(
+            person, KIND_NOTE, MEMBER["support_event_added"],
+            detail=None, actor=None,
+        )
+        db.session.commit()
+        flash(MEMBER["support_added"], "notice")
+        return redirect(url_for("member.home"))
+
+    ask = SupportRequest(
+        church_id=g.church.id,
+        person_id=person.id,
+        kind=kind,
+        message=message[:MAX_MESSAGE_LENGTH],
+        contact_pref=contact,
+    )
+    db.session.add(ask)
+    db.session.flush()
+
+    # On their record, so a pastor opening their profile sees it in the
+    # timeline. The words are not repeated here: they are on the request.
+    PersonEvent.record(
+        person,
+        KIND_NOTE,
+        MEMBER["support_event"].format(kind=ask.kind_label),
+        detail=None,
+        actor=None,
+    )
+    _alert_pastors(ask, person)
+    db.session.commit()
+
+    flash(MEMBER["support_sent"], "notice")
+    return redirect(url_for("member.home"))
+
+
+def _alert_pastors(ask, person) -> None:
+    """Email staff that a request exists. Never what it says. Caller commits."""
+    from app.mail import NotQueued, queue
+    from app.models import User
+
+    link = url_for("people.detail", person_id=person.id, _external=True,
+                   _scheme="https" if request.is_secure else "http")
+    staff = db.session.scalars(
+        db.select(User).where(
+            User.church_id == g.church.id,
+            User.role == "staff",
+            User.is_active_account.is_(True),
+        )
+    ).all()
+    for user in staff:
+        try:
+            queue(
+                church_id=g.church.id,
+                category="pastoral",
+                subject=MEMBER["support_alert_subject"].format(name=person.full_name),
+                body_text=MEMBER["support_alert_body"].format(
+                    name=person.full_name,
+                    kind=ask.kind_label.lower(),
+                    contact=ask.contact_label.lower(),
+                    link=link,
+                    church=g.church.name,
+                ),
+                to_email=user.email,
+                to_name=user.name,
+                dedupe_key=f"support:{ask.id}:{user.id}",
+            )
+        except NotQueued:
+            continue
+
+
 @bp.get("/you/")
 @login_required
 def you():

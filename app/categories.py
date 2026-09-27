@@ -52,6 +52,12 @@ CATEGORIES: tuple[Category, ...] = (
         is_transactional=True,
     ),
     Category(
+        "pastoral",
+        "Pastoral requests",
+        "Sent to staff when somebody asks for pastoral support. These always send.",
+        is_transactional=True,
+    ),
+    Category(
         "giving_receipt",
         "Giving receipts",
         "Receipts and year-end statements. These always send.",

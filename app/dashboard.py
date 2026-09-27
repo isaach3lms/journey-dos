@@ -387,7 +387,7 @@ def automation_rows(church_id: int, days: int = 7) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def build(church) -> dict:
-    from app.models import Person
+    from app.models import Person, SupportRequest
     from app.stages import stages_for
     from app.timeutil import now_local
 
@@ -413,6 +413,13 @@ def build(church) -> dict:
         # one: see Person.stage_counts.
         "kids_count": Person.child_count(church.id),
         "stuck_count": sum(stuck.values()),
+        # Somebody asking for a pastor is the one follow-up that is not
+        # inferred from a rule. It goes above the flags, because a person
+        # who asked is more urgent than a person a rule noticed.
+        "support_open": db.session.scalars(
+            SupportRequest.open_for_church(church.id, limit=5)
+        ).all(),
+        "support_count": SupportRequest.open_count(church.id),
         "steps_7d": next_steps_done_since(church.id, 7),
         "unowned_count": Person.unowned_count(church.id),
         "tiles": [

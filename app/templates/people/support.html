@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ content.support_list_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.support_list_title }}{% endblock %}
+{% block subheading %}{{ content.support_list_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('shell.index') }}">{{ content.title }}</a>
+
+<section class="card">
+  <div class="bd">
+    {% if requests %}
+      <p class="muted small">{{ content.support_private }}</p>
+      <ul class="flaglist asks">
+        {% for ask in requests %}
+          <li>
+            <a href="{{ url_for('people.detail', person_id=ask.person_id) }}#support">
+              <span class="av">{{ ask.person.initials }}</span>
+              <span class="fl">
+                <span class="pn">{{ ask.person.full_name }} &middot; {{ ask.kind_label }}</span>
+                <span class="pe">{{ ask.summary_line }}</span>
+              </span>
+              <span class="pill plain {% if ask.is_urgent %}pending{% endif %}">
+                {{ ask.created_at|church_time("%b %-d") }}
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>{{ content.support_list_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

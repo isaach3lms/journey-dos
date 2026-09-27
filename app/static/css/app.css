@@ -1177,7 +1177,27 @@ ul.policy span{color:var(--muted)}
 .addsession > summary::-webkit-details-marker{display:none}
 .addsession[open] > summary{margin-bottom:10px}
 .addsession .sessform{padding:0}
-.btn.danger{color:var(--flag)}
+/* Red text on the green button was unreadable. A destructive action reads
+   as an outline, not as the primary thing on the screen. */
+.btn.danger{
+  background:var(--white);color:var(--flag);
+  border:1px solid var(--flag);box-shadow:none;
+}
+.btn.danger:hover{background:var(--flag-bg)}
+
+/* Deleting, folded away: a delete button next to Save is one somebody
+   eventually hits by accident. */
+.dangerbox{
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--line-soft);
+}
+.dangerbox > summary{
+  cursor:pointer;list-style:none;
+  font-size:12.5px;font-weight:600;color:var(--flag);
+}
+.dangerbox > summary::-webkit-details-marker{display:none}
+.dangerbox > summary:hover{text-decoration:underline}
+.dangerbox p{margin:10px 0 0}
+.dangerbox form{margin-top:12px;display:grid;gap:10px;justify-items:start}
 .btn[disabled]{opacity:.45;cursor:default}
 
 /* Member reading list: the same covers staff pick. */

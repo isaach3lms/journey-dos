@@ -46,6 +46,9 @@ CHILD_CHECKED_OUT = "child_checked_out"
 PIN_ROTATED = "pin_rotated"
 SEQUENCE_STOPPED = "sequence_stopped"
 PERSON_ARCHIVED = "person_archived"
+# A service and its running order are gone for good, so the log is the
+# only thing left that says the Sunday ever existed.
+SERVICE_DELETED = "service_deleted"
 
 ACTIONS = (
     SIGN_IN,
@@ -64,6 +67,7 @@ ACTIONS = (
     PIN_ROTATED,
     SEQUENCE_STOPPED,
     PERSON_ARCHIVED,
+    SERVICE_DELETED,
 )
 
 ACTION_LABELS = {
@@ -83,6 +87,7 @@ ACTION_LABELS = {
     PIN_ROTATED: "Check-in code rotated",
     SEQUENCE_STOPPED: "Sequence stopped by staff",
     PERSON_ARCHIVED: "Person archived",
+    SERVICE_DELETED: "Service deleted",
 }
 
 # How long entries are kept. Long enough to answer a question about last

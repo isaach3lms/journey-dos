@@ -235,9 +235,12 @@ class TestTheCardOnThePlan:
                         starts_at=utcnow() + timedelta(days=3))
         db.session.add(empty)
         db.session.commit()
-        page = staff.get(f"/services/{empty.id}/", headers=H).data
-        assert b"a copy would be empty too" in page
-        assert b'name="date"' not in page
+        page = staff.get(f"/services/{empty.id}/", headers=H).data.decode()
+        assert "a copy would be empty too" in page
+        # The name and date card has a date field of its own, so look inside
+        # the clone card rather than at the whole page.
+        card = page[page.index('id="clone"'):]
+        assert 'name="date"' not in card[:card.index("</section>")]
 
     def test_it_lands_on_the_copy(self, db, staff, service):
         """Straight into the new plan, which is where the next edit happens."""

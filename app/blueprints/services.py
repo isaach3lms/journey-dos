@@ -23,6 +23,7 @@ from flask import (
 )
 from flask_login import current_user, login_required
 
+from app.audit import record as audit_record
 from app.content import SERVICES
 from app.extensions import db
 from app.mail import NotQueued, queue
@@ -130,6 +131,8 @@ def plan(service_id: int):
 
     return render_template(
         "services/plan.html",
+        service_date=local.date().isoformat(),
+        service_time=local.strftime("%H:%M"),
         clone_default_date=next_week.date().isoformat(),
         clone_default_time=local.strftime("%H:%M"),
         upcoming=upcoming,
@@ -179,6 +182,111 @@ def save_headcount(service_id: int):
     db.session.commit()
     flash(SERVICES["headcount_saved"], "notice")
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+
+
+@bp.post("/<int:service_id>/details/")
+@login_required
+@min_role("leader")
+def save_details(service_id: int):
+    """Rename a service, or move it to another date and time.
+
+    Works the same before and after publishing. A typo in a live plan should
+    take one save to fix, not an unpublish, an edit and a republish during
+    which the team loses it. Moving a published service is a real change, so
+    the confirmation says the team can already see it.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+    back = redirect(url_for("services.plan", service_id=service.id, _anchor="details"))
+
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        flash(SERVICES["details_name_required"], "error")
+        return back
+
+    date_raw = (request.form.get("date") or "").strip()
+    time_raw = (request.form.get("time") or "").strip()
+    if not date_raw:
+        flash(SERVICES["details_date_required"], "error")
+        return back
+    try:
+        naive = datetime.fromisoformat(f"{date_raw}T{time_raw or '00:00'}")
+    except ValueError:
+        flash(SERVICES["bad_time"], "error")
+        return back
+
+    # To the minute, because the form only offers minutes. Comparing the raw
+    # timestamps made "save without touching anything" report a move, since a
+    # service created by the clock carries seconds the form cannot show.
+    starts_at = from_local(naive, g.church)
+    moved = starts_at.replace(second=0, microsecond=0) != service.starts_at.replace(
+        second=0, microsecond=0
+    )
+    renamed = name[:160] != service.name
+
+    service.name = name[:160]
+    service.starts_at = starts_at
+    db.session.commit()
+
+    if moved and service.is_published:
+        key = "details_saved_moved_live"
+    elif moved:
+        key = "details_saved_moved"
+    elif renamed:
+        key = "details_saved_name"
+    else:
+        key = "details_saved"
+    flash(SERVICES[key].format(
+        name=service.name,
+        when=format_local(service.starts_at, g.church, "%B %-d at %-I:%M%p"),
+    ), "notice")
+    return back
+
+
+@bp.post("/<int:service_id>/delete/")
+@login_required
+@min_role("leader")
+def delete(service_id: int):
+    """Delete a service and everything on it.
+
+    Draft or published, because a Sunday entered twice is the usual reason
+    and the duplicate is usually the published one. The running order, the
+    roles and who was asked all go with it, which is why the tick box is
+    required rather than a plain button.
+
+    Not recoverable. The audit entry is the only thing left afterwards, so it
+    carries the name, the date, and what was on the plan.
+    """
+    from app.models.audit import SERVICE_DELETED
+
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    if request.form.get("confirm") != "on":
+        flash(SERVICES["delete_confirm_required"], "error")
+        return redirect(url_for("services.plan", service_id=service.id, _anchor="details"))
+
+    when = format_local(service.starts_at, g.church, "%B %-d, %Y")
+    label = f"{service.name} on {when}"
+    audit_record(
+        SERVICE_DELETED,
+        f"{label} was deleted",
+        actor=current_user,
+        subject_type="service",
+        subject_id=service.id,
+        subject_label=label,
+        detail=(
+            f"Status: {service.status_label}. "
+            f"{len(service.items)} items, {len(service.assignments)} people asked."
+        ),
+    )
+    db.session.delete(service)
+    db.session.commit()
+
+    flash(SERVICES["deleted"].format(name=service.name, when=when), "notice")
+    return redirect(url_for("services.index"))
 
 
 @bp.post("/<int:service_id>/clone/")

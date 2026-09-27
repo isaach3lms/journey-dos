@@ -209,6 +209,46 @@
   </div>
 
   <div>
+    <section class="card" id="details">
+      <div class="hd"><h2>{{ content.details_heading }}</h2></div>
+      <div class="bd">
+        <p class="muted small">{{ content.details_hint }}</p>
+        <form method="post" class="stackform"
+              action="{{ url_for('services.save_details', service_id=service.id) }}">
+          {{ csrf_field() }}
+          <label class="flabel" for="svc-name">{{ content.details_name }}</label>
+          <input class="input" id="svc-name" type="text" name="name" required
+                 maxlength="160" value="{{ service.name }}">
+          <label class="flabel" for="svc-date">{{ content.details_date }}</label>
+          <input class="input" id="svc-date" type="date" name="date" required
+                 value="{{ service_date }}">
+          <label class="flabel" for="svc-time">{{ content.details_time }}</label>
+          <input class="input" id="svc-time" type="time" name="time" required
+                 value="{{ service_time }}">
+          <button class="btn" type="submit">{{ content.details_save }}</button>
+        </form>
+
+        {# Folded away. A delete button sitting next to Save is a delete
+           button somebody eventually hits by accident. #}
+        <details class="dangerbox">
+          <summary>{{ content.delete_heading }}</summary>
+          <p class="muted small">{{ content.delete_hint }}</p>
+          {% if service.is_published %}
+            <p class="muted small"><b>{{ content.delete_hint_live }}</b></p>
+          {% endif %}
+          <form method="post"
+                action="{{ url_for('services.delete', service_id=service.id) }}">
+            {{ csrf_field() }}
+            <label class="check small">
+              <input type="checkbox" name="confirm">
+              <span>{{ content.delete_confirm }}</span>
+            </label>
+            <button class="btn danger" type="submit">{{ content.delete_button }}</button>
+          </form>
+        </details>
+      </div>
+    </section>
+
     <section class="card" id="clone">
       <div class="hd"><h2>{{ content.clone_heading }}</h2></div>
       <div class="bd">

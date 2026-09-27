@@ -1353,6 +1353,35 @@ SERVICES = {
     "unpublished": "{name} is back to a draft. The team no longer sees the plan.",
     "publish_empty": "Add items to the running order before publishing it.",
     "member_plan_pending": "The running order is still being put together. It shows here once it is published.",
+    # ---- Name, date, and deleting ------------------------------------------
+    "details_heading": "Name and date",
+    "details_hint": (
+        "Fixing a typo or moving a Sunday takes one save, published or not. "
+        "The team sees the change where they already are."
+    ),
+    "details_name": "What this service is called",
+    "details_date": "Date",
+    "details_time": "Start time",
+    "details_save": "Save",
+    "details_name_required": "A service needs a name.",
+    "details_date_required": "A service needs a date.",
+    "details_saved": "Saved.",
+    "details_saved_name": "Renamed to {name}.",
+    "details_saved_moved": "Moved to {when}.",
+    "details_saved_moved_live": "Moved to {when}. This service is published, so the team sees the new time now.",
+
+    "delete_heading": "Delete this service",
+    "delete_hint": (
+        "The running order, the roles, and who was asked go with it. There "
+        "is no undo. If people have already been asked, tell them: deleting "
+        "this does not send anything."
+    ),
+    "delete_hint_live": "This service is published, so the team can see it right now.",
+    "delete_confirm": "Yes, delete it",
+    "delete_button": "Delete",
+    "delete_confirm_required": "Tick the box first. Deleting a service cannot be undone.",
+    "deleted": "{name} on {when} is gone.",
+
     # ---- Clone ------------------------------------------------------------
     # This replaced "Save as a template". A service type still carries a
     # running order for new services; cloning is the shortcut staff actually

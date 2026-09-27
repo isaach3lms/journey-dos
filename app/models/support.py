@@ -195,6 +195,30 @@ class SupportRequest(TenantScoped, TimestampMixin, db.Model):
         ) or 0)
 
     @classmethod
+    def answered_for_church(cls, church_id: int, limit: int = 100):
+        """What has already been dealt with, most recently answered first.
+
+        Kept rather than cleared: a church asked what somebody asked for last
+        spring is a question the log has to be able to answer.
+        """
+        return (
+            db.select(cls)
+            .where(cls.church_id == church_id, cls.status == STATUS_ANSWERED)
+            .order_by(cls.answered_at.desc().nullslast(), cls.created_at.desc())
+            .limit(limit)
+        )
+
+    @classmethod
+    def answered_count(cls, church_id: int) -> int:
+        from sqlalchemy import func
+
+        return int(db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id, cls.status == STATUS_ANSWERED
+            )
+        ) or 0)
+
+    @classmethod
     def for_person(cls, church_id: int, person_id: int):
         return (
             db.select(cls)

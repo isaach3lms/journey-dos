@@ -173,6 +173,7 @@ DASHBOARD = {
     "support_waiting_one": "Waiting 1 day",
     "support_waiting": "Waiting {days} days",
     "support_see_all": "All open requests",
+    "support_previous": "Previous requests",
 
     "footer_stuck": "people flagged as stuck too long",
     "footer_steps": "next steps taken in the last 7 days",
@@ -480,9 +481,14 @@ PEOPLE = {
     "support_already": "{name} already marked this dealt with.",
     "support_reopened": "Back on the dashboard.",
     "support_none": "Nothing asked for yet.",
-    "support_list_title": "Open pastoral requests",
-    "support_list_subtitle": "Oldest first. Urgent at the top.",
+    "support_list_title": "Pastoral requests",
+    "support_list_subtitle": "Who is waiting, and what has already been dealt with.",
     "support_list_empty": "Nobody is waiting on a pastor right now.",
+    "support_list_waiting": "Waiting",
+    "support_list_done": "Already dealt with",
+    "support_list_done_none": "Nothing has been marked dealt with yet.",
+    "support_list_done_by": "Dealt with by {name} on {when}",
+    "support_list_count": "Showing the last {count}.",
     "support_private": (
         "What somebody writes here is read by staff and leaders on this "
         "screen only. It is never emailed and never posted."

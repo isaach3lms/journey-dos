@@ -1205,6 +1205,7 @@ ul.policy span{color:var(--muted)}
 .asksub{font-size:13.5px;font-weight:600;margin:0 0 4px}
 .asksplit{border:none;border-top:1px solid var(--line-soft);margin:18px 0 14px}
 .flaglist.asks .pn{font-weight:600}
+.askmore{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px}
 .askrow{padding:14px 0;border-top:1px solid var(--line-soft)}
 .askrow:first-of-type{border-top:none}
 .askrow.done{opacity:.72}

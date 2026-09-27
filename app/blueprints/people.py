@@ -304,6 +304,10 @@ def support_list():
         requests=db.session.scalars(
             SupportRequest.open_for_church(g.church.id)
         ).all(),
+        answered=db.session.scalars(
+            SupportRequest.answered_for_church(g.church.id)
+        ).all(),
+        answered_count=SupportRequest.answered_count(g.church.id),
         active="people",
     )
 

@@ -3,31 +3,63 @@
 {% block heading %}{{ content.support_list_title }}{% endblock %}
 {% block subheading %}{{ content.support_list_subtitle }}{% endblock %}
 
+{% macro askrow(ask, done=false) %}
+  <li>
+    <a href="{{ url_for('people.detail', person_id=ask.person_id) }}#support">
+      <span class="av">{{ ask.person.initials }}</span>
+      <span class="fl">
+        <span class="pn">{{ ask.person.full_name }} &middot; {{ ask.kind_label }}</span>
+        {# The first line only, here as on the dashboard. The rest is on
+           their own page. #}
+        <span class="pe">{{ ask.summary_line }}</span>
+        {% if done %}
+          <span class="pe">
+            {{ content.support_list_done_by.format(
+                 name=ask.answered_by_name or "somebody",
+                 when=ask.answered_at|church_time("%B %-d, %Y") if ask.answered_at else "") }}
+          </span>
+        {% endif %}
+      </span>
+      <span class="pill plain {% if ask.is_urgent and not done %}pending{% endif %}">
+        {{ ask.created_at|church_time("%b %-d") }}
+      </span>
+    </a>
+  </li>
+{% endmacro %}
+
 {% block content %}
 <a class="ghost back" href="{{ url_for('shell.index') }}">{{ content.title }}</a>
 
 <section class="card">
+  <div class="hd"><h2>{{ content.support_list_waiting }}</h2></div>
   <div class="bd">
     {% if requests %}
       <p class="muted small">{{ content.support_private }}</p>
       <ul class="flaglist asks">
-        {% for ask in requests %}
-          <li>
-            <a href="{{ url_for('people.detail', person_id=ask.person_id) }}#support">
-              <span class="av">{{ ask.person.initials }}</span>
-              <span class="fl">
-                <span class="pn">{{ ask.person.full_name }} &middot; {{ ask.kind_label }}</span>
-                <span class="pe">{{ ask.summary_line }}</span>
-              </span>
-              <span class="pill plain {% if ask.is_urgent %}pending{% endif %}">
-                {{ ask.created_at|church_time("%b %-d") }}
-              </span>
-            </a>
-          </li>
-        {% endfor %}
+        {% for ask in requests %}{{ askrow(ask) }}{% endfor %}
       </ul>
     {% else %}
       <p>{{ content.support_list_empty }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card" id="done">
+  <div class="hd">
+    <h2>{{ content.support_list_done }}</h2>
+    <div class="spacer"></div>
+    {% if answered_count %}<span class="pill plain">{{ answered_count }}</span>{% endif %}
+  </div>
+  <div class="bd">
+    {% if answered %}
+      <ul class="flaglist asks">
+        {% for ask in answered %}{{ askrow(ask, done=true) }}{% endfor %}
+      </ul>
+      {% if answered_count > answered|length %}
+        <p class="muted small">{{ content.support_list_count.format(count=answered|length) }}</p>
+      {% endif %}
+    {% else %}
+      <p class="muted small">{{ content.support_list_done_none }}</p>
     {% endif %}
   </div>
 </section>

@@ -372,13 +372,16 @@ class TestTheOpenList:
         page = client.get("/people/support/", headers=H).data
         assert b"Nobody is waiting on a pastor right now." in page
 
-    def test_answered_ones_are_not_on_it(self, db, person_record, client, sign_in):
+    def test_answered_ones_are_not_in_the_waiting_list(self, db, person_record,
+                                                       client, sign_in):
         row = a_request(db, person_record)
         row.answer(None)
         db.session.commit()
         sign_in("pastor@journeychurchsemo.com")
-        page = client.get("/people/support/", headers=H).data
-        assert b"Alicia Romero" not in page
+        page = client.get("/people/support/", headers=H).data.decode()
+        waiting = page[page.index("Waiting"):page.index('id="done"')]
+        assert "Alicia Romero" not in waiting
+        assert "Nobody is waiting on a pastor right now." in waiting
 
 
 class TestWhoCanSeeIt:
@@ -471,3 +474,111 @@ class TestHowLongTheyHaveWaited:
         page = client.get("/", headers=H).data.decode()
         assert "-1 days" not in page
         assert "Asked today" in page
+
+
+class TestPreviousRequests:
+    """What was asked before. A church asked in March what somebody asked for
+    last spring is a question the log has to be able to answer."""
+
+    @pytest.fixture
+    def staff(self, db, person_record, client, sign_in):
+        sign_in("pastor@journeychurchsemo.com")
+        return client
+
+    def history(self, staff):
+        page = staff.get("/people/support/", headers=H).data.decode()
+        return page[page.index('id="done"'):]
+
+    def test_an_answered_request_is_kept_and_listed(self, db, person_record, staff):
+        row = a_request(db, person_record)
+        staff.post(f"/people/support/{row.id}/answered/", headers=H)
+        done = self.history(staff)
+        assert "Alicia Romero" in done
+        assert "Dealt with by Pastor Reed" in done
+
+    def test_it_says_when_it_was_dealt_with(self, db, person_record, staff):
+        row = a_request(db, person_record)
+        staff.post(f"/people/support/{row.id}/answered/", headers=H)
+        assert str(utcnow().year) in self.history(staff)
+
+    def test_only_the_first_line_shows_here_too(self, db, person_record, staff):
+        row = a_request(db, person_record,
+                        message="Line one.\nSomething much more private.")
+        staff.post(f"/people/support/{row.id}/answered/", headers=H)
+        done = self.history(staff)
+        assert "Line one." in done
+        assert "Something much more private." not in done
+
+    def test_the_whole_thing_is_still_on_their_page(self, db, person_record, staff):
+        row = a_request(db, person_record)
+        staff.post(f"/people/support/{row.id}/answered/", headers=H)
+        page = staff.get(f"/people/{person_record.id}/", headers=H).data.decode()
+        assert SECRET in page
+
+    def test_nothing_answered_yet_says_so(self, db, person_record, staff):
+        assert "Nothing has been marked dealt with yet." in self.history(staff)
+
+    def test_open_ones_are_not_in_the_history(self, db, person_record, staff):
+        a_request(db, person_record)
+        assert "Alicia Romero" not in self.history(staff)
+
+    def test_most_recently_answered_first(self, db, person_record, staff):
+        church = journey(db)
+        other = Person(church_id=church.id, first_name="Ben", last_name="Carter",
+                       stage="member")
+        db.session.add(other)
+        db.session.commit()
+
+        first = a_request(db, person_record, message="Older ask")
+        second = a_request(db, other, message="Newer ask")
+        staff.post(f"/people/support/{first.id}/answered/", headers=H)
+        db.session.refresh(first)
+        first.answered_at = utcnow() - timedelta(days=30)
+        db.session.commit()
+        staff.post(f"/people/support/{second.id}/answered/", headers=H)
+
+        done = self.history(staff)
+        assert done.index("Ben Carter") < done.index("Alicia Romero")
+
+    def test_another_churchs_history_is_not_here(self, db, person_record, staff):
+        other = db.session.scalar(db.select(Church).where(Church.slug == "riverbend"))
+        theirs = Person(church_id=other.id, first_name="Someone", last_name="Else",
+                        stage="member")
+        db.session.add(theirs)
+        db.session.flush()
+        row = SupportRequest(church_id=other.id, person_id=theirs.id, kind="talk",
+                             message="Private to them", contact_pref="either")
+        row.answer(None)
+        db.session.add(row)
+        db.session.commit()
+        assert "Private to them" not in self.history(staff)
+
+    def test_a_member_cannot_read_the_history(self, db, client, alicia):
+        assert client.get("/people/support/", headers=H).status_code == 403
+
+
+class TestTheButtonOnTheDashboard:
+    def test_it_is_there_when_somebody_is_waiting(self, db, person_record, client,
+                                                  sign_in):
+        a_request(db, person_record)
+        sign_in("pastor@journeychurchsemo.com")
+        page = client.get("/", headers=H).data.decode()
+        assert "Previous requests" in page
+        assert 'href="/people/support/#done"' in page
+
+    def test_it_is_there_when_nobody_is_waiting(self, db, client, sign_in):
+        """A quiet week is exactly when somebody goes looking for what was
+        asked last month."""
+        sign_in("pastor@journeychurchsemo.com")
+        page = client.get("/", headers=H).data.decode()
+        assert "Previous requests" in page
+        assert 'href="/people/support/#done"' in page
+
+    def test_it_lands_on_the_history(self, db, person_record, client, sign_in):
+        row = a_request(db, person_record)
+        row.answer(None)
+        db.session.commit()
+        sign_in("pastor@journeychurchsemo.com")
+        page = client.get("/people/support/", headers=H).data.decode()
+        assert 'id="done"' in page
+        assert page.index('id="done"') > page.index("Waiting")

@@ -365,6 +365,55 @@ def reopen_support(request_id: int):
     return redirect(url_for("people.detail", person_id=ask.person_id, _anchor="support"))
 
 
+@bp.post("/<int:person_id>/household/code/")
+@login_required
+@min_role("leader")
+def household_code(person_id: int):
+    """Give this family a check-in code, or replace the one they have.
+
+    Replacing is the one that matters: a custody situation, or a family who
+    believe somebody else knows their code. The old one stops working the
+    moment this returns, which is the point, so it is audited with the name
+    of whoever did it.
+    """
+    from app.models.audit import PIN_ROTATED
+
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+    back = redirect(url_for("people.detail", person_id=person.id, _anchor="household"))
+
+    home = person.household
+    if home is None:
+        flash(PEOPLE["code_no_household"], "error")
+        return back
+
+    had_one = bool(home.checkin_pin)
+    code = home.regenerate_checkin_pin() if had_one else home.ensure_checkin_pin()
+
+    if had_one:
+        # The code itself is deliberately not in the audit entry. The log is
+        # designed to be read, kept and exported; a working code in it is
+        # worse than no log.
+        audit_record(
+            PIN_ROTATED,
+            PEOPLE["code_audit"].format(household=home.name),
+            actor=current_user,
+            subject_type="household",
+            subject_id=home.id,
+            subject_label=home.name,
+        )
+    db.session.commit()
+
+    flash(
+        (PEOPLE["code_rotated"] if had_one else PEOPLE["code_created"]).format(
+            household=home.name, code=code
+        ),
+        "notice",
+    )
+    return back
+
+
 @bp.post("/<int:person_id>/contact/")
 @login_required
 @min_role("leader")

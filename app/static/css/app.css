@@ -1200,6 +1200,13 @@ ul.policy span{color:var(--muted)}
 .dangerbox form{margin-top:12px;display:grid;gap:10px;justify-items:start}
 .btn[disabled]{opacity:.45;cursor:default}
 
+/* A family's check-in code, on their person page. Big enough to read out
+   over a desk. */
+.codeline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:9px}
+.codeline .mlbl{margin:0}
+.codeline .code{font-size:17px;letter-spacing:.14em;color:var(--deep)}
+.codeform{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+
 /* A card that folds. The summary is styled to match a card header exactly,
    so a closed one reads as a heading rather than as a broken card. */
 .foldcard{padding:0}

@@ -35,7 +35,7 @@
       <div><dt>{{ content.contact }}</dt>
         <dd>{{ person.email or content.no_email }}<br>
             <span class="muted">{{ person.phone or content.no_phone }}</span></dd></div>
-      <div><dt>{{ content.household }}</dt>
+      <div id="household"><dt>{{ content.household }}</dt>
         <dd>
           {% if person.household %}
             {{ person.household.name }}
@@ -48,6 +48,20 @@
             {% else %}
               <br><span class="muted">{{ content.household_alone }}</span>
             {% endif %}
+
+            <div class="codeline">
+              {% if person.household.checkin_pin %}
+                <span class="mlbl">{{ content.code_label }}</span>
+                <b class="mono code">{{ person.household.checkin_pin }}</b>
+              {% else %}
+                <span class="muted small">{{ content.code_none }}</span>
+                <form method="post" class="inline"
+                      action="{{ url_for('people.household_code', person_id=person.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.code_create }}</button>
+                </form>
+              {% endif %}
+            </div>
           {% else %}{{ content.no_household }}{% endif %}
 
           {# Closed until somebody needs it, so the snapshot stays a snapshot. #}
@@ -75,6 +89,16 @@
               <button class="btn" type="submit">{{ content.household_save }}</button>
               <p class="muted small">{{ content.household_hint }}</p>
             </form>
+
+            {% if person.household and person.household.checkin_pin %}
+              <form method="post" class="codeform"
+                    action="{{ url_for('people.household_code', person_id=person.id) }}">
+                {{ csrf_field() }}
+                <p class="muted small">{{ content.code_rotate_hint }}</p>
+                <button class="btn ghostbtn tiny" type="submit">{{ content.code_rotate }}</button>
+              </form>
+            {% endif %}
+            <p class="muted small">{{ content.code_what_it_is }}</p>
           </details>
         </dd></div>
       <div><dt>{{ content.first_seen }}</dt>

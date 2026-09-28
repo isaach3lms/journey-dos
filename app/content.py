@@ -503,6 +503,25 @@ PEOPLE = {
 
     # Linking somebody to a family. The duplicate-profile fix: put the second
     # record's family on the first, then archive the second.
+    # ---- The family's check-in code -----------------------------------------
+    # Staff need to read a family's code at the desk when a parent has
+    # forgotten it, and a staff member who is also a parent has one of their
+    # own. Identification, not authorization: see app/checkin_pin.py.
+    "code_label": "Check-in code",
+    "code_none": "No check-in code yet",
+    "code_create": "Create a code",
+    "code_rotate": "Replace this code",
+    "code_rotate_hint": (
+        "Use this when a family thinks somebody else knows their code, or "
+        "when custody has changed. The old code stops working straight away "
+        "and the family need to be told the new one."
+    ),
+    "code_created": "{household} now has the check-in code {code}.",
+    "code_rotated": "{household} has a new check-in code: {code}. The old one no longer works.",
+    "code_audit": "Check-in code replaced for {household}",
+    "code_no_household": "Link them to a family first. A check-in code belongs to a household, not a person.",
+    "code_what_it_is": "A family says this at the kiosk. It is not a password: it identifies the family, it does not authorise a pickup.",
+
     "household_change": "Change",
     "household_pick": "Move them into a family",
     "household_none_option": "No household",

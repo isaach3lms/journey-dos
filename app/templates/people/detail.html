@@ -94,6 +94,39 @@
   </div>
 </section>
 
+{# Everything that ever happened, folded away. It is the longest thing on
+   this screen and the least often read, so it sits right under the snapshot
+   as one line until somebody wants it. #}
+<details class="card foldcard" id="timeline">
+  <summary>
+    <h2>{{ content.timeline }}</h2>
+    <span class="spacer"></span>
+    <span class="muted small">
+      {% if events|length == 1 %}{{ content.timeline_one }}
+      {% else %}{{ content.timeline_count.format(count=events|length) }}{% endif %}
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </summary>
+  <div class="bd">
+    {% if events %}
+      <ol class="tl">
+        {% for event in events %}
+          <li>
+            <div class="tlt">{{ event.summary }}</div>
+            <div class="tld muted">
+              {{ event.occurred_at.strftime("%B %-d, %Y") }}
+              {% if event.actor_name %} &middot; {{ event.actor_name }}{% endif %}
+              &middot; {{ event.kind_label }}
+            </div>
+          </li>
+        {% endfor %}
+      </ol>
+    {% else %}
+      <p class="muted">{{ content.empty_timeline }}</p>
+    {% endif %}
+  </div>
+</details>
+
 {% if support_requests %}
 <section class="card" id="support">
   <div class="hd">
@@ -449,25 +482,4 @@
   </div>
 </section>
 
-<section class="card">
-  <div class="hd"><h2>{{ content.timeline }}</h2></div>
-  <div class="bd">
-    {% if events %}
-      <ol class="tl">
-        {% for event in events %}
-          <li>
-            <div class="tlt">{{ event.summary }}</div>
-            <div class="tld muted">
-              {{ event.occurred_at.strftime("%B %-d, %Y") }}
-              {% if event.actor_name %} &middot; {{ event.actor_name }}{% endif %}
-              &middot; {{ event.kind_label }}
-            </div>
-          </li>
-        {% endfor %}
-      </ol>
-    {% else %}
-      <p class="muted">{{ content.empty_timeline }}</p>
-    {% endif %}
-  </div>
-</section>
 {% endblock %}

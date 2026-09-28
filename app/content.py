@@ -467,6 +467,9 @@ PEOPLE = {
     "snapshot": "Snapshot",
     "timeline": "Timeline",
     # ---- Pastoral requests --------------------------------------------------
+    "timeline_count": "{count} entries",
+    "timeline_one": "1 entry",
+
     "support_heading": "Asked for pastoral support",
     "support_open_pill": "Waiting",
     "support_answered_pill": "Dealt with",

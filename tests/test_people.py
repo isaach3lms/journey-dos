@@ -551,3 +551,76 @@ class TestAHouseholdMayShareOneEmail:
             )
         )
         assert user.link_person_by_email() is True
+
+
+class TestTheTimelineIsFoldedAway:
+    """It is the longest thing on the person screen and the least often read.
+
+    It sits under the snapshot as one line until somebody wants it, rather
+    than at the bottom of a page they have to scroll past everything to reach.
+    """
+
+    H = {"Host": JOURNEY_HOST}
+
+    def page(self, staff, person):
+        return staff.get(f"/people/{person.id}/", headers=self.H).data.decode()
+
+    def test_it_is_a_fold_not_a_card(self, db, roster, staff):
+        page = self.page(staff, roster["marcus"])
+        assert '<details class="card foldcard" id="timeline">' in page
+
+    def test_it_starts_closed(self, db, roster, staff):
+        page = self.page(staff, roster["marcus"])
+        block = page[page.index('id="timeline"'):]
+        assert not block[:30].strip().startswith("open")
+
+    def test_it_sits_under_the_snapshot(self, db, roster, staff):
+        page = self.page(staff, roster["marcus"])
+        assert page.index("Snapshot") < page.index('id="timeline"')
+
+    def test_it_is_above_everything_that_was_below_it(self, db, roster, staff):
+        """Moving it up is the point: it used to be last."""
+        page = self.page(staff, roster["marcus"])
+        timeline = page.index('id="timeline"')
+        for heading in ("Move a stage", "Add a note", "Log a conversation"):
+            assert timeline < page.index(heading), heading
+
+    def test_the_entries_are_still_there(self, db, roster, staff):
+        """Closed is not absent. The browser already has them, so opening it
+        needs no request."""
+        staff.post(f"/people/{roster['marcus'].id}/note/",
+                   data={"body": "Called him on Tuesday."}, headers=self.H)
+        page = self.page(staff, roster["marcus"])
+        assert "Called him on Tuesday." in page
+
+    def test_the_summary_says_how_many(self, db, roster, staff):
+        staff.post(f"/people/{roster['marcus'].id}/note/",
+                   data={"body": "One note."}, headers=self.H)
+        page = self.page(staff, roster["marcus"])
+        start = page.index('id="timeline"')
+        summary = page[start:page.index("</summary>", start)]
+        assert "1 entry" in summary
+
+    def test_several_entries_are_not_1_entry(self, db, roster, staff):
+        for note in ("First.", "Second."):
+            staff.post(f"/people/{roster['marcus'].id}/note/",
+                       data={"body": note}, headers=self.H)
+        page = self.page(staff, roster["marcus"])
+        start = page.index('id="timeline"')
+        summary = page[start:page.index("</summary>", start)]
+        assert "2 entries" in summary
+
+    def test_a_person_with_no_history_still_reads(self, db, roster, staff):
+        page = self.page(staff, roster["chris"])
+        start = page.index('id="timeline"')
+        summary = page[start:page.index("</summary>", start)]
+        assert "0 entries" in summary
+
+    def test_the_fold_has_its_own_styling(self):
+        from pathlib import Path
+
+        css = (Path(__file__).resolve().parent.parent
+               / "app" / "static" / "css" / "app.css").read_text()
+        assert ".foldcard > summary{" in css
+        assert ".foldcard > summary::-webkit-details-marker{display:none}" in css
+        assert ".foldcard[open] > summary .chev{transform:rotate(90deg)}" in css

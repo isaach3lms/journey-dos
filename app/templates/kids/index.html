@@ -50,6 +50,11 @@
                 </span>
               </span>
               <span class="pill {% if checkin.is_present %}pending{% endif %} mono">{{ checkin.pickup_code }}</span>
+              {# Reprints the tag with the code the family already has. It
+                 never issues a new one: a fresh code would leave the parent
+                 holding one the desk no longer recognises. #}
+              <a class="btn ghostbtn tiny reprint" target="_blank" rel="noopener"
+                 href="{{ url_for('kids.tag_for_child', checkin_id=checkin.id) }}">{{ content.tags_reprint }}</a>
             </li>
           {% endfor %}
         </ul>

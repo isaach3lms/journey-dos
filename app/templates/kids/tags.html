@@ -1,0 +1,55 @@
+{# Reprinting a tag, from the staff side.
+
+   Its own page rather than part of the staff shell, because everything that
+   is not a tag has to be gone from the paper. The controls at the top are
+   marked noprint and disappear the moment the print dialog opens. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ content.tags_title }} | {{ church.name }}</title>
+{% include "partials/head_meta.html" %}
+</head>
+<body class="tagbody">
+
+<div class="tagbar noprint">
+  <a class="btn ghostbtn" href="{{ url_for('kids.index') }}">{{ content.tags_back }}</a>
+  <div class="spacer"></div>
+  <label class="tagtoggle">
+    <input type="checkbox" data-one-per-page>
+    <span>{{ content.tags_per_page }}</span>
+  </label>
+  <button class="btn" type="button" data-print>{{ content.tags_print }}</button>
+</div>
+<p class="muted small noprint tagnote">{{ content.tags_per_page_hint }}</p>
+
+{% include "kids/_tags.html" %}
+
+<script>
+/* One tag per page for a label printer, several to a sheet for plain paper.
+   Which one a church wants depends on hardware this app cannot see, so it is
+   a toggle rather than a guess, and the choice is remembered on the device
+   that made it. */
+(function () {
+  var box = document.querySelector("[data-one-per-page]");
+  var sheet = document.querySelector("[data-tagsheet]");
+  var print = document.querySelector("[data-print]");
+  if (!box || !sheet) { return; }
+
+  var KEY = "kids-tags-one-per-page";
+  function apply() { sheet.classList.toggle("onepage", box.checked); }
+
+  try { box.checked = window.localStorage.getItem(KEY) === "1"; } catch (e) {}
+  apply();
+
+  box.addEventListener("change", function () {
+    apply();
+    try { window.localStorage.setItem(KEY, box.checked ? "1" : "0"); } catch (e) {}
+  });
+
+  if (print) { print.addEventListener("click", function () { window.print(); }); }
+})();
+</script>
+</body>
+</html>

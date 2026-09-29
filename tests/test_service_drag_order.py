@@ -20,7 +20,7 @@ import pytest
 
 from app.models import Church, Service, ServiceItem
 from app.models.base import utcnow
-from tests.conftest import JOURNEY_HOST
+from tests.conftest import JOURNEY_HOST, RIVERBEND_HOST
 
 H = {"Host": JOURNEY_HOST}
 
@@ -166,11 +166,11 @@ class TestTheRouteThatSavesADrag:
 
     def test_another_church_cannot_reach_it(self, db, journey, staff):
         """The ids are guessable integers, so the tenant check is the guard."""
-        other = db.session.scalar(db.select(Church).where(Church.slug != "journey"))
         service = a_service(db, journey)
+        wanted = ids_for(db, service, ["D", "C", "B", "A"])
         r = staff.post(f"/services/{service.id}/items/order/",
-                       data={"order": "1"},
-                       headers={"Host": f"{other.slug}.localhost"})
+                       data={"order": ",".join(str(i) for i in wanted)},
+                       headers={"Host": RIVERBEND_HOST})
         assert r.status_code in (302, 404)
         assert titles(db, service) == ["A", "B", "C", "D"]
 

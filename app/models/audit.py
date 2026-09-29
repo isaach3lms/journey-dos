@@ -49,6 +49,10 @@ PERSON_ARCHIVED = "person_archived"
 # A service and its running order are gone for good, so the log is the
 # only thing left that says the Sunday ever existed.
 SERVICE_DELETED = "service_deleted"
+# A reprinted name tag shows the pickup code again. That code is what a
+# stranger would need to walk out with somebody's child, so who asked for a
+# second copy, and for whom, is a question the log has to be able to answer.
+TAG_REPRINTED = "tag_reprinted"
 
 ACTIONS = (
     SIGN_IN,
@@ -68,6 +72,7 @@ ACTIONS = (
     SEQUENCE_STOPPED,
     PERSON_ARCHIVED,
     SERVICE_DELETED,
+    TAG_REPRINTED,
 )
 
 ACTION_LABELS = {
@@ -88,6 +93,7 @@ ACTION_LABELS = {
     SEQUENCE_STOPPED: "Sequence stopped by staff",
     PERSON_ARCHIVED: "Person archived",
     SERVICE_DELETED: "Service deleted",
+    TAG_REPRINTED: "Name tag reprinted",
 }
 
 # How long entries are kept. Long enough to answer a question about last

@@ -8,5 +8,18 @@
   <div class="pickupcode mono">{{ code }}</div>
   <p class="lede">{{ content.label_hint }}</p>
 
-  <a class="btn wide center" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
+  <button class="btn wide center" type="button" data-print>{{ content.label_print }}</button>
+  <a class="btn wide center ghostbtn" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
+
+  {# The tags are printed from this page rather than through the reprint
+     route, which is what lets that route log every hit without qualification:
+     if it ran, somebody asked for a second copy of a live pickup code. #}
+  {% include "kids/_tags.html" %}
+
+  <script>
+  (function () {
+    var button = document.querySelector("[data-print]");
+    if (button) { button.addEventListener("click", function () { window.print(); }); }
+  })();
+  </script>
 {% endblock %}

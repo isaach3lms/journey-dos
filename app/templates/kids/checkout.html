@@ -42,6 +42,14 @@
           </div>
           <button class="btn wide" type="submit">{{ content.checkout_confirm }}</button>
         </form>
+        {# The desk has the family in front of it here, which is where "we
+           lost the tag" is actually said. Same code, new paper. #}
+        {% if matches[0].household_id %}
+          <p class="footnote">
+            <a target="_blank" rel="noopener"
+               href="{{ url_for('kids.tags_for_household', session_id=open_session.id, household_id=matches[0].household_id) }}">{{ content.tags_reprint_family }}</a>
+          </p>
+        {% endif %}
       {% else %}
         <p class="lede">{{ content.checkout_unknown }}</p>
       {% endif %}

@@ -30,7 +30,7 @@ from flask_login import current_user, login_required
 
 from app.audit import record
 from app.content import KIDS
-from app.models.audit import CHILD_CHECKED_OUT
+from app.models.audit import CHILD_CHECKED_OUT, TAG_REPRINTED
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import Checkin, CheckinSession, Household, Person
@@ -245,6 +245,14 @@ def kiosk_check_in(household_id: int):
         household=household,
         code=code,
         checked_in=checked_in,
+        # The rows, not just the people, because a tag carries the room and
+        # the pickup code and those live on the check-in.
+        checkin_session=checkin_session,
+        checkins=[
+            c for c in checkin_session.checkins
+            if c.household_id == household.id
+            and c.person_id in {p.id for p in checked_in}
+        ],
     )
 
 
@@ -294,6 +302,97 @@ def kiosk_forgot():
         return redirect(url_for("kids.kiosk"))
 
     return render_template("kids/forgot.html", church=g.church, content=KIDS)
+
+
+# ---------------------------------------------------------------------------
+# Name tags
+# ---------------------------------------------------------------------------
+#
+# A tag carries the child's name, the room, and the pickup code. The pickup
+# code is the part that matters: it is what a person has to produce to take a
+# child out of a room, so a tag is a physical credential and the screen that
+# prints one is treated like any other screen that shows a credential.
+#
+# Two rules hold for every path in here:
+#
+# 1. **Printing never issues a code.** The code was issued at check-in and the
+#    parent is carrying it. Generating a new one on a reprint would leave the
+#    family holding a code the desk no longer recognises, which is worse than
+#    no tag at all.
+# 2. **A reprint is logged.** Asking for a second copy of somebody's pickup
+#    code is exactly what it would look like if a stranger were trying to
+#    collect a child, so the log names who asked and for whom.
+#
+# What is deliberately *not* on a tag: a person's notes. That field carries
+# pastoral context, and a tag is left on a table, dropped in a hallway, and
+# handed to whoever is at the desk. If a child has an allergy that has to be
+# on the tag, it belongs in a field of its own that was written to be printed.
+
+# The first print happens on the check-in screen itself, from markup that is
+# already on the page. Nothing here is reached by a volunteer working the
+# normal Sunday flow, which is what lets every route below be logged without
+# qualification: if this code ran, somebody asked for a second copy.
+
+@bp.get("/tags/<int:session_id>/family/<int:household_id>/")
+@login_required
+@min_role("leader")
+def tags_for_household(session_id: int, household_id: int):
+    """Every tag for one family in one session, on one sheet."""
+    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
+    household = Household.get_for_church(g.church.id, household_id)
+    if checkin_session is None or household is None:
+        abort(404)
+
+    checkins = checkin_session.checkins_for_household(household.id)
+    if not checkins:
+        flash(KIDS["tags_none"], "error")
+        return redirect(url_for("kids.index"))
+
+    record(
+        TAG_REPRINTED,
+        KIDS["tags_reprint_family"],
+        subject_type="household",
+        subject_id=household.id,
+        subject_label=household.name,
+        detail=", ".join(c.person.full_name for c in checkins),
+    )
+    db.session.commit()
+
+    return render_template(
+        "kids/tags.html",
+        church=g.church,
+        content=KIDS,
+        checkin_session=checkin_session,
+        checkins=checkins,
+    )
+
+
+@bp.get("/tags/child/<int:checkin_id>/")
+@login_required
+@min_role("leader")
+def tag_for_child(checkin_id: int):
+    """One child's tag, on its own."""
+    checkin = Checkin.get_for_church(g.church.id, checkin_id)
+    if checkin is None:
+        abort(404)
+
+    record(
+        TAG_REPRINTED,
+        KIDS["tags_reprint"],
+        subject_type="person",
+        subject_id=checkin.person_id,
+        subject_label=checkin.person.full_name,
+        detail=checkin.household_name or "",
+    )
+    db.session.commit()
+
+    return render_template(
+        "kids/tags.html",
+        church=g.church,
+        content=KIDS,
+        checkin_session=checkin.session,
+        checkins=[checkin],
+    )
 
 
 # ---------------------------------------------------------------------------

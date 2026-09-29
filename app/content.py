@@ -1871,6 +1871,27 @@ KIDS = {
     ),
     "label_children": "Checked in: {names}",
     "label_done": "Done",
+    "label_print": "Print name tags",
+
+    # Name tags
+    "tags_title": "Name tags",
+    "tags_print": "Print",
+    "tags_back": "Back",
+    "tags_done": "Done",
+    "tags_per_page": "One tag per page",
+    "tags_per_page_hint": (
+        "Turn this on for a label printer. Leave it off to fit several tags on "
+        "a sheet of paper."
+    ),
+    "tags_pickup_title": "Pickup tag",
+    "tags_pickup_for": "For the adult who brought them",
+    "tags_code_label": "Pickup code",
+    "tags_room": "Room",
+    "tags_none": "Nobody from this family is checked in to that session.",
+    "tags_reprint": "Reprint tag",
+    "tags_reprint_family": "Reprint the family's tags",
+    "tags_reprinted": "Reprinted. The pickup code has not changed.",
+    "tags_collected_note": "Already collected",
 
     # Forgot the code
     "forgot_heading": "We will send you your code",

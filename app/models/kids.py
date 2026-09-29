@@ -88,6 +88,15 @@ class CheckinSession(TenantScoped, TimestampMixin, db.Model):
                 return checkin.pickup_code
         return None
 
+    def checkins_for_household(self, household_id: int) -> list["Checkin"]:
+        """Everyone from one family in this session, collected or not.
+
+        A tag is reprinted for a child who has already been collected as often
+        as for one still in the room: somebody is usually holding the wrong
+        half of a torn tag when they ask.
+        """
+        return [c for c in self.checkins if c.household_id == household_id]
+
     def issue_pickup_code(self, household_id: int) -> str:
         """The household's code for this session, generated once."""
         from app.pickup import generate_pickup_code

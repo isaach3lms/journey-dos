@@ -928,6 +928,12 @@ ul.policy span{color:var(--muted)}
   padding:10px 0;border-top:1px solid var(--line-soft);
 }
 .sidelist li:first-child{border-top:none}
+/* A row hidden by the team filter. The display:flex above outranks the
+   browser's own rule for [hidden], so without this the attribute is set and
+   nothing moves. The second rule keeps the top hairline off whichever row is
+   showing first once the rows above it are hidden. */
+.sidelist li[hidden]{display:none}
+.sidelist li.firstshown{border-top:none}
 .sidelist .sn{font-size:13.5px;font-weight:500;display:block}
 .sidelist .pill{flex:none;white-space:nowrap}
 .sidelist form.inline{margin-top:0;flex:none;opacity:0;transition:opacity .12s}
@@ -1200,6 +1206,19 @@ ul.policy span{color:var(--muted)}
 .dangerbox form{margin-top:12px;display:grid;gap:10px;justify-items:start}
 .btn[disabled]{opacity:.45;cursor:default}
 
+/* Filtering the list of who is already serving, at the top of that card. */
+.teamchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.teamchips .chip{
+  font-family:var(--font-body);font-size:12px;font-weight:500;
+  padding:5px 11px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--line);background:var(--white);color:var(--muted);
+  -webkit-tap-highlight-color:transparent;
+}
+.teamchips .chip:hover{border-color:var(--accent);color:var(--ink)}
+.teamchips .chip.on{
+  background:var(--deep);border-color:var(--deep);color:#fff;font-weight:600;
+}
+
 /* A family's check-in code, on their person page. Big enough to read out
    over a desk. */
 .codeline{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:9px}
@@ -1350,6 +1369,9 @@ ul.policy span{color:var(--muted)}
 .pill.plain{text-transform:none;letter-spacing:0;font-size:12px;padding:3px 10px}
 .stackform{display:grid;gap:9px;margin-top:12px}
 .stackform .input{margin:0}
+/* A line of help that belongs to the control directly above it, pulled up
+   out of the form's own gap so it reads as part of that control. */
+.stackform .nudge{margin:-4px 0 2px}
 
 /* Verse of the week: staff card on Resources, member card on Home. */
 .versecard{background:var(--deep);color:#fff;border-radius:var(--r);padding:18px 20px;margin-bottom:14px}

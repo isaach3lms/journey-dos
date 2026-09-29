@@ -827,6 +827,22 @@ class ServiceAssignment(TenantScoped, TimestampMixin, db.Model):
         return f"<ServiceAssignment person={self.person_id} {self.status}>"
 
     @property
+    def team_id(self) -> int | None:
+        """The team this slot belongs to, or None.
+
+        None is a real case, not a bug: somebody asked to help with no formal
+        position has no team, and a position deleted after the fact leaves
+        position_name behind but nulls the link.
+        """
+        return self.position.team_id if self.position is not None else None
+
+    @property
+    def team_name(self) -> str | None:
+        if self.position is None or self.position.team is None:
+            return None
+        return self.position.team.name
+
+    @property
     def status_label(self) -> str:
         return ASSIGNMENT_LABELS.get(self.status, self.status.title())
 

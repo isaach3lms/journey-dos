@@ -328,10 +328,30 @@
         <span class="pill">{{ service.starts_at|church_time("%b %-d") }}</span>
       </div>
       <div class="bd">
+        {# One chip per team on this plan, and only when there is more than
+           one to choose between. Built from the plan rather than from every
+           team the church has, so a chip never leads to an empty list. #}
+        {% if serving_teams|length > 1 %}
+          <nav class="teamchips" aria-label="{{ content.serving_filter_label }}">
+            <button class="chip on" type="button" data-serving-chip="" aria-pressed="true">
+              {{ content.serving_filter_count.format(
+                   name=content.serving_filter_all, count=service.assignments|length) }}
+            </button>
+            {% for team in serving_teams %}
+              <button class="chip" type="button"
+                      data-serving-chip="{{ team.id if team.id else 'none' }}"
+                      aria-pressed="false">
+                {{ content.serving_filter_count.format(
+                     name=team.name or content.serving_filter_none, count=team.count) }}
+              </button>
+            {% endfor %}
+          </nav>
+        {% endif %}
+
         {% if service.assignments %}
-          <ul class="sidelist">
+          <ul class="sidelist" data-serving-list>
             {% for assignment in service.assignments %}
-              <li>
+              <li data-team="{{ assignment.team_id if assignment.team_id else 'none' }}">
                 <span class="av">{{ assignment.person.initials }}</span>
                 <span class="fl">
                   <span class="sn">{{ assignment.person.full_name }}</span>
@@ -366,6 +386,7 @@
                 <option value="{{ team.id }}">{{ team.name }}</option>
               {% endfor %}
             </select>
+            <p class="muted small nudge">{{ content.filter_team_hint }}</p>
           {% endif %}
 
           <select class="input select" name="person_id" data-people
@@ -384,7 +405,6 @@
             {% endfor %}
           </select>
           <button class="btn wide" type="submit">{{ content.assign }}</button>
-          {% if teams %}<p class="muted small">{{ content.filter_team_hint }}</p>{% endif %}
         </form>
       </div>
     </section>
@@ -455,6 +475,36 @@
   }
 
   filter.addEventListener("change", apply);
+})();
+
+/* Show one team's rows in the list of who is already serving.
+
+   Rows, not options, so the hidden attribute is safe here: the Safari
+   problem above is specific to <option>. */
+(function () {
+  var chips = Array.prototype.slice.call(
+    document.querySelectorAll("[data-serving-chip]"));
+  var list = document.querySelector("[data-serving-list]");
+  if (!chips.length || !list) { return; }
+
+  chips.forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      var team = chip.dataset.servingChip;
+      chips.forEach(function (other) {
+        var on = other === chip;
+        other.classList.toggle("on", on);
+        other.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      var shown = 0;
+      Array.prototype.forEach.call(list.children, function (row) {
+        row.hidden = Boolean(team) && row.dataset.team !== team;
+        // The top hairline belongs to whichever row is showing first, not to
+        // the first row in the markup.
+        row.classList.toggle("firstshown", !row.hidden && shown === 0);
+        if (!row.hidden) { shown += 1; }
+      });
+    });
+  });
 })();
 </script>
 {% endblock %}

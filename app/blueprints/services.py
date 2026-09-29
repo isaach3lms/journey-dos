@@ -159,6 +159,10 @@ def plan(service_id: int):
         # person id -> the teams they are on, so the picker can be filtered
         # to one team without a round trip.
         person_teams=_person_teams(g.church.id),
+        # The teams actually represented on this plan, for the filter above
+        # the list. Built from the plan, not from every team the church has,
+        # so a chip never leads to an empty list.
+        serving_teams=_serving_teams(service),
         keys=key_choices(),
         types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         active="services",
@@ -188,6 +192,27 @@ def save_headcount(service_id: int):
     db.session.commit()
     flash(SERVICES["headcount_saved"], "notice")
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+
+
+def _serving_teams(service) -> list[dict]:
+    """Which teams are on this plan, with how many people on each.
+
+    Ordered by team name, with anybody who has no team last under their own
+    heading, because "no team" is a real answer rather than a missing one.
+    """
+    groups: dict[int | None, dict] = {}
+    for assignment in service.assignments:
+        key = assignment.team_id
+        row = groups.setdefault(
+            key, {"id": key, "name": assignment.team_name, "count": 0}
+        )
+        row["count"] += 1
+    named = sorted(
+        (row for row in groups.values() if row["id"] is not None),
+        key=lambda row: (row["name"] or "").lower(),
+    )
+    loose = [row for row in groups.values() if row["id"] is None]
+    return named + loose
 
 
 def _person_teams(church_id: int) -> dict[int, list[int]]:

@@ -1541,6 +1541,14 @@ SERVICES = {
     "add_heading": "Add to the plan",
     "waiting_heading": "Waiting on",
     "waiting_none": "Everybody has answered.",
+    # The filter above the list of who is already serving. Separate from the
+    # picker filter below it: this one hides rows, that one narrows a
+    # dropdown.
+    "serving_filter_all": "All",
+    "serving_filter_none": "No team",
+    "serving_filter_label": "Show one team",
+    "serving_filter_count": "{name} ({count})",
+
     # The team filter on the serving picker. A church with forty people on
     # the roster should not scroll past all forty to find a drummer.
     "filter_team": "Team",

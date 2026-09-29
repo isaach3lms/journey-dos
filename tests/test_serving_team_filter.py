@@ -221,3 +221,144 @@ class TestAssigningStillWorks:
                    headers=H, follow_redirects=True)
         db.session.refresh(service)
         assert len(service.assignments) == 1
+
+
+class TestFilteringWhoIsAlreadyServing:
+    """The chips above the list, which are a different job from the filter on
+    the picker below it: these hide rows, that one narrows a dropdown."""
+
+    def ask(self, staff, service, person, position=None):
+        return staff.post(
+            f"/services/{service.id}/assignments/",
+            data={"person_id": person.id,
+                  "position_id": position.id if position else ""},
+            headers=H, follow_redirects=True)
+
+    def positions(self, db):
+        return {p.name: p for p in db.session.scalars(db.select(TeamPosition)).all()}
+
+    def test_a_chip_for_each_team_on_the_plan(self, db, staff, rota):
+        service, band, kids, people = rota
+        spots = self.positions(db)
+        self.ask(staff, service, people["Kaela"], spots["Acoustic"])
+        self.ask(staff, service, people["Ruth"], spots["Check-in desk"])
+
+        block = card(staff, service)
+        assert 'data-serving-chip=""' in block
+        assert f'data-serving-chip="{band.id}"' in block
+        assert f'data-serving-chip="{kids.id}"' in block
+
+    def test_each_chip_counts_its_people(self, db, staff, rota):
+        service, band, _, people = rota
+        spots = self.positions(db)
+        self.ask(staff, service, people["Kaela"], spots["Acoustic"])
+        self.ask(staff, service, people["Christopher"], spots["Electric"])
+        self.ask(staff, service, people["Ruth"], spots["Check-in desk"])
+
+        block = card(staff, service)
+        assert "All (3)" in block
+        assert "Band (2)" in block
+        assert "Kids (1)" in block
+
+    def test_every_row_says_which_team_it_is(self, db, staff, rota):
+        service, band, _, people = rota
+        self.ask(staff, service, people["Kaela"], self.positions(db)["Acoustic"])
+        self.ask(staff, service, people["Ruth"], self.positions(db)["Check-in desk"])
+        block = card(staff, service)
+        assert f'data-team="{band.id}"' in block
+
+    def test_somebody_asked_with_no_position_gets_their_own_chip(self, db, staff, rota):
+        """No team is a real answer, not a missing one."""
+        service, _, _, people = rota
+        self.ask(staff, service, people["Kaela"], self.positions(db)["Acoustic"])
+        self.ask(staff, service, people["Nobody"])
+
+        block = card(staff, service)
+        assert 'data-serving-chip="none"' in block
+        assert 'data-team="none"' in block
+        assert "No team (1)" in block
+
+    def test_no_chips_when_everybody_is_on_one_team(self, db, staff, rota):
+        """A filter with one thing to pick is noise."""
+        service, _, _, people = rota
+        spots = self.positions(db)
+        self.ask(staff, service, people["Kaela"], spots["Acoustic"])
+        self.ask(staff, service, people["Christopher"], spots["Electric"])
+        assert "data-serving-chip" not in card(staff, service)
+
+    def test_no_chips_when_nobody_is_serving(self, db, staff, rota):
+        service, _, _, _ = rota
+        assert "data-serving-chip" not in card(staff, service)
+
+    def test_the_teams_are_in_name_order_with_no_team_last(self, db, staff, rota):
+        service, _, _, people = rota
+        spots = self.positions(db)
+        self.ask(staff, service, people["Nobody"])
+        self.ask(staff, service, people["Ruth"], spots["Check-in desk"])
+        self.ask(staff, service, people["Kaela"], spots["Acoustic"])
+
+        block = card(staff, service)
+        assert block.index("Band (") < block.index("Kids (") < block.index("No team (")
+
+    def test_the_rows_themselves_are_unchanged(self, db, staff, rota):
+        """The filter is a convenience over the same list."""
+        service, _, _, people = rota
+        self.ask(staff, service, people["Kaela"], self.positions(db)["Acoustic"])
+        block = card(staff, service)
+        assert "Kaela Menz" in block
+        assert "Acoustic" in block
+        assert "Remove" in block or "Unassign" in block or "btn ghostbtn tiny" in block
+
+
+class TestTheScriptThatHidesRows:
+    from pathlib import Path as _Path
+
+    TEMPLATE = (_Path(__file__).resolve().parent.parent / "app" / "templates"
+                / "services" / "plan.html").read_text()
+
+    def test_it_hides_rows_rather_than_rebuilding_them(self):
+        """A row is an <li>, where the hidden attribute is safe. The
+        rebuild above is only needed because Safari ignores it on <option>."""
+        assert "row.hidden = Boolean(team)" in self.TEMPLATE
+
+    def test_the_chip_you_picked_is_marked(self):
+        assert 'other.setAttribute("aria-pressed", on ? "true" : "false")' in self.TEMPLATE
+
+    def test_it_does_nothing_when_there_are_no_chips(self):
+        assert "if (!chips.length || !list) { return; }" in self.TEMPLATE
+
+    def test_the_first_showing_row_is_marked(self):
+        """The top hairline belongs to whichever row shows first, not to the
+        first row in the markup."""
+        assert 'row.classList.toggle("firstshown"' in self.TEMPLATE
+
+
+class TestTheStylesheetLetsRowsHide:
+    """A row set to hidden has to actually disappear.
+
+    `.sidelist li` is display:flex, which outranks the browser's own rule for
+    [hidden]. Without a rule of our own the attribute is set on every filtered
+    row and nothing on the screen moves, which is how this shipped the first
+    time.
+    """
+
+    from pathlib import Path as _Path
+
+    CSS = (_Path(__file__).resolve().parent.parent / "app" / "static" / "css"
+           / "app.css").read_text()
+
+    def test_a_hidden_row_is_not_displayed(self):
+        assert ".sidelist li[hidden]{display:none}" in self.CSS
+
+    def test_the_first_showing_row_loses_its_top_border(self):
+        assert ".sidelist li.firstshown{border-top:none}" in self.CSS
+
+
+class TestTheTeamHintSitsWithItsDropdown:
+    def test_the_hint_follows_the_filter_not_the_button(self, db, staff, rota):
+        """It says "the two lists below", so it has to be above them."""
+        service, _, _, _ = rota
+        block = card(staff, service)
+        hint = block.index("Narrows the two lists")
+        assert block.index("data-team-filter") < hint
+        assert hint < block.index("data-people")

@@ -565,6 +565,31 @@ class Service(TenantScoped, TimestampMixin, db.Model):
         db.session.flush()
         return True
 
+    def reorder_items(self, ordered_ids: list[int]) -> bool:
+        """Put the running order in the given order. Caller commits.
+
+        All or nothing. The ids have to be exactly this plan's items, no more
+        and no fewer, because a partial list would silently drop whatever it
+        left out. Two people editing the same plan is the case this guards:
+        the second drag arrives naming an item the first one deleted, and the
+        right answer is to change nothing and let the page reload.
+
+        Positions are parked out of range first, as everywhere else here, so
+        the unique constraint is not tripped halfway through.
+        """
+        items = {item.id: item for item in self.items}
+        if len(ordered_ids) != len(items) or set(ordered_ids) != set(items):
+            return False
+
+        for offset, item_id in enumerate(ordered_ids, start=1):
+            items[item_id].position = -offset
+        db.session.flush()
+
+        for index, item_id in enumerate(ordered_ids, start=1):
+            items[item_id].position = index
+        db.session.flush()
+        return True
+
     def renumber(self) -> None:
         """Close gaps left by deletions and swaps, so positions read 1..n.
 

@@ -1102,6 +1102,34 @@ def move_item(service_id: int, item_id: int):
     return redirect(url_for("services.plan", service_id=service.id))
 
 
+@bp.post("/<int:service_id>/items/order/")
+@login_required
+@min_role("leader")
+def reorder_items(service_id: int):
+    """Save the running order after a drag.
+
+    The whole order is sent, not a from-and-to pair, so the result does not
+    depend on the browser and the server having the same idea of where a row
+    started. Anything that does not name exactly this plan's items is refused
+    and the page reloads unchanged.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    raw = request.form.get("order", "")
+    try:
+        ordered = [int(part) for part in raw.split(",") if part.strip()]
+    except ValueError:
+        ordered = []
+
+    if ordered and service.reorder_items(ordered):
+        db.session.commit()
+        flash(SERVICES["moved"], "notice")
+
+    return redirect(url_for("services.plan", service_id=service.id))
+
+
 @bp.post("/<int:service_id>/copy/")
 @login_required
 @min_role("leader")

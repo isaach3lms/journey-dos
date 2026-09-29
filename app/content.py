@@ -1608,6 +1608,11 @@ SERVICES = {
     "move_up": "Up",
     "move_down": "Down",
     "moved": "Moved.",
+    # Dragging the running order. The handle's label is read aloud by a
+    # screen reader, which is why it names the item rather than saying
+    # "drag handle".
+    "drag_label": "Move {title}",
+    "drag_hint": "Drag a row to reorder. Or use the arrows on a handle.",
     "starts_at_item": "{time}",
     "plan_runs": "Runs {start} to {end}",
     "plan_total": "{minutes} minutes of plan",

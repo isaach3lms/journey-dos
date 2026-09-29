@@ -881,6 +881,33 @@ ul.policy span{color:var(--muted)}
   .ractions{grid-column:1 / -1}
 }
 
+/* Dragging the running order.
+
+   The handle is hidden and the Up and Down buttons are shown until the drag
+   script has run. A plan that cannot be reordered at all is worse than two
+   extra buttons, so the buttons are what the markup ships with and the script
+   is what takes them away. A display:none handle leaves the grid untouched,
+   which is why the column only appears alongside .dragon. */
+.grip{
+  display:none;border:none;background:none;padding:0 2px;margin:0;
+  color:var(--muted-2);font-size:15px;line-height:1;
+  cursor:grab;touch-action:none;align-self:center;
+}
+.grip:hover{color:var(--deep)}
+.grip:active{cursor:grabbing}
+.runsheet.dragon .grip{display:block}
+.runsheet.dragon .nojsmove{display:none}
+.runsheet.dragon .rrow{grid-template-columns:20px 56px minmax(0,1fr) auto auto}
+.runsheet.dragon li.lifted{
+  background:var(--surface-alt);border-radius:var(--r-sm);
+  box-shadow:var(--shadow-md);
+}
+.draghint{margin:-10px 0 16px}
+@media (max-width:760px){
+  .runsheet.dragon .rrow{grid-template-columns:20px 52px minmax(0,1fr)}
+  .runsheet.dragon .rlen{grid-column:2}
+}
+
 /* ---------- The week strip ----------
    Scrolls sideways inside its own card rather than wrapping, so the row of
    Sundays reads as a timeline on any width. */

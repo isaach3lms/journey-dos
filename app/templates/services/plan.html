@@ -45,26 +45,50 @@
       </div>
       <div class="bd">
         {% if service.items %}
-          <ol class="runsheet">
+          {# The whole order is posted from here after a drag. It sits outside
+             the list because the rows carry forms of their own and a form
+             cannot be nested inside another one. #}
+          <form method="post" data-order-form hidden
+                action="{{ url_for('services.reorder_items', service_id=service.id) }}">
+            {{ csrf_field() }}
+            <input type="hidden" name="order" data-order-field>
+          </form>
+
+          <ol class="runsheet" data-runsheet>
             {% for item, at in timed_items %}
+              {% set moveform %}
+                {# Kept in the markup, hidden by CSS once the drag script is
+                   running. Without JavaScript these two buttons are the only
+                   way to reorder a plan, so they are not rendered away. #}
+                {% for direction, label in [('up', content.move_up), ('down', content.move_down)] %}
+                  <form method="post" class="inline nojsmove" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
+                    {{ csrf_field() }}<input type="hidden" name="direction" value="{{ direction }}">
+                    <button class="btn ghostbtn tiny" type="submit">{{ label }}</button>
+                  </form>
+                {% endfor %}
+                <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
+                </form>
+              {% endset %}
+              {% set handle %}
+                {# A button, not a bare icon, so it can be tabbed to and the
+                   arrow keys can do what dragging does. #}
+                <button class="grip" type="button" data-grip
+                        aria-label="{{ content.drag_label.format(title=item.title) }}">
+                  <span aria-hidden="true">⠿</span>
+                </button>
+              {% endset %}
+
               {% if item.kind == 'header' %}
-                <li class="rsection">
+                <li class="rsection" data-item-id="{{ item.id }}">
+                  {{ handle }}
                   <span class="rlabel">{{ item.title }}</span>
-                  <span class="ractions">
-                    {% for direction, label in [('up', content.move_up), ('down', content.move_down)] %}
-                      <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
-                        {{ csrf_field() }}<input type="hidden" name="direction" value="{{ direction }}">
-                        <button class="btn ghostbtn tiny" type="submit">{{ label }}</button>
-                      </form>
-                    {% endfor %}
-                    <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
-                      {{ csrf_field() }}
-                      <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
-                    </form>
-                  </span>
+                  <span class="ractions">{{ moveform }}</span>
                 </li>
               {% else %}
-                <li class="rrow">
+                <li class="rrow" data-item-id="{{ item.id }}">
+                  {{ handle }}
                   <span class="rtime mono">{{ at|church_time("%-I:%M") }}</span>
                   <span class="rbody">
                     <span class="rtitle">{{ item.title }}</span>
@@ -75,22 +99,12 @@
                     </span>
                   </span>
                   <span class="rlen mono">{% if item.minutes %}{{ item.minutes }} min{% endif %}</span>
-                  <span class="ractions">
-                    {% for direction, label in [('up', content.move_up), ('down', content.move_down)] %}
-                      <form method="post" class="inline" action="{{ url_for('services.move_item', service_id=service.id, item_id=item.id) }}">
-                        {{ csrf_field() }}<input type="hidden" name="direction" value="{{ direction }}">
-                        <button class="btn ghostbtn tiny" type="submit">{{ label }}</button>
-                      </form>
-                    {% endfor %}
-                    <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
-                      {{ csrf_field() }}
-                      <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
-                    </form>
-                  </span>
+                  <span class="ractions">{{ moveform }}</span>
                 </li>
               {% endif %}
             {% endfor %}
           </ol>
+          <p class="muted small draghint" data-drag-hint hidden>{{ content.drag_hint }}</p>
         {% else %}
           <p class="muted small">{{ content.plan_empty }}</p>
         {% endif %}
@@ -414,6 +428,109 @@
 
 {% block extra_script %}
 <script>
+/* Drag the running order into shape.
+
+   Rows snap between positions rather than following the pointer pixel for
+   pixel. Reordering the list as the pointer passes each midpoint is the same
+   result with far less to go wrong, and it means the row always sits exactly
+   where it will land.
+
+   Pointer events rather than the HTML5 drag API, because that API does not
+   fire on touch, and the plan is edited on a phone on Sunday morning as often
+   as on a laptop on Thursday.
+
+   Nothing is saved until the pointer is released, and then the whole order is
+   posted at once. Times reflow from the service start, so the page reloads
+   rather than trying to recompute them here and drift from the server. */
+(function () {
+  var list = document.querySelector("[data-runsheet]");
+  var form = document.querySelector("[data-order-form]");
+  var field = form && form.querySelector("[data-order-field]");
+  if (!list || !form || !field) { return; }
+
+  // Only now are the Up and Down buttons taken away.
+  list.classList.add("dragon");
+  var hint = document.querySelector("[data-drag-hint]");
+  if (hint) { hint.hidden = false; }
+
+  function order() {
+    return Array.prototype.map.call(list.children, function (row) {
+      return row.dataset.itemId;
+    });
+  }
+
+  function save() {
+    field.value = order().join(",");
+    form.submit();
+  }
+
+  var dragging = null;
+  var before = null;
+
+  /* The last row whose midpoint the pointer has passed. Null means the
+     pointer is above every row, so the dragged row belongs at the top. */
+  function passed(y) {
+    var found = null;
+    Array.prototype.forEach.call(list.children, function (row) {
+      if (row === dragging) { return; }
+      var box = row.getBoundingClientRect();
+      if (y > box.top + box.height / 2) { found = row; }
+    });
+    return found;
+  }
+
+  list.addEventListener("pointerdown", function (event) {
+    var grip = event.target.closest && event.target.closest("[data-grip]");
+    if (!grip) { return; }
+    event.preventDefault();
+    dragging = grip.closest("li");
+    before = order().join(",");
+    dragging.classList.add("lifted");
+    grip.setPointerCapture(event.pointerId);
+  });
+
+  list.addEventListener("pointermove", function (event) {
+    if (!dragging) { return; }
+    var after = passed(event.clientY);
+    if (after === null) {
+      list.insertBefore(dragging, list.firstElementChild);
+    } else if (after.nextElementSibling !== dragging) {
+      list.insertBefore(dragging, after.nextElementSibling);
+    }
+  });
+
+  function drop() {
+    if (!dragging) { return; }
+    dragging.classList.remove("lifted");
+    dragging = null;
+    // A click that moved nothing is not a change, and reloading the page for
+    // it would look like a bug.
+    if (order().join(",") !== before) { save(); }
+  }
+
+  list.addEventListener("pointerup", drop);
+  list.addEventListener("pointercancel", drop);
+
+  /* The same move from the keyboard. A handle that can only be dragged is a
+     handle somebody on a keyboard cannot use at all. */
+  list.addEventListener("keydown", function (event) {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") { return; }
+    var grip = event.target.closest && event.target.closest("[data-grip]");
+    if (!grip) { return; }
+    var row = grip.closest("li");
+    if (event.key === "ArrowUp") {
+      if (!row.previousElementSibling) { return; }
+      event.preventDefault();
+      list.insertBefore(row, row.previousElementSibling);
+    } else {
+      if (!row.nextElementSibling) { return; }
+      event.preventDefault();
+      list.insertBefore(row.nextElementSibling, row);
+    }
+    save();
+  });
+})();
+
 /* Narrow the serving picker to one team.
 
    Options are rebuilt rather than hidden: the hidden attribute on an

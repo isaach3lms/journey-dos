@@ -6,9 +6,31 @@
     <p class="lede">{{ content.no_open_session_hint }}</p>
   {% elif locked %}
     <h1>{{ content.kiosk_too_many }}</h1>
+  {% elif tie_pin %}
+    {# Two families share those digits. Their names are deliberately not on
+       this screen: listing them would hand whoever typed the code the names
+       of everybody it belongs to. #}
+    <h1>{{ content.kiosk_tie_heading }}</h1>
+    <p class="lede">{{ content.kiosk_tie_hint }}</p>
+
+    <form method="post">
+      {{ csrf_field() }}
+      <input type="hidden" name="pin" value="{{ tie_pin }}">
+      <input class="input" type="text" name="last_name" autocomplete="off"
+             autofocus aria-label="{{ content.kiosk_last_name }}"
+             placeholder="{{ content.kiosk_last_name }}">
+      <button class="btn wide" type="submit">{{ content.kiosk_tie_go }}</button>
+    </form>
+
+    <p class="footnote">
+      <a href="{{ url_for('kids.kiosk') }}">{{ content.forgot_back }}</a>
+    </p>
   {% else %}
     <h1>{{ content.kiosk_welcome }}</h1>
-    <p class="lede">{{ content.kiosk_prompt }}</p>
+    <p class="lede">
+      {% if church.phone_checkin %}{{ content.kiosk_prompt_phone }}
+      {% else %}{{ content.kiosk_prompt }}{% endif %}
+    </p>
 
     <form method="post" id="pinform">
       {{ csrf_field() }}
@@ -18,8 +40,10 @@
       <button class="btn wide" type="submit">{{ content.check_in }}</button>
     </form>
 
-    <p class="footnote">
-      <a href="{{ url_for('kids.kiosk_forgot') }}">{{ content.kiosk_forgot }}</a>
-    </p>
+    {% if not church.phone_checkin %}
+      <p class="footnote">
+        <a href="{{ url_for('kids.kiosk_forgot') }}">{{ content.kiosk_forgot }}</a>
+      </p>
+    {% endif %}
   {% endif %}
 {% endblock %}

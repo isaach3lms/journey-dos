@@ -90,6 +90,21 @@ class Church(TimestampMixin, db.Model):
     # footer. Stored as text: it is an identifier, not a quantity.
     ccli_license_number: Mapped[Optional[str]] = mapped_column(String(20))
 
+    # Whether kids check-in and pickup use the last four digits of a parent's
+    # phone number instead of generated codes.
+    #
+    # Default off, and the default is the decision. Turning it on gives a
+    # family one number to remember and gives up two things: the pickup code
+    # stops expiring, and it becomes something a stranger could know. A church
+    # that has not weighed that should not inherit it. See app/phonecode.py
+    # for the full trade and app/pickup.py for what it replaces.
+    #
+    # The generated codes keep being issued and stored either way, so turning
+    # this off puts the old behaviour back with nothing lost.
+    phone_checkin: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:

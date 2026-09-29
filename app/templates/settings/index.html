@@ -174,6 +174,39 @@
     </div>
   </details>
 
+  <details class="setrow" id="kidscodes" {% if open_row == 'kidscodes' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.kidscode_heading }}</span>
+        <span class="pe">
+          {% if church.phone_checkin %}{{ content.kidscode_sub_phone }}{% else %}{{ content.kidscode_sub_generated }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if church.phone_checkin %}pending{% endif %}">
+        {% if church.phone_checkin %}{{ content.kidscode_on }}{% else %}{{ content.kidscode_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.kidscode_hint }}</p>
+      <p class="muted small">{{ content.kidscode_warning }}</p>
+      <form method="post" action="{{ url_for('settings.toggle_phone_checkin') }}">
+        {{ csrf_field() }}
+        <button class="btn {% if church.phone_checkin %}ghostbtn{% endif %}" type="submit">
+          {% if church.phone_checkin %}{{ content.kidscode_toggle_off }}{% else %}{{ content.kidscode_toggle_on }}{% endif %}
+        </button>
+      </form>
+      {% if church.phone_checkin %}
+        <hr class="asksplit">
+        <p class="muted small">{{ content.kidscode_tell_hint }}</p>
+        <form method="post" action="{{ url_for('settings.tell_families_codes_changed') }}">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn" type="submit">{{ content.kidscode_tell }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </details>
+
   <details class="setrow" id="giving" {% if open_row == 'giving' %}open{% endif %}>
     <summary>
       <span class="fl">

@@ -32,7 +32,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.extensions import db
 from app.models.base import TenantScoped, TimestampMixin, UTCDateTime, utcnow
@@ -114,6 +114,86 @@ class Household(TenantScoped, TimestampMixin, db.Model):
         self.checkin_pin = None
         return self.ensure_checkin_pin()
 
+    # -- the kiosk code -----------------------------------------------------
+    #
+    # Two ways a family is recognised at a kiosk. Which one is live is the
+    # church's `phone_checkin` setting; see app/phonecode.py for what the
+    # phone option costs.
+
+    @property
+    def phone_code(self) -> str | None:
+        """The last four digits of a parent's phone.
+
+        Adults only, and the first one with a usable number wins. A child's
+        phone is not the family's code: a nine year old's number changes when
+        they get a new one and the family would silently stop being able to
+        check in.
+        """
+        from app.phonecode import last4
+
+        for person in self.members:
+            if person.is_child or person.is_archived:
+                continue
+            code = last4(person.phone)
+            if code:
+                return code
+        return None
+
+    def kiosk_code(self, church) -> str | None:
+        """What this family types in, under whichever scheme is on.
+
+        Falls back to the generated PIN when the church has turned phone
+        codes on but this family has no adult phone number on file. A family
+        without a code cannot check in at all, which is worse than a family on
+        the older scheme.
+        """
+        if getattr(church, "phone_checkin", False):
+            return self.phone_code or self.checkin_pin
+        return self.checkin_pin
+
+    @classmethod
+    def matching_code(cls, church, code: str, last_name: str | None = None):
+        """Every household a typed code could mean. Always a list.
+
+        A list even when the scheme guarantees one, because the caller that
+        assumes one is the caller that shows two families' children on the
+        same screen the first Sunday two parents share the last four digits of
+        their phone number. 10,000 possible codes makes that a question of
+        when, not whether.
+        """
+        from app.phonecode import matches_last_name
+
+        code = (code or "").strip()
+        if not code:
+            return []
+
+        found = list(db.session.scalars(
+            db.select(cls).where(cls.church_id == church.id, cls.checkin_pin == code)
+        ))
+
+        if getattr(church, "phone_checkin", False):
+            by_phone = db.session.scalars(
+                db.select(cls)
+                .join(Person, Person.household_id == cls.id)
+                .where(
+                    cls.church_id == church.id,
+                    Person.phone_last4 == code,
+                    Person.is_child.is_(False),
+                    Person.is_archived.is_(False),
+                )
+                .distinct()
+            )
+            seen = {h.id for h in found}
+            for household in by_phone:
+                if household.id not in seen:
+                    found.append(household)
+                    seen.add(household.id)
+
+        if last_name:
+            found = [h for h in found if matches_last_name(h, last_name)]
+
+        return sorted(found, key=lambda h: (h.name or "").lower())
+
     @classmethod
     def find_or_create(cls, church_id: int, name: str) -> "Household":
         name = (name or "").strip()
@@ -166,6 +246,12 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     # connect card is still a person the church is responsible for.
     email: Mapped[Optional[str]] = mapped_column(String(255))
     phone: Mapped[Optional[str]] = mapped_column(String(40))
+    # The last four digits, kept alongside the number so a kiosk lookup is an
+    # index hit rather than a scan of everybody in the church. Maintained by
+    # the validator below rather than by callers: there are a dozen places a
+    # phone number gets set, and one of them forgetting would be a family that
+    # cannot check in. See app/phonecode.py.
+    phone_last4: Mapped[Optional[str]] = mapped_column(String(4), index=True)
     birthdate: Mapped[Optional[date]] = mapped_column(Date)
 
     household_id: Mapped[Optional[int]] = mapped_column(
@@ -250,6 +336,20 @@ class Person(TenantScoped, TimestampMixin, db.Model):
 
     def __repr__(self) -> str:
         return f"<Person {self.full_name!r} {self.stage} church={self.church_id}>"
+
+    @validates("phone")
+    def _keep_last4(self, _key, value):
+        """Derive the kiosk lookup digits whenever the number changes.
+
+        A validator rather than a rule callers follow. Setting `phone` from an
+        import, a member editing their own profile, or a staff screen all go
+        through here, and any of them forgetting would be a family standing at
+        a kiosk that does not know them.
+        """
+        from app.phonecode import last4
+
+        self.phone_last4 = last4(value)
+        return value
 
     # -- presentation -------------------------------------------------------
 

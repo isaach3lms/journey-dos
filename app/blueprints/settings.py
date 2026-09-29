@@ -225,6 +225,94 @@ def toggle_signup():
     return _back("signup")
 
 
+@bp.post("/kids-codes/")
+@login_required
+@min_role("staff")
+def toggle_phone_checkin():
+    """Switch kids codes between generated and phone derived.
+
+    Staff only and audited, like every other switch that changes who can do
+    what. This one more than most: turning it on makes the pickup code
+    permanent and knowable, which is the control that decides who leaves with
+    a child. See app/phonecode.py.
+    """
+    church = g.church
+    church.phone_checkin = not church.phone_checkin
+
+    record(
+        BRAND_CHANGED,
+        "Kids codes switched to "
+        + ("the parent's phone digits" if church.phone_checkin
+           else "generated codes"),
+        actor=current_user,
+        subject_type="church",
+        subject_id=church.id,
+        subject_label=church.name,
+    )
+    db.session.commit()
+
+    flash(
+        SETTINGS["kidscode_changed_on"] if church.phone_checkin
+        else SETTINGS["kidscode_changed_off"],
+        "notice",
+    )
+    return _back("kidscodes")
+
+
+@bp.post("/kids-codes/tell-families/")
+@login_required
+@min_role("staff")
+def tell_families_codes_changed():
+    """Email every household whose code changed.
+
+    Queued, not sent from here: the outbox is what handles retries and
+    unsubscribes, and a staff member clicking a button should not be waiting
+    on a mail provider. The `kids_checkin` category means it still reaches
+    somebody who unsubscribed from everything else, because a family who
+    cannot check their children in on Sunday is not a marketing problem.
+
+    One email per adult with an address, not one per household, because two
+    parents both need to know and only one of them may read the family's
+    shared inbox.
+    """
+    from app.mail.outbox import NotQueued, queue
+    from app.models import Household, Person
+
+    households = db.session.scalars(
+        db.select(Household).where(Household.church_id == g.church.id)
+    ).all()
+
+    sent = 0
+    for household in households:
+        code = household.kiosk_code(g.church)
+        if not code:
+            continue
+        for person in household.members:
+            if person.is_child or person.is_archived or not person.email:
+                continue
+            try:
+                queue(
+                    church_id=g.church.id,
+                    category="kids_checkin",
+                    subject=SETTINGS["kidscode_email_subject"].format(
+                        church=g.church.name),
+                    body_text=SETTINGS["kidscode_email_body"].format(
+                        name=person.first_name, church=g.church.name, code=code),
+                    person=person,
+                )
+                sent += 1
+            except NotQueued:
+                continue
+
+    db.session.commit()
+    flash(
+        SETTINGS["kidscode_told_one"] if sent == 1
+        else SETTINGS["kidscode_told"].format(count=sent),
+        "notice",
+    )
+    return _back("kidscodes")
+
+
 @bp.post("/announcements/")
 @login_required
 @min_role("staff")

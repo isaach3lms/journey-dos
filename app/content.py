@@ -1855,6 +1855,19 @@ KIDS = {
         "Too many tries. Ask a volunteer at the desk and they will check you in."
     ),
     "kiosk_closed": "Check-in is not open right now.",
+    # Two families sharing four digits. One more question, and nothing on the
+    # screen until it is answered.
+    "kiosk_tie_heading": "One more thing",
+    "kiosk_tie_hint": (
+        "More than one family uses those digits. What is your last name?"
+    ),
+    "kiosk_last_name": "Last name",
+    "kiosk_tie_go": "Continue",
+    "kiosk_still_tied": (
+        "We need a volunteer for this one. Ask at the desk and they will check "
+        "you in."
+    ),
+    "kiosk_prompt_phone": "Enter the last four digits of your phone number.",
 
     "family_heading": "Who is here today?",
     "family_hint": "Tap everyone you are checking in, then check them in.",
@@ -1917,6 +1930,16 @@ KIDS = {
     # Check-out
     "checkout_heading": "Collect a child",
     "checkout_prompt": "Enter the pickup code from the check-in.",
+    "checkout_prompt_phone": (
+        "Enter the last four digits of the phone number on the tag."
+    ),
+    "checkout_tie_hint": (
+        "More than one family is using that code today. What is the last name?"
+    ),
+    "checkout_tied": (
+        "That code reaches more than one family. Add the last name before "
+        "checking anybody out."
+    ),
     "checkout_find": "Find them",
     "checkout_unknown": "No children are checked in under that code.",
     "checkout_who": "Who is collecting?",
@@ -2243,6 +2266,50 @@ SETTINGS = {
         "person's record: an account only connects to somebody on your roster "
         "when the email address matches exactly one person and they have "
         "confirmed it from that inbox."
+    ),
+
+    # Kids codes. This copy is doing real work: it is the only place a staff
+    # member is told, in the app, what a permanent pickup code costs.
+    "kidscode_heading": "Kids check-in codes",
+    "kidscode_sub_phone": "The last four digits of a parent's phone number",
+    "kidscode_sub_generated": "A code we generate for each family",
+    "kidscode_on": "Phone digits",
+    "kidscode_off": "Generated",
+    "kidscode_hint": (
+        "One number a parent already knows, used both to check in and to "
+        "collect. Families with no phone number on file keep the code we "
+        "generated for them."
+    ),
+    "kidscode_warning": (
+        "What this gives up: the pickup code stops changing every week, so "
+        "anyone who has seen a tag or knows the number can collect that child "
+        "on a later Sunday. Generated codes are meaningless an hour after the "
+        "service. Two families sharing four digits are asked for a last name "
+        "before anybody is shown."
+    ),
+    "kidscode_toggle_on": "Use phone digits",
+    "kidscode_toggle_off": "Go back to generated codes",
+    "kidscode_changed_on": (
+        "Kids codes are now the last four digits of a parent's phone number."
+    ),
+    "kidscode_changed_off": "Kids codes are generated again.",
+    "kidscode_tell": "Tell families their code changed",
+    "kidscode_tell_hint": (
+        "Emails every adult with an address on file. Nothing goes out until "
+        "you press it, so pick your week."
+    ),
+    "kidscode_told": "{count} families told.",
+    "kidscode_told_one": "1 family told.",
+    "kidscode_email_subject": "Your kids check-in code at {church}",
+    "kidscode_email_body": (
+        "Hello {name},\n\n"
+        "We have changed how kids check-in works. Your family's code is now "
+        "{code}.\n\n"
+        "Use it at the kiosk to check your children in, and at the desk to "
+        "collect them.\n\n"
+        "If more than one family shares those digits we will ask for your "
+        "last name as well.\n\n"
+        "{church}"
     ),
 
     "brand_heading": "Your brand",

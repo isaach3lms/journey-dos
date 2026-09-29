@@ -151,20 +151,38 @@ def kiosk_pin():
         return redirect(url_for("kids.kiosk"))
 
     pin = normalize(request.form.get("pin"))
-    household = db.session.scalar(
-        db.select(Household).where(
-            Household.church_id == g.church.id, Household.checkin_pin == pin
-        )
-    ) if pin else None
+    last_name = (request.form.get("last_name") or "").strip()
+    matches = Household.matching_code(g.church, pin, last_name or None) if pin else []
 
-    if household is None:
+    if not matches:
         _record_failed_attempt()
         flash(KIDS["kiosk_unknown"], "error")
         return redirect(url_for("kids.kiosk"))
 
+    if len(matches) > 1:
+        _clear_attempts()
+        if last_name:
+            # Two families of the same name sharing four digits. Rare enough
+            # that a volunteer sorting it out beats another guessing game.
+            flash(KIDS["kiosk_still_tied"], "error")
+            return redirect(url_for("kids.kiosk"))
+
+        # Two families whose parents' numbers end the same way. Ask for one
+        # more thing rather than guessing, and show nothing until they answer:
+        # a screen listing the families that matched would hand whoever typed
+        # those four digits the names of everybody they belong to.
+        return render_template(
+            "kids/kiosk.html",
+            church=g.church,
+            content=KIDS,
+            open_session=checkin_session,
+            locked=False,
+            tie_pin=pin,
+        )
+
     _clear_attempts()
     return redirect(
-        url_for("kids.kiosk_family", household_id=household.id)
+        url_for("kids.kiosk_family", household_id=matches[0].id)
     )
 
 
@@ -405,18 +423,31 @@ def tag_for_child(checkin_id: int):
 def checkout():
     checkin_session = CheckinSession.open_session(g.church.id)
     code = normalize(request.args.get("code"))
+    last_name = (request.args.get("last_name") or "").strip()
     matches = (
-        Checkin.by_pickup_code(g.church.id, checkin_session.id, code)
+        Checkin.by_pickup_code(g.church.id, checkin_session.id, code,
+                               last_name or None)
         if checkin_session and code
         else []
     )
+
+    # Under phone codes a code can reach two families at once. Showing both
+    # would put somebody else's children on the screen with a working check
+    # box beside them, so nothing is shown until a last name narrows it.
+    tied = len(Checkin.households_in(matches)) > 1
+    if tied:
+        matches = []
+
     return render_template(
         "kids/checkout.html",
         church=g.church,
         content=KIDS,
         open_session=checkin_session,
         code=code,
+        last_name=last_name,
         matches=matches,
+        tied=tied,
+        asked_last_name=bool(last_name),
         searched=bool(code),
     )
 
@@ -430,15 +461,26 @@ def do_checkout():
         abort(404)
 
     code = normalize(request.form.get("code"))
+    last_name = (request.form.get("last_name") or "").strip()
     checkin_ids = request.form.getlist("checkin_id", type=int)
     if not checkin_ids:
         flash(KIDS["checkout_none"], "error")
-        return redirect(url_for("kids.checkout", code=code))
+        return redirect(url_for("kids.checkout", code=code, last_name=last_name or None))
 
     # Re-derive from the code rather than trusting the ids in the form. An id
     # alone would let a posted request check out a child whose code the person
     # at the desk never had.
-    allowed = {c.id: c for c in Checkin.by_pickup_code(g.church.id, checkin_session.id, code)}
+    rows = Checkin.by_pickup_code(g.church.id, checkin_session.id, code,
+                                  last_name or None)
+
+    # The same guard the screen applies, enforced again here. A posted form is
+    # not a screen: without this, a code shared by two families would check
+    # out either one's children on an id the sender guessed.
+    if len(Checkin.households_in(rows)) > 1:
+        flash(KIDS["checkout_tied"], "error")
+        return redirect(url_for("kids.checkout", code=code))
+
+    allowed = {c.id: c for c in rows}
 
     collected_by = (request.form.get("collected_by") or "").strip()
     names = []

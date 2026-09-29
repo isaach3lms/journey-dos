@@ -98,12 +98,28 @@ class CheckinSession(TenantScoped, TimestampMixin, db.Model):
         return [c for c in self.checkins if c.household_id == household_id]
 
     def issue_pickup_code(self, household_id: int) -> str:
-        """The household's code for this session, generated once."""
+        """The household's code for this session, issued once.
+
+        Under the church's phone setting this is the parent's last four digits
+        rather than a fresh random code, which means it is the same every
+        week. That is the church's choice and what it costs is written down in
+        app/phonecode.py. A family with no adult phone on file still gets a
+        generated code: no code at all is not an option at a check-in desk.
+        """
         from app.pickup import generate_pickup_code
 
         existing = self.code_for_household(household_id)
         if existing:
             return existing
+
+        from app.models.church import Church
+        from app.models.person import Household
+
+        church = db.session.get(Church, self.church_id)
+        if getattr(church, "phone_checkin", False):
+            household = Household.get_for_church(self.church_id, household_id)
+            if household is not None and household.phone_code:
+                return household.phone_code
 
         def is_taken(code: str) -> bool:
             return db.session.scalar(
@@ -218,14 +234,27 @@ class Checkin(TenantScoped, TimestampMixin, db.Model):
         )
 
     @classmethod
-    def by_pickup_code(cls, church_id: int, session_id: int, code: str) -> list["Checkin"]:
-        """Everyone a code collects. Siblings share one, so this is a list."""
+    def by_pickup_code(
+        cls, church_id: int, session_id: int, code: str,
+        last_name: str | None = None,
+    ) -> list["Checkin"]:
+        """Everyone a code collects. Siblings share one, so this is a list.
+
+        Under the church's phone setting a code is no longer unique within a
+        session: two families whose parents' numbers end the same way get the
+        same one. Returning both families' children here would put them on one
+        screen with one "check them out" button, which is the exact failure
+        this whole subsystem exists to prevent, so a caller that gets rows
+        from more than one household must ask for a last name before it shows
+        anybody. `households_in` answers that question.
+        """
         from app.pickup import normalize
 
         code = normalize(code)
         if not code:
             return []
-        return list(
+
+        rows = list(
             db.session.scalars(
                 db.select(cls)
                 .where(
@@ -236,6 +265,20 @@ class Checkin(TenantScoped, TimestampMixin, db.Model):
                 .order_by(cls.id)
             )
         )
+
+        if last_name:
+            wanted = last_name.strip().lower()
+            rows = [
+                row for row in rows
+                if wanted == (row.person.last_name or "").strip().lower()
+                or wanted in (row.household_name or "").lower()
+            ]
+        return rows
+
+    @staticmethod
+    def households_in(rows) -> set[int | None]:
+        """Which families a set of matched check-ins belongs to."""
+        return {row.household_id for row in rows}
 
     @classmethod
     def history_for_person(cls, church_id: int, person_id: int, limit: int = 20):

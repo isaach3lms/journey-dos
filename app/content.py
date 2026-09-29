@@ -1541,6 +1541,13 @@ SERVICES = {
     "add_heading": "Add to the plan",
     "waiting_heading": "Waiting on",
     "waiting_none": "Everybody has answered.",
+    # The team filter on the serving picker. A church with forty people on
+    # the roster should not scroll past all forty to find a drummer.
+    "filter_team": "Team",
+    "filter_team_all": "Everyone",
+    "filter_team_empty": "Nobody is on this team yet",
+    "filter_team_hint": "Narrows the two lists below to one team.",
+
     "team_heading": "Who is serving",
     "team_none": "Nobody asked yet.",
 

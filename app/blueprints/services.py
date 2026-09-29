@@ -152,7 +152,13 @@ def plan(service_id: int):
             .order_by(Service.starts_at.desc())
             .limit(6)
         ).all(),
-        people=db.session.scalars(Person.for_church(g.church.id)).all(),
+        # Children are not on a serving rota, so they are not in the picker.
+        people=db.session.scalars(
+            Person.search(g.church.id, children=False)
+        ).all(),
+        # person id -> the teams they are on, so the picker can be filtered
+        # to one team without a round trip.
+        person_teams=_person_teams(g.church.id),
         keys=key_choices(),
         types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         active="services",
@@ -182,6 +188,19 @@ def save_headcount(service_id: int):
     db.session.commit()
     flash(SERVICES["headcount_saved"], "notice")
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
+
+
+def _person_teams(church_id: int) -> dict[int, list[int]]:
+    """Which teams each person is on. One query, not one per person."""
+    rows = db.session.execute(
+        db.select(TeamMembership.person_id, TeamMembership.team_id)
+        .join(Team, Team.id == TeamMembership.team_id)
+        .where(TeamMembership.church_id == church_id, Team.is_active.is_(True))
+    ).all()
+    out: dict[int, list[int]] = {}
+    for person_id, team_id in rows:
+        out.setdefault(person_id, []).append(team_id)
+    return out
 
 
 @bp.post("/<int:service_id>/details/")

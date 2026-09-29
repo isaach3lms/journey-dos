@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ service.name }} | {{ church.name }}{% endblock %}
+
+
 {% block heading %}{{ content.plan_for.format(
   day=service.starts_at|church_time("%A, %B %-d"),
   time=service.starts_at|church_time("%-I:%M%p")) }}{% endblock %}
@@ -352,18 +354,37 @@
 
         <form method="post" class="stackform" action="{{ url_for('services.assign', service_id=service.id) }}">
           {{ csrf_field() }}
-          <select class="input select" name="person_id" aria-label="{{ content.assign }}">
-            {% for person in people %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}
+
+          {# Filter only. It is outside the post on purpose: it narrows the
+             two lists below and is never sent anywhere. Without JavaScript
+             both lists stay complete, which is the behaviour this replaced. #}
+          {% if teams %}
+            <select class="input select" data-team-filter
+                    aria-label="{{ content.filter_team }}">
+              <option value="">{{ content.filter_team }}: {{ content.filter_team_all }}</option>
+              {% for team in teams %}
+                <option value="{{ team.id }}">{{ team.name }}</option>
+              {% endfor %}
+            </select>
+          {% endif %}
+
+          <select class="input select" name="person_id" data-people
+                  aria-label="{{ content.assign }}">
+            {% for person in people %}
+              <option value="{{ person.id }}"
+                      data-teams="{{ person_teams.get(person.id, [])|join(' ') }}">{{ person.full_name }}</option>
+            {% endfor %}
           </select>
-          <select class="input select" name="position_id" aria-label="Position">
+          <select class="input select" name="position_id" data-positions aria-label="Position">
             <option value="">Serving</option>
             {% for team in teams %}
               {% for position in team.positions %}
-                <option value="{{ position.id }}">{{ team.name }}: {{ position.name }}</option>
+                <option value="{{ position.id }}" data-teams="{{ team.id }}">{{ team.name }}: {{ position.name }}</option>
               {% endfor %}
             {% endfor %}
           </select>
           <button class="btn wide" type="submit">{{ content.assign }}</button>
+          {% if teams %}<p class="muted small">{{ content.filter_team_hint }}</p>{% endif %}
         </form>
       </div>
     </section>
@@ -371,3 +392,69 @@
 </div>
 {% endblock %}
 
+{% block extra_script %}
+<script>
+/* Narrow the serving picker to one team.
+
+   Options are rebuilt rather than hidden: the hidden attribute on an
+   <option> is ignored by Safari, which would leave a filtered list that
+   still scrolls past everybody. Every option is kept in memory so choosing
+   "Everyone" puts them all back without a reload. */
+(function () {
+  var filter = document.querySelector("[data-team-filter]");
+  if (!filter) { return; }
+
+  function snapshot(select) {
+    return Array.prototype.map.call(select.options, function (option) {
+      return {
+        value: option.value,
+        label: option.textContent,
+        teams: (option.dataset.teams || "").split(" ").filter(Boolean),
+      };
+    });
+  }
+
+  var lists = [];
+  ["[data-people]", "[data-positions]"].forEach(function (selector) {
+    var select = document.querySelector(selector);
+    if (select) { lists.push({ select: select, all: snapshot(select) }); }
+  });
+
+  function apply() {
+    var team = filter.value;
+    lists.forEach(function (entry) {
+      var keep = entry.all.filter(function (option) {
+        if (!team) { return true; }
+        /* The blank "Serving" row is a placeholder and always stays, or
+           picking a team would leave no way to ask somebody without also
+           naming a position. Somebody on no team is a different case: they
+           are not on this team, so they drop out until the filter is put
+           back to Everyone. */
+        if (option.value === "") { return true; }
+        return option.teams.indexOf(team) !== -1;
+      });
+      var chosen = entry.select.value;
+      entry.select.innerHTML = "";
+      keep.forEach(function (option) {
+        var el = document.createElement("option");
+        el.value = option.value;
+        el.textContent = option.label;
+        entry.select.appendChild(el);
+      });
+      if (!keep.length) {
+        var none = document.createElement("option");
+        none.textContent = {{ content.filter_team_empty|tojson }};
+        none.disabled = true;
+        entry.select.appendChild(none);
+      }
+      /* Stay on the same person if they are still in the list. */
+      if (Array.prototype.some.call(entry.select.options, function (o) { return o.value === chosen; })) {
+        entry.select.value = chosen;
+      }
+    });
+  }
+
+  filter.addEventListener("change", apply);
+})();
+</script>
+{% endblock %}

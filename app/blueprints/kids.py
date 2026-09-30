@@ -452,6 +452,49 @@ def checkout():
     )
 
 
+@bp.post("/checkins/<int:checkin_id>/out/")
+@login_required
+@min_role("leader")
+def check_out_one(checkin_id: int):
+    """Check one child out from the staff list.
+
+    The desk screen is still the way this should normally happen, because it
+    asks who is collecting and that is the fact worth keeping. This path
+    exists for the rest of Sunday: a parent who collected before anybody got
+    to a screen, a child moved to another room, a row left open at the end of
+    the morning.
+
+    `collected_by` is deliberately left empty rather than filled with the
+    staff member's name. They did not collect the child, and a record saying
+    they did would be worse than one that admits it does not know. Who pressed
+    the button is in the audit entry, where it belongs.
+    """
+    checkin = Checkin.get_for_church(g.church.id, checkin_id)
+    if checkin is None:
+        abort(404)
+
+    if not checkin.is_present:
+        flash(KIDS["roster_already_out"].format(name=checkin.person.full_name),
+              "error")
+        return redirect(url_for("kids.index"))
+
+    checkin.check_out(collected_by=None, user=current_user)
+    record(
+        CHILD_CHECKED_OUT,
+        f"{checkin.person.full_name} checked out from the staff list",
+        actor=current_user,
+        subject_type="checkin",
+        subject_id=checkin.id,
+        subject_label=checkin.person.full_name,
+        detail=KIDS["roster_no_name"],
+    )
+    db.session.commit()
+
+    flash(KIDS["roster_checked_out"].format(name=checkin.person.full_name),
+          "notice")
+    return redirect(url_for("kids.index"))
+
+
 @bp.post("/checkout/")
 @login_required
 @min_role("leader")

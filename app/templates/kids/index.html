@@ -55,6 +55,16 @@
                  holding one the desk no longer recognises. #}
               <a class="btn ghostbtn tiny reprint" target="_blank" rel="noopener"
                  href="{{ url_for('kids.tag_for_child', checkin_id=checkin.id) }}">{{ content.tags_reprint }}</a>
+              {# Only for a child still in a room. A check-out button beside a
+                 row that already says "Collected at 5:16pm" is a button whose
+                 only possible outcome is an error. #}
+              {% if checkin.is_present %}
+                <form method="post" class="inline"
+                      action="{{ url_for('kids.check_out_one', checkin_id=checkin.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn softdanger tiny" type="submit">{{ content.roster_check_out }}</button>
+                </form>
+              {% endif %}
             </li>
           {% endfor %}
         </ul>

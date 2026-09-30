@@ -351,3 +351,110 @@ class TestTheStylesheet:
     def test_there_is_a_print_stylesheet(self):
         assert "@media print" in self.CSS
         assert ".noprint{display:none !important}" in self.CSS
+
+
+class TestCheckingOutFromTheStaffList:
+    """A second way out, for the rest of Sunday.
+
+    The desk screen stays the normal path because it asks who is collecting.
+    This one is for the parent who left before anybody reached a screen and
+    the row still open at the end of the morning.
+    """
+
+    def url(self, checkin):
+        return f"/kids/checkins/{checkin.id}/out/"
+
+    def present(self, db, sunday, first="Ellie"):
+        db.session.refresh(sunday)
+        return next(c for c in sunday.checkins if c.person.first_name == first)
+
+    def test_the_button_is_on_a_child_still_in_a_room(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert page.count("Check out") >= 2
+        assert "softdanger" in page
+
+    def test_it_checks_them_out(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers=H)
+        db.session.refresh(row)
+        assert not row.is_present
+
+    def test_it_leaves_the_sibling_alone(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers=H)
+        assert self.present(db, sunday, "Nate").is_present
+
+    def test_it_does_not_invent_who_collected_them(self, db, staff, webbs, sunday):
+        """The staff member did not collect the child. A record saying they
+        did is worse than one that admits it does not know."""
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers=H)
+        db.session.refresh(row)
+        assert row.collected_by is None
+
+    def test_who_pressed_it_is_in_the_log(self, db, staff, webbs, sunday):
+        from app.models.audit import CHILD_CHECKED_OUT
+
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers=H)
+        event = db.session.scalar(
+            db.select(AuditEvent).where(AuditEvent.action == CHILD_CHECKED_OUT)
+        )
+        assert event is not None
+        assert "staff list" in event.summary
+        assert event.subject_label == "Ellie Webb"
+
+    def test_the_log_says_nobody_was_named(self, db, staff, webbs, sunday):
+        from app.models.audit import CHILD_CHECKED_OUT
+
+        check_in(db, staff, webbs, sunday)
+        staff.post(self.url(self.present(db, sunday)), headers=H)
+        event = db.session.scalar(
+            db.select(AuditEvent).where(AuditEvent.action == CHILD_CHECKED_OUT)
+        )
+        assert "Nobody was recorded as collecting them" in event.detail
+
+    def test_it_says_who_went_home(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        page = staff.post(self.url(self.present(db, sunday)), headers=H,
+                          follow_redirects=True).data.decode()
+        assert "Ellie Webb checked out" in page
+
+    def test_the_button_goes_away_once_they_are_out(self, db, staff, webbs, sunday):
+        """A button beside a row that already says collected can only error."""
+        check_in(db, staff, webbs, sunday)
+        staff.post(self.url(self.present(db, sunday)), headers=H)
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert page.count("Check out") == 1  # Nate only
+
+    def test_checking_out_twice_changes_nothing(self, db, staff, webbs, sunday):
+        """Two volunteers on two tablets, one child."""
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers=H)
+        db.session.refresh(row)
+        first = row.checked_out_at
+
+        page = staff.post(self.url(row), headers=H,
+                          follow_redirects=True).data.decode()
+        db.session.refresh(row)
+        assert row.checked_out_at == first
+        assert "was already collected" in page
+
+    def test_a_missing_row_is_a_404(self, db, staff, webbs, sunday):
+        assert staff.post("/kids/checkins/999999/out/", headers=H).status_code == 404
+
+    def test_a_member_cannot(self, member):
+        assert member.post("/kids/checkins/1/out/", headers=H).status_code == 403
+
+    def test_another_church_cannot(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        row = self.present(db, sunday)
+        staff.post(self.url(row), headers={"Host": RIVERBEND_HOST})
+        db.session.refresh(row)
+        assert row.is_present

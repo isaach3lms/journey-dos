@@ -1906,6 +1906,15 @@ KIDS = {
     "tags_reprinted": "Reprinted. The pickup code has not changed.",
     "tags_collected_note": "Already collected",
 
+    # Checking a child out from the staff list rather than from the desk.
+    "roster_check_out": "Check out",
+    "roster_checked_out": "{name} checked out.",
+    "roster_already_out": "{name} was already collected.",
+    "roster_no_name": (
+        "Checked out from the staff list. Nobody was recorded as collecting "
+        "them, so use the desk when you can."
+    ),
+
     # Forgot the code
     "forgot_heading": "We will send you your code",
     "forgot_hint": "Type the email address the church has for you.",

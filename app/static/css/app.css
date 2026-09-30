@@ -1302,6 +1302,14 @@ ul.policy span{color:var(--muted)}
   border:1px solid var(--flag);box-shadow:none;
 }
 .btn.danger:hover{background:var(--flag-bg)}
+/* A softer red, for an action that is ordinary but worth a second look. The
+   outline .danger above shouts, which is right next to Save and wrong on a
+   row a volunteer taps forty times on a Sunday. */
+.btn.softdanger{
+  background:var(--flag-bg);color:var(--flag);
+  border:1px solid transparent;box-shadow:none;
+}
+.btn.softdanger:hover{border-color:var(--flag)}
 
 /* Deleting, folded away: a delete button next to Save is one somebody
    eventually hits by accident. */

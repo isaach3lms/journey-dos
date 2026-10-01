@@ -1,5 +1,31 @@
 {% extends "base.html" %}
 {% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+
+{% block extra_script %}
+<script>
+/* Deleting a kids session takes its check-ins with it, which is the record of
+   who was in a room and who collected them. The warning names the Sunday and
+   how many go with it, because "are you sure?" is a question nobody reads.
+
+   The confirm field is added here rather than sitting in the form, so a
+   browser without JavaScript posts without it and the server refuses. Failing
+   closed is the right direction for this one. */
+document.querySelectorAll("[data-confirm-delete]").forEach(function (form) {
+  form.addEventListener("submit", function (event) {
+    if (form.dataset.confirmed === "yes") { return; }
+    event.preventDefault();
+    if (!window.confirm(form.dataset.warning)) { return; }
+    var ok = document.createElement("input");
+    ok.type = "hidden";
+    ok.name = "confirm";
+    ok.value = "on";
+    form.appendChild(ok);
+    form.dataset.confirmed = "yes";
+    form.submit();
+  });
+});
+</script>
+{% endblock %}
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
@@ -100,7 +126,7 @@
       <ul class="flaglist">
         {% for item in sessions %}
           {% set deletable = current_user.is_staff and not item.is_open %}
-          <li {% if deletable %}class="hasdel"{% endif %}>
+          <li>
             <span class="fl">
               <span class="pn">{{ item.starts_at|church_time("%A, %B %-d at %-I:%M%p") }}</span>
               <span class="pe">
@@ -116,29 +142,25 @@
               </button>
             </form>
 
-            {# Folded, staff only, and never on the open session. What this
-               destroys is the record of which children were in a room and who
-               took them home, so it is not a button sitting next to Reopen. #}
+            {# Staff only, and never on the open session. Same shape as the
+               other buttons on this row so the list reads as one thing, in red
+               because it destroys the record of which children were in a room
+               and who took them home.
+
+               The confirm field is deliberately NOT in this form. The script
+               below adds it once somebody has agreed to the warning, which
+               means a browser with no JavaScript posts without it and the
+               server refuses, rather than deleting a Sunday on one click. #}
             {% if deletable %}
-              <details class="dangerbox sessiondel">
-                <summary>{{ content.delete_heading }}</summary>
-                <p class="muted small">{{ content.delete_hint }}</p>
-                <p class="muted small">
-                  {% if item.checkins %}
-                    {{ content.delete_warning.format(count=item.checkins|length) }}
-                  {% else %}
-                    {{ content.delete_warning_empty }}
-                  {% endif %}
-                </p>
-                <form method="post" action="{{ url_for('kids.delete_session', session_id=item.id) }}">
-                  {{ csrf_field() }}
-                  <label class="check">
-                    <input type="checkbox" name="confirm">
-                    <span>{{ content.delete_confirm }}</span>
-                  </label>
-                  <button class="btn danger" type="submit">{{ content.delete_button }}</button>
-                </form>
-              </details>
+              <form method="post" class="inline" data-confirm-delete
+                    data-warning="{{ content.delete_confirm_js.format(
+                        name=item.name,
+                        when=item.starts_at|church_time('%B %-d'),
+                        count=item.checkins|length) }}"
+                    action="{{ url_for('kids.delete_session', session_id=item.id) }}">
+                {{ csrf_field() }}
+                <button class="btn danger tiny" type="submit">{{ content.delete_button }}</button>
+              </form>
             {% endif %}
           </li>
         {% endfor %}

@@ -2000,20 +2000,14 @@ KIDS = {
 
     # Deleting a session. The copy carries the warning, because the audit
     # entry is the only thing left afterwards.
-    "delete_heading": "Delete this session",
-    "delete_hint": (
-        "For a Sunday entered twice, or the sessions from setting this up."
+    "delete_confirm_required": "Confirm before deleting a session.",
+    "delete_button": "Delete",
+    # Named and counted. "Are you sure?" is a question nobody reads.
+    "delete_confirm_js": (
+        "Delete {name} on {when}?\n\n"
+        "{count} check-ins go with it, including who collected each child. "
+        "This cannot be undone. The audit log keeps a note of what was here."
     ),
-    "delete_warning": (
-        "This cannot be undone. {count} check-ins go with it, including who "
-        "collected each child. The audit log keeps a note of what was here."
-    ),
-    "delete_warning_empty": (
-        "This cannot be undone. Nobody checked in to this one."
-    ),
-    "delete_confirm": "Yes, delete it and its check-ins",
-    "delete_confirm_required": "Tick the box first.",
-    "delete_button": "Delete the session",
     "delete_close_first": (
         "Close the session before deleting it. Children may be in a room right "
         "now, and their pickup codes would go with it."

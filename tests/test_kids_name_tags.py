@@ -505,12 +505,15 @@ class TestDeletingASession:
         assert db.session.get(CheckinSession, sunday.id) is not None
         assert "Close the session before deleting" in page
 
-    def test_the_tick_box_is_required(self, db, staff, sunday):
+    def test_a_post_without_the_confirmation_is_refused(self, db, staff, sunday):
+        """The confirm field is added by the warning dialog, not carried in the
+        form. A browser with no JavaScript posts without it and nothing is
+        deleted, which is the right direction to fail in."""
         self.closed(db, sunday)
         page = staff.post(self.url(sunday), headers=H,
                           follow_redirects=True).data.decode()
         assert db.session.get(CheckinSession, sunday.id) is not None
-        assert "Tick the box first" in page
+        assert "Confirm before deleting" in page
 
     def test_the_log_keeps_the_children(self, db, staff, webbs, sunday):
         """After this runs the entry is the only thing left that says the
@@ -562,33 +565,47 @@ class TestDeletingASession:
 
 
 class TestTheDeleteControl:
-    def test_it_is_folded_away(self, db, staff, sunday):
-        """Not a button sitting next to Reopen."""
+    def test_it_is_a_button_on_the_row(self, db, staff, sunday):
+        """Same shape as the other buttons on the row, in red."""
         sunday.close()
         db.session.commit()
         page = staff.get("/kids/", headers=H).data.decode()
-        assert "dangerbox" in page
-        assert "Delete this session" in page
+        assert "btn danger tiny" in page
+        assert ">Delete<" in page
 
-    def test_it_is_not_on_the_open_session(self, db, staff, sunday):
+    def test_it_sits_beside_reopen(self, db, staff, sunday):
+        sunday.close()
+        db.session.commit()
         page = staff.get("/kids/", headers=H).data.decode()
-        assert "Delete this session" not in page
+        gap = page.index(">Delete<") - page.index("Reopen it")
+        assert 0 < gap < 900, "the two buttons belong on the same row"
 
-    def test_it_says_how_many_check_ins_go_with_it(self, db, staff, webbs, sunday):
+    def test_it_warns_by_name_and_by_count(self, db, staff, webbs, sunday):
+        """"Are you sure?" is a question nobody reads."""
         check_in(db, staff, webbs, sunday)
         sunday.close()
         db.session.commit()
         page = staff.get("/kids/", headers=H).data.decode()
+        assert "data-confirm-delete" in page
+        assert "Sunday 9:30" in page
         assert "2 check-ins go with it" in page
 
-    def test_an_empty_session_says_so_instead(self, db, staff, sunday):
+    def test_the_confirmation_is_not_carried_in_the_form(self, db, staff, sunday):
+        """It is added by the script once somebody agrees, so no JavaScript
+        means no deletion rather than a one-click deletion."""
         sunday.close()
         db.session.commit()
         page = staff.get("/kids/", headers=H).data.decode()
-        assert "Nobody checked in to this one" in page
+        block = page[page.index("data-confirm-delete"):]
+        block = block[:block.index("</form>")]
+        assert 'name="confirm"' not in block
+
+    def test_it_is_not_on_the_open_session(self, db, staff, sunday):
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert ">Delete<" not in page
 
     def test_a_leader_does_not_see_it(self, db, leader, sunday):
         sunday.close()
         db.session.commit()
         page = leader.get("/kids/", headers=H).data.decode()
-        assert "Delete this session" not in page
+        assert ">Delete<" not in page

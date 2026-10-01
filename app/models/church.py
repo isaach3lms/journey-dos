@@ -17,7 +17,7 @@ from typing import Optional
 
 import re
 
-from sqlalchemy import String, Boolean, UniqueConstraint, false, true
+from sqlalchemy import String, Boolean, Text, UniqueConstraint, false, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -104,6 +104,32 @@ class Church(TimestampMixin, db.Model):
     phone_checkin: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=false()
     )
+
+    # Who hears about a pastoral request.
+    #
+    # Empty means every active staff account, which is the right default for a
+    # church that has not thought about it: the people who can already see the
+    # request are the people told it exists. Setting it names the specific
+    # inboxes instead, which is what a church with a care team wants, and lets
+    # somebody outside the staff list be on it.
+    #
+    # One address per line. Stored as text rather than a table because it is a
+    # short list a human edits, and a table would mean a screen to manage rows
+    # for something that reads better as a box.
+    pastoral_alert_emails: Mapped[Optional[str]] = mapped_column(Text)
+
+    @property
+    def pastoral_recipients(self) -> list[str]:
+        """The addresses, cleaned. Empty list means fall back to staff."""
+        raw = (self.pastoral_alert_emails or "").replace(",", "\n")
+        seen, out = set(), []
+        for line in raw.splitlines():
+            address = line.strip().lower()
+            if not address or "@" not in address or address in seen:
+                continue
+            seen.add(address)
+            out.append(address)
+        return out
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

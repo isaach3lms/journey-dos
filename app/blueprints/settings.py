@@ -44,7 +44,7 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # redirect passes back so staff land on the row they just used.
 ROWS = (
     "brand", "accounts", "signup", "giving", "ccli",
-    "announcements", "email", "push", "audit", "support",
+    "announcements", "pastoral", "email", "push", "audit", "support",
 )
 
 
@@ -211,6 +211,45 @@ def toggle_signup():
         "notice",
     )
     return _back("signup")
+
+
+@bp.post("/pastoral/")
+@login_required
+@min_role("staff")
+def save_pastoral_recipients():
+    """Change who is emailed when somebody asks for pastoral support.
+
+    Audited like every other change to who can see what. This one decides who
+    finds out that a person in the church has asked for help, which is as
+    sensitive as a role change and is treated the same way.
+    """
+    church = g.church
+    before = church.pastoral_recipients
+
+    church.pastoral_alert_emails = (request.form.get("emails") or "").strip() or None
+    after = church.pastoral_recipients
+
+    if after != before:
+        record(
+            BRAND_CHANGED,
+            "Pastoral alerts now go to "
+            + (f"{len(after)} named addresses" if after else "all active staff"),
+            actor=current_user,
+            subject_type="church",
+            subject_id=church.id,
+            subject_label=church.name,
+            # The addresses themselves, so the log answers "who could see
+            # that somebody asked for help last March".
+            detail=", ".join(after) if after else "every active staff account",
+        )
+    db.session.commit()
+
+    flash(
+        SETTINGS["pastoral_saved"].format(count=len(after)) if after
+        else SETTINGS["pastoral_saved_staff"],
+        "notice",
+    )
+    return _back("pastoral")
 
 
 @bp.post("/kids-codes/")

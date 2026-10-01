@@ -215,20 +215,47 @@ def send_support():
 
 
 def _alert_pastors(ask, person) -> None:
-    """Email staff that a request exists. Never what it says. Caller commits."""
+    """Email the care team that a request exists. Never what it says.
+
+    Who gets it is the church's setting. A named list is the normal case for a
+    church with a care team, and it can include somebody who is not a staff
+    account. An empty list falls back to every active staff member, which is
+    the right default for a church that has not set one: the people who can
+    already read the request are the people told it exists.
+
+    What is in the email has not changed and will not. Staff are told a
+    request exists and given a link. A copy of what somebody wrote, sitting in
+    three inboxes, cannot be taken back. See app/models/support.py.
+
+    Caller commits.
+    """
     from app.mail import NotQueued, queue
     from app.models import User
 
     link = url_for("people.detail", person_id=person.id, _external=True,
                    _scheme="https" if request.is_secure else "http")
-    staff = db.session.scalars(
-        db.select(User).where(
-            User.church_id == g.church.id,
-            User.role == "staff",
-            User.is_active_account.is_(True),
-        )
-    ).all()
-    for user in staff:
+
+    named = g.church.pastoral_recipients
+    if named:
+        # Keyed on the address rather than a user id, because most of these
+        # are not accounts in this system at all.
+        recipients = [(address, None, f"support:{ask.id}:{address}")
+                      for address in named]
+    else:
+        recipients = [
+            (user.email, user.name, f"support:{ask.id}:{user.id}")
+            for user in db.session.scalars(
+                db.select(User).where(
+                    User.church_id == g.church.id,
+                    User.role == "staff",
+                    User.is_active_account.is_(True),
+                )
+            ).all()
+        ]
+
+    for address, name, key in recipients:
+        if not address:
+            continue
         try:
             queue(
                 church_id=g.church.id,
@@ -241,9 +268,9 @@ def _alert_pastors(ask, person) -> None:
                     link=link,
                     church=g.church.name,
                 ),
-                to_email=user.email,
-                to_name=user.name,
-                dedupe_key=f"support:{ask.id}:{user.id}",
+                to_email=address,
+                to_name=name,
+                dedupe_key=key,
             )
         except NotQueued:
             continue

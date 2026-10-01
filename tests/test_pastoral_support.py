@@ -582,3 +582,124 @@ class TestTheButtonOnTheDashboard:
         page = client.get("/people/support/", headers=H).data.decode()
         assert 'id="done"' in page
         assert page.index('id="done"') > page.index("Waiting")
+
+
+def a_church(db):
+    from app.models import Church
+
+    return db.session.scalar(db.select(Church).where(Church.slug == "journey"))
+
+
+class TestWhoHearsAboutARequest:
+    """A church setting, not a hardcoded list.
+
+    The people who need telling are often not the people with staff accounts:
+    a care team lead, somebody from outside the church helping, a pastor who
+    never signs in. And the list changes, which must not need a deploy.
+    """
+
+    def addresses(self, db):
+        from app.models import OutboxMessage
+
+        return sorted(
+            m.to_email for m in db.session.scalars(
+                db.select(OutboxMessage).where(OutboxMessage.category == "pastoral")
+            )
+        )
+
+    def test_a_named_list_is_used(self, db, client, alicia):
+        a_church(db).pastoral_alert_emails = (
+            "care@example.com\nsecond@example.com\nthird@example.com"
+        )
+        db.session.commit()
+        ask(client)
+        assert self.addresses(db) == [
+            "care@example.com", "second@example.com", "third@example.com",
+        ]
+
+    def test_somebody_outside_the_staff_list_can_be_on_it(self, db, client, alicia):
+        """The point of the setting. Isaac is not a Journey staff account."""
+        a_church(db).pastoral_alert_emails = "outsider@elsewhere.org"
+        db.session.commit()
+        ask(client)
+        assert self.addresses(db) == ["outsider@elsewhere.org"]
+
+    def test_an_empty_list_falls_back_to_staff(self, db, client, alicia):
+        """The right default for a church that has not set one: the people who
+        can already read the request are the people told it exists."""
+        a_church(db).pastoral_alert_emails = None
+        db.session.commit()
+        ask(client)
+        assert self.addresses(db)
+        assert all("@" in address for address in self.addresses(db))
+
+    def test_the_list_is_cleaned_up(self, db, client, alicia):
+        """Trailing spaces, blank lines, commas and a repeat. A box a human
+        types into gets all of those."""
+        a_church(db).pastoral_alert_emails = (
+            "  Care@Example.com  \n\n, second@example.com,\ncare@example.com\n"
+        )
+        db.session.commit()
+        ask(client)
+        assert self.addresses(db) == ["care@example.com", "second@example.com"]
+
+    def test_the_message_is_still_not_in_the_email(self, db, client, alicia):
+        """Who it goes to changed. What it says did not, and will not: a copy
+        of what somebody wrote, in three inboxes, cannot be taken back."""
+        from app.models import OutboxMessage
+
+        a_church(db).pastoral_alert_emails = "care@example.com"
+        db.session.commit()
+        ask(client, message="My marriage is falling apart.")
+        queued = db.session.scalars(
+            db.select(OutboxMessage).where(OutboxMessage.category == "pastoral")
+        ).all()
+        assert queued
+        for message in queued:
+            assert "marriage" not in message.body_text.lower()
+
+    def test_each_address_is_told_once(self, db, client, alicia):
+        a_church(db).pastoral_alert_emails = "care@example.com"
+        db.session.commit()
+        ask(client)
+        assert len(self.addresses(db)) == 1
+
+
+class TestChangingTheList:
+    def test_staff_can_save_it(self, db, staff):
+        staff.post("/settings/pastoral/",
+                   data={"emails": "a@example.com\nb@example.com"},
+                   headers={"Host": JOURNEY_HOST})
+        church = a_church(db)
+        db.session.refresh(church)
+        assert church.pastoral_recipients == ["a@example.com", "b@example.com"]
+
+    def test_clearing_it_goes_back_to_staff(self, db, staff):
+        a_church(db).pastoral_alert_emails = "a@example.com"
+        db.session.commit()
+        staff.post("/settings/pastoral/", data={"emails": "  "},
+                   headers={"Host": JOURNEY_HOST})
+        church = a_church(db)
+        db.session.refresh(church)
+        assert church.pastoral_recipients == []
+
+    def test_the_change_is_logged_with_the_addresses(self, db, staff):
+        """"Who could see that somebody asked for help last March" is a
+        question the log has to answer."""
+        from app.models import AuditEvent
+
+        staff.post("/settings/pastoral/", data={"emails": "care@example.com"},
+                   headers={"Host": JOURNEY_HOST})
+        event = db.session.scalar(
+            db.select(AuditEvent).order_by(AuditEvent.id.desc())
+        )
+        assert "Pastoral alerts now go to" in event.summary
+        assert "care@example.com" in event.detail
+
+    def test_a_leader_cannot_change_it(self, db, leader):
+        assert leader.post("/settings/pastoral/", data={"emails": "x@example.com"},
+                           headers={"Host": JOURNEY_HOST}).status_code == 403
+
+    def test_the_row_is_on_the_settings_screen(self, db, staff):
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST}).data.decode()
+        assert "Pastoral requests go to" in page

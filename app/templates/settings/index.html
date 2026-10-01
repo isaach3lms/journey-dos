@@ -341,6 +341,38 @@
     </div>
   </details>
 
+  {# Who hears that somebody asked for help. Its own row rather than a line
+     on the email one: this decides who learns a person in the church is
+     struggling, which is a different question from whether mail is leaving. #}
+  <details class="setrow" id="pastoral" {% if open_row == 'pastoral' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.pastoral_heading }}</span>
+        <span class="pe">
+          {% if church.pastoral_recipients|length == 1 %}{{ content.pastoral_sub_one }}
+          {% elif church.pastoral_recipients %}{{ content.pastoral_sub.format(count=church.pastoral_recipients|length) }}
+          {% else %}{{ content.pastoral_sub_staff }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.pastoral_recipients %}pending{% endif %}">
+        {% if church.pastoral_recipients %}{{ content.pastoral_on }}{% else %}{{ content.pastoral_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.pastoral_intro }}</p>
+      <p class="muted small">{{ content.pastoral_privacy }}</p>
+      <form method="post" action="{{ url_for('settings.save_pastoral_recipients') }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="pastoral-emails">{{ content.pastoral_label }}</label>
+        <textarea class="input" id="pastoral-emails" name="emails" rows="4"
+                  spellcheck="false">{{ church.pastoral_alert_emails or "" }}</textarea>
+        <p class="muted small">{{ content.pastoral_empty_hint }}</p>
+        <button class="btn" type="submit">{{ content.pastoral_save }}</button>
+      </form>
+    </div>
+  </details>
+
   {# App notifications, beside email. The two fail differently and are fixed
      differently, so one row saying "notifications" would hide whichever one
      is actually broken. #}

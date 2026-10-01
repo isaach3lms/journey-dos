@@ -2398,6 +2398,32 @@ SETTINGS = {
         "{church}"
     ),
 
+    # Who hears about a pastoral request.
+    "pastoral_heading": "Pastoral requests go to",
+    "pastoral_sub": "{count} addresses",
+    "pastoral_sub_one": "1 address",
+    "pastoral_sub_staff": "Everyone with a staff account",
+    "pastoral_on": "Named",
+    "pastoral_off": "All staff",
+    "pastoral_intro": (
+        "When somebody asks for pastoral support, these addresses are told a "
+        "request exists and given a link to it. One per line. They do not have "
+        "to be staff accounts, so somebody on the care team who does not use "
+        "the app can still be told."
+    ),
+    "pastoral_privacy": (
+        "What the person wrote is never in the email. A copy of that sitting "
+        "in three inboxes cannot be taken back, so the message stays in the "
+        "app behind a sign-in."
+    ),
+    "pastoral_label": "One address per line",
+    "pastoral_empty_hint": (
+        "Leave it empty and every active staff account is told instead."
+    ),
+    "pastoral_save": "Save",
+    "pastoral_saved": "Pastoral requests now go to {count} addresses.",
+    "pastoral_saved_staff": "Pastoral requests now go to every active staff account.",
+
     # App notifications. Separate from email because the failures are
     # different and so are the fixes.
     "push_heading": "App notifications",

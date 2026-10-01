@@ -70,7 +70,7 @@ def make_service(db, song, published=True, starts_in=timedelta(days=3)):
     service = Service(church_id=church.id, name="Sunday", starts_at=utcnow() + starts_in)
     db.session.add(service)
     db.session.flush()
-    db.session.add(ServiceItem(church_id=church.id, service_id=service.id, position=1,
+    db.session.add(ServiceItem(church_id=church.id, service_id=service.id, track_id=service.main_track.id, position=1,
                                kind="song", title=song.title, song_id=song.id))
     if published:
         service.publish()
@@ -79,7 +79,7 @@ def make_service(db, song, published=True, starts_in=timedelta(days=3)):
 
 
 def schedule(db, service, person, status=INVITED):
-    db.session.add(ServiceAssignment(church_id=service.church_id, service_id=service.id,
+    db.session.add(ServiceAssignment(church_id=service.church_id, service_id=service.id, track_id=service.main_track.id,
                                      person_id=person.id, status=status))
     db.session.commit()
 

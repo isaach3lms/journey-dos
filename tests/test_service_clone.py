@@ -50,13 +50,13 @@ def service(db):
         ("element", "Welcome", 3, None),
         ("element", "Message", 35, None),
     ), start=1):
-        db.session.add(ServiceItem(church_id=c.id, service_id=s.id, position=i,
+        db.session.add(ServiceItem(church_id=c.id, service_id=s.id, track_id=s.main_track.id, position=i,
                                    kind=item_kind, title=title, minutes=minutes,
                                    song_id=song_id, notes=f"note {i}",
                                    key_override="G" if item_kind == "song" else None))
-    db.session.add(ServiceNeed(church_id=c.id, service_id=s.id, position_id=vocals.id,
+    db.session.add(ServiceNeed(church_id=c.id, service_id=s.id, track_id=s.main_track.id, position_id=vocals.id,
                                position_name="Vocals", wanted=2))
-    db.session.add(ServiceAssignment(church_id=c.id, service_id=s.id, person_id=person.id,
+    db.session.add(ServiceAssignment(church_id=c.id, service_id=s.id, track_id=s.main_track.id, person_id=person.id,
                                      position_id=vocals.id, position_name="Vocals",
                                      status=ACCEPTED))
     db.session.commit()

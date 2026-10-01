@@ -42,11 +42,11 @@ def service(db):
                 starts_at=utcnow() + timedelta(days=3))
     db.session.add(s)
     db.session.flush()
-    db.session.add(ServiceItem(church_id=c.id, service_id=s.id, position=1,
+    db.session.add(ServiceItem(church_id=c.id, service_id=s.id, track_id=s.main_track.id, position=1,
                                kind="element", title="Welcome"))
-    db.session.add(ServiceNeed(church_id=c.id, service_id=s.id, position_id=vocals.id,
+    db.session.add(ServiceNeed(church_id=c.id, service_id=s.id, track_id=s.main_track.id, position_id=vocals.id,
                                position_name="Vocals", wanted=2))
-    db.session.add(ServiceAssignment(church_id=c.id, service_id=s.id, person_id=person.id,
+    db.session.add(ServiceAssignment(church_id=c.id, service_id=s.id, track_id=s.main_track.id, person_id=person.id,
                                      position_id=vocals.id, position_name="Vocals",
                                      status=ACCEPTED))
     db.session.commit()

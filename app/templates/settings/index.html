@@ -425,68 +425,6 @@
     </div>
   </details>
 
-  <details class="setrow" id="cost" {% if open_row == 'cost' %}open{% endif %}>
-    <summary>
-      <span class="fl">
-        <span class="pn">{{ content.replaces_heading }}</span>
-        <span class="pe">{{ content.replaces_sub.format(amount="$%.0f"|format(replaced_cents / 100)) }}</span>
-      </span>
-      {{ chev() }}
-    </summary>
-    <div class="setbd">
-      <ul class="flaglist">
-        {% for item in replaces %}
-          <li>
-            <span class="fl">
-              <span class="pn">{{ item.name }}</span>
-              <span class="pe">{{ item.note }}</span>
-            </span>
-            <span class="pill mono">
-              {% if item.cents %}${{ "%.0f"|format(item.cents / 100) }}/mo{% else %}unchanged{% endif %}
-            </span>
-          </li>
-        {% endfor %}
-      </ul>
-
-      <div class="costline">
-        <span>{{ content.replaces_total }}</span>
-        <b class="mono">${{ "%.0f"|format(replaced_cents / 100) }} / mo</b>
-      </div>
-      <div class="costline">
-        <span>{{ content.replaces_ours }}</span>
-        <b class="mono">${{ "%.0f"|format(ours_cents / 100) }} / mo</b>
-      </div>
-      <p class="muted small">
-        {{ content.replaces_saving.format(
-             monthly="$%.0f"|format(saving_cents / 100),
-             yearly="$%.0f"|format(saving_cents * 12 / 100)) }}
-      </p>
-
-      <div class="mlbl">{{ content.included_heading }}</div>
-      {% for item in included %}
-        <p class="muted small"><b>{{ item.name }}</b> &middot; {{ item.note }}</p>
-      {% endfor %}
-    </div>
-  </details>
-
-  <details class="setrow" id="bible" {% if open_row == 'bible' %}open{% endif %}>
-    <summary>
-      <span class="fl">
-        <span class="pn">{{ content.bible_heading }}</span>
-        <span class="pe">{{ content.bible_sub.format(verses=bible_verses, books=bible_books) }}</span>
-      </span>
-      {{ chev() }}
-    </summary>
-    <div class="setbd">
-      <p>{{ content.bible_body }}</p>
-      <div class="metrics">
-        <div><span class="mono mv">{{ bible_verses }}</span> verses loaded</div>
-        <div><span class="mono mv">{{ bible_books }}</span> books</div>
-      </div>
-      <p class="muted small">{{ content.bible_licensed }}</p>
-    </div>
-  </details>
-
   <details class="setrow" id="support" {% if open_row == 'support' %}open{% endif %}>
     <summary>
       <span class="fl">

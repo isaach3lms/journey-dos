@@ -9,7 +9,6 @@ and exported.
 import pytest
 
 from app.audit import REDACTED, record, scrub
-from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES
 from app.models import AuditEvent, Church
 from app.models.audit import (
     ACTIONS,
@@ -37,35 +36,34 @@ def journey(db):
     return church
 
 
-class TestCostComparison:
-    def test_the_numbers_are_data_not_markup(self):
-        """One edit, not a hunt through a template."""
-        assert sum(item["cents"] for item in REPLACES) == 29400
-        assert DOS_PRICE_CENTS == 10000
+class TestRowsThatWereRemoved:
+    """The cost comparison and the Scripture row are gone.
 
-    def test_the_saving_is_what_the_spec_says(self):
-        saving = sum(item["cents"] for item in REPLACES) - DOS_PRICE_CENTS
-        assert saving == 19400
+    Both were read-only: a sales argument and a loader status, on a screen a
+    church uses to run itself. Nothing underneath them went with them. Reading
+    plans still read the Bible, which is why the model and the loader stay.
+    """
 
-    def test_the_bible_is_not_counted_as_a_saving(self):
-        """Most churches already use a free app. Claiming it is the kind of
-        overstatement a pastor checks and remembers."""
-        names = " ".join(item["name"].lower() for item in REPLACES)
-        assert "bible" not in names
-        assert any("bible" in item["name"].lower() for item in INCLUDED_NOT_SAVED)
+    def test_the_cost_comparison_is_gone(self, staff):
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST}).data
+        assert b"What this replaces" not in page
+        assert b"Planning Center" not in page
 
-    def test_giving_fees_are_shown_as_unchanged(self):
-        """The pitch is 'keep Tithely and your rates', so claiming a saving
-        here would contradict the giving screen."""
-        fees = next(i for i in REPLACES if "giving" in i["name"].lower())
-        assert fees["cents"] == 0
+    def test_the_scripture_row_is_gone(self, staff):
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST}).data
+        assert b"verses across" not in page
 
-    def test_the_screen_renders_the_arithmetic(self, staff):
-        r = staff.get("/settings/", headers={"Host": JOURNEY_HOST})
-        assert b"$294 / mo" in r.data
-        assert b"$100 / mo" in r.data
-        assert b"$194 a month" in r.data
-        assert b"$2,328 a year" in r.data or b"$2328 a year" in r.data
+    def test_the_bible_itself_still_works(self, db):
+        """Removing a status row must not take the data with it."""
+        from app.models import BibleVerse
+
+        assert BibleVerse.verse_count() >= 0
+        assert isinstance(BibleVerse.loaded_books(), (list, tuple, set))
+
+    def test_the_rows_that_matter_are_still_there(self, staff):
+        page = staff.get("/settings/", headers={"Host": JOURNEY_HOST}).data
+        for kept in (b"Your brand", b"What happened here", b"App notifications"):
+            assert kept in page
 
 
 class TestBrandSettings:

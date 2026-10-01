@@ -233,7 +233,7 @@ class TestSongs:
         for position in (1, 2):
             db.session.add(
                 ServiceItem(
-                    church_id=journey.id, service_id=service.id, position=position,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=position,
                     kind="song", title="Known", song_id=song.id,
                 )
             )
@@ -327,7 +327,7 @@ class TestPlan:
         for _ in range(2):
             db.session.add(
                 ServiceItem(
-                    church_id=journey.id, service_id=service.id,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                     position=1, kind="element", title="Clash",
                 )
             )
@@ -338,7 +338,7 @@ class TestPlan:
     def test_deleting_a_service_takes_its_plan(self, db, journey, service):
         db.session.add(
             ServiceItem(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 position=1, kind="element", title="Welcome",
             )
         )
@@ -411,7 +411,7 @@ class TestTeams:
 class TestAssignments:
     def _assign(self, db, journey, service, person, position=None):
         assignment = ServiceAssignment(
-            church_id=journey.id, service_id=service.id, person_id=person.id,
+            church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
             position_id=position.id if position else None,
             position_name=position.name if position else None,
             status=INVITED,
@@ -471,7 +471,7 @@ class TestAssignments:
 class TestMemberServing:
     def _assign(self, db, journey, service, person):
         assignment = ServiceAssignment(
-            church_id=journey.id, service_id=service.id, person_id=person.id,
+            church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
             position_name="Acoustic", status=INVITED,
         )
         db.session.add(assignment)
@@ -489,7 +489,7 @@ class TestMemberServing:
     def test_a_volunteer_sees_the_plan(self, db, journey, service, volunteer, member):
         db.session.add(
             ServiceItem(
-                church_id=journey.id, service_id=service.id, position=1,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=1,
                 kind="song", title="Known", key_override="A",
             )
         )
@@ -562,7 +562,7 @@ class TestMemberServing:
         db.session.add_all([theirs, stranger])
         db.session.flush()
         assignment = ServiceAssignment(
-            church_id=riverbend.id, service_id=theirs.id,
+            church_id=riverbend.id, service_id=theirs.id, track_id=theirs.main_track.id,
             person_id=stranger.id, status=INVITED,
         )
         db.session.add(assignment)
@@ -586,7 +586,7 @@ class TestMemberServing:
         db.session.flush()
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=old.id,
+                church_id=journey.id, service_id=old.id, track_id=old.main_track.id,
                 person_id=volunteer.id, position_name="Acoustic", status=ACCEPTED,
             )
         )
@@ -600,7 +600,7 @@ class TestSendingThePlan:
     def test_it_queues_one_email_per_person(self, db, journey, service, volunteer, staff):
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 person_id=volunteer.id, position_name="Acoustic", status=INVITED,
             )
         )
@@ -614,11 +614,11 @@ class TestSendingThePlan:
     def test_the_plan_is_in_the_email(self, db, journey, service, volunteer, staff):
         db.session.add_all([
             ServiceItem(
-                church_id=journey.id, service_id=service.id, position=1,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=1,
                 kind="song", title="Known", key_override="A",
             ),
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 person_id=volunteer.id, position_name="Acoustic", status=INVITED,
             ),
         ])
@@ -639,7 +639,7 @@ class TestSendingThePlan:
         """
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 person_id=volunteer.id, position_name="Acoustic", status=INVITED,
             )
         )
@@ -668,7 +668,7 @@ class TestSendingThePlan:
         db.session.flush()
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 person_id=no_email.id, position_name="Acoustic", status=INVITED,
             )
         )

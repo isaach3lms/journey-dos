@@ -39,6 +39,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy import event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.extensions import db
@@ -423,6 +424,223 @@ class TeamMembership(TenantScoped, TimestampMixin, db.Model):
         return f"<TeamMembership person={self.person_id} team={self.team_id}>"
 
 
+def staffing_summary(needs, assignments) -> list[dict]:
+    """What is still unfilled, which is the question a leader actually has.
+
+    Counts accepted and invited separately: somebody who has not answered is
+    not the same as a gap, and treating them alike either panics a leader or
+    hides a real hole.
+
+    Takes the two lists rather than an object, so a Sunday and one strand of it
+    get the same arithmetic from the same place.
+    """
+    summary = []
+    for need in sorted(needs, key=lambda n: (n.position_name or "")):
+        filled = [
+            a for a in assignments
+            if a.position_id == need.position_id and a.status != DECLINED
+        ]
+        accepted = [a for a in filled if a.status == ACCEPTED]
+        summary.append({
+            "position": need.position_name,
+            "wanted": need.wanted,
+            "filled": len(filled),
+            "accepted": len(accepted),
+            "short": max(0, need.wanted - len(filled)),
+        })
+    return summary
+
+
+class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
+    """One strand of a Sunday: its own running order and its own volunteers.
+
+    A church does not run three services on a Sunday morning. It runs one
+    Sunday, with the main service, kids, and the operations team all happening
+    inside it. Modelling those as three separate services meant three things to
+    create, three to publish, three to send, and three rows on a dashboard that
+    should have shown one.
+
+    So a Sunday is one `Service` and the things that differ by strand hang off
+    a track instead: the running order, the people serving, and the roles still
+    to fill. What belongs to the Sunday as a whole stays on the service: the
+    date, the name, whether it is published, and how many people were in the
+    room.
+
+    A track is one `ServiceType` happening on one Sunday, which is why the
+    templates that already existed feed it directly. The name is copied at
+    creation rather than read through the type, for the same reason every other
+    copied label in this file is: renaming "Kids Service" next year must not
+    rewrite what last March's plan was called.
+
+    Tracks share the Sunday's start time. Each running order clocks from the
+    same moment, which is the church's own choice and the simpler model; if
+    strands ever need to start at different times, that is a column here and
+    nothing else moves.
+    """
+
+    __tablename__ = "service_track"
+    __table_args__ = (
+        UniqueConstraint("service_id", "position", name="uq_service_track_position"),
+        Index("ix_service_track_church", "church_id", "service_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    service_id: Mapped[int] = mapped_column(
+        ForeignKey("service.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    service: Mapped["Service"] = relationship(back_populates="tracks")
+
+    # Nullable, like the service's own type was: a track added by hand for one
+    # Sunday is a real case and does not need a type behind it.
+    service_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("service_type.id", ondelete="SET NULL"), index=True
+    )
+    service_type: Mapped[Optional["ServiceType"]] = relationship()
+
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    items: Mapped[list["ServiceItem"]] = relationship(
+        back_populates="track",
+        cascade="all, delete-orphan",
+        order_by="ServiceItem.position",
+    )
+    assignments: Mapped[list["ServiceAssignment"]] = relationship(
+        back_populates="track", cascade="all, delete-orphan"
+    )
+    needs: Mapped[list["ServiceNeed"]] = relationship(
+        back_populates="track", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self) -> str:
+        return f"<ServiceTrack {self.name!r} service={self.service_id}>"
+
+    @property
+    def total_minutes(self) -> int:
+        return sum(item.minutes or 0 for item in self.items)
+
+    def next_position(self) -> int:
+        return max((item.position for item in self.items), default=0) + 1
+
+    @property
+    def starts_at(self):
+        """The Sunday's start. Tracks do not carry their own."""
+        return self.service.starts_at if self.service is not None else None
+
+    @property
+    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
+        """Each item with the moment it starts, clocked from the Sunday."""
+        from datetime import timedelta
+
+        running = self.starts_at
+        out = []
+        for item in self.items:
+            if item.kind == ITEM_HEADER:
+                out.append((item, None))
+                continue
+            out.append((item, running))
+            if running is not None:
+                running = running + timedelta(minutes=item.minutes or 0)
+        return out
+
+    @property
+    def roles_total(self) -> int:
+        return sum(need.wanted for need in self.needs)
+
+    @property
+    def roles_filled(self) -> int:
+        return sum(1 for a in self.assignments if a.status != DECLINED)
+
+    @property
+    def ends_at(self):
+        from datetime import timedelta
+
+        if self.starts_at is None:
+            return None
+        return self.starts_at + timedelta(minutes=self.total_minutes)
+
+    @property
+    def needs_summary(self) -> list[dict]:
+        return staffing_summary(self.needs, self.assignments)
+
+    @property
+    def open_roles(self) -> list[dict]:
+        return [row for row in self.needs_summary if row["short"]]
+
+    @property
+    def unfilled_count(self) -> int:
+        return sum(row["short"] for row in self.needs_summary)
+
+    @property
+    def is_fully_staffed(self) -> bool:
+        return self.unfilled_count == 0 and self.roles_total > 0
+
+    def move_item(self, item, direction: int) -> bool:
+        """Swap an item with its neighbour. Caller commits."""
+        ordered = list(self.items)
+        index = next(
+            (i for i, candidate in enumerate(ordered) if candidate.id == item.id), None
+        )
+        if index is None:
+            return False
+
+        target = index + direction
+        if target < 0 or target >= len(ordered):
+            return False
+
+        other = ordered[target]
+        parked = -abs(item.position) - 1
+        item_position, other_position = item.position, other.position
+
+        item.position = parked
+        db.session.flush()
+        other.position = item_position
+        db.session.flush()
+        item.position = other_position
+        db.session.flush()
+        return True
+
+    def reorder_items(self, ordered_ids: list[int]) -> bool:
+        """Put this track's running order in the given order. Caller commits.
+
+        All or nothing, and scoped to this track: a list naming an item from
+        the kids plan must not reorder the main service.
+        """
+        items = {item.id: item for item in self.items}
+        if len(ordered_ids) != len(items) or set(ordered_ids) != set(items):
+            return False
+
+        for offset, item_id in enumerate(ordered_ids, start=1):
+            items[item_id].position = -offset
+        db.session.flush()
+
+        for index, item_id in enumerate(ordered_ids, start=1):
+            items[item_id].position = index
+        db.session.flush()
+        return True
+
+    def renumber(self) -> None:
+        """Close gaps left by deletions and swaps, so positions read 1..n."""
+        db.session.expire(self, ["items"])
+        ordered = sorted(self.items, key=lambda i: i.position)
+
+        for offset, item in enumerate(ordered, start=1):
+            item.position = -offset
+        db.session.flush()
+
+        for index, item in enumerate(ordered, start=1):
+            item.position = index
+        db.session.flush()
+
+    @classmethod
+    def get_for_church(cls, church_id: int, track_id: int) -> "ServiceTrack | None":
+        return db.session.scalar(
+            db.select(cls).where(cls.id == track_id, cls.church_id == church_id)
+        )
+
+
 class Service(TenantScoped, TimestampMixin, db.Model):
     __tablename__ = "service"
     __table_args__ = (
@@ -454,20 +672,47 @@ class Service(TenantScoped, TimestampMixin, db.Model):
     # shown as empty rather than guessed.
     headcount: Mapped[Optional[int]] = mapped_column(Integer)
 
-    items: Mapped[list["ServiceItem"]] = relationship(
+    tracks: Mapped[list["ServiceTrack"]] = relationship(
         back_populates="service",
         cascade="all, delete-orphan",
-        order_by="ServiceItem.position",
-    )
-    assignments: Mapped[list["ServiceAssignment"]] = relationship(
-        back_populates="service", cascade="all, delete-orphan"
-    )
-    needs: Mapped[list["ServiceNeed"]] = relationship(
-        back_populates="service", cascade="all, delete-orphan"
+        order_by="ServiceTrack.position",
     )
 
     def __repr__(self) -> str:
         return f"<Service {self.name!r} at={self.starts_at}>"
+
+    # -- the whole Sunday, across every track -------------------------------
+    #
+    # These were relationships before tracks existed and are properties now.
+    # Keeping the names means the dashboard, the member app and every count on
+    # a card go on reading "the whole Sunday" without caring that it is made of
+    # strands, which is exactly what those screens mean.
+
+    @property
+    def items(self) -> list["ServiceItem"]:
+        return [item for track in self.tracks for item in track.items]
+
+    @property
+    def assignments(self) -> list["ServiceAssignment"]:
+        return [a for track in self.tracks for a in track.assignments]
+
+    @property
+    def needs(self) -> list["ServiceNeed"]:
+        return [need for track in self.tracks for need in track.needs]
+
+    @property
+    def main_track(self) -> "ServiceTrack | None":
+        """The first track. What a one-track Sunday means by "the plan"."""
+        return self.tracks[0] if self.tracks else None
+
+    def track_named(self, name: str) -> "ServiceTrack | None":
+        wanted = (name or "").strip().lower()
+        return next(
+            (t for t in self.tracks if (t.name or "").strip().lower() == wanted), None
+        )
+
+    def next_track_position(self) -> int:
+        return max((track.position for track in self.tracks), default=0) + 1
 
     @property
     def is_published(self) -> bool:
@@ -488,10 +733,6 @@ class Service(TenantScoped, TimestampMixin, db.Model):
         return self.starts_at < utcnow()
 
     @property
-    def total_minutes(self) -> int:
-        return sum(item.minutes or 0 for item in self.items)
-
-    @property
     def accepted_count(self) -> int:
         return sum(1 for a in self.assignments if a.status == ACCEPTED)
 
@@ -503,137 +744,46 @@ class Service(TenantScoped, TimestampMixin, db.Model):
     def declined_count(self) -> int:
         return sum(1 for a in self.assignments if a.status == DECLINED)
 
-    def next_position(self) -> int:
-        return max((item.position for item in self.items), default=0) + 1
-
     # -- the running order --------------------------------------------------
+    #
+    # A Sunday has several running orders now, one per track, so the verbs that
+    # change one live on the track. Only the read-only view of "the plan" stays
+    # here, and it means the first track: on a Sunday with one strand that is
+    # the whole plan, which is what every screen written before tracks meant.
+    #
+    # move_item, reorder_items, renumber and next_position were deliberately
+    # NOT kept as delegating shims. A caller that reorders "the service" on a
+    # three-track Sunday is a caller with a bug, and an AttributeError at the
+    # call site is a far better outcome than silently rearranging the main
+    # service when somebody dragged a row in the kids plan.
 
     @property
     def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
-        """Each item with the moment it starts.
-
-        Computed from the service start rather than stored, so moving a
-        service or changing one item's length reflows the whole plan. A stored
-        time would go stale the first time somebody added two minutes to the
-        welcome.
-
-        A header has no duration of its own: it labels what follows.
-        """
-        from datetime import timedelta
-
-        running = self.starts_at
-        out = []
-        for item in self.items:
-            if item.kind == ITEM_HEADER:
-                out.append((item, None))
-                continue
-            out.append((item, running))
-            running = running + timedelta(minutes=item.minutes or 0)
-        return out
+        """The first track's running order, with the time each line starts."""
+        return self.main_track.timed_items if self.main_track else []
 
     @property
-    def ends_at(self) -> datetime:
+    def total_minutes(self) -> int:
+        """The longest strand, not the sum of them.
+
+        The strands run alongside each other, not one after another. Adding
+        them would say a Sunday with a 70 minute service and a 70 minute kids
+        programme takes two hours and twenty minutes.
+        """
+        return max((track.total_minutes for track in self.tracks), default=0)
+
+    @property
+    def ends_at(self):
         from datetime import timedelta
 
         return self.starts_at + timedelta(minutes=self.total_minutes)
-
-    def move_item(self, item, direction: int) -> bool:
-        """Swap an item with its neighbour. Caller commits.
-
-        Two swaps of a unique column need a gap to pass through, so the first
-        value is parked out of range. Without it the unique constraint fires
-        halfway.
-        """
-        ordered = list(self.items)
-        index = next((i for i, candidate in enumerate(ordered) if candidate.id == item.id), None)
-        if index is None:
-            return False
-
-        target = index + direction
-        if target < 0 or target >= len(ordered):
-            return False
-
-        other = ordered[target]
-        parked = -abs(item.position) - 1
-        item_position, other_position = item.position, other.position
-
-        item.position = parked
-        db.session.flush()
-        other.position = item_position
-        db.session.flush()
-        item.position = other_position
-        db.session.flush()
-        return True
-
-    def reorder_items(self, ordered_ids: list[int]) -> bool:
-        """Put the running order in the given order. Caller commits.
-
-        All or nothing. The ids have to be exactly this plan's items, no more
-        and no fewer, because a partial list would silently drop whatever it
-        left out. Two people editing the same plan is the case this guards:
-        the second drag arrives naming an item the first one deleted, and the
-        right answer is to change nothing and let the page reload.
-
-        Positions are parked out of range first, as everywhere else here, so
-        the unique constraint is not tripped halfway through.
-        """
-        items = {item.id: item for item in self.items}
-        if len(ordered_ids) != len(items) or set(ordered_ids) != set(items):
-            return False
-
-        for offset, item_id in enumerate(ordered_ids, start=1):
-            items[item_id].position = -offset
-        db.session.flush()
-
-        for index, item_id in enumerate(ordered_ids, start=1):
-            items[item_id].position = index
-        db.session.flush()
-        return True
-
-    def renumber(self) -> None:
-        """Close gaps left by deletions and swaps, so positions read 1..n.
-
-        Two passes with a flush between them. Assigning directly would collide
-        with the unique constraint the moment a later item takes a number an
-        earlier one has not given up yet, so everything is parked out of range
-        first.
-        """
-        db.session.expire(self, ["items"])
-        ordered = sorted(self.items, key=lambda i: i.position)
-
-        for offset, item in enumerate(ordered, start=1):
-            item.position = -offset
-        db.session.flush()
-
-        for index, item in enumerate(ordered, start=1):
-            item.position = index
-        db.session.flush()
 
     # -- staffing -----------------------------------------------------------
 
     @property
     def needs_summary(self) -> list[dict]:
-        """What is still unfilled, which is the question a leader actually has.
-
-        Counts accepted and invited separately: somebody who has not answered
-        is not the same as a gap, and treating them alike either panics a
-        leader or hides a real hole.
-        """
-        summary = []
-        for need in sorted(self.needs, key=lambda n: (n.position_name or "")):
-            filled = [
-                a for a in self.assignments
-                if a.position_id == need.position_id and a.status != DECLINED
-            ]
-            accepted = [a for a in filled if a.status == ACCEPTED]
-            summary.append({
-                "position": need.position_name,
-                "wanted": need.wanted,
-                "filled": len(filled),
-                "accepted": len(accepted),
-                "short": max(0, need.wanted - len(filled)),
-            })
-        return summary
+        """Every strand's staffing, as one list for the whole Sunday."""
+        return staffing_summary(self.needs, self.assignments)
 
     @property
     def unfilled_count(self) -> int:
@@ -749,16 +899,26 @@ class ServiceItem(TenantScoped, TimestampMixin, db.Model):
     __tablename__ = "service_item"
     __table_args__ = (
         CheckConstraint(f"kind IN ({_ITEM_KINDS})", name="ck_service_item_kind"),
-        UniqueConstraint("service_id", "position", name="uq_service_item_position"),
+        UniqueConstraint("track_id", "position", name="uq_service_item_position"),
         Index("ix_item_church_song", "church_id", "song_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
+    track_id: Mapped[int] = mapped_column(
+        ForeignKey("service_track.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    track: Mapped["ServiceTrack"] = relationship(back_populates="items")
+
+    # The Sunday this line belongs to, copied rather than walked to. A track
+    # never moves between services, so this cannot drift, and keeping it means
+    # "what songs did we sing on this Sunday" stays one join instead of two.
     service_id: Mapped[int] = mapped_column(
         ForeignKey("service.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    service: Mapped["Service"] = relationship(back_populates="items")
+    # Plain, not back-populated: Service.items is a view across tracks now,
+    # not a relationship, so there is nothing on the other side to populate.
+    service: Mapped["Service"] = relationship()
 
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default=ITEM_ELEMENT)
@@ -830,6 +990,9 @@ class ServiceAssignment(TenantScoped, TimestampMixin, db.Model):
     service_id: Mapped[int] = mapped_column(
         ForeignKey("service.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    track_id: Mapped[int] = mapped_column(
+        ForeignKey("service_track.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     person_id: Mapped[int] = mapped_column(
         ForeignKey("person.id", ondelete="CASCADE"), nullable=False, index=True
     )
@@ -837,7 +1000,8 @@ class ServiceAssignment(TenantScoped, TimestampMixin, db.Model):
         ForeignKey("team_position.id", ondelete="SET NULL")
     )
 
-    service: Mapped["Service"] = relationship(back_populates="assignments")
+    track: Mapped["ServiceTrack"] = relationship(back_populates="assignments")
+    service: Mapped["Service"] = relationship()
     person: Mapped["Person"] = relationship()  # noqa: F821
     position: Mapped[Optional["TeamPosition"]] = relationship()
 
@@ -955,15 +1119,20 @@ class ServiceNeed(TenantScoped, TimestampMixin, db.Model):
 
     __tablename__ = "service_need"
     __table_args__ = (
-        UniqueConstraint("service_id", "position_id", name="uq_service_need_position"),
+        UniqueConstraint("track_id", "position_id", name="uq_service_need_position"),
         Index("ix_service_need_church", "church_id", "service_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    track_id: Mapped[int] = mapped_column(
+        ForeignKey("service_track.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    track: Mapped["ServiceTrack"] = relationship(back_populates="needs")
+
     service_id: Mapped[int] = mapped_column(
         ForeignKey("service.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    service: Mapped["Service"] = relationship(back_populates="needs")
 
     position_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("team_position.id", ondelete="SET NULL"), index=True
@@ -979,29 +1148,37 @@ class ServiceNeed(TenantScoped, TimestampMixin, db.Model):
         return f"<ServiceNeed {self.position_name!r} wanted={self.wanted}>"
 
 
-def build_from_type(church_id: int, service_type, name: str, starts_at) -> Service:
-    """Create a service preloaded with its type's usual plan and staffing.
+def add_track(service, service_type=None, name: str | None = None) -> "ServiceTrack":
+    """Put one strand on a Sunday, preloaded from its type. Caller commits.
 
-    A copy, never a reference. Editing this week cannot rewrite the template,
-    and editing the template cannot rewrite a service that already went out.
+    A copy, never a reference, for the same reason the old service-level build
+    was: editing this week cannot rewrite the template, and editing the
+    template cannot rewrite a Sunday that already went out.
     """
-    service = Service(
-        church_id=church_id,
+    track = ServiceTrack(
+        church_id=service.church_id,
+        service_id=service.id,
         service_type_id=service_type.id if service_type else None,
-        name=name[:160] or "Sunday",
-        starts_at=starts_at,
+        name=(name or (service_type.name if service_type else "Service"))[:120],
+        position=service.next_track_position(),
     )
-    db.session.add(service)
+    db.session.add(track)
     db.session.flush()
 
-    if service_type is None:
-        return service
+    if service_type is not None:
+        _fill_from_type(track, service_type)
+        db.session.flush()
+    return track
 
+
+def _fill_from_type(track, service_type) -> None:
+    """Copy a type's usual plan and staffing onto one strand."""
     for template in service_type.template_items:
         db.session.add(
             ServiceItem(
-                church_id=church_id,
-                service_id=service.id,
+                church_id=track.church_id,
+                service_id=track.service_id,
+                track_id=track.id,
                 position=template.position,
                 kind=template.kind,
                 title=template.title,
@@ -1014,59 +1191,159 @@ def build_from_type(church_id: int, service_type, name: str, starts_at) -> Servi
     for need in service_type.needs:
         db.session.add(
             ServiceNeed(
-                church_id=church_id,
-                service_id=service.id,
+                church_id=track.church_id,
+                service_id=track.service_id,
+                track_id=track.id,
                 position_id=need.position_id,
                 position_name=need.position.name if need.position else None,
                 wanted=need.wanted,
             )
         )
 
+
+def build_from_type(church_id: int, service_type, name: str, starts_at,
+                    types=None) -> Service:
+    """Create a Sunday with a track for each strand it runs.
+
+    `types` is what this Sunday is made of: the main service, kids, operations.
+    Passing none falls back to the single type given, which is what a one-off
+    service still is, and passing nothing at all leaves the Sunday with the one
+    empty strand the model guarantees it.
+
+    The tracks are attached before the first flush on purpose. A Service
+    flushed without any gets a default one, and this would otherwise produce a
+    Sunday with four strands when it was asked for three.
+    """
+    service = Service(
+        church_id=church_id,
+        service_type_id=service_type.id if service_type else None,
+        name=name[:160] or "Sunday",
+        starts_at=starts_at,
+    )
+
+    wanted = [t for t in (list(types) if types else [service_type]) if t is not None]
+    for index, one in enumerate(wanted, start=1):
+        service.tracks.append(
+            ServiceTrack(
+                church_id=church_id,
+                service_type_id=one.id,
+                name=one.name[:120],
+                position=index,
+            )
+        )
+
+    db.session.add(service)
+    db.session.flush()
+
+    # Now the tracks have ids, so their plans can be copied in. A copy, never a
+    # reference: editing this week cannot rewrite the template, and editing the
+    # template cannot rewrite a Sunday that already went out.
+    for track in service.tracks:
+        if track.service_type is None:
+            continue
+        _fill_from_type(track, track.service_type)
+    db.session.flush()
+
     return service
 
 
 def copy_plan(source: Service, target: Service) -> int:
-    """Copy a running order from one service onto another.
+    """Copy a Sunday's whole plan onto another Sunday, track by track.
 
     Replaces rather than appends: "copy last week" means this week looks like
     last week, not like both weeks stacked.
 
-    Assignments are deliberately not copied. Who served last week is not who
-    is available this week, and a plan that arrives pre-filled with names
-    nobody asked is how a volunteer finds out they are playing by reading it
-    on Sunday.
+    Tracks are matched by name, which is what a leader means. Last week's kids
+    plan copies onto this week's kids plan even though they are different rows,
+    and a strand the source had but the target does not is created. A strand
+    the target has and the source does not is emptied rather than left holding
+    a plan from a Sunday it was never copied from.
+
+    Assignments are deliberately not copied. Who served last week is not who is
+    available this week, and a plan that arrives pre-filled with names nobody
+    asked is how a volunteer finds out they are playing by reading it on
+    Sunday.
     """
-    for item in list(target.items):
-        db.session.delete(item)
-    db.session.flush()
-
     copied = 0
-    for item in source.items:
-        db.session.add(
-            ServiceItem(
-                church_id=target.church_id,
-                service_id=target.id,
-                position=item.position,
-                kind=item.kind,
-                title=item.title,
-                minutes=item.minutes,
-                notes=item.notes,
-                song_id=item.song_id,
-                key_override=item.key_override,
-            )
-        )
-        copied += 1
 
-    if not target.needs:
-        for need in source.needs:
+    for source_track in source.tracks:
+        target_track = target.track_named(source_track.name)
+        if target_track is None:
+            target_track = add_track(
+                target, source_track.service_type, name=source_track.name
+            )
+
+        for item in list(target_track.items):
+            db.session.delete(item)
+        db.session.flush()
+
+        for item in source_track.items:
             db.session.add(
-                ServiceNeed(
+                ServiceItem(
                     church_id=target.church_id,
                     service_id=target.id,
-                    position_id=need.position_id,
-                    position_name=need.position_name,
-                    wanted=need.wanted,
+                    track_id=target_track.id,
+                    position=item.position,
+                    kind=item.kind,
+                    title=item.title,
+                    minutes=item.minutes,
+                    notes=item.notes,
+                    song_id=item.song_id,
+                    key_override=item.key_override,
                 )
             )
+            copied += 1
+
+        if not target_track.needs:
+            for need in source_track.needs:
+                db.session.add(
+                    ServiceNeed(
+                        church_id=target.church_id,
+                        service_id=target.id,
+                        track_id=target_track.id,
+                        position_id=need.position_id,
+                        position_name=need.position_name,
+                        wanted=need.wanted,
+                    )
+                )
+
+    # A strand this Sunday has that last week did not. Leaving its old plan in
+    # place would mean "copy last week" quietly kept something from a week
+    # nobody chose.
+    copied_names = {(t.name or "").strip().lower() for t in source.tracks}
+    for track in target.tracks:
+        if (track.name or "").strip().lower() in copied_names:
+            continue
+        for item in list(track.items):
+            db.session.delete(item)
+    db.session.flush()
 
     return copied
+
+
+# ---------------------------------------------------------------------------
+# A Sunday always has somewhere to put a plan
+# ---------------------------------------------------------------------------
+#
+# `delete_track` refuses to remove the last strand because a Sunday with none
+# has nowhere to hold a running order and no way to add one. That is an
+# invariant, so it is enforced where the row is made rather than left to every
+# caller to remember: a Service flushed without a track gets one.
+#
+# This is deliberately the ONLY thing filled in automatically. An item or an
+# assignment still has to name its strand, because a row that quietly lands on
+# the main service when somebody meant kids is the failure this whole model
+# exists to prevent, and an error at the call site is the better outcome.
+
+@event.listens_for(db.session, "before_flush")
+def _every_sunday_has_a_strand(session, _flush_context, _instances):
+    for obj in session.new:
+        if isinstance(obj, Service) and not obj.tracks:
+            obj.tracks.append(
+                ServiceTrack(
+                    church_id=obj.church_id,
+                    name=(obj.name or "Service")[:120],
+                    position=1,
+                    service_type_id=obj.service_type_id,
+                )
+            )

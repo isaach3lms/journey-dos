@@ -1783,6 +1783,38 @@ SERVICES = {
 
     # Asking a volunteer whether they can serve, as opposed to sending the
     # running order to people already committed.
+    # The strands of a Sunday: the main service, kids, operations.
+    "track_heading": "This Sunday",
+    "track_hint": (
+        "One Sunday, one date, one publish. Each strand keeps its own running "
+        "order and its own volunteers."
+    ),
+    "track_add": "Add a strand",
+    "track_add_name": "What to call it",
+    "track_add_from": "Start it from",
+    "track_add_blank": "Nothing, start empty",
+    "track_added": "{name} added.",
+    "track_renamed": "Renamed to {name}.",
+    "track_deleted": "{name} removed.",
+    "track_name_required": "Give it a name, or pick what to start it from.",
+    "track_duplicate": "This Sunday already has a strand called {name}.",
+    "track_last": (
+        "This is the only strand. A Sunday needs one, so delete the Sunday "
+        "itself if that is what you meant."
+    ),
+    "track_remove_heading": "Remove this strand",
+    "track_remove_warning": (
+        "The running order and the {count} people on it go with it. The rest "
+        "of the Sunday is untouched."
+    ),
+    "track_remove_warning_empty": "Nothing is on it yet.",
+    "track_remove_confirm": "Yes, remove it and what is on it",
+    "track_remove_button": "Remove the strand",
+    "track_confirm_required": "Tick the box first.",
+    "track_rename": "Rename",
+    "track_count": "{count} serving",
+    "track_empty_plan": "No running order on this one yet.",
+
     "invite_heading": "Ask them to serve",
     "invite_hint": (
         "Emails everyone who has not answered yet, with Accept and Decline in "
@@ -2232,28 +2264,6 @@ AUTOMATION = {
 }
 
 
-# The cost comparison, per spec v3 section C.6. One list, so the number is one
-# edit rather than a hunt through markup. The Bible is deliberately not counted
-# as a saving: most churches use a free app already, so claiming it as a
-# replaced line item is the kind of overstatement a pastor checks and remembers.
-REPLACES = (
-    {"name": "Planning Center", "cents": 19900,
-     "note": "People, services, teams, check-in"},
-    {"name": "Website and hosting", "cents": 9500,
-     "note": "The site, the domain, the updates"},
-    {"name": "Giving platform fees", "cents": 0,
-     "note": "Unchanged. You keep Tithely and your rates."},
-)
-
-INCLUDED_NOT_SAVED = (
-    {"name": "Bible and reading plans",
-     "note": "Included, not counted as a saving. Most churches already use a "
-             "free app for this."},
-)
-
-DOS_PRICE_CENTS = 10000
-
-
 SETTINGS = {
     "title": "Settings",
     "subtitle": "Your brand, your data, your app.",
@@ -2460,16 +2470,6 @@ SETTINGS = {
     "accent_rejected": "{reason}",
     "timezone_rejected": "{value} is not a timezone. Try America/Chicago.",
 
-    "replaces_heading": "What this replaces",
-    "replaces_total": "Current total",
-    "replaces_ours": "Discipleship Operating System",
-    "replaces_saving": (
-        "Net saving of {monthly} a month, {yearly} a year, before counting "
-        "staff hours."
-    ),
-    "replaces_note": "Per month.",
-    "included_heading": "Included, not counted",
-
     "audit_heading": "What happened here",
     "audit_intro": (
         "Sign-ins, access changes, provider keys, matched gifts, deleted "
@@ -2483,18 +2483,6 @@ SETTINGS = {
     "audit_system": "by the system",
     "audit_count": "{count} in the last 30 days",
     "audit_retention": "Entries are kept for {days} days.",
-
-    "bible_heading": "Scripture",
-    "bible_body": (
-        "Reading plans show the passage inline from the World English Bible, "
-        "which is public domain and needs nobody's permission."
-    ),
-    "bible_licensed": (
-        "A licensed translation such as NIV runs through your church's own "
-        "YouVersion registration. We never store the text of a licensed "
-        "translation, so if that service is unavailable your people read the "
-        "World English Bible and the page says so."
-    ),
 
     # Giving shortcut
     "giving_heading": "Giving",
@@ -2648,9 +2636,7 @@ SETTINGS = {
     "announce_sub_on": "Members can post to the whole church",
     "announce_sub_off": "Staff post announcements",
     "email_sub": "{sent} sent \u00b7 {queued} waiting \u00b7 {failed} failed",
-    "replaces_sub": "{amount} a month of software you no longer need",
     "audit_sub": "Who changed what, and when",
-    "bible_sub": "{verses} verses across {books} books",
     "support_sub": "Email a person. No ticket queue.",
 }
 

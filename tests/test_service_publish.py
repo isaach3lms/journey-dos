@@ -20,7 +20,7 @@ def service(db):
     s = Service(church_id=journey(db).id, name="Sunday", starts_at=utcnow() + timedelta(days=2))
     db.session.add(s)
     db.session.flush()
-    db.session.add(ServiceItem(church_id=s.church_id, service_id=s.id, position=1, kind="song", title="Goodness of God"))
+    db.session.add(ServiceItem(church_id=s.church_id, service_id=s.id, track_id=s.main_track.id, position=1, kind="song", title="Goodness of God"))
     db.session.commit()
     return s
 
@@ -58,7 +58,7 @@ class TestStaff:
         p = Person(church_id=service.church_id, first_name="V", last_name="L", email="v@example.com", approved_at=utcnow())
         db.session.add(p)
         db.session.flush()
-        db.session.add(ServiceAssignment(church_id=p.church_id, service_id=service.id, person_id=p.id))
+        db.session.add(ServiceAssignment(church_id=p.church_id, service_id=service.id, track_id=service.main_track.id, person_id=p.id))
         db.session.commit()
         staff.post(f"/services/{service.id}/send/", headers=H)
         db.session.refresh(service)
@@ -95,7 +95,7 @@ class TestVolunteers:
         db.session.add(p)
         db.session.flush()
         user.person_id = p.id
-        db.session.add(ServiceAssignment(church_id=p.church_id, service_id=service.id, person_id=p.id))
+        db.session.add(ServiceAssignment(church_id=p.church_id, service_id=service.id, track_id=service.main_track.id, person_id=p.id))
         db.session.commit()
         sign_in("member@journeychurchsemo.com")
         return client

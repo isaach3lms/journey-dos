@@ -31,26 +31,63 @@
 {% set current = service %}
 {% include "partials/weekstrip.html" %}
 
+{# The strands of this Sunday. One date, one publish, several running orders.
+   A tab rather than a dropdown because a leader switches between these
+   constantly while planning, and a dropdown costs two clicks every time. #}
+<nav class="trackbar" aria-label="{{ content.track_heading }}">
+  {# Tabs only once there is something to switch between. A church that runs
+     one strand on a Sunday should never meet the idea at all. #}
+  {% if tracks|length > 1 %}
+  {% for one in tracks %}
+    <a class="tracktab {% if track and one.id == track.id %}on{% endif %}"
+       href="{{ url_for('services.plan', service_id=service.id, track=one.id) }}"
+       {% if track and one.id == track.id %}aria-current="page"{% endif %}>
+      <span class="tt">{{ one.name }}</span>
+      <span class="ts">
+        {% if one.roles_total %}{{ one.roles_filled }}/{{ one.roles_total }}
+        {% else %}{{ content.track_count.format(count=one.assignments|length) }}{% endif %}
+      </span>
+    </a>
+  {% endfor %}
+  {% endif %}
+  <details class="tracknew">
+    <summary class="tracktab addtab">{{ content.track_add }}</summary>
+    <form method="post" action="{{ url_for('services.create_track', service_id=service.id) }}">
+      {{ csrf_field() }}
+      <input class="input" type="text" name="name" placeholder="{{ content.track_add_name }}"
+             aria-label="{{ content.track_add_name }}">
+      <select class="input select" name="service_type_id" aria-label="{{ content.track_add_from }}">
+        <option value="">{{ content.track_add_blank }}</option>
+        {% for type in service_types %}
+          <option value="{{ type.id }}">{{ type.name }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">{{ content.track_add }}</button>
+    </form>
+  </details>
+</nav>
+
 <div class="planwrap">
   <div>
     <section class="card">
       <div class="hd">
-        <h2>{{ content.plan_heading }}</h2>
+        <h2>{% if tracks|length > 1 and track %}{{ track.name }}{% else %}{{ content.plan_heading }}{% endif %}</h2>
         <div class="spacer"></div>
-        {% if service.roles_total %}
-          <span class="pill {% if service.roles_filled < service.roles_total %}pending{% endif %}">
-            {{ content.roles_filled.format(filled=service.roles_filled, total=service.roles_total) }}
+        {% if track and track.roles_total %}
+          <span class="pill {% if track.roles_filled < track.roles_total %}pending{% endif %}">
+            {{ content.roles_filled.format(filled=track.roles_filled, total=track.roles_total) }}
           </span>
         {% endif %}
       </div>
       <div class="bd">
-        {% if service.items %}
+        {% if track and track.items %}
           {# The whole order is posted from here after a drag. It sits outside
              the list because the rows carry forms of their own and a form
              cannot be nested inside another one. #}
           <form method="post" data-order-form hidden
                 action="{{ url_for('services.reorder_items', service_id=service.id) }}">
             {{ csrf_field() }}
+            <input type="hidden" name="track" value="{{ track.id }}">
             <input type="hidden" name="order" data-order-field>
           </form>
 
@@ -138,7 +175,7 @@
       <div class="hd"><h2>{{ content.add_heading }}</h2></div>
       <div class="bd">
         <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
-          {{ csrf_field() }}
+          {{ csrf_field() }}<input type="hidden" name="track" value="{{ track.id }}">
           <input type="hidden" name="kind" value="song">
           <div class="filters">
             <select class="input select" name="song_id" aria-label="{{ content.add_song }}">
@@ -155,7 +192,7 @@
           </div>
         </form>
         <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
-          {{ csrf_field() }}
+          {{ csrf_field() }}<input type="hidden" name="track" value="{{ track.id }}">
           <input type="hidden" name="kind" value="element">
           <div class="filters">
             <input class="input" type="text" name="title" placeholder="{{ content.element_placeholder }}" aria-label="{{ content.element_title }}">
@@ -164,7 +201,7 @@
           </div>
         </form>
         <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
-          {{ csrf_field() }}
+          {{ csrf_field() }}<input type="hidden" name="track" value="{{ track.id }}">
           <input type="hidden" name="kind" value="header">
           <div class="filters">
             <input class="input" type="text" name="title" placeholder="{{ content.section_placeholder }}" aria-label="{{ content.section_add }}">
@@ -310,14 +347,14 @@
       <div class="hd">
         <h2>{{ content.open_roles_heading }}</h2>
         <div class="spacer"></div>
-        {% if service.unfilled_count %}
-          <span class="pill pending">{{ content.open_roles_count.format(count=service.unfilled_count) }}</span>
+        {% if track and track.unfilled_count %}
+          <span class="pill pending">{{ content.open_roles_count.format(count=track.unfilled_count) }}</span>
         {% endif %}
       </div>
       <div class="bd">
-        {% if service.open_roles %}
+        {% if track and track.open_roles %}
           <ul class="sidelist">
-            {% for row in service.open_roles %}
+            {% for row in track.open_roles %}
               <li>
                 <span class="fl">
                   <span class="sn">{{ row.position }}</span>
@@ -327,7 +364,7 @@
               </li>
             {% endfor %}
           </ul>
-        {% elif service.needs %}
+        {% elif track and track.needs %}
           <p class="muted small">{{ content.open_roles_none }}</p>
         {% else %}
           <p class="muted small">{{ content.staffing_none }}</p>
@@ -349,7 +386,7 @@
           <nav class="teamchips" aria-label="{{ content.serving_filter_label }}">
             <button class="chip on" type="button" data-serving-chip="" aria-pressed="true">
               {{ content.serving_filter_count.format(
-                   name=content.serving_filter_all, count=service.assignments|length) }}
+                   name=content.serving_filter_all, count=track.assignments|length) }}
             </button>
             {% for team in serving_teams %}
               <button class="chip" type="button"
@@ -362,9 +399,9 @@
           </nav>
         {% endif %}
 
-        {% if service.assignments %}
+        {% if track.assignments %}
           <ul class="sidelist" data-serving-list>
-            {% for assignment in service.assignments %}
+            {% for assignment in track.assignments %}
               <li data-team="{{ assignment.team_id if assignment.team_id else 'none' }}">
                 <span class="av">{{ assignment.person.initials }}</span>
                 <span class="fl">
@@ -388,8 +425,8 @@
 
         {# Asking whether they can serve, which is a different question from
            sending the running order to people already committed. #}
-        {% if service.assignments %}
-          {% set open_asks = service.assignments|rejectattr('has_answered')|list %}
+        {% if track.assignments %}
+          {% set open_asks = track.assignments|rejectattr('has_answered')|list %}
           {% set unasked = open_asks|rejectattr('was_invited')|list %}
           <div class="invitebox">
             <div class="invitetop">
@@ -415,7 +452,7 @@
         {% endif %}
 
         <form method="post" class="stackform" action="{{ url_for('services.assign', service_id=service.id) }}">
-          {{ csrf_field() }}
+          {{ csrf_field() }}<input type="hidden" name="track" value="{{ track.id }}"><input type="hidden" name="track" value="{{ track.id }}">
 
           {# Filter only. It is outside the post on purpose: it narrows the
              two lists below and is never sent anywhere. Without JavaScript

@@ -28,6 +28,8 @@ from app.content import SERVICES
 from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import (
+    ServiceTrack,
+    add_track,
     ITEM_KINDS,
     ITEM_HEADER,
     ServiceNeed,
@@ -108,8 +110,27 @@ def create():
     )
     db.session.commit()
 
+    track = service.main_track
     flash(SERVICES["created"].format(name=service.name), "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
+
+
+def _track_for(service, fallback_to_main: bool = True):
+    """The strand this request is about.
+
+    Every plan screen and every verb on it works on one track: the running
+    order you are looking at, the people serving on it. The id arrives in the
+    form or the query string, and anything not on this Sunday is a 404 rather
+    than a quiet fallback, because silently editing the main service when
+    somebody meant the kids plan is the worst outcome available here.
+    """
+    track_id = request.values.get("track", type=int)
+    if track_id:
+        track = next((t for t in service.tracks if t.id == track_id), None)
+        if track is None:
+            abort(404)
+        return track
+    return service.main_track if fallback_to_main else None
 
 
 @bp.get("/<int:service_id>/")
@@ -129,8 +150,12 @@ def plan(service_id: int):
     local = to_local(service.starts_at, g.church)
     next_week = local + timedelta(days=7)
 
+    track = _track_for(service)
+
     return render_template(
         "services/plan.html",
+        track=track,
+        tracks=service.tracks,
         service_date=local.date().isoformat(),
         service_time=local.strftime("%H:%M"),
         clone_default_date=next_week.date().isoformat(),
@@ -141,7 +166,7 @@ def plan(service_id: int):
         service=service,
         songs=db.session.scalars(Song.for_church(g.church.id)).all(),
         teams=db.session.scalars(Team.for_church(g.church.id)).all(),
-        timed_items=service.timed_items,
+        timed_items=track.timed_items if track else [],
         earlier=db.session.scalars(
             db.select(Service)
             .where(
@@ -162,7 +187,8 @@ def plan(service_id: int):
         # The teams actually represented on this plan, for the filter above
         # the list. Built from the plan, not from every team the church has,
         # so a chip never leads to an empty list.
-        serving_teams=_serving_teams(service),
+        serving_teams=_serving_teams(track) if track else [],
+        service_types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         keys=key_choices(),
         types=db.session.scalars(ServiceType.for_church(g.church.id)).all(),
         active="services",
@@ -194,14 +220,14 @@ def save_headcount(service_id: int):
     return redirect(url_for("services.plan", service_id=service.id, _anchor="headcount"))
 
 
-def _serving_teams(service) -> list[dict]:
+def _serving_teams(track) -> list[dict]:
     """Which teams are on this plan, with how many people on each.
 
     Ordered by team name, with anybody who has no team last under their own
     heading, because "no team" is a real answer rather than a missing one.
     """
     groups: dict[int | None, dict] = {}
-    for assignment in service.assignments:
+    for assignment in track.assignments:
         key = assignment.team_id
         row = groups.setdefault(
             key, {"id": key, "name": assignment.team_name, "count": 0}
@@ -268,6 +294,14 @@ def save_details(service_id: int):
         second=0, microsecond=0
     )
     renamed = name[:160] != service.name
+
+    # A Sunday with one strand names that strand after itself, and the name is
+    # not shown while there is only one. Keeping them in step means adding a
+    # second strand later does not suddenly reveal a name from before a rename.
+    if renamed and len(service.tracks) == 1:
+        only = service.main_track
+        if (only.name or "") == (service.name or ""):
+            only.name = name[:120]
 
     service.name = name[:160]
     service.starts_at = starts_at
@@ -409,18 +443,113 @@ def toggle_publish(service_id: int):
     if service is None:
         abort(404)
 
+    track = _track_for(service)
+
     if service.is_published:
         service.unpublish()
         message = SERVICES["unpublished"]
     else:
         if not service.items:
             flash(SERVICES["publish_empty"], "error")
-            return redirect(url_for("services.plan", service_id=service.id))
+            return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
         service.publish()
         message = SERVICES["published"]
     db.session.commit()
 
     flash(message.format(name=service.name), "notice")
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
+
+
+# ---------------------------------------------------------------------------
+# The strands of a Sunday
+# ---------------------------------------------------------------------------
+
+@bp.post("/<int:service_id>/tracks/")
+@login_required
+@min_role("leader")
+def create_track(service_id: int):
+    """Add a strand to this Sunday, from a type or by name."""
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    type_id = request.form.get("service_type_id", type=int)
+    service_type = (
+        ServiceType.get_for_church(g.church.id, type_id) if type_id else None
+    )
+    name = (request.form.get("name") or "").strip()
+    if not service_type and not name:
+        flash(SERVICES["track_name_required"], "error")
+        return redirect(url_for("services.plan", service_id=service.id))
+
+    wanted = name or service_type.name
+    if service.track_named(wanted) is not None:
+        flash(SERVICES["track_duplicate"].format(name=wanted), "error")
+        return redirect(url_for("services.plan", service_id=service.id))
+
+    track = add_track(service, service_type, name=name or None)
+    db.session.commit()
+
+    flash(SERVICES["track_added"].format(name=track.name), "notice")
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+
+@bp.post("/<int:service_id>/tracks/<int:track_id>/rename/")
+@login_required
+@min_role("leader")
+def rename_track(service_id: int, track_id: int):
+    service = Service.get_for_church(g.church.id, service_id)
+    track = ServiceTrack.get_for_church(g.church.id, track_id)
+    if service is None or track is None or track.service_id != service.id:
+        abort(404)
+
+    name = (request.form.get("name") or "").strip()
+    if not name:
+        flash(SERVICES["track_name_required"], "error")
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+    clash = service.track_named(name)
+    if clash is not None and clash.id != track.id:
+        flash(SERVICES["track_duplicate"].format(name=name), "error")
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+    track.name = name[:120]
+    db.session.commit()
+    flash(SERVICES["track_renamed"].format(name=track.name), "notice")
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+
+@bp.post("/<int:service_id>/tracks/<int:track_id>/delete/")
+@login_required
+@min_role("leader")
+def delete_track(service_id: int, track_id: int):
+    """Remove a strand, and the plan and people on it.
+
+    Refused when it is the last one: a Sunday with no track has nowhere to put
+    a running order and no way to add one, which is a dead end rather than an
+    empty state. Delete the Sunday itself instead.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    track = ServiceTrack.get_for_church(g.church.id, track_id)
+    if service is None or track is None or track.service_id != service.id:
+        abort(404)
+
+    if len(service.tracks) <= 1:
+        flash(SERVICES["track_last"], "error")
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+    if request.form.get("confirm") != "on":
+        flash(SERVICES["track_confirm_required"], "error")
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id))
+
+    name = track.name
+    db.session.delete(track)
+    db.session.flush()
+    for index, remaining in enumerate(service.tracks, start=1):
+        remaining.position = index
+    db.session.commit()
+
+    flash(SERVICES["track_deleted"].format(name=name), "notice")
     return redirect(url_for("services.plan", service_id=service.id))
 
 
@@ -432,6 +561,10 @@ def add_item(service_id: int):
     if service is None:
         abort(404)
 
+    track = _track_for(service)
+    if track is None:
+        abort(404)
+
     kind = (request.form.get("kind") or ITEM_ELEMENT).strip()
     song = None
     title = (request.form.get("title") or "").strip()
@@ -439,30 +572,31 @@ def add_item(service_id: int):
     if kind == ITEM_HEADER:
         if not title:
             flash(SERVICES["item_title_required"], "error")
-            return redirect(url_for("services.plan", service_id=service.id))
+            return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
         db.session.add(
             ServiceItem(
                 church_id=g.church.id,
                 service_id=service.id,
-                position=service.next_position(),
+                track_id=track.id,
+                position=track.next_position(),
                 kind=ITEM_HEADER,
                 title=title[:200],
             )
         )
         db.session.commit()
         flash(SERVICES["item_added"], "notice")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     if kind == ITEM_SONG:
         song_id = request.form.get("song_id", type=int)
         song = Song.get_for_church(g.church.id, song_id) if song_id else None
         if song is None:
             flash(SERVICES["song_required"], "error")
-            return redirect(url_for("services.plan", service_id=service.id))
+            return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
         title = song.title
     elif not title:
         flash(SERVICES["item_title_required"], "error")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     try:
         key_override = normalize_key(request.form.get("key_override"))
@@ -470,15 +604,16 @@ def add_item(service_id: int):
         flash(
             SERVICES["key_bad"].format(key=request.form.get("key_override")), "error"
         )
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     db.session.add(
         ServiceItem(
             church_id=g.church.id,
             service_id=service.id,
+            track_id=track.id,
             # Computed rather than taken from the form, so two people adding an
             # item at once cannot collide on the unique constraint.
-            position=service.next_position(),
+            position=track.next_position(),
             kind=ITEM_SONG if song else ITEM_ELEMENT,
             title=title[:200],
             song_id=song.id if song else None,
@@ -490,7 +625,7 @@ def add_item(service_id: int):
     db.session.commit()
 
     flash(SERVICES["item_added"], "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/items/<int:item_id>/delete/")
@@ -502,13 +637,16 @@ def delete_item(service_id: int, item_id: int):
     if service is None or item is None or item.service_id != service.id:
         abort(404)
 
+    # The strand the item is on, not the one the request claims. A delete must
+    # renumber the plan it actually came out of.
+    track = item.track
     db.session.delete(item)
     db.session.flush()
-    service.renumber()
+    track.renumber()
     db.session.commit()
 
     flash(SERVICES["item_removed"], "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/assignments/")
@@ -517,6 +655,10 @@ def delete_item(service_id: int, item_id: int):
 def assign(service_id: int):
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
+        abort(404)
+
+    track = _track_for(service)
+    if track is None:
         abort(404)
 
     person_id = request.form.get("person_id", type=int)
@@ -536,21 +678,25 @@ def assign(service_id: int):
         if position is None:
             abort(400)
 
+    # Scoped to this strand on purpose. Somebody can run the sound desk in
+    # the main service and help in kids, and asking them to do both is not a
+    # double booking.
     existing = db.session.scalar(
         db.select(ServiceAssignment).where(
-            ServiceAssignment.service_id == service.id,
+            ServiceAssignment.track_id == track.id,
             ServiceAssignment.person_id == person.id,
             ServiceAssignment.position_id == (position.id if position else None),
         )
     )
     if existing is not None:
         flash(SERVICES["already_asked"].format(name=person.full_name), "error")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     db.session.add(
         ServiceAssignment(
             church_id=g.church.id,
             service_id=service.id,
+            track_id=track.id,
             person_id=person.id,
             position_id=position.id if position else None,
             # Copied, not looked up later. A renamed or deleted position must
@@ -567,7 +713,7 @@ def assign(service_id: int):
         ),
         "notice",
     )
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/assignments/<int:assignment_id>/delete/")
@@ -579,11 +725,12 @@ def unassign(service_id: int, assignment_id: int):
     if service is None or assignment is None or assignment.service_id != service.id:
         abort(404)
 
+    track = assignment.track
     db.session.delete(assignment)
     db.session.commit()
 
     flash(SERVICES["unassigned"], "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/invite/")
@@ -607,10 +754,12 @@ def send_invites(service_id: int):
     if service is None:
         abort(404)
 
+    track = _track_for(service)
+
     waiting = [a for a in service.assignments if not a.has_answered]
     if not waiting:
         flash(SERVICES["invite_nobody"], "error")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     when = format_local(service.starts_at, g.church, "%A %-d %B, %-I:%M%p")
     asked = 0
@@ -664,7 +813,7 @@ def send_invites(service_id: int):
         else SERVICES["invite_sent"].format(count=asked),
         "notice",
     )
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/send/")
@@ -676,9 +825,11 @@ def send_plan(service_id: int):
     if service is None:
         abort(404)
 
+    track = _track_for(service)
+
     if not service.assignments:
         flash(SERVICES["send_nobody"], "error")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     when = format_local(service.starts_at, g.church, "%A %-d %B, %-I:%M%p")
     plan_lines = "\n".join(
@@ -731,7 +882,7 @@ def send_plan(service_id: int):
     db.session.commit()
 
     flash(SERVICES["sent"].format(count=queued), "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 # ---------------------------------------------------------------------------
@@ -1171,16 +1322,17 @@ def move_item(service_id: int, item_id: int):
     if service is None or item is None or item.service_id != service.id:
         abort(404)
 
+    track = item.track
     direction = -1 if request.form.get("direction") == "up" else 1
-    if service.move_item(item, direction):
+    if track.move_item(item, direction):
         # Swapping preserves the pair of numbers but a plan that has been
         # edited for weeks accumulates gaps, and a gap makes the next insert
         # land somewhere surprising.
-        service.renumber()
+        track.renumber()
         db.session.commit()
         flash(SERVICES["moved"], "notice")
 
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/items/order/")
@@ -1198,17 +1350,21 @@ def reorder_items(service_id: int):
     if service is None:
         abort(404)
 
+    track = _track_for(service)
+    if track is None:
+        abort(404)
+
     raw = request.form.get("order", "")
     try:
         ordered = [int(part) for part in raw.split(",") if part.strip()]
     except ValueError:
         ordered = []
 
-    if ordered and service.reorder_items(ordered):
+    if ordered and track.reorder_items(ordered):
         db.session.commit()
         flash(SERVICES["moved"], "notice")
 
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 @bp.post("/<int:service_id>/copy/")
@@ -1218,6 +1374,8 @@ def copy_from(service_id: int):
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
         abort(404)
+
+    track = _track_for(service)
 
     source_id = request.form.get("source_id", type=int)
     source = Service.get_for_church(g.church.id, source_id) if source_id else None
@@ -1234,7 +1392,7 @@ def copy_from(service_id: int):
         ),
         "notice",
     )
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
 
 # ---------------------------------------------------------------------------
@@ -1387,13 +1545,14 @@ def set_item_key(service_id: int, item_id: int):
     if service is None or item is None or item.service_id != service.id:
         abort(404)
 
+    track = item.track
     raw = (request.form.get("key_override") or "").strip()
     try:
         item.key_override = normalize_key(raw)
     except UnknownKey:
         flash(SERVICES["key_bad"].format(key=raw), "error")
-        return redirect(url_for("services.plan", service_id=service.id))
+        return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))
 
     db.session.commit()
     flash(SERVICES["key_set"].format(title=item.title, key=item.key or "the song default"), "notice")
-    return redirect(url_for("services.plan", service_id=service.id))
+    return redirect(url_for("services.plan", service_id=service.id, track=track.id if track else None))

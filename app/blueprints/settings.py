@@ -24,11 +24,11 @@ from flask_login import current_user, login_required
 from app.accounts import send_set_password
 from app.audit import record
 from app.brand import assert_accent_readable
-from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES, SETTINGS
+from app.content import SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
 from app.push.health import push_health
-from app.models import AuditEvent, BibleVerse, Church, PasswordResetToken, User
+from app.models import AuditEvent, Church, PasswordResetToken, User
 from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
@@ -44,24 +44,13 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # redirect passes back so staff land on the row they just used.
 ROWS = (
     "brand", "accounts", "signup", "giving", "ccli",
-    "announcements", "email", "audit", "cost", "bible", "support",
+    "announcements", "email", "push", "audit", "support",
 )
 
 
 def _back(row: str):
     """Back to settings with one row open and scrolled to."""
     return redirect(url_for("settings.index", open=row, _anchor=row))
-
-
-def _cost_context() -> dict:
-    replaced = sum(item["cents"] for item in REPLACES)
-    return {
-        "replaces": REPLACES,
-        "included": INCLUDED_NOT_SAVED,
-        "replaced_cents": replaced,
-        "ours_cents": DOS_PRICE_CENTS,
-        "saving_cents": max(0, replaced - DOS_PRICE_CENTS),
-    }
 
 
 @bp.get("/")
@@ -101,11 +90,8 @@ def index():
         active="settings",
         users=db.session.scalars(User.for_church(g.church.id)).all(),
         roles=ROLES,
-        bible_verses=BibleVerse.verse_count(),
         email=email_health(g.church.id),
         push=push_health(g.church.id),
-        bible_books=len(BibleVerse.loaded_books()),
-        **_cost_context(),
     )
 
 

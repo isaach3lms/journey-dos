@@ -184,7 +184,7 @@ class TestTheRunSheet:
         for index, (kind, title, minutes) in enumerate(rows, start=1):
             db.session.add(
                 ServiceItem(
-                    church_id=journey.id, service_id=service.id, position=index,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=index,
                     kind=kind, title=title, minutes=minutes,
                 )
             )
@@ -271,7 +271,7 @@ class TestReordering:
         for index, title in enumerate(titles, start=1):
             db.session.add(
                 ServiceItem(
-                    church_id=journey.id, service_id=service.id, position=index,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=index,
                     kind="element", title=title, minutes=5,
                 )
             )
@@ -282,7 +282,7 @@ class TestReordering:
         service = a_service(db, journey)
         self._plan(db, journey, service, ["A", "B", "C"])
 
-        assert service.move_item(service.items[1], -1)
+        assert service.main_track.move_item(service.items[1], -1)
         db.session.commit()
         db.session.refresh(service)
         assert [i.title for i in service.items] == ["B", "A", "C"]
@@ -291,7 +291,7 @@ class TestReordering:
         service = a_service(db, journey)
         self._plan(db, journey, service, ["A", "B", "C"])
 
-        assert service.move_item(service.items[0], 1)
+        assert service.main_track.move_item(service.items[0], 1)
         db.session.commit()
         db.session.refresh(service)
         assert [i.title for i in service.items] == ["B", "A", "C"]
@@ -299,12 +299,12 @@ class TestReordering:
     def test_the_first_item_cannot_move_up(self, db, journey):
         service = a_service(db, journey)
         self._plan(db, journey, service, ["A", "B"])
-        assert service.move_item(service.items[0], -1) is False
+        assert service.main_track.move_item(service.items[0], -1) is False
 
     def test_the_last_item_cannot_move_down(self, db, journey):
         service = a_service(db, journey)
         self._plan(db, journey, service, ["A", "B"])
-        assert service.move_item(service.items[-1], 1) is False
+        assert service.main_track.move_item(service.items[-1], 1) is False
 
     def test_a_swap_does_not_trip_the_unique_constraint(self, db, journey):
         """Two swaps of a unique column need a gap to pass through."""
@@ -315,8 +315,8 @@ class TestReordering:
         # so re-reading items[0] would move a different item each time.
         target = next(i for i in service.items if i.title == "A")
         for _ in range(3):
-            service.move_item(target, 1)
-            service.renumber()
+            service.main_track.move_item(target, 1)
+            service.main_track.renumber()
             db.session.commit()
             db.session.refresh(service)
 
@@ -363,7 +363,7 @@ class TestReordering:
 class TestStaffing:
     def _need(self, db, journey, service, position, wanted):
         need = ServiceNeed(
-            church_id=journey.id, service_id=service.id,
+            church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
             position_id=position.id, position_name=position.name, wanted=wanted,
         )
         db.session.add(need)
@@ -378,7 +378,7 @@ class TestStaffing:
         db.session.flush()
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id, person_id=person.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
                 position_id=position.id, position_name=position.name, status=status,
             )
         )
@@ -456,7 +456,7 @@ class TestStaffing:
         for _ in range(2):
             db.session.add(
                 ServiceNeed(
-                    church_id=journey.id, service_id=service.id,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                     position_id=positions["Drums"].id, position_name="Drums", wanted=1,
                 )
             )
@@ -470,7 +470,7 @@ class TestCopyingAPlan:
         for index, title in enumerate(titles, start=1):
             db.session.add(
                 ServiceItem(
-                    church_id=journey.id, service_id=service.id, position=index,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=index,
                     kind="element", title=title, minutes=5,
                 )
             )
@@ -513,7 +513,7 @@ class TestCopyingAPlan:
         db.session.flush()
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=source.id, person_id=person.id,
+                church_id=journey.id, service_id=source.id, track_id=source.main_track.id, person_id=person.id,
                 position_name="Acoustic", status=ACCEPTED,
             )
         )
@@ -532,7 +532,7 @@ class TestCopyingAPlan:
         db.session.flush()
         db.session.add(
             ServiceItem(
-                church_id=journey.id, service_id=source.id, position=1, kind="song",
+                church_id=journey.id, service_id=source.id, track_id=source.main_track.id, position=1, kind="song",
                 title="Known", song_id=song.id, key_override="A", notes="Capo 2",
             )
         )
@@ -640,7 +640,7 @@ class TestCapoSuggestionsAreWorthPrinting:
         service = a_service(db, journey)
         db.session.add(
             ServiceItem(
-                church_id=journey.id, service_id=service.id, position=1,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=1,
                 kind="song", title="Known", key_override="G",
             )
         )
@@ -660,7 +660,7 @@ class TestHowASundayReadsAtAGlance:
         service.publish()
         db.session.add(
             ServiceNeed(
-                church_id=journey.id, service_id=service.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                 position_id=position.id, position_name=position.name, wanted=wanted,
             )
         )
@@ -672,7 +672,7 @@ class TestHowASundayReadsAtAGlance:
             db.session.flush()
             db.session.add(
                 ServiceAssignment(
-                    church_id=journey.id, service_id=service.id, person_id=person.id,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
                     position_id=position.id, position_name=position.name, status=status,
                 )
             )
@@ -756,7 +756,7 @@ class TestHowASundayReadsAtAGlance:
         db.session.flush()
         db.session.add(
             ServiceAssignment(
-                church_id=journey.id, service_id=service.id, person_id=person.id,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
                 position_name=None, status=ACCEPTED,
             )
         )
@@ -771,7 +771,7 @@ class TestHowASundayReadsAtAGlance:
         for name, wanted in (("Vocals", 3), ("Drums", 2)):
             db.session.add(
                 ServiceNeed(
-                    church_id=journey.id, service_id=service.id,
+                    church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                     position_id=positions[name].id, position_name=name, wanted=wanted,
                 )
             )
@@ -803,7 +803,7 @@ class TestChangingAKeyFromThePlan:
         db.session.add(song)
         db.session.flush()
         item = ServiceItem(
-            church_id=journey.id, service_id=service.id, position=1,
+            church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=1,
             kind="song", title="Known", song_id=song.id, key_override=key,
         )
         db.session.add(item)
@@ -875,7 +875,7 @@ class TestChangingAKeyFromThePlan:
         db.session.flush()
         db.session.add(
             ServiceItem(
-                church_id=journey.id, service_id=service.id, position=1,
+                church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=1,
                 kind="song", title="Known", song_id=song.id,
             )
         )
@@ -906,7 +906,7 @@ class TestTheChipOnTheWeekStrip:
 
     def test_publishing_changes_the_chip(self, db, journey, staff):
         service = a_service(db, journey)
-        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id,
+        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                                    position=1, kind="element", title="Welcome"))
         db.session.commit()
 
@@ -919,7 +919,7 @@ class TestTheChipOnTheWeekStrip:
     def test_the_chip_carries_its_own_class(self, db, journey, staff):
         """So published and draft do not share a colour."""
         service = a_service(db, journey)
-        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id,
+        db.session.add(ServiceItem(church_id=journey.id, service_id=service.id, track_id=service.main_track.id,
                                    position=1, kind="element", title="Welcome"))
         db.session.commit()
         staff.post(f"/services/{service.id}/publish/", headers=self.H,

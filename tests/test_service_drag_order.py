@@ -45,7 +45,7 @@ def a_service(db, journey, titles=("A", "B", "C", "D")):
     db.session.flush()
     for index, title in enumerate(titles, start=1):
         db.session.add(ServiceItem(
-            church_id=journey.id, service_id=service.id, position=index,
+            church_id=journey.id, service_id=service.id, track_id=service.main_track.id, position=index,
             kind="element", title=title, minutes=5,
         ))
     db.session.commit()
@@ -67,14 +67,14 @@ def ids_for(db, service, wanted):
 class TestTheModelTakesAWholeOrder:
     def test_it_rearranges_to_the_order_given(self, db, journey):
         service = a_service(db, journey)
-        assert service.reorder_items(ids_for(db, service, ["D", "A", "C", "B"]))
+        assert service.main_track.reorder_items(ids_for(db, service, ["D", "A", "C", "B"]))
         db.session.commit()
         assert titles(db, service) == ["D", "A", "C", "B"]
 
     def test_positions_read_one_to_n_afterwards(self, db, journey):
         """No gaps, so the next item added lands at the end where it should."""
         service = a_service(db, journey)
-        service.reorder_items(ids_for(db, service, ["C", "B", "D", "A"]))
+        service.main_track.reorder_items(ids_for(db, service, ["C", "B", "D", "A"]))
         db.session.commit()
         db.session.refresh(service)
         assert [item.position for item in service.items] == [1, 2, 3, 4]
@@ -82,20 +82,20 @@ class TestTheModelTakesAWholeOrder:
     def test_the_unique_constraint_is_not_tripped(self, db, journey):
         """Reversing a plan makes every item want a number another one holds."""
         service = a_service(db, journey)
-        assert service.reorder_items(ids_for(db, service, ["D", "C", "B", "A"]))
+        assert service.main_track.reorder_items(ids_for(db, service, ["D", "C", "B", "A"]))
         db.session.commit()
         assert titles(db, service) == ["D", "C", "B", "A"]
 
     def test_the_same_order_again_changes_nothing(self, db, journey):
         service = a_service(db, journey)
-        assert service.reorder_items(ids_for(db, service, ["A", "B", "C", "D"]))
+        assert service.main_track.reorder_items(ids_for(db, service, ["A", "B", "C", "D"]))
         db.session.commit()
         assert titles(db, service) == ["A", "B", "C", "D"]
 
     def test_a_short_list_is_refused(self, db, journey):
         """Anything missing would be silently dropped off the end."""
         service = a_service(db, journey)
-        assert service.reorder_items(ids_for(db, service, ["B", "A"])) is False
+        assert service.main_track.reorder_items(ids_for(db, service, ["B", "A"])) is False
         assert titles(db, service) == ["A", "B", "C", "D"]
 
     def test_a_list_naming_something_else_is_refused(self, db, journey):
@@ -103,7 +103,7 @@ class TestTheModelTakesAWholeOrder:
         other = a_service(db, journey, titles=("X", "Y", "Z", "W"))
         borrowed = ids_for(db, service, ["A", "B", "C"])
         borrowed.append(other.items[0].id)
-        assert service.reorder_items(borrowed) is False
+        assert service.main_track.reorder_items(borrowed) is False
         assert titles(db, service) == ["A", "B", "C", "D"]
 
     def test_a_duplicated_id_is_refused(self, db, journey):
@@ -111,12 +111,12 @@ class TestTheModelTakesAWholeOrder:
         service = a_service(db, journey)
         wanted = ids_for(db, service, ["A", "B", "C"])
         wanted.append(wanted[0])
-        assert service.reorder_items(wanted) is False
+        assert service.main_track.reorder_items(wanted) is False
         assert titles(db, service) == ["A", "B", "C", "D"]
 
     def test_an_empty_list_is_refused(self, db, journey):
         service = a_service(db, journey)
-        assert service.reorder_items([]) is False
+        assert service.main_track.reorder_items([]) is False
         assert titles(db, service) == ["A", "B", "C", "D"]
 
 
@@ -145,7 +145,9 @@ class TestTheRouteThatSavesADrag:
         r = staff.post(self.url(service),
                        data={"order": ",".join(str(i) for i in wanted)}, headers=H)
         assert r.status_code == 302
-        assert r.headers["Location"].endswith(f"/services/{service.id}/")
+        # Back to the plan, on the strand that was being dragged.
+        assert f"/services/{service.id}/" in r.headers["Location"]
+        assert f"track={service.main_track.id}" in r.headers["Location"]
 
     def test_a_partial_order_changes_nothing(self, db, journey, staff):
         service = a_service(db, journey)

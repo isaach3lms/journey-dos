@@ -1332,6 +1332,45 @@ ul.policy span{color:var(--muted)}
 .btn[disabled]{opacity:.45;cursor:default}
 
 /* Filtering the list of who is already serving, at the top of that card. */
+/* The strands of a Sunday. Tabs rather than a dropdown: a leader switches
+   between these constantly while planning, and a dropdown costs two clicks
+   every time. The row is not rendered at all until there is more than one, so
+   a church that runs a single strand never meets the idea. */
+.trackbar{
+  display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;
+  margin:0 0 16px;border-bottom:1px solid var(--line);
+}
+.tracktab{
+  display:flex;flex-direction:column;gap:2px;
+  padding:9px 14px 8px;border-radius:var(--r-sm) var(--r-sm) 0 0;
+  border:1px solid transparent;border-bottom:none;
+  margin-bottom:-1px;color:var(--muted);
+}
+.tracktab .tt{font-size:13.5px;font-weight:600}
+.tracktab .ts{font-size:11px;color:var(--muted-2)}
+.tracktab:hover{color:var(--ink);background:var(--surface-alt)}
+.tracktab.on{
+  background:var(--white);border-color:var(--line);
+  border-bottom:1px solid var(--white);color:var(--ink);
+}
+.tracktab.on .tt{color:var(--ink)}
+.tracknew{position:relative;margin-bottom:-1px}
+.tracknew > summary{
+  cursor:pointer;list-style:none;font-size:12.5px;color:var(--muted-2);
+  padding:9px 12px;
+}
+.tracknew > summary::-webkit-details-marker{display:none}
+.tracknew > summary:hover{color:var(--accent)}
+.tracknew form{
+  position:absolute;z-index:20;top:100%;left:0;min-width:280px;
+  display:grid;gap:8px;padding:14px;
+  background:var(--white);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow-md);
+}
+@media (max-width:620px){
+  .tracknew form{position:static;min-width:0;box-shadow:none}
+}
+
 /* Asking the team whether they can serve. Boxed off from the picker below it
    because they are different questions, and a leader who hits the wrong one
    emails forty people. */

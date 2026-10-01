@@ -235,7 +235,7 @@ def a_service(db, journey, days=4):
 
 def put_on_plan(db, journey, service, person, role="Acoustic"):
     assignment = ServiceAssignment(
-        church_id=journey.id, service_id=service.id, person_id=person.id,
+        church_id=journey.id, service_id=service.id, track_id=service.main_track.id, person_id=person.id,
         position_name=role,
     )
     db.session.add(assignment)

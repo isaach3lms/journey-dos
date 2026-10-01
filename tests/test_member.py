@@ -403,7 +403,7 @@ class TestNoWayToSeeSomeoneElse:
         db.session.add_all([other, service])
         db.session.flush()
         assignment = ServiceAssignment(
-            church_id=church.id, service_id=service.id,
+            church_id=church.id, service_id=service.id, track_id=service.main_track.id,
             person_id=other.id, position_name="Drums", status="invited",
         )
         db.session.add(assignment)

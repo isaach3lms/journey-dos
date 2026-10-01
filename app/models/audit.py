@@ -53,6 +53,10 @@ SERVICE_DELETED = "service_deleted"
 # stranger would need to walk out with somebody's child, so who asked for a
 # second copy, and for whom, is a question the log has to be able to answer.
 TAG_REPRINTED = "tag_reprinted"
+# A check-in session and every check-in on it are gone for good. That was the
+# record of which children were in a room and who collected them, so the audit
+# entry has to carry enough to answer the question afterwards.
+CHECKIN_SESSION_DELETED = "checkin_session_deleted"
 
 ACTIONS = (
     SIGN_IN,
@@ -73,6 +77,7 @@ ACTIONS = (
     PERSON_ARCHIVED,
     SERVICE_DELETED,
     TAG_REPRINTED,
+    CHECKIN_SESSION_DELETED,
 )
 
 ACTION_LABELS = {
@@ -94,6 +99,7 @@ ACTION_LABELS = {
     PERSON_ARCHIVED: "Person archived",
     SERVICE_DELETED: "Service deleted",
     TAG_REPRINTED: "Name tag reprinted",
+    CHECKIN_SESSION_DELETED: "Kids session deleted",
 }
 
 # How long entries are kept. Long enough to answer a question about last

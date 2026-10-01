@@ -1780,6 +1780,57 @@ SERVICES = {
     "send": "Send it",
     "sent": "Queued for {count} people. It goes out on the next worker run.",
     "send_nobody": "Nobody is on this plan yet.",
+
+    # Asking a volunteer whether they can serve, as opposed to sending the
+    # running order to people already committed.
+    "invite_heading": "Ask them to serve",
+    "invite_hint": (
+        "Emails everyone who has not answered yet, with Accept and Decline in "
+        "the message. They do not need to sign in."
+    ),
+    "invite_button": "Send the invites",
+    "invite_button_again": "Ask the rest again",
+    # Never asked and asked-but-silent are different problems with different
+    # answers, so they do not share a label. Calling somebody "not asked yet"
+    # after you asked them on Tuesday is how a leader asks twice.
+    "invite_unasked": "{count} not asked yet",
+    "invite_unasked_one": "1 not asked yet",
+    "invite_waiting": "Waiting on {count}",
+    "invite_waiting_one": "Waiting on 1",
+    "invite_all_answered": "Everyone has answered",
+    "invite_nobody": "Everyone on this plan has already answered.",
+    "invite_sent": "Asked {count} people. It goes out on the next worker run.",
+    "invite_sent_one": "Asked 1 person. It goes out on the next worker run.",
+    "invite_subject": "Can you serve on {date}?",
+    "invite_body": (
+        "Hello {name},\n\n"
+        "You are down to serve at {church}.\n\n"
+        "  What: {service}\n"
+        "  When: {date}\n"
+        "  Doing: {position}\n\n"
+        "Let us know either way:\n{link}\n\n"
+        "It takes two taps and you do not need to sign in. If something "
+        "changes later, open the same link and change your answer.\n\n"
+        "{church}"
+    ),
+    "invite_push_title": "{church}",
+    "invite_push_body": "Can you serve as {position} on {date}?",
+
+    # The page that link opens.
+    "invite_page_heading": "Can you serve?",
+    "invite_asked_by": "{church} has you down for this.",
+    "invite_what": "What",
+    "invite_when": "When",
+    "invite_doing": "Doing",
+    "invite_accept": "Yes, I can",
+    "invite_decline": "No, not this time",
+    "invite_pick_one": "Pick one of the two.",
+    "invite_already": "You answered this already. You can change it below.",
+    "invite_answered_yes": "Thank you. You are down to serve.",
+    "invite_answered_no": "Thanks for letting us know.",
+    "invite_change": "Change your answer",
+    "invite_see_all": "See everything you are serving",
+    "invite_past": "This one has already happened.",
     "resend": "Send it again",
     "sent_on": "Sent {date}",
 
@@ -1914,6 +1965,28 @@ KIDS = {
         "Checked out from the staff list. Nobody was recorded as collecting "
         "them, so use the desk when you can."
     ),
+
+    # Deleting a session. The copy carries the warning, because the audit
+    # entry is the only thing left afterwards.
+    "delete_heading": "Delete this session",
+    "delete_hint": (
+        "For a Sunday entered twice, or the sessions from setting this up."
+    ),
+    "delete_warning": (
+        "This cannot be undone. {count} check-ins go with it, including who "
+        "collected each child. The audit log keeps a note of what was here."
+    ),
+    "delete_warning_empty": (
+        "This cannot be undone. Nobody checked in to this one."
+    ),
+    "delete_confirm": "Yes, delete it and its check-ins",
+    "delete_confirm_required": "Tick the box first.",
+    "delete_button": "Delete the session",
+    "delete_close_first": (
+        "Close the session before deleting it. Children may be in a room right "
+        "now, and their pickup codes would go with it."
+    ),
+    "deleted": "{name} on {when} is gone.",
 
     # Forgot the code
     "forgot_heading": "We will send you your code",
@@ -2320,6 +2393,43 @@ SETTINGS = {
         "last name as well.\n\n"
         "{church}"
     ),
+
+    # App notifications. Separate from email because the failures are
+    # different and so are the fixes.
+    "push_heading": "App notifications",
+    "push_sub": "{devices} devices, {people} people",
+    "push_sub_none": "Nobody has turned these on yet",
+    "push_on": "On",
+    "push_off": "Off",
+    "push_problem": "Needs a look",
+    "push_intro": (
+        "A notification on somebody's phone or desktop, alongside the email. "
+        "Two things have to be true: the keys have to be set on the server, "
+        "and a person has to have turned them on from their own device."
+    ),
+    "push_state_off": (
+        "Turned off on the server. Nothing is being sent, and nobody sees an "
+        "error. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the Render "
+        "dashboard, then set PUSH_TRANSPORT to webpush."
+    ),
+    "push_state_no_keys": (
+        "PUSH_TRANSPORT is set to webpush but the private key is missing. "
+        "Nothing can send until it is set."
+    ),
+    "push_state_nobody_on": (
+        "Set up correctly, and nobody has turned notifications on yet. "
+        "People turn them on from the You tab on their own phone."
+    ),
+    "push_state_all_failing": (
+        "Every registered device is failing. That usually means the keys "
+        "changed after people subscribed, which invalidates every "
+        "subscription. People need to turn notifications on again."
+    ),
+    "push_devices": "devices registered",
+    "push_people": "people",
+    "push_failing": "failing",
+    "push_last_success": "Last delivered {when}.",
+    "push_never": "Nothing has been delivered yet.",
 
     "brand_heading": "Your brand",
     "church_name": "Church name",

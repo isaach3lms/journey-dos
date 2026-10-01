@@ -86,15 +86,24 @@ services:
       # the service refuse to boot, which is the guard working correctly and a
       # terrible out-of-the-box experience.
       #
-      # To switch it on:
-      #   1. flask vapid-keys           (in the shell, once)
-      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the dashboard
-      #   3. change this value to: webpush
+      # Set in the dashboard, not here, so switching push on is three values
+      # typed in one place rather than a code change and a deploy. Leaving it
+      # unset means off, which is the right default for a church that has not
+      # generated keys.
       #
-      # The public key is not a secret; the private one is. Set the private key
-      # in the dashboard rather than here, and never commit it.
+      # To switch it on:
+      #   1. Render dashboard, this service, Shell: flask vapid-keys
+      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY from its output
+      #   3. set PUSH_TRANSPORT to: webpush
+      #
+      # Set all three on BOTH services, the web one and the cron one, and set
+      # them on the web service last: the moment it restarts with webpush and
+      # no private key it refuses to boot.
+      #
+      # The public key is not a secret; the private one is. Settings shows
+      # whether each is present, never what it holds.
       - key: PUSH_TRANSPORT
-        value: "null"
+        sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
@@ -146,15 +155,24 @@ services:
       # the service refuse to boot, which is the guard working correctly and a
       # terrible out-of-the-box experience.
       #
-      # To switch it on:
-      #   1. flask vapid-keys           (in the shell, once)
-      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY in the dashboard
-      #   3. change this value to: webpush
+      # Set in the dashboard, not here, so switching push on is three values
+      # typed in one place rather than a code change and a deploy. Leaving it
+      # unset means off, which is the right default for a church that has not
+      # generated keys.
       #
-      # The public key is not a secret; the private one is. Set the private key
-      # in the dashboard rather than here, and never commit it.
+      # To switch it on:
+      #   1. Render dashboard, this service, Shell: flask vapid-keys
+      #   2. set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY from its output
+      #   3. set PUSH_TRANSPORT to: webpush
+      #
+      # Set all three on BOTH services, the web one and the cron one, and set
+      # them on the web service last: the moment it restarts with webpush and
+      # no private key it refuses to boot.
+      #
+      # The public key is not a secret; the private one is. Settings shows
+      # whether each is present, never what it holds.
       - key: PUSH_TRANSPORT
-        value: "null"
+        sync: false
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY

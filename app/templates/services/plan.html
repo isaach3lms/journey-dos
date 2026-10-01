@@ -386,6 +386,34 @@
           <p class="muted small">{{ content.who_empty }}</p>
         {% endif %}
 
+        {# Asking whether they can serve, which is a different question from
+           sending the running order to people already committed. #}
+        {% if service.assignments %}
+          {% set open_asks = service.assignments|rejectattr('has_answered')|list %}
+          {% set unasked = open_asks|rejectattr('was_invited')|list %}
+          <div class="invitebox">
+            <div class="invitetop">
+              <span class="pn">{{ content.invite_heading }}</span>
+              <span class="pill {% if open_asks %}pending{% endif %} plain">
+                {% if unasked|length == 1 %}{{ content.invite_unasked_one }}
+                {% elif unasked %}{{ content.invite_unasked.format(count=unasked|length) }}
+                {% elif open_asks|length == 1 %}{{ content.invite_waiting_one }}
+                {% elif open_asks %}{{ content.invite_waiting.format(count=open_asks|length) }}
+                {% else %}{{ content.invite_all_answered }}{% endif %}
+              </span>
+            </div>
+            <p class="muted small">{{ content.invite_hint }}</p>
+            {% if open_asks %}
+              <form method="post" action="{{ url_for('services.send_invites', service_id=service.id) }}">
+                {{ csrf_field() }}
+                <button class="btn wide" type="submit">
+                  {% if unasked %}{{ content.invite_button }}{% else %}{{ content.invite_button_again }}{% endif %}
+                </button>
+              </form>
+            {% endif %}
+          </div>
+        {% endif %}
+
         <form method="post" class="stackform" action="{{ url_for('services.assign', service_id=service.id) }}">
           {{ csrf_field() }}
 

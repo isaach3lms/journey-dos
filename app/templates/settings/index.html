@@ -341,6 +341,42 @@
     </div>
   </details>
 
+  {# App notifications, beside email. The two fail differently and are fixed
+     differently, so one row saying "notifications" would hide whichever one
+     is actually broken. #}
+  <details class="setrow" id="push" {% if open_row == 'push' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.push_heading }}</span>
+        <span class="pe">
+          {% if push.devices %}{{ content.push_sub.format(devices=push.devices, people=push.people) }}
+          {% else %}{{ content.push_sub_none }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if push.state != 'on' %}pending{% endif %}">
+        {% if push.state == 'on' %}{{ content.push_on }}
+        {% elif push.state in ('off', 'no_keys') %}{{ content.push_off }}
+        {% else %}{{ content.push_problem }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.push_intro }}</p>
+      {% if push.state != 'on' %}
+        <p class="alert error">{{ content['push_state_' ~ push.state] }}</p>
+      {% endif %}
+      <div class="metrics">
+        <div><span class="mono mv">{{ push.devices }}</span> {{ content.push_devices }}</div>
+        <div><span class="mono mv">{{ push.people }}</span> {{ content.push_people }}</div>
+        <div><span class="mono mv">{{ push.failing }}</span> {{ content.push_failing }}</div>
+      </div>
+      <p class="muted small">
+        {% if push.last_success %}{{ content.push_last_success.format(when=push.last_success|church_time("%b %-d, %-I:%M%p")) }}
+        {% else %}{{ content.push_never }}{% endif %}
+      </p>
+    </div>
+  </details>
+
   <details class="setrow" id="audit" {% if open_row == 'audit' %}open{% endif %}>
     <summary>
       <span class="fl">

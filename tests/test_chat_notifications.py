@@ -156,7 +156,7 @@ class TestSafety:
     def test_a_broken_notification_never_loses_the_message(self, db, client, alicia, monkeypatch):
         ben = person(db, "Ben")
         convo = room(db, alicia, ben)
-        monkeypatch.setattr(chat_notify, "queue", lambda **kw: (_ for _ in ()).throw(RuntimeError("mail is down")))
+        monkeypatch.setattr(chat_notify, "notify", lambda **kw: (_ for _ in ()).throw(RuntimeError("mail is down")))
         r = client.post(f"/me/chat/{convo.id}/", data={"body": "still saved"}, headers=H)
         assert r.status_code == 302
         assert db.session.scalar(db.select(Message).where(Message.body == "still saved")) is not None

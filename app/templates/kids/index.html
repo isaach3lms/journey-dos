@@ -99,7 +99,8 @@
     {% if sessions %}
       <ul class="flaglist">
         {% for item in sessions %}
-          <li>
+          {% set deletable = current_user.is_staff and not item.is_open %}
+          <li {% if deletable %}class="hasdel"{% endif %}>
             <span class="fl">
               <span class="pn">{{ item.starts_at|church_time("%A, %B %-d at %-I:%M%p") }}</span>
               <span class="pe">
@@ -114,6 +115,31 @@
                 {% if item.is_open %}{{ content.close }}{% else %}{{ content.reopen }}{% endif %}
               </button>
             </form>
+
+            {# Folded, staff only, and never on the open session. What this
+               destroys is the record of which children were in a room and who
+               took them home, so it is not a button sitting next to Reopen. #}
+            {% if deletable %}
+              <details class="dangerbox sessiondel">
+                <summary>{{ content.delete_heading }}</summary>
+                <p class="muted small">{{ content.delete_hint }}</p>
+                <p class="muted small">
+                  {% if item.checkins %}
+                    {{ content.delete_warning.format(count=item.checkins|length) }}
+                  {% else %}
+                    {{ content.delete_warning_empty }}
+                  {% endif %}
+                </p>
+                <form method="post" action="{{ url_for('kids.delete_session', session_id=item.id) }}">
+                  {{ csrf_field() }}
+                  <label class="check">
+                    <input type="checkbox" name="confirm">
+                    <span>{{ content.delete_confirm }}</span>
+                  </label>
+                  <button class="btn danger" type="submit">{{ content.delete_button }}</button>
+                </form>
+              </details>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>

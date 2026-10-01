@@ -24,7 +24,8 @@ from flask import current_app, url_for
 
 from app.content import MESSAGES
 from app.extensions import db
-from app.mail import NotQueued, queue
+from app.mail import NotQueued
+from app.notify import notify
 from app.models.base import utcnow
 
 WINDOW_MINUTES = 30
@@ -58,8 +59,12 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
     try:
         link = url_for("member.chat_thread", conversation_id=conversation.id,
                        _external=True, _scheme="https")
+        # Relative, for the push payload. A notification is delivered by a
+        # third party and is not the place to teach a browser a hostname.
+        path = url_for("member.chat_thread", conversation_id=conversation.id)
     except Exception:  # noqa: BLE001 - outside a request, e.g. a shell
         link = ""
+        path = "/"
 
     queued = 0
     for membership in conversation.members:
@@ -73,7 +78,11 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
         if author_id and author_id in PersonBlock.blocked_ids(conversation.church_id, person.id):
             continue
         try:
-            if queue(
+            # Both channels, through one call. This used to be `queue` alone,
+            # which is why somebody who turned app notifications on for chat
+            # never got one.
+            result = notify(
+                person=person,
                 church_id=conversation.church_id,
                 category="chat",
                 subject=MESSAGES["chat_email_subject"].format(name=name, room=conversation.title),
@@ -84,9 +93,15 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
                     excerpt=excerpt,
                     link=link,
                 ),
-                person=person,
+                push_title=f"{name} in {conversation.title}",
+                push_body=excerpt[:140],
+                url=path,
+                # One room replaces its own notification rather than stacking.
+                # Nine messages in a back and forth is one badge, not nine.
+                tag=f"chat:{conversation.id}",
                 dedupe_key=f"chat:{conversation.id}:person:{person.id}:{window}",
-            ) is not None:
+            )
+            if result.emailed or result.pushed:
                 person.ensure_unsubscribe_token()
                 queued += 1
         except NotQueued:

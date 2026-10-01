@@ -586,6 +586,87 @@ def unassign(service_id: int, assignment_id: int):
     return redirect(url_for("services.plan", service_id=service.id))
 
 
+@bp.post("/<int:service_id>/invite/")
+@login_required
+@min_role("leader")
+def send_invites(service_id: int):
+    """Ask the people on this plan whether they can serve.
+
+    Separate from "Send it", which mails the running order to people already
+    committed. This asks the question, and it carries a link that answers it
+    in two taps without signing in. See app/blueprints/invite.py for why that
+    link is safe.
+
+    Only people who have not answered are asked. Re-running this after adding
+    somebody chases the new person and leaves the rest alone, which is the
+    behaviour a leader wants on a Thursday when half the team has replied.
+    """
+    from app.notify import notify
+
+    service = Service.get_for_church(g.church.id, service_id)
+    if service is None:
+        abort(404)
+
+    waiting = [a for a in service.assignments if not a.has_answered]
+    if not waiting:
+        flash(SERVICES["invite_nobody"], "error")
+        return redirect(url_for("services.plan", service_id=service.id))
+
+    when = format_local(service.starts_at, g.church, "%A %-d %B, %-I:%M%p")
+    asked = 0
+
+    for assignment in waiting:
+        person = assignment.person
+        if person is None or not person.email:
+            continue
+
+        token = assignment.ensure_respond_token()
+        link = url_for("invite.respond", token=token, _external=True, _scheme="https")
+
+        result = notify(
+            person=person,
+            church_id=g.church.id,
+            # Serving, not marketing. Somebody who left the newsletter still
+            # needs to be asked whether they can play on Sunday.
+            category="group",
+            subject=SERVICES["invite_subject"].format(date=when),
+            body_text=SERVICES["invite_body"].format(
+                name=person.first_name,
+                service=service.name,
+                date=when,
+                position=assignment.role_name,
+                link=link,
+                church=g.church.name,
+            ),
+            push_title=SERVICES["invite_push_title"].format(church=g.church.name),
+            push_body=SERVICES["invite_push_body"].format(
+                position=assignment.role_name, date=when
+            ),
+            url=url_for("invite.respond", token=token),
+            # One ask per person per slot per day. A double-clicked button
+            # must not email a volunteer twice, and chasing the quiet ones
+            # tomorrow still goes out, which is what "Ask the rest again" on
+            # the plan promises.
+            tag=f"invite:{assignment.id}",
+            dedupe_key=f"invite:{service.id}:{assignment.id}:"
+            f"{utcnow().date().isoformat()}",
+        )
+
+        if result.emailed or result.pushed:
+            person.ensure_unsubscribe_token()
+            assignment.invited_at = utcnow()
+            asked += 1
+
+    db.session.commit()
+
+    flash(
+        SERVICES["invite_sent_one"] if asked == 1
+        else SERVICES["invite_sent"].format(count=asked),
+        "notice",
+    )
+    return redirect(url_for("services.plan", service_id=service.id))
+
+
 @bp.post("/<int:service_id>/send/")
 @login_required
 @min_role("leader")

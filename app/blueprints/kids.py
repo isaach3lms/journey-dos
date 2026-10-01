@@ -452,6 +452,64 @@ def checkout():
     )
 
 
+@bp.post("/sessions/<int:session_id>/delete/")
+@login_required
+@min_role("staff")
+def delete_session(session_id: int):
+    """Delete a session and every check-in on it.
+
+    Mostly for a Sunday entered twice, or the rehearsal sessions from setting
+    the system up. It is not recoverable, and what it destroys is the record
+    of which children were in a room and who took them home, so three things
+    guard it:
+
+    1. **Staff, not leader.** Everything else in Kids is open to the
+       volunteers running the desk. This is not.
+    2. **An open session cannot be deleted.** Children may be in a room right
+       now, and their pickup codes would go with it. Close it first, which
+       makes the decision two deliberate steps.
+    3. **The tick box is required**, and the audit entry carries the names of
+       every child who was on it. After this runs, that entry is the only
+       thing left that says the morning happened.
+    """
+    from app.models.audit import CHECKIN_SESSION_DELETED
+    from app.timeutil import format_local
+
+    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
+    if checkin_session is None:
+        abort(404)
+
+    if checkin_session.is_open:
+        flash(KIDS["delete_close_first"], "error")
+        return redirect(url_for("kids.index"))
+
+    if request.form.get("confirm") != "on":
+        flash(KIDS["delete_confirm_required"], "error")
+        return redirect(url_for("kids.index"))
+
+    when = format_local(checkin_session.starts_at, g.church, "%B %-d, %Y")
+    label = f"{checkin_session.name} on {when}"
+    children = [c.person.full_name for c in checkin_session.checkins]
+
+    record(
+        CHECKIN_SESSION_DELETED,
+        f"{label} was deleted",
+        actor=current_user,
+        subject_type="checkin_session",
+        subject_id=checkin_session.id,
+        subject_label=label,
+        detail=(
+            f"{len(children)} children checked in"
+            + (": " + ", ".join(children) if children else ".")
+        ),
+    )
+    db.session.delete(checkin_session)
+    db.session.commit()
+
+    flash(KIDS["deleted"].format(name=checkin_session.name, when=when), "notice")
+    return redirect(url_for("kids.index"))
+
+
 @bp.post("/checkins/<int:checkin_id>/out/")
 @login_required
 @min_role("leader")

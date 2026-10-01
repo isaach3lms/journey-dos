@@ -848,8 +848,51 @@ class ServiceAssignment(TenantScoped, TimestampMixin, db.Model):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default=INVITED)
     responded_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
+    # When the volunteer was actually asked, as opposed to when a leader put
+    # them on the plan. Those are different moments and conflating them is how
+    # a leader believes they sent invites they never sent.
+    invited_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    # The credential in an emailed accept or decline link.
+    #
+    # Scoped to one assignment and nothing else: it answers one question about
+    # one Sunday and cannot read a profile, see a roster, or sign anybody in.
+    # That narrowness is what makes it safe to put in an email, which is the
+    # whole point: a volunteer answering from a phone on a Tuesday evening
+    # will not go and find their password first.
+    respond_token: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
     def __repr__(self) -> str:
         return f"<ServiceAssignment person={self.person_id} {self.status}>"
+
+    def ensure_respond_token(self) -> str:
+        """Mint the token on first use. Callers must commit."""
+        import secrets
+
+        if not self.respond_token:
+            self.respond_token = secrets.token_urlsafe(32)
+        return self.respond_token
+
+    @property
+    def was_invited(self) -> bool:
+        return self.invited_at is not None
+
+    @property
+    def has_answered(self) -> bool:
+        return self.status in (ACCEPTED, DECLINED)
+
+    @classmethod
+    def by_respond_token(cls, token: str) -> "ServiceAssignment | None":
+        """Looked up by token alone, with no church in context.
+
+        Deliberately not tenant scoped: the link arrives in an email, is
+        opened cold, and the token is the only thing identifying anything. A
+        64 character secret is the tenancy check.
+        """
+        token = (token or "").strip()
+        if len(token) < 20:
+            return None
+        return db.session.scalar(db.select(cls).where(cls.respond_token == token))
 
     @property
     def team_id(self) -> int | None:

@@ -917,6 +917,11 @@ form.inline .select{min-width:170px}
 .thread form.inline{margin-top:6px}
 .flaglist li.stacked{flex-wrap:wrap;align-items:flex-start}
 .flaglist li.stacked .fl{flex:1 1 100%;margin-bottom:9px}
+/* The delete fold drops onto its own line under the row it belongs to,
+   without pushing the row's own button down there with it. */
+.flaglist li.hasdel{flex-wrap:wrap}
+.sessiondel{flex:1 1 100%;margin-top:0;padding-top:10px}
+.sessiondel p{margin:8px 0 0}
 .costline{
   display:flex;justify-content:space-between;align-items:baseline;
   padding:11px 0;border-top:1px solid var(--line-soft);font-size:14px;
@@ -1327,6 +1332,29 @@ ul.policy span{color:var(--muted)}
 .btn[disabled]{opacity:.45;cursor:default}
 
 /* Filtering the list of who is already serving, at the top of that card. */
+/* Asking the team whether they can serve. Boxed off from the picker below it
+   because they are different questions, and a leader who hits the wrong one
+   emails forty people. */
+.invitebox{
+  margin-top:14px;padding:13px 14px;
+  background:var(--surface-alt);border-radius:var(--r-sm);
+}
+.invitetop{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.invitetop .pn{flex:1;font-size:13.5px;font-weight:600}
+.invitebox p{margin:0 0 11px}
+.invitebox .btn.wide{margin:0}
+
+/* The page an emailed accept or decline link opens. */
+.invitefacts{
+  display:grid;grid-template-columns:auto 1fr;gap:6px 16px;
+  margin:18px 0 22px;
+}
+.invitefacts dt{
+  font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  font-weight:600;color:var(--muted-2);align-self:center;
+}
+.invitefacts dd{margin:0;font-size:15px;font-weight:500}
+
 .teamchips{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
 .teamchips .chip{
   font-family:var(--font-body);font-size:12px;font-weight:500;

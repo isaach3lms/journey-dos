@@ -20,6 +20,13 @@
       {% endif %}
     </div>
     <div class="authbody-inner">
+      {# Signed-out pages can flash too: answering a serving invitation
+         without picking an answer has to be able to say so. #}
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      {% endwith %}
       {% block inner %}{% endblock %}
     </div>
   </div>

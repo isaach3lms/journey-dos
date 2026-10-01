@@ -458,3 +458,137 @@ class TestCheckingOutFromTheStaffList:
         staff.post(self.url(row), headers={"Host": RIVERBEND_HOST})
         db.session.refresh(row)
         assert row.is_present
+
+
+class TestDeletingASession:
+    """Clearing out a Sunday entered twice, or the sessions from setup.
+
+    What this destroys is the record of which children were in a room and who
+    took them home. Three guards, each tested: staff only, never the open
+    session, and a tick box. The audit entry is the only thing left afterwards
+    so it has to carry the names.
+    """
+
+    def url(self, sunday):
+        return f"/kids/sessions/{sunday.id}/delete/"
+
+    def closed(self, db, sunday):
+        sunday.close()
+        db.session.commit()
+        return sunday
+
+    def test_it_deletes_an_empty_session(self, db, staff, sunday):
+        self.closed(db, sunday)
+        staff.post(self.url(sunday), data={"confirm": "on"}, headers=H)
+        assert db.session.get(CheckinSession, sunday.id) is None
+
+    def test_it_takes_the_check_ins_with_it(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        ids = [c.id for c in sunday.checkins]
+        assert ids
+        self.closed(db, sunday)
+        staff.post(self.url(sunday), data={"confirm": "on"}, headers=H)
+        assert all(db.session.get(Checkin, i) is None for i in ids)
+
+    def test_it_says_what_went(self, db, staff, sunday):
+        self.closed(db, sunday)
+        page = staff.post(self.url(sunday), data={"confirm": "on"}, headers=H,
+                          follow_redirects=True).data.decode()
+        assert "Sunday 9:30" in page and "is gone" in page
+
+    def test_the_open_session_cannot_be_deleted(self, db, staff, webbs, sunday):
+        """Children may be in a room right now, and their pickup codes would
+        go with it."""
+        check_in(db, staff, webbs, sunday)
+        page = staff.post(self.url(sunday), data={"confirm": "on"}, headers=H,
+                          follow_redirects=True).data.decode()
+        assert db.session.get(CheckinSession, sunday.id) is not None
+        assert "Close the session before deleting" in page
+
+    def test_the_tick_box_is_required(self, db, staff, sunday):
+        self.closed(db, sunday)
+        page = staff.post(self.url(sunday), headers=H,
+                          follow_redirects=True).data.decode()
+        assert db.session.get(CheckinSession, sunday.id) is not None
+        assert "Tick the box first" in page
+
+    def test_the_log_keeps_the_children(self, db, staff, webbs, sunday):
+        """After this runs the entry is the only thing left that says the
+        morning happened."""
+        from app.models.audit import CHECKIN_SESSION_DELETED
+
+        check_in(db, staff, webbs, sunday)
+        self.closed(db, sunday)
+        staff.post(self.url(sunday), data={"confirm": "on"}, headers=H)
+
+        event = db.session.scalar(
+            db.select(AuditEvent).where(
+                AuditEvent.action == CHECKIN_SESSION_DELETED)
+        )
+        assert event is not None
+        assert "Ellie Webb" in event.detail and "Nate Webb" in event.detail
+        assert "Sunday 9:30" in event.subject_label
+
+    def test_the_log_survives_the_delete(self, db, staff, webbs, sunday):
+        from app.models.audit import CHECKIN_SESSION_DELETED
+
+        check_in(db, staff, webbs, sunday)
+        self.closed(db, sunday)
+        staff.post(self.url(sunday), data={"confirm": "on"}, headers=H)
+        assert db.session.scalar(
+            db.select(db.func.count(AuditEvent.id)).where(
+                AuditEvent.action == CHECKIN_SESSION_DELETED)
+        ) == 1
+
+    def test_a_leader_cannot(self, db, leader, sunday):
+        """Everything else in Kids is open to the volunteers at the desk."""
+        assert leader.post(self.url(sunday), data={"confirm": "on"},
+                           headers=H).status_code == 403
+
+    def test_a_member_cannot(self, member, sunday):
+        assert member.post("/kids/sessions/1/delete/", data={"confirm": "on"},
+                           headers=H).status_code == 403
+
+    def test_another_church_cannot(self, db, staff, sunday):
+        self.closed(db, sunday)
+        staff.post(self.url(sunday), data={"confirm": "on"},
+                   headers={"Host": RIVERBEND_HOST})
+        assert db.session.get(CheckinSession, sunday.id) is not None
+
+    def test_a_missing_session_is_a_404(self, db, staff):
+        r = staff.post("/kids/sessions/999999/delete/", data={"confirm": "on"},
+                       headers=H)
+        assert r.status_code == 404
+
+
+class TestTheDeleteControl:
+    def test_it_is_folded_away(self, db, staff, sunday):
+        """Not a button sitting next to Reopen."""
+        sunday.close()
+        db.session.commit()
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert "dangerbox" in page
+        assert "Delete this session" in page
+
+    def test_it_is_not_on_the_open_session(self, db, staff, sunday):
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert "Delete this session" not in page
+
+    def test_it_says_how_many_check_ins_go_with_it(self, db, staff, webbs, sunday):
+        check_in(db, staff, webbs, sunday)
+        sunday.close()
+        db.session.commit()
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert "2 check-ins go with it" in page
+
+    def test_an_empty_session_says_so_instead(self, db, staff, sunday):
+        sunday.close()
+        db.session.commit()
+        page = staff.get("/kids/", headers=H).data.decode()
+        assert "Nobody checked in to this one" in page
+
+    def test_a_leader_does_not_see_it(self, db, leader, sunday):
+        sunday.close()
+        db.session.commit()
+        page = leader.get("/kids/", headers=H).data.decode()
+        assert "Delete this session" not in page

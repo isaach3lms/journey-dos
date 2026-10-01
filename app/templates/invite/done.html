@@ -1,0 +1,24 @@
+{% extends "public.html" %}
+{% block title %}{{ content.invite_page_heading }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>
+    {% if assignment.status == 'accepted' %}{{ content.invite_answered_yes }}
+    {% else %}{{ content.invite_answered_no }}{% endif %}
+  </h1>
+
+  <dl class="invitefacts">
+    <dt>{{ content.invite_what }}</dt>
+    <dd>{{ service.name }}</dd>
+    <dt>{{ content.invite_when }}</dt>
+    <dd>{{ service.starts_at|church_time("%A %-d %B, %-I:%M%p") }}</dd>
+    <dt>{{ content.invite_doing }}</dt>
+    <dd>{{ assignment.role_name }}</dd>
+  </dl>
+
+  {# The same link keeps working. Somebody who accepted on Tuesday and is ill
+     on Saturday has to be able to say so, and a leader would far rather know
+     on Saturday than find out on Sunday. #}
+  <p class="muted small">
+    <a href="{{ url_for('invite.respond', token=assignment.respond_token) }}">{{ content.invite_change }}</a>
+  </p>
+{% endblock %}

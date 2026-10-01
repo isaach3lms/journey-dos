@@ -65,6 +65,7 @@ def create_app(config_name: str | None = None) -> Flask:
     from app.blueprints.services import bp as services_bp
     from app.blueprints.settings import bp as settings_bp
     from app.blueprints.unsubscribe import bp as unsubscribe_bp
+    from app.blueprints.invite import bp as invite_bp
     from app.blueprints.shell import bp as shell_bp
 
     app.register_blueprint(health_bp)
@@ -81,6 +82,7 @@ def create_app(config_name: str | None = None) -> Flask:
     app.register_blueprint(pwa_bp)
     app.register_blueprint(public_bp)
     app.register_blueprint(unsubscribe_bp)
+    app.register_blueprint(invite_bp)
     app.register_blueprint(shell_bp)
 
     # Order matters. Tenancy runs first so `g.church` exists before the

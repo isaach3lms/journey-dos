@@ -27,6 +27,7 @@ from app.brand import assert_accent_readable
 from app.content import DOS_PRICE_CENTS, INCLUDED_NOT_SAVED, REPLACES, SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
+from app.push.health import push_health
 from app.models import AuditEvent, BibleVerse, Church, PasswordResetToken, User
 from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
@@ -102,6 +103,7 @@ def index():
         roles=ROLES,
         bible_verses=BibleVerse.verse_count(),
         email=email_health(g.church.id),
+        push=push_health(g.church.id),
         bible_books=len(BibleVerse.loaded_books()),
         **_cost_context(),
     )

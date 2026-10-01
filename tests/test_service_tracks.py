@@ -508,3 +508,54 @@ class TestTheScreen:
                    headers=H)
         db.session.refresh(service)
         assert service.main_track.name == first
+
+
+class TestSwitchingStrandsStaysPut:
+    """Switching strands is a page load, and a page load goes to the top.
+
+    A leader deep in the kids plan who taps Operations and finds themselves
+    looking at the week strip has lost their place for no reason. The tabs and
+    every verb on the plan carry an anchor so the browser lands on the strand
+    row instead.
+    """
+
+    def test_the_strand_row_is_anchorable(self, db, journey, staff):
+        service = a_sunday(db, journey)
+        add_track(service, None, name="Kids")
+        db.session.commit()
+        page = staff.get(f"/services/{service.id}/", headers=H).data.decode()
+        assert 'id="strands"' in page
+
+    def test_a_tab_links_to_it(self, db, journey, staff):
+        service = a_sunday(db, journey)
+        kids = add_track(service, None, name="Kids")
+        db.session.commit()
+        page = staff.get(f"/services/{service.id}/", headers=H).data.decode()
+        assert f"track={kids.id}#strands" in page
+
+    def test_adding_an_item_comes_back_to_it(self, db, journey, staff):
+        """The same annoyance: add a line, get thrown to the top of the page."""
+        service = a_sunday(db, journey)
+        r = staff.post(f"/services/{service.id}/items/",
+                       data={"track": service.main_track.id, "kind": "element",
+                             "title": "Welcome"}, headers=H)
+        assert r.headers["Location"].endswith("#strands")
+
+    def test_assigning_somebody_comes_back_to_it(self, db, journey, staff):
+        service = a_sunday(db, journey)
+        person = Person(church_id=journey.id, first_name="Kaela", last_name="Menz",
+                        stage="member", approved_at=utcnow())
+        db.session.add(person)
+        db.session.commit()
+        r = staff.post(f"/services/{service.id}/assignments/",
+                       data={"track": service.main_track.id, "person_id": person.id},
+                       headers=H)
+        assert r.headers["Location"].endswith("#strands")
+
+    def test_the_anchor_does_not_land_flush_against_the_window(self):
+        from pathlib import Path
+
+        css = (Path(__file__).resolve().parent.parent / "app" / "static" / "css"
+               / "app.css").read_text()
+        block = css[css.index(".trackbar{"):]
+        assert "scroll-margin-top" in block[:block.index("}")]

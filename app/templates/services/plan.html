@@ -34,13 +34,16 @@
 {# The strands of this Sunday. One date, one publish, several running orders.
    A tab rather than a dropdown because a leader switches between these
    constantly while planning, and a dropdown costs two clicks every time. #}
-<nav class="trackbar" aria-label="{{ content.track_heading }}">
+<nav class="trackbar" id="strands" aria-label="{{ content.track_heading }}">
   {# Tabs only once there is something to switch between. A church that runs
      one strand on a Sunday should never meet the idea at all. #}
   {% if tracks|length > 1 %}
   {% for one in tracks %}
     <a class="tracktab {% if track and one.id == track.id %}on{% endif %}"
-       href="{{ url_for('services.plan', service_id=service.id, track=one.id) }}"
+       {# The anchor is the whole point: switching strands is a page load, and
+          without it the browser throws you back to the top of the page every
+          time. Landing on the tab row puts the plan right where it was. #}
+       href="{{ url_for('services.plan', service_id=service.id, track=one.id, _anchor='strands') }}"
        {% if track and one.id == track.id %}aria-current="page"{% endif %}>
       <span class="tt">{{ one.name }}</span>
       <span class="ts">

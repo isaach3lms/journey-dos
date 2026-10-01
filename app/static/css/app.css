@@ -1339,6 +1339,10 @@ ul.policy span{color:var(--muted)}
 .trackbar{
   display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;
   margin:0 0 16px;border-bottom:1px solid var(--line);
+  /* Switching strands is a page load and lands on this row by anchor. Without
+     the margin it lands flush against the top edge of the window, which reads
+     as a jump rather than as staying put. */
+  scroll-margin-top:20px;
 }
 .tracktab{
   display:flex;flex-direction:column;gap:2px;

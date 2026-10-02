@@ -111,6 +111,14 @@ def create_app(config_name: str | None = None) -> Flask:
             return None
 
         return redirect(url_for("auth.change_password"))
+
+    # Registered after the password-change guard and before anything else, so
+    # a kiosk account is held to the check-in screens no matter which route is
+    # added next. See app/kiosk.py for why this is an allowlist.
+    from app.kiosk import register_idle_reset, register_kiosk_guard
+    register_kiosk_guard(app)
+    register_idle_reset(app)
+
     register_security(app)
     register_error_handlers(app)
 

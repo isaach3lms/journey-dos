@@ -18,7 +18,12 @@
     <div class="crest">{{ church.name[:2]|upper }}</div>
   {% endif %}
   <div class="spacer"></div>
-  <a class="kioskexit" href="{{ url_for('kids.index') }}">{{ content.kiosk_exit }}</a>
+  {# A tablet account has nowhere to exit to: the guard in app/kiosk.py would
+     bounce it straight back. Showing a link that goes nowhere reads as a
+     broken tablet, so it is not shown. #}
+  {% if not current_user.is_kiosk %}
+    <a class="kioskexit" href="{{ url_for('kids.index') }}">{{ content.kiosk_exit }}</a>
+  {% endif %}
 </header>
 
 <main class="kioskwrap">
@@ -32,5 +37,64 @@
   </div>
 </main>
 {% include "partials/pwa_script.html" %}
+{% if idle_seconds %}
+  {% if idle_action == "signout" %}
+    {# Signing out is a POST, because a GET logout can be fired by any image
+       tag on any page. So the timer submits this rather than navigating. #}
+    <form method="post" action="{{ url_for('auth.logout') }}" hidden
+          id="idle-signout" data-idle-signout="yes">
+      {{ csrf_field() }}
+    </form>
+  {% endif %}
+<script>
+/* A check-in screen left untouched goes back to the start.
+
+   Two different things happen at the end of the timer, and which one depends
+   on whose account is on the tablet.
+
+   A tablet account goes back to the start screen. It is NOT signed out: being
+   signed in is the whole job, and a tablet that logs itself out is a tablet
+   somebody signs into with their own account to get past the login screen.
+   What the reset is for is the previous family's names sitting on a screen in
+   a lobby while the next person walks up.
+
+   A person's account is signed out, because that is the case the church was
+   actually in: a staff member signs in to set the tablet up and walks away,
+   and their login is now on a table in a hallway.
+
+   Deliberately no warning countdown. A dialog asking "are you still there"
+   on a church tablet is a dialog that sits on screen all morning holding the
+   previous family's details behind it. */
+(function () {
+  var seconds = {{ idle_seconds }};
+  var target = {{ idle_target | tojson }};
+  var form = document.getElementById("idle-signout");
+  var timer = null;
+
+  function go() {
+    if (form) { form.submit(); return; }
+    window.location.href = target;
+  }
+  function restart() {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(go, seconds * 1000);
+  }
+
+  ["pointerdown", "keydown", "touchstart", "input", "scroll"].forEach(
+    function (name) {
+      document.addEventListener(name, restart, {passive: true});
+    }
+  );
+
+  /* A tablet that was asleep in a cupboard should not count that as reading
+     time. Coming back to the page restarts the clock from now. */
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { restart(); }
+  });
+
+  restart();
+})();
+</script>
+{% endif %}
 </body>
 </html>

@@ -1968,10 +1968,36 @@ KIDS = {
     "label_children": "Checked in: {names}",
     "label_done": "Done",
     "label_print": "Print name tags",
+    "label_print_hint": (
+        "The tags open in a separate window. Use the share button there, then "
+        "Print."
+    ),
+
+    # The tablet, as a device rather than as a screen.
+    "kiosk_only": (
+        "This tablet is set up for check-in only. Ask a staff member if you "
+        "need something else."
+    ),
+    "kiosk_setup_title": "Set this tablet up for check-in",
+    "kiosk_setup_body": (
+        "This signs the tablet in for check-in and nothing else. It stays "
+        "signed in, so nobody has to log in on a Sunday morning. The link "
+        "works once and stops working after this."
+    ),
+    "kiosk_setup_named": "Setting up: {label}",
+    "kiosk_setup_go": "Set this tablet up",
+    "kiosk_setup_done": "This tablet is set up for check-in.",
+    "kiosk_setup_invalid_title": "That link has already been used",
+    "kiosk_setup_invalid_body": (
+        "A setup link works once and lasts a day. Ask whoever sent it to make "
+        "another one in Settings, under Check-in tablets."
+    ),
+    "kiosk_idle_notice": "Starting over.",
 
     # Name tags
     "tags_title": "Name tags",
     "tags_print": "Print",
+    "tags_pdf": "Open as a file",
     "tags_back": "Back",
     "tags_done": "Done",
     "tags_per_page": "One tag per page",
@@ -2466,6 +2492,56 @@ SETTINGS = {
     "pastoral_save": "Save",
     "pastoral_saved": "Pastoral requests now go to {count} addresses.",
     "pastoral_saved_staff": "Pastoral requests now go to every active staff account.",
+
+    # Check-in tablets.
+    "kiosk_heading": "Check-in tablets",
+    "kiosk_sub": "{state}",
+    "kiosk_state_none": "No tablet account yet",
+    "kiosk_state_ready": "{count} tablet set up",
+    "kiosk_state_ready_plural": "{count} tablets set up",
+    "kiosk_pill": "Kids",
+    "kiosk_intro": (
+        "A tablet running check-in should not be signed in as a person. A "
+        "staff login left on a table in the lobby can read the roster, the "
+        "giving records and every conversation. This account can open the "
+        "check-in screens and nothing else, and it stays signed in so nobody "
+        "has to log in on a Sunday morning."
+    ),
+    "kiosk_account_name": "{church} check-in tablet",
+    "kiosk_create": "Create the tablet account",
+    "kiosk_created": "Tablet account created. Make a setup link for each tablet.",
+    "kiosk_exists": "There is already a tablet account for this church.",
+    "kiosk_none": "Create the tablet account first.",
+
+    "kiosk_link_heading": "Set up a tablet",
+    "kiosk_link_hint": (
+        "Open this link on the tablet once. It signs that tablet in and then "
+        "stops working. Nobody types a password."
+    ),
+    "kiosk_link_label": "What is this tablet called",
+    "kiosk_link_placeholder": "Lobby iPad",
+    "kiosk_link_make": "Make a setup link",
+    "kiosk_link_made": "Link made. It is shown once, below, and lasts a day.",
+    "kiosk_link_copy": "Copy it now. It is not shown again.",
+    "kiosk_link_live": "{count} setup link waiting to be used",
+    "kiosk_link_live_plural": "{count} setup links waiting to be used",
+    "kiosk_link_expires": "Expires {when}",
+    "kiosk_link_unnamed": "Unnamed tablet",
+
+    "kiosk_revoke": "Sign every tablet out",
+    "kiosk_revoke_confirm": (
+        "Sign every check-in tablet out? Each one has to be set up again with "
+        "a new link before it can check anybody in."
+    ),
+    "kiosk_revoked": "Every tablet is signed out and unused links are dead.",
+
+    "kiosk_label_heading": "What the tags print on",
+    "kiosk_label_hint": (
+        "The code is printed on the box the label roll came in. Getting this "
+        "wrong is why a tag comes out blank or across several labels."
+    ),
+    "kiosk_label_save": "Save",
+    "kiosk_label_saved": "Tags will print on {label}.",
 
     # App notifications. Separate from email because the failures are
     # different and so are the fixes.

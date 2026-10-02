@@ -373,6 +373,94 @@
     </div>
   </details>
 
+  {# Check-in tablets.
+
+     Here rather than under Kids because it is an account and a device, not a
+     check-in setting: what it controls is what a tablet in the lobby can
+     reach and how long it stays signed in. #}
+  <details class="setrow" id="kiosk" {% if open_row == 'kiosk' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.kiosk_heading }}</span>
+        <span class="pe">
+          {% if not kiosk_account %}{{ content.kiosk_state_none }}
+          {% elif kiosk_links|length == 1 %}{{ content.kiosk_link_live.format(count=1) }}
+          {% elif kiosk_links %}{{ content.kiosk_link_live_plural.format(count=kiosk_links|length) }}
+          {% else %}{{ church.label_size.label }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not kiosk_account %}pending{% endif %}">{{ content.kiosk_pill }}</span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.kiosk_intro }}</p>
+
+      {% if not kiosk_account %}
+        <form method="post" action="{{ url_for('settings.create_kiosk_account') }}">
+          {{ csrf_field() }}
+          <button class="btn" type="submit">{{ content.kiosk_create }}</button>
+        </form>
+      {% else %}
+        {# Shown once, on the redirect that made it. Reloading this page loses
+           it, which is the intended behaviour: a link that can be read back
+           later is a standing key to the tablet. #}
+        {% if new_kiosk_link %}
+          <div class="alert notice">
+            <p class="mlbl">{{ content.kiosk_link_copy }}</p>
+            <input class="input mono" type="text" readonly value="{{ new_kiosk_link }}"
+                   onclick="this.select()" aria-label="{{ content.kiosk_link_heading }}">
+          </div>
+        {% endif %}
+
+        <h3 class="mlbl">{{ content.kiosk_link_heading }}</h3>
+        <p class="muted small">{{ content.kiosk_link_hint }}</p>
+        <form method="post" action="{{ url_for('settings.create_kiosk_link') }}">
+          {{ csrf_field() }}
+          <div class="filters">
+            <input class="input" type="text" name="label" maxlength="60"
+                   placeholder="{{ content.kiosk_link_placeholder }}"
+                   aria-label="{{ content.kiosk_link_label }}">
+            <button class="btn" type="submit">{{ content.kiosk_link_make }}</button>
+          </div>
+        </form>
+
+        {% if kiosk_links %}
+          <ul class="flaglist">
+            {% for link in kiosk_links %}
+              <li>
+                <span class="fl">
+                  <span class="pn">{{ link.label or content.kiosk_link_unnamed }}</span>
+                  <span class="pe">{{ content.kiosk_link_expires.format(when=link.expires_at|church_time("%b %-d, %-I:%M%p")) }}</span>
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+
+        <h3 class="mlbl">{{ content.kiosk_label_heading }}</h3>
+        <p class="muted small">{{ content.kiosk_label_hint }}</p>
+        <form method="post" action="{{ url_for('settings.save_label_size') }}">
+          {{ csrf_field() }}
+          <div class="filters">
+            <select class="input select" name="label_size" aria-label="{{ content.kiosk_label_heading }}">
+              {% for size in label_sizes %}
+                <option value="{{ size.code }}"
+                        {% if size.code == church.label_size.code %}selected{% endif %}>{{ size.label }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn" type="submit">{{ content.kiosk_label_save }}</button>
+          </div>
+        </form>
+
+        <form method="post" action="{{ url_for('settings.revoke_kiosk') }}"
+              onsubmit='return confirm({{ content.kiosk_revoke_confirm | tojson }})'>
+          {{ csrf_field() }}
+          <button class="btn ghostbtn" type="submit">{{ content.kiosk_revoke }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </details>
+
   {# App notifications, beside email. The two fail differently and are fixed
      differently, so one row saying "notifications" would hide whichever one
      is actually broken. #}

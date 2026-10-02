@@ -78,6 +78,7 @@ from app.models.moderation import (  # noqa: F401
     MessageReport,
     PersonBlock,
 )
+from app.models.kiosk import KioskSetupToken  # noqa: F401
 from app.models.password_reset import PasswordResetToken  # noqa: F401
 from app.models.push import PushSubscription  # noqa: F401
 from app.models.person import Household, Person  # noqa: F401
@@ -153,6 +154,7 @@ __all__ = [
     "NextStep",
     "OutboxMessage",
     "NotificationPreference",
+    "KioskSetupToken",
     "PasswordResetToken",
     "MessageReport",
     "PersonBlock",

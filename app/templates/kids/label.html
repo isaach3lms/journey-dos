@@ -8,18 +8,26 @@
   <div class="pickupcode mono">{{ code }}</div>
   <p class="lede">{{ content.label_hint }}</p>
 
-  <button class="btn wide center" type="button" data-print>{{ content.label_print }}</button>
+  {# A link to a PDF, not a button that calls window.print().
+
+     The button used to call window.print() and was silently dead on the one
+     device check-in actually runs on: Apple's web view implements no print
+     function, so the tap did nothing and said nothing. There is no CSS or
+     JavaScript fix for a function the engine does not have.
+
+     A PDF solves both halves. It opens outside the web view, where a print
+     sheet exists, and it carries the real dimensions of the label in the
+     printer, so a 62mm tag prints at 62mm instead of being scaled to whatever
+     the printer guessed from an HTML page. #}
+  <a class="btn wide center" target="_blank" rel="noopener"
+     href="{{ url_for('kids.kiosk_labels_pdf', session_id=checkin_session.id, household_id=household.id) }}">
+    {{ content.label_print }}
+  </a>
+  <p class="muted small center">{{ content.label_print_hint }}</p>
   <a class="btn wide center ghostbtn" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
 
-  {# The tags are printed from this page rather than through the reprint
-     route, which is what lets that route log every hit without qualification:
-     if it ran, somebody asked for a second copy of a live pickup code. #}
+  {# The tags stay on the page as well, for a desk running check-in from a
+     laptop where printing the page works and opening a second window is
+     friction nobody needs. #}
   {% include "kids/_tags.html" %}
-
-  <script>
-  (function () {
-    var button = document.querySelector("[data-print]");
-    if (button) { button.addEventListener("click", function () { window.print(); }); }
-  })();
-  </script>
 {% endblock %}

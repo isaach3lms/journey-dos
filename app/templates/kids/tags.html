@@ -20,6 +20,11 @@
     <input type="checkbox" data-one-per-page>
     <span>{{ content.tags_per_page }}</span>
   </label>
+  {# Both, because the two desks are different machines. A laptop prints this
+     page; a tablet cannot print anything and needs the file. #}
+  {% if pdf_url %}
+    <a class="btn ghostbtn" target="_blank" rel="noopener" href="{{ pdf_url }}">{{ content.tags_pdf }}</a>
+  {% endif %}
   <button class="btn" type="button" data-print>{{ content.tags_print }}</button>
 </div>
 <p class="muted small noprint tagnote">{{ content.tags_per_page_hint }}</p>

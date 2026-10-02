@@ -125,7 +125,18 @@ def login():
 
         # Flask-Login rotates the session on login, which retires any
         # pre-authentication session identifier an attacker could have planted.
-        login_user(user, remember=bool(form.remember.data))
+        #
+        # A kiosk account gets a year whether or not anybody ticked the box. A
+        # tablet that logs out is a tablet somebody signs into with their own
+        # account to get past the login screen, which is the problem this is
+        # here to remove. What makes the long session safe is that the account
+        # can only reach the check-in screens; see app/kiosk.py.
+        if getattr(user, "is_kiosk", False):
+            from app.kiosk import KIOSK_SESSION
+
+            login_user(user, remember=True, duration=KIOSK_SESSION)
+        else:
+            login_user(user, remember=bool(form.remember.data))
         current_app.logger.info("User %s signed in at church %s", user.id, g.church.id)
 
         return redirect(safe_next_url(request.args.get("next"), "shell.index"))

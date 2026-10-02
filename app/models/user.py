@@ -149,6 +149,25 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         Boolean, nullable=False, default=True
     )
 
+    # A tablet in the lobby, not a person.
+    #
+    # This exists because the alternative was happening: the only way to run a
+    # check-in tablet was for a staff member to sign in with their own account
+    # and leave it signed in. That account can read the roster, the giving
+    # mirror, every conversation, and the pastoral notes, and it was sitting
+    # unlocked on a table in a hallway.
+    #
+    # A kiosk account carries the `leader` role so it clears the existing
+    # guards on the check-in screens, and this flag takes everything else away
+    # again: `app/kiosk.py` holds it to the check-in routes and nothing else.
+    # The flag is the restriction, not the permission, which is why a forgotten
+    # check fails closed rather than open.
+    #
+    # It also changes how long the session lasts. See `app/kiosk.py`.
+    is_kiosk: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+
     # Bumped whenever the password changes. It is part of the session cookie,
     # so every cookie minted under the old password stops resolving. Without
     # it, someone who reset their password because a device was stolen would

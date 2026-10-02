@@ -105,6 +105,20 @@ class Church(TimestampMixin, db.Model):
         Boolean, nullable=False, default=False, server_default=false()
     )
 
+    # Which label is in the check-in printer.
+    #
+    # A code from `app/labels.py`, not a measurement. A church that types 62
+    # when the roll is 29 prints nothing and has no way to tell why; the code
+    # is on the box the roll came in. Null means the default, so a church that
+    # never opens this setting still prints.
+    kids_label_size: Mapped[Optional[str]] = mapped_column(String(20))
+
+    @property
+    def label_size(self):
+        from app.labels import size_for
+
+        return size_for(self.kids_label_size)
+
     # Who hears about a pastoral request.
     #
     # Empty means every active staff account, which is the right default for a

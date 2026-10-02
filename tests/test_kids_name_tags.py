@@ -123,10 +123,20 @@ class TestTheTagAtCheckIn:
         ).data.decode()
         assert code in page
 
-    def test_there_is_a_print_button(self, db, staff, webbs, sunday):
+    def test_the_print_button_points_at_a_file_not_window_print(
+        self, db, staff, webbs, sunday
+    ):
+        """This test used to assert `data-print` was on the page, which is
+        exactly the bug: the button was there, it called `window.print()`, and
+        on the iPad the church runs check-in on that function does not exist.
+        The button existed and printing did not happen.
+
+        What has to be on the page is a link to a file.
+        """
         page = check_in(db, staff, webbs, sunday)
         assert "Print name tags" in page
-        assert "data-print" in page
+        assert f"/kids/kiosk/labels/{sunday.id}/family/{webbs.id}/" in page
+        assert "window.print()" not in page
 
     def test_checking_in_does_not_log_a_reprint(self, db, staff, webbs, sunday):
         """The first print comes off this page, so the reprint log stays clean

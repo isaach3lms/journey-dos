@@ -33,6 +33,7 @@ from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
 from app.models.audit import ACTIONS, BRAND_CHANGED, RETENTION_DAYS
+from app.labels import SIZES as LABEL_SIZES
 from app.security import min_role
 from app.timeutil import COMMON_TIMEZONES, is_valid_timezone, zone_for
 
@@ -44,7 +45,7 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # redirect passes back so staff land on the row they just used.
 ROWS = (
     "brand", "accounts", "signup", "giving", "ccli",
-    "announcements", "pastoral", "email", "push", "audit", "support",
+    "announcements", "pastoral", "kiosk", "email", "push", "audit", "support",
 )
 
 
@@ -92,7 +93,176 @@ def index():
         roles=ROLES,
         email=email_health(g.church.id),
         push=push_health(g.church.id),
+        kiosk_account=kiosk_account_for(g.church.id),
+        kiosk_links=live_setup_links(g.church.id),
+        label_sizes=LABEL_SIZES,
+        # Shown once, on the redirect that created it, and never again. It is
+        # held in the session rather than the database for the same reason a
+        # reset token is hashed: a link that can be read back later is a
+        # standing key to the tablet.
+        new_kiosk_link=_take_flashed_link(),
     )
+
+
+# ---------------------------------------------------------------------------
+# The check-in tablet
+# ---------------------------------------------------------------------------
+
+def kiosk_account_for(church_id: int):
+    return db.session.scalar(
+        db.select(User).where(
+            User.church_id == church_id,
+            User.is_kiosk.is_(True),
+            User.is_active_account.is_(True),
+        )
+    )
+
+
+def live_setup_links(church_id: int) -> list:
+    from app.models.kiosk import KioskSetupToken
+
+    return db.session.scalars(
+        db.select(KioskSetupToken)
+        .where(
+            KioskSetupToken.church_id == church_id,
+            KioskSetupToken.consumed_at.is_(None),
+        )
+        .order_by(KioskSetupToken.created_at.desc())
+    ).all()
+
+
+def _take_flashed_link() -> str | None:
+    from flask import session as http_session
+
+    return http_session.pop("_kiosk_link", None)
+
+
+@bp.post("/kiosk/")
+@login_required
+@min_role("staff")
+def create_kiosk_account():
+    """Make the account a check-in tablet signs in as.
+
+    One per church. The password is random and nobody is ever shown it,
+    because nobody is meant to type it: tablets are set up with a one-time
+    link instead. A password that is never used is not a password anybody
+    writes on the back of an iPad case.
+    """
+    import secrets
+
+    existing = kiosk_account_for(g.church.id)
+    if existing is not None:
+        flash(SETTINGS["kiosk_exists"], "error")
+        return _back("kiosk")
+
+    user = User(
+        church_id=g.church.id,
+        # A real address shape so nothing downstream has to special-case it,
+        # at a domain nobody can receive mail on. This account must never be
+        # emailable: a password reset link for the lobby tablet, sent to an
+        # inbox, is the hole the whole design is avoiding.
+        email=f"kiosk@{g.church.slug}.kiosk.invalid",
+        name=SETTINGS["kiosk_account_name"].format(church=g.church.name),
+        # Clears the existing guards on the check-in screens. app/kiosk.py
+        # takes everything else away again.
+        role="leader",
+        is_kiosk=True,
+    )
+    user.set_password(secrets.token_urlsafe(32))
+    user.mark_verified()
+    user.accept_community()
+    db.session.add(user)
+
+    record(
+        ROLE_CHANGED,
+        "A check-in kiosk account was created",
+        actor=current_user,
+        subject_type="user",
+        subject_label=user.name,
+        detail="Can reach the check-in screens and nothing else.",
+    )
+    db.session.commit()
+
+    flash(SETTINGS["kiosk_created"], "notice")
+    return _back("kiosk")
+
+
+@bp.post("/kiosk/link/")
+@login_required
+@min_role("staff")
+def create_kiosk_link():
+    """A one-time link that signs one tablet in."""
+    from flask import session as http_session
+
+    from app.models.kiosk import KioskSetupToken
+
+    user = kiosk_account_for(g.church.id)
+    if user is None:
+        flash(SETTINGS["kiosk_none"], "error")
+        return _back("kiosk")
+
+    _, raw = KioskSetupToken.issue(user, label=request.form.get("label"))
+    db.session.commit()
+
+    http_session["_kiosk_link"] = url_for(
+        "kids.kiosk_setup", token=raw, _external=True,
+        _scheme="https" if request.is_secure else "http",
+    )
+    flash(SETTINGS["kiosk_link_made"], "notice")
+    return _back("kiosk")
+
+
+@bp.post("/kiosk/revoke/")
+@login_required
+@min_role("staff")
+def revoke_kiosk():
+    """Sign every tablet out, now.
+
+    Bumping the session version is what makes this immediate: every cookie
+    minted for this account stops resolving on the next request, wherever the
+    tablet is. Outstanding setup links are retired in the same move, so a link
+    somebody sent in a group chat last week cannot put a tablet back.
+    """
+    from app.models.kiosk import KioskSetupToken
+
+    user = kiosk_account_for(g.church.id)
+    if user is None:
+        flash(SETTINGS["kiosk_none"], "error")
+        return _back("kiosk")
+
+    retired = KioskSetupToken.invalidate_all_for(user)
+    user.session_version = (user.session_version or 1) + 1
+
+    record(
+        ROLE_CHANGED,
+        "Every check-in tablet was signed out",
+        actor=current_user,
+        subject_type="user",
+        subject_id=user.id,
+        subject_label=user.name,
+        detail=f"{retired} unused setup links were retired at the same time.",
+    )
+    db.session.commit()
+
+    flash(SETTINGS["kiosk_revoked"], "notice")
+    return _back("kiosk")
+
+
+@bp.post("/kiosk/label/")
+@login_required
+@min_role("staff")
+def save_label_size():
+    from app.labels import BY_CODE
+
+    code = (request.form.get("label_size") or "").strip().lower()
+    if code not in BY_CODE:
+        abort(400)
+
+    g.church.kids_label_size = code
+    db.session.commit()
+
+    flash(SETTINGS["kiosk_label_saved"].format(label=BY_CODE[code].label), "notice")
+    return _back("kiosk")
 
 
 @bp.post("/brand/")

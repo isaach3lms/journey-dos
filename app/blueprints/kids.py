@@ -17,6 +17,7 @@ from datetime import datetime
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     flash,
     g,
@@ -351,6 +352,167 @@ def kiosk_forgot():
 # normal Sunday flow, which is what lets every route below be logged without
 # qualification: if this code ran, somebody asked for a second copy.
 
+# ---------------------------------------------------------------------------
+# Tags as a printable file
+#
+# The HTML tags above print from a desktop browser and do not print at all
+# from the iOS app, because Apple's web view implements no print function. The
+# button was silently dead on the one device check-in actually runs on.
+#
+# A PDF fixes both halves of that. It opens outside the web view where the
+# print sheet exists, and it carries real physical dimensions, so a 62mm label
+# prints at 62mm instead of being scaled to whatever the printer guessed.
+# ---------------------------------------------------------------------------
+
+@bp.get("/kiosk/labels/<int:session_id>/family/<int:household_id>/")
+@login_required
+@min_role("leader")
+def kiosk_labels_pdf(session_id: int, household_id: int):
+    """The tags for one family, as a file a printer can take.
+
+    Reachable by a kiosk account, unlike the reprint routes beside it, because
+    this is the first print rather than a second copy. A reprint is a request
+    for another copy of a live pickup code and is logged as one; printing the
+    tag you just created is the check-in finishing.
+    """
+    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
+    household = Household.get_for_church(g.church.id, household_id)
+    if checkin_session is None or household is None:
+        abort(404)
+
+    checkins = checkin_session.checkins_for_household(household.id)
+    if not checkins:
+        abort(404)
+
+    return _tag_pdf_response(checkin_session, checkins, household.name)
+
+
+def _tag_pdf_response(checkin_session, checkins, who: str):
+    from app.labels import render_tags
+    from app.timeutil import format_local
+
+    pdf = render_tags(
+        checkins=checkins,
+        church=g.church,
+        checkin_session=checkin_session,
+        size=g.church.label_size,
+        when=format_local(checkin_session.starts_at, "%b %-d"),
+    )
+    safe = "".join(c for c in who if c.isalnum() or c in " -_").strip() or "tags"
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        headers={
+            # inline, not attachment: the point is that it opens in a viewer
+            # with a print button, not that it lands in Files.
+            "Content-Disposition": f'inline; filename="{safe} tags.pdf"',
+            # A pickup code is a live credential for collecting a child.
+            "Cache-Control": "no-store, private",
+        },
+    )
+
+
+@bp.get("/tags/<int:session_id>/family/<int:household_id>/pdf/")
+@login_required
+@min_role("leader")
+def tags_for_household_pdf(session_id: int, household_id: int):
+    """The staff reprint, as a file. Logged, like every other reprint."""
+    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
+    household = Household.get_for_church(g.church.id, household_id)
+    if checkin_session is None or household is None:
+        abort(404)
+
+    checkins = checkin_session.checkins_for_household(household.id)
+    if not checkins:
+        flash(KIDS["tags_none"], "error")
+        return redirect(url_for("kids.index"))
+
+    record(
+        TAG_REPRINTED,
+        KIDS["tags_reprint_family"],
+        subject_type="household",
+        subject_id=household.id,
+        subject_label=household.name,
+        detail=", ".join(c.person.full_name for c in checkins),
+    )
+    db.session.commit()
+
+    return _tag_pdf_response(checkin_session, checkins, household.name)
+
+
+@bp.get("/tags/child/<int:checkin_id>/pdf/")
+@login_required
+@min_role("leader")
+def tag_for_child_pdf(checkin_id: int):
+    checkin = Checkin.get_for_church(g.church.id, checkin_id)
+    if checkin is None:
+        abort(404)
+
+    record(
+        TAG_REPRINTED,
+        KIDS["tags_reprint"],
+        subject_type="person",
+        subject_id=checkin.person_id,
+        subject_label=checkin.person.full_name,
+        detail=checkin.household_name or "",
+    )
+    db.session.commit()
+
+    return _tag_pdf_response(checkin.session, [checkin], checkin.person.full_name)
+
+
+# ---------------------------------------------------------------------------
+# Setting a tablet up
+# ---------------------------------------------------------------------------
+
+@bp.route("/kiosk/setup/<token>/", methods=["GET", "POST"])
+def kiosk_setup(token: str):
+    """Sign this tablet in as the kiosk, once.
+
+    No `login_required`: the token is the credential, which is the entire
+    point. A volunteer holding a tablet in a lobby has nothing to type.
+
+    GET shows a button and POST does the work, because a link in a group chat
+    is fetched by every preview bot that sees it, and a GET that signed
+    somebody in would be burned before a human touched it.
+    """
+    from flask_login import login_user
+
+    from app.kiosk import KIOSK_SESSION
+    from app.models.kiosk import KioskSetupToken
+
+    found = KioskSetupToken.redeem(g.church.id, token)
+    if found is None:
+        return render_template(
+            "kids/setup_invalid.html", church=g.church, content=KIDS
+        ), 404
+
+    if request.method == "GET":
+        return render_template(
+            "kids/setup.html", church=g.church, content=KIDS, token=token,
+            label=found.label,
+        )
+
+    user = found.user
+    if user is None or not user.is_kiosk or not user.is_active:
+        return render_template(
+            "kids/setup_invalid.html", church=g.church, content=KIDS
+        ), 404
+
+    found.consume()
+    user.register_successful_login()
+    db.session.commit()
+
+    # A year, so nobody meets a login screen on a Sunday morning. What makes
+    # that safe is that a kiosk account can only reach these screens; see
+    # app/kiosk.py.
+    login_user(user, remember=True, duration=KIOSK_SESSION)
+    session.permanent = True
+
+    flash(KIDS["kiosk_setup_done"], "notice")
+    return redirect(url_for("kids.kiosk"))
+
+
 @bp.get("/tags/<int:session_id>/family/<int:household_id>/")
 @login_required
 @min_role("leader")
@@ -382,6 +544,10 @@ def tags_for_household(session_id: int, household_id: int):
         content=KIDS,
         checkin_session=checkin_session,
         checkins=checkins,
+        pdf_url=url_for(
+            "kids.tags_for_household_pdf",
+            session_id=checkin_session.id, household_id=household.id,
+        ),
     )
 
 
@@ -410,6 +576,7 @@ def tag_for_child(checkin_id: int):
         content=KIDS,
         checkin_session=checkin.session,
         checkins=[checkin],
+        pdf_url=url_for("kids.tag_for_child_pdf", checkin_id=checkin.id),
     )
 
 

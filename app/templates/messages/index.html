@@ -3,6 +3,12 @@
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
+{% block actions %}
+  {% if current_user.is_staff %}
+    <a class="btn" href="{{ url_for('messages.compose_email') }}">{{ content.send_email }}</a>
+  {% endif %}
+{% endblock %}
+
 {% block content %}
 {% if open_reports %}
   <div class="alert error">

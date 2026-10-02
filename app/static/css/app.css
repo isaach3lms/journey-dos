@@ -1722,6 +1722,11 @@ ul.policy span{color:var(--muted)}
 .staffcomposer .composerrow{display:flex;align-items:flex-end;gap:8px}
 .staffcomposer .emailit{margin:0}
 
+/* The send row on the church email screen. The count sits on the button
+   itself, so the last thing read before the click is how many people it
+   reaches. */
+.sendrow{display:flex;gap:9px;align-items:center;margin-top:20px;flex-wrap:wrap}
+
 /* ============================================================
    The member profile. A header that reads like a card in a
    contacts app, a journey strip, tappable rows, and a form.

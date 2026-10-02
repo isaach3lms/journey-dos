@@ -57,6 +57,9 @@ TAG_REPRINTED = "tag_reprinted"
 # record of which children were in a room and who collected them, so the audit
 # entry has to carry enough to answer the question afterwards.
 CHECKIN_SESSION_DELETED = "checkin_session_deleted"
+# A church-wide email. Recorded because it is the one action here that reaches
+# people outside the app and cannot be taken back.
+CHURCH_EMAIL_SENT = "church_email_sent"
 
 ACTIONS = (
     SIGN_IN,
@@ -78,6 +81,7 @@ ACTIONS = (
     SERVICE_DELETED,
     TAG_REPRINTED,
     CHECKIN_SESSION_DELETED,
+    CHURCH_EMAIL_SENT,
 )
 
 ACTION_LABELS = {
@@ -100,6 +104,7 @@ ACTION_LABELS = {
     SERVICE_DELETED: "Service deleted",
     TAG_REPRINTED: "Name tag reprinted",
     CHECKIN_SESSION_DELETED: "Kids session deleted",
+    CHURCH_EMAIL_SENT: "Church email sent",
 }
 
 # How long entries are kept. Long enough to answer a question about last

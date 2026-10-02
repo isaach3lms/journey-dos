@@ -2214,6 +2214,49 @@ MESSAGES = {
     "emailed": "Queued for {count} people.",
     "email_subject": "{church}: {title}",
 
+    # Sending the church an email. Deliberately plainer wording than the rest
+    # of this tab: the point of every line here is that whoever is about to
+    # reach three hundred inboxes understands exactly what happens next.
+    "send_email": "Send email",
+    "email_title": "Email the church",
+    "email_subtitle": "One email, to the people you choose.",
+    "email_audience": "Who gets it",
+    "email_audience_option": "{label} ({count})",
+    "email_subject_label": "Subject",
+    "email_subject_placeholder": "Sunday starts at 9 this week",
+    "email_body_label": "What it says",
+    "email_body_placeholder": "Write it the way you would write it in an email.",
+    "email_push_label": "Send it as an app notification too",
+    "email_push_hint": (
+        "The subject becomes the notification and the first line or so becomes "
+        "the body. Leave it off for anything long: a notification has about a "
+        "hundred characters and will cut off mid-sentence."
+    ),
+    "email_send": "Send it",
+    "email_cancel": "Cancel",
+    "email_confirm": (
+        "Send this to {count} people? An email cannot be edited or taken back "
+        "once it has left."
+    ),
+    "email_note": (
+        "This sends an email and nothing else. It does not appear in the app. "
+        "To put something on everyone's screen as well, post it in an "
+        "announcement and tick Email it too."
+    ),
+    "email_counts_note": (
+        "The number next to each audience is how many emails will actually go "
+        "out. Children, people still waiting to be approved, and anyone who "
+        "turned off church announcements are not counted, and a household "
+        "sharing one address counts once."
+    ),
+    "email_needs_both": "It needs a subject and something to say.",
+    "email_nobody": "Nobody in that audience has an address we can email.",
+    "email_sent": "Sent to {count} people in {audience}.",
+    "email_already_sent": (
+        "That exact email already went out a moment ago, so nothing was sent "
+        "again. Change the subject to send a second copy."
+    ),
+
     # Member side
     "member_tab": "Chat",
     "member_heading": "Messages",

@@ -21,8 +21,15 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.audit import record
+from app.broadcast import EVERYONE, audience_label, audiences, resolve
+from app.broadcast import send as send_broadcast
 from app.content import MESSAGES
-from app.models.audit import CHAT_DELETED, MESSAGE_DELETED, REPORT_RESOLVED
+from app.models.audit import (
+    CHAT_DELETED,
+    CHURCH_EMAIL_SENT,
+    MESSAGE_DELETED,
+    REPORT_RESOLVED,
+)
 from app.models.moderation import (
     REPORT_DISMISSED,
     REPORT_OPEN,
@@ -200,11 +207,15 @@ def _email_announcement(conversation, body: str) -> int:
     Under the `announcement` category, which is opt-out-able. Somebody who
     turned church announcements off still sees it in the app; they simply do
     not get a second copy in their inbox, which is what they asked for.
+
+    Who counts as "everyone" comes from `app.broadcast` rather than being
+    decided here, so this and the Send email screen cannot disagree about it.
+    They did disagree before: this loop emailed children, archived people, and
+    self-registered people still waiting for approval, because it checked only
+    for an address and consent.
     """
     queued = 0
-    for person in db.session.scalars(Person.for_church(g.church.id)):
-        if not person.email or not person.allows("announcement"):
-            continue
+    for person in resolve(g.church.id, EVERYONE):
         try:
             message = queue(
                 church_id=g.church.id,
@@ -223,6 +234,99 @@ def _email_announcement(conversation, body: str) -> int:
             person.ensure_unsubscribe_token()
             queued += 1
     return queued
+
+
+# ---------------------------------------------------------------------------
+# A church-wide email
+#
+# Separate from posting an announcement, because the two are different acts.
+# An announcement is something the church says, and it stays on a screen.
+# This is a letter, it goes to an audience staff chose, and once it is in
+# somebody's inbox it cannot be edited or taken down. That asymmetry is why
+# this screen shows the recipient count before sending and records the send in
+# the audit log, and why posting does neither.
+# ---------------------------------------------------------------------------
+
+@bp.get("/email/")
+@login_required
+@min_role("staff")
+def compose_email():
+    """Staff only, not leaders.
+
+    A leader runs a room. Reaching the whole church in their inbox is a
+    different level of authority, and the person who has it is on staff.
+    """
+    return render_template(
+        "messages/email.html",
+        church=g.church,
+        content=MESSAGES,
+        audiences=audiences(g.church.id),
+        active="messages",
+    )
+
+
+@bp.post("/email/")
+@login_required
+@min_role("staff")
+def send_email():
+    audience = (request.form.get("audience") or EVERYONE).strip()
+    subject = (request.form.get("subject") or "").strip()
+    body = (request.form.get("body") or "").strip()
+
+    if not subject or not body:
+        flash(MESSAGES["email_needs_both"], "error")
+        return redirect(url_for("messages.compose_email"))
+
+    # The same filter that applies to a message in a room. A church-wide email
+    # is the last place something should slip through unread by a human.
+    terms = objectionable_terms(f"{subject}\n{body}")
+    if terms:
+        flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
+        return redirect(url_for("messages.compose_email"))
+
+    if not resolve(g.church.id, audience):
+        flash(MESSAGES["email_nobody"], "error")
+        return redirect(url_for("messages.compose_email"))
+
+    label = audience_label(g.church.id, audience)
+    sent = send_broadcast(
+        church_id=g.church.id,
+        audience=audience,
+        subject=subject[:200],
+        body_text=body[:20000],
+        push=request.form.get("also_push") == "on",
+        actor=current_user,
+        # The audience, the subject, and the minute. Two sends of the same
+        # thing in one minute are the double-clicked button, and the second is
+        # dropped. The same email deliberately sent again an hour later is a
+        # different send and goes.
+        reference=f"{audience}:{subject[:60]}:{_minute_stamp()}",
+    )
+
+    record(
+        CHURCH_EMAIL_SENT,
+        f"{sent.emailed} emails sent to {label}: {subject[:80]}",
+        actor=current_user,
+        subject_type="church_email",
+        subject_label=label,
+    )
+    db.session.commit()
+
+    if not sent.emailed:
+        flash(MESSAGES["email_already_sent"], "error")
+        return redirect(url_for("messages.compose_email"))
+
+    flash(
+        MESSAGES["email_sent"].format(count=sent.emailed, audience=label),
+        "notice",
+    )
+    return redirect(url_for("messages.index"))
+
+
+def _minute_stamp() -> str:
+    from app.models.base import utcnow
+
+    return utcnow().strftime("%Y%m%d%H%M")
 
 
 @bp.post("/<int:conversation_id>/messages/<int:message_id>/delete/")

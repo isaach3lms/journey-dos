@@ -74,6 +74,7 @@ def notify(
     tag: str | None = None,
     dedupe_key: str | None = None,
     actor=None,
+    push: bool = True,
 ) -> Delivered:
     """Email and push one person about one thing.
 
@@ -87,6 +88,11 @@ def notify(
     `url` is where tapping the notification lands. It must be a path on this
     app, not an absolute address: a push payload is delivered by a third party
     and is not the place to teach a browser to trust a hostname.
+
+    `push=False` sends the email on its own. It defaults to True because the
+    whole reason this function exists is that callers forgot push; a caller
+    that wants email only has to say so, and the only one that does is a
+    church-wide email long enough to make a poor notification.
     """
     emailed = False
     suppressed = False
@@ -109,6 +115,9 @@ def notify(
         suppressed = "opted out" in str(exc)
 
     pushed = 0
+    if not push:
+        return Delivered(emailed=emailed, pushed=0, suppressed=suppressed)
+
     try:
         counts = send_to_person(
             person,

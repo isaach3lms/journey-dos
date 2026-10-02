@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ content.email_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.email_title }}{% endblock %}
+{% block subheading %}{{ content.email_subtitle }}{% endblock %}
+
+{#
+  One screen, one form, no steps. A send-to-everyone flow with a preview page
+  in the middle reads as careful and is not: the second page is skimmed and the
+  real safeguard turns out to be the number on the button.
+
+  So the count is in the audience list itself, it moves onto the button when
+  the audience changes, and the confirm dialog says it a third time. That is
+  the whole protection, and it is the right amount for an action that cannot be
+  undone but is also supposed to take forty seconds.
+#}
+
+{% block extra_script %}
+<script>
+/* Keep the count on the button in step with the audience, so the number
+   somebody reads last is the number that applies. The confirm text is rebuilt
+   from the same source for the same reason. */
+(function () {
+  var form = document.querySelector("[data-email-form]");
+  if (!form) { return; }
+  var picker = form.querySelector("[name=audience]");
+  var out = form.querySelector("[data-recipient-count]");
+  var template = form.dataset.confirm || "";
+
+  function count() {
+    var option = picker.options[picker.selectedIndex];
+    return (option && option.dataset.count) || "0";
+  }
+
+  function paint() {
+    if (out) { out.textContent = count(); }
+  }
+
+  picker.addEventListener("change", paint);
+  paint();
+
+  form.addEventListener("submit", function (event) {
+    if (form.dataset.confirmed === "yes") { return; }
+    event.preventDefault();
+    if (!window.confirm(template.replace("{count}", count()))) { return; }
+    form.dataset.confirmed = "yes";
+    form.submit();
+  });
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+  <div class="bd">
+    <p class="muted small">{{ content.email_note }}</p>
+
+    <form method="post" action="{{ url_for('messages.send_email') }}"
+          data-email-form data-confirm="{{ content.email_confirm }}">
+      {{ csrf_field() }}
+
+      <div class="field">
+        <label for="audience">{{ content.email_audience }}</label>
+        <select class="input select" id="audience" name="audience">
+          {% for audience in audiences %}
+            <option value="{{ audience.value }}" data-count="{{ audience.count }}">
+              {{ content.email_audience_option.format(label=audience.label, count=audience.count) }}
+            </option>
+          {% endfor %}
+        </select>
+        <div class="fieldhelp">{{ content.email_counts_note }}</div>
+      </div>
+
+      <div class="field">
+        <label for="subject">{{ content.email_subject_label }}</label>
+        <input class="input" id="subject" type="text" name="subject" maxlength="200"
+               placeholder="{{ content.email_subject_placeholder }}" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="body">{{ content.email_body_label }}</label>
+        <textarea class="input" id="body" name="body" rows="12"
+                  placeholder="{{ content.email_body_placeholder }}"></textarea>
+      </div>
+
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" name="also_push" checked>
+          <span>{{ content.email_push_label }}</span>
+        </label>
+        <div class="fieldhelp">{{ content.email_push_hint }}</div>
+      </div>
+
+      <div class="sendrow">
+        <button class="btn" type="submit">
+          {{ content.email_send }} &middot; <span data-recipient-count>0</span>
+        </button>
+        <a class="btn ghostbtn" href="{{ url_for('messages.index') }}">{{ content.email_cancel }}</a>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}

@@ -22,12 +22,20 @@ from app.extensions import db
 def register_push_identity(app) -> None:
     @app.context_processor
     def _push_identity():
+        # The App ID is compiled into every copy of the app and is public by
+        # construction, so rendering it in a page gives nothing away. The REST
+        # key, which can send to the whole church, never leaves the server.
+        app_id = app.config.get("ONESIGNAL_APP_ID") or None
+
         if not getattr(current_user, "is_authenticated", False):
-            return {"push_external_id": None}
+            # Still handed out, so the app can start the SDK on a screen
+            # somebody reaches before signing in. Nobody is identified and
+            # nothing is asked for until there is a person to ask.
+            return {"push_app_id": app_id, "push_external_id": None}
 
         existing = getattr(current_user, "push_external_id", None)
         if existing:
-            return {"push_external_id": existing}
+            return {"push_app_id": app_id, "push_external_id": existing}
 
         # First page this account has loaded since notifications existed.
         try:
@@ -40,6 +48,6 @@ def register_push_identity(app) -> None:
             # load, and the email is going either way.
             db.session.rollback()
             app.logger.exception("could not mint a push id")
-            return {"push_external_id": None}
+            return {"push_app_id": app_id, "push_external_id": None}
 
-        return {"push_external_id": minted}
+        return {"push_app_id": app_id, "push_external_id": minted}

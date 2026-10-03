@@ -276,6 +276,31 @@ def _alert_pastors(ask, person) -> None:
             continue
 
 
+@bp.get("/app-check/")
+@login_required
+def app_check():
+    """Does this device actually have working notifications?
+
+    A setup page, not a member screen. It exists because the alternative is
+    guessing: on an iPhone there is no console to open, so "we installed the
+    plugin and nothing arrived" has four or five possible causes and no way to
+    tell them apart. This answers each one on screen, on the device, in the
+    app, in plain words.
+
+    Deliberately reachable by anybody signed in rather than staff only. The
+    person holding the phone that is not receiving notifications is usually
+    not the person with a staff login.
+    """
+    return render_template(
+        "member/app_check.html",
+        church=g.church,
+        content=MEMBER,
+        person=current_user.person,
+        is_preview=False,
+        tab=None,
+    )
+
+
 @bp.get("/you/")
 @login_required
 def you():

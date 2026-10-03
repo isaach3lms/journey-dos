@@ -217,9 +217,46 @@ class TestTheAppIsToldWhoIsSignedIn:
         assert user.push_external_id in page
         assert "plugins.OneSignal" in page
 
-    def test_a_signed_out_page_carries_nothing(self, client):
+    def test_a_signed_out_page_identifies_nobody(self, client, db, journey,
+                                                 sign_in, linked):
+        """The sign-in screen starts nothing and asks for nothing. iOS shows
+        its permission prompt once ever, and spending that on somebody who is
+        not into the app yet wastes it."""
         page = client.get("/auth/login", headers=H).get_data(as_text=True)
+        assert "requestPermission" not in page
+        assert "login(" not in page
+
+    def test_nothing_renders_when_no_app_id_is_configured(self, app, db,
+                                                          journey, sign_in,
+                                                          client, linked):
+        """A church whose keys are not set yet should not be running a
+        notification SDK that cannot reach anything."""
+        app.config["ONESIGNAL_APP_ID"] = ""
+        sign_in("member@journeychurchsemo.com")
+
+        page = client.get("/me/", headers=H).get_data(as_text=True)
         assert "plugins.OneSignal" not in page
+
+    def test_it_starts_the_sdk_once_per_app_launch(self, db, journey, client,
+                                                   sign_in, linked):
+        """Repeating it every page would be harmless and pointless. The login
+        call beside it is the one that must run every time."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "sessionStorage" in page
+        assert "dos-push-init" in page
+
+    def test_the_app_id_is_rendered_and_the_key_is_not(self, app, db, journey,
+                                                       client, sign_in, linked):
+        """The App ID is in every copy of the app already. The REST key can
+        send to the whole church and must never reach a page."""
+        app.config["ONESIGNAL_API_KEY"] = "os_v2_secret_value"
+        sign_in("member@journeychurchsemo.com")
+
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+        assert app.config["ONESIGNAL_APP_ID"] in page
+        assert "os_v2_secret_value" not in page
 
     def test_it_runs_on_every_page_not_just_sign_in(self, db, journey, client,
                                                     sign_in, linked):
@@ -239,7 +276,7 @@ class TestTheAppIsToldWhoIsSignedIn:
         page = client.get("/me/", headers=H).get_data(as_text=True)
         # Guarded on the plugin existing, so nothing runs without it.
         assert "window.Capacitor" in page
-        assert 'typeof signal.login !== "function"' in page
+        assert "if (!signal) { return; }" in page
 
 
 class TestBuildingTheTransport:
@@ -363,3 +400,82 @@ class TestTheRequestItSends:
     def test_it_posts_to_onesignal(self):
         sent = self._captured(PushMessage(title="Hi", body="There."))
         assert sent["url"] == "https://api.onesignal.com/notifications"
+
+
+class TestTheSetupCheck:
+    """The page that answers "we set it up and nothing arrived".
+
+    On an iPhone there is no console to open, so that sentence has five
+    possible causes and no way to tell them apart from the outside. Each one
+    gets a row, answered on the device.
+    """
+
+    @pytest.fixture
+    def linked(self, db, journey):
+        user = db.session.scalar(db.select(User).where(
+            User.email == "member@journeychurchsemo.com"))
+        person = Person(church_id=journey.id, first_name="Alicia",
+                        last_name="Romero", email=user.email, stage="member",
+                        approved_at=utcnow())
+        db.session.add(person)
+        db.session.flush()
+        user.person_id = person.id
+        db.session.commit()
+        return user
+
+    def test_any_signed_in_person_can_open_it(self, client, sign_in, linked):
+        """The person holding the phone that is not working is usually not
+        the person with a staff login."""
+        sign_in("member@journeychurchsemo.com")
+        assert client.get("/me/app-check/", headers=H).status_code == 200
+
+    def test_signed_out_cannot(self, client):
+        page = client.get("/me/app-check/", headers=H)
+        assert page.status_code in (302, 401)
+
+    def test_it_checks_each_thing_that_can_fail(self, client, sign_in, linked):
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+
+        # Opened in the app rather than a browser.
+        assert "window.Capacitor" in page
+        # The SDK is in this build.
+        assert "plugins.OneSignal" in page
+        # Printing, which rides on a different plugin and fails separately.
+        assert "plugins.Browser" in page
+
+    def test_it_says_whether_the_server_is_configured(self, app, client,
+                                                      sign_in, linked):
+        """A church whose keys are not set cannot send to anybody, and that
+        is invisible from the phone without being told."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "Keys are in place" in page
+
+        app.config["ONESIGNAL_APP_ID"] = ""
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "not set on the server yet" in page
+
+    def test_it_never_renders_the_rest_key(self, app, client, sign_in, linked):
+        app.config["ONESIGNAL_API_KEY"] = "os_v2_secret_value"
+        sign_in("member@journeychurchsemo.com")
+
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "os_v2_secret_value" not in page
+
+    def test_it_offers_a_way_to_turn_notifications_on(self, client, sign_in,
+                                                      linked):
+        """iOS asks once ever. Somebody who said no needs a route back."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+
+        assert "requestPermission" in page
+        assert "Settings" in page
+
+    def test_the_you_tab_links_to_it(self, client, sign_in, linked):
+        """Somebody only looks for this after turning notifications on and
+        getting nothing, so it sits directly under the notification settings
+        rather than somewhere they would have to be told about."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/you/", headers=H).get_data(as_text=True)
+        assert "/me/app-check/" in page

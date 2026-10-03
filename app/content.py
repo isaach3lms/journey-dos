@@ -1038,6 +1038,62 @@ MEMBER = {
     # Staff previewing the member app.
     "preview_note": "You are looking at the member app as {name}.",
     "back_to_staff": "Back to the staff view",
+
+    # The setup check. Plain words on purpose: whoever opens this is holding a
+    # phone that is not receiving notifications and wants to know why, not
+    # what a plugin is.
+    "appcheck_title": "Notification check",
+    "appcheck_row_sub": "Why notifications are not arriving",
+    "appcheck_intro": (
+        "What this device can and cannot do. Open this inside the app, not in "
+        "a browser, or most of it will say no."
+    ),
+    "appcheck_yes": "Yes",
+    "appcheck_no": "No",
+    "appcheck_unknown": "Not sure",
+    "appcheck_back": "Back",
+
+    "appcheck_inapp": "Opened in the app",
+    "appcheck_inapp_yes": "This is the app, not a browser tab.",
+    "appcheck_inapp_no": (
+        "This is a browser. Notifications only work in the app, so open the "
+        "app and come back to this page."
+    ),
+
+    "appcheck_sdk": "Notifications installed",
+    "appcheck_sdk_yes": "The app has the notification system in it.",
+    "appcheck_sdk_no": (
+        "The app was built before notifications were added. It needs "
+        "rebuilding and reinstalling."
+    ),
+
+    "appcheck_printing": "Name tag printing",
+    "appcheck_printing_yes": "Tags can open for printing.",
+    "appcheck_printing_no": "This build cannot open tags to print.",
+
+    "appcheck_known": "This device knows who you are",
+    "appcheck_known_yes": "Notifications sent to you will reach this device.",
+    "appcheck_known_no": "Sign out and back in.",
+
+    "appcheck_configured": "The server is set up to send",
+    "appcheck_configured_yes": "Keys are in place.",
+    "appcheck_configured_no": (
+        "The notification keys are not set on the server yet, so nothing can "
+        "be sent to anybody."
+    ),
+
+    "appcheck_allowed": "You allowed notifications",
+    "appcheck_allowed_yes": "Everything is ready.",
+    "appcheck_allowed_no": (
+        "Nothing will arrive until this is on. iPhone only asks once, so if "
+        "you said no before, it has to be turned on in Settings."
+    ),
+    "appcheck_allowed_unknown": "Tap below to find out.",
+    "appcheck_ask": "Turn on notifications",
+    "appcheck_ask_note": (
+        "If nothing happens, you have already answered once. Open iPhone "
+        "Settings, find this app, and turn Notifications on there."
+    ),
 }
 
 

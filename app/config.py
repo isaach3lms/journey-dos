@@ -140,6 +140,9 @@ class TestingConfig(BaseConfig):
     # Off so tests can see what was queued. Tests of immediate delivery turn
     # it on themselves.
     MAIL_SEND_NOW = False
+    # A value, because the page that starts notifications is rendered only
+    # when one is configured. Tests of the unconfigured case clear it.
+    ONESIGNAL_APP_ID = "test-onesignal-app"
     PUSH_TRANSPORT = "memory"
 
 

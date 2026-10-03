@@ -1,41 +1,71 @@
-{# Telling the app who is signed in, so notifications can reach this person.
+{# Starting notifications, and telling the app who is signed in.
 
-   The provider holds the devices and addresses people by an external id. The
-   app has to set that id, and the app is a wrapper around this site, so the
-   id has to come from here.
+   The wrapper around this site loads the live pages rather than bundled
+   files, so the web layer the provider's SDK expects to be started from is
+   this one. That is the whole design: the wrapper's only job is to exist, and
+   everything else is a deploy here rather than a rebuild, a resubmission and
+   an App Store review.
 
-   Doing it from the site rather than from the wrapper's own code is the whole
-   point. The wrapper has to be rebuilt, resubmitted and re-approved for every
-   change; this is a deploy. The wrapper's one job is to exist and initialize
-   the SDK, and everything after that happens here.
+   Three calls, each run at a different rhythm and each for a reason:
 
-   Nothing happens in a browser, because there is no SDK there to call. The
-   member app is still usable, the emails still send, and the only thing
-   missing is a notification a browser could not have shown anyway.
+   `initialize` once per app launch. Repeating it on every page would be
+   harmless but pointless, and sessionStorage is exactly the lifetime of the
+   app's web view.
 
-   The id is a random token, not the user id or the email. One provider account
-   serves every church on the platform, and "journey-42" would tell them which
-   church somebody attends. #}
-{% if push_external_id %}
+   `login` on every page, because it is the one that can be wrong. A member
+   who signs out and hands their phone to their spouse has to stop receiving
+   the first person's notifications, and the wrapper has no idea either of
+   those things happened. Setting it on every load means the id is always
+   whoever is signed in now.
+
+   `requestPermission` once per app launch, and never on the sign-in screen,
+   because iOS shows its prompt exactly once ever. Asking somebody who has not
+   got into the app yet spends that one chance on a stranger.
+
+   Nothing happens in an ordinary browser: there is no SDK there to call, the
+   member app works normally, and the only thing missing is a notification a
+   browser could not have shown anyway. #}
+{% if push_app_id %}
 <script>
 (function () {
-  var id = {{ push_external_id | tojson }};
   var plugins = window.Capacitor && window.Capacitor.Plugins;
   var signal = plugins && plugins.OneSignal;
-  if (!signal || typeof signal.login !== "function") { return; }
+  if (!signal) { return; }
 
-  /* Called on every page rather than once at sign-in, and that is deliberate.
-     A member who signs out and hands the phone to their spouse has to stop
-     receiving the first person's notifications, and the wrapper has no idea
-     either of those things happened. Setting it on every load means the id is
-     always whoever is actually signed in now. The call is idempotent. */
-  try {
-    signal.login({externalId: id});
-  } catch (e) {
-    /* An older plugin, or one that takes a bare string. Neither is worth
-       failing a page render over: the email still goes. */
-    try { signal.login(id); } catch (e2) {}
+  /* sessionStorage can throw in a locked-down web view, and none of this is
+     worth failing a page render over. */
+  function once(key) {
+    try {
+      if (window.sessionStorage.getItem(key)) { return false; }
+      window.sessionStorage.setItem(key, "1");
+      return true;
+    } catch (e) {
+      /* No storage: do it every page rather than never. Both calls below are
+         safe to repeat. */
+      return true;
+    }
   }
+
+  if (typeof signal.initialize === "function" && once("dos-push-init")) {
+    try { signal.initialize({appId: {{ push_app_id | tojson }}}); } catch (e) {
+      try { signal.initialize({{ push_app_id | tojson }}); } catch (e2) {}
+    }
+  }
+
+  {% if push_external_id %}
+  if (typeof signal.login === "function") {
+    try { signal.login({externalId: {{ push_external_id | tojson }}}); } catch (e) {
+      try { signal.login({{ push_external_id | tojson }}); } catch (e2) {}
+    }
+  }
+
+  var ask = signal.Notifications || signal;
+  if (typeof ask.requestPermission === "function" && once("dos-push-ask")) {
+    try { ask.requestPermission({fallbackToSettings: false}); } catch (e) {
+      try { ask.requestPermission(false); } catch (e2) {}
+    }
+  }
+  {% endif %}
 })();
 </script>
 {% endif %}

@@ -1761,6 +1761,16 @@ ul.policy span{color:var(--muted)}
    reaches. */
 .sendrow{display:flex;gap:9px;align-items:center;margin-top:20px;flex-wrap:wrap}
 
+/* The notification check.
+
+   `.pe` is hidden below 520px everywhere else, which is right for a staff
+   list where the second line is a nicety. Here the second line is the whole
+   point: it is the sentence telling somebody what to do about a No, and this
+   page is only ever read on a phone. */
+.checkrows .pe{display:block;white-space:normal;line-height:1.45;margin-top:3px}
+.checkrows li{align-items:flex-start}
+.checkrows .pill{flex:none;margin-top:2px}
+
 /* ============================================================
    The member profile. A header that reads like a card in a
    contacts app, a journey strip, tappable rows, and a form.

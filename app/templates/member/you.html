@@ -280,6 +280,15 @@
   <p class="mnote" id="pushnote" hidden></p>
     </div>
   </details>
+  {# Directly under the notification settings, because somebody only looks for
+     this after turning notifications on and getting nothing. #}
+  <a class="mrowlink standalone" href="{{ url_for('member.app_check') }}">
+    <span class="fl">
+      <span class="pn">{{ content.appcheck_title }}</span>
+      <span class="pe">{{ content.appcheck_row_sub }}</span>
+    </span>
+    <span class="chev" aria-hidden="true">&rsaquo;</span>
+  </a>
   <details class="mrowbox" id="blocked"{% if request.args.get("open") == "blocked" %} open{% endif %}>
     <summary class="mrowlink">
       <span class="fl">

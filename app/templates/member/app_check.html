@@ -1,0 +1,115 @@
+{% extends "member/base.html" %}
+{% block title %}{{ content.appcheck_title }} | {{ church.name }}{% endblock %}
+
+{# Every reason notifications can silently fail, checked on the device.
+
+   On an iPhone there is no console to open, so "we set it all up and nothing
+   arrived" has five possible causes and no way to tell them apart from the
+   outside. Each row below is one of those causes, answered where the problem
+   actually is. #}
+
+{% block content %}
+  <h1 class="mgreet">{{ content.appcheck_title }}</h1>
+  <p class="msub">{{ content.appcheck_intro }}</p>
+
+  <div class="mcard">
+    <ul class="flaglist checkrows" id="checks"></ul>
+  </div>
+
+  <button class="btn wide center" type="button" data-ask hidden>
+    {{ content.appcheck_ask }}
+  </button>
+  <p class="muted small center" data-ask-note hidden>{{ content.appcheck_ask_note }}</p>
+
+  <a class="btn wide center ghostbtn" href="{{ url_for('member.you') }}">{{ content.appcheck_back }}</a>
+
+  <script>
+  (function () {
+    var list = document.getElementById("checks");
+
+    function row(label, state, detail) {
+      var li = document.createElement("li");
+      var fl = document.createElement("span");
+      fl.className = "fl";
+      var name = document.createElement("span");
+      name.className = "pn";
+      name.textContent = label;
+      var note = document.createElement("span");
+      note.className = "pe";
+      note.textContent = detail || "";
+      fl.appendChild(name);
+      fl.appendChild(note);
+      var pill = document.createElement("span");
+      pill.className = "pill" + (state === "yes" ? "" : " pending");
+      pill.textContent = state === "yes" ? {{ content.appcheck_yes | tojson }}
+                       : state === "no" ? {{ content.appcheck_no | tojson }}
+                       : {{ content.appcheck_unknown | tojson }};
+      li.appendChild(fl);
+      li.appendChild(pill);
+      list.appendChild(li);
+    }
+
+    var cap = window.Capacitor;
+    var plugins = cap && cap.Plugins;
+    var signal = plugins && plugins.OneSignal;
+
+    row({{ content.appcheck_inapp | tojson }},
+        cap ? "yes" : "no",
+        cap ? {{ content.appcheck_inapp_yes | tojson }}
+            : {{ content.appcheck_inapp_no | tojson }});
+
+    row({{ content.appcheck_sdk | tojson }},
+        signal ? "yes" : "no",
+        signal ? {{ content.appcheck_sdk_yes | tojson }}
+               : {{ content.appcheck_sdk_no | tojson }});
+
+    row({{ content.appcheck_printing | tojson }},
+        (plugins && plugins.Browser) ? "yes" : "no",
+        (plugins && plugins.Browser) ? {{ content.appcheck_printing_yes | tojson }}
+                                     : {{ content.appcheck_printing_no | tojson }});
+
+    row({{ content.appcheck_known | tojson }},
+        {{ (push_external_id is not none) | tojson }} ? "yes" : "no",
+        {{ (push_external_id is not none) | tojson }}
+          ? {{ content.appcheck_known_yes | tojson }}
+          : {{ content.appcheck_known_no | tojson }});
+
+    row({{ content.appcheck_configured | tojson }},
+        {{ (push_app_id is not none) | tojson }} ? "yes" : "no",
+        {{ (push_app_id is not none) | tojson }}
+          ? {{ content.appcheck_configured_yes | tojson }}
+          : {{ content.appcheck_configured_no | tojson }});
+
+    /* Permission is the one that is genuinely unknown until asked, and the
+       only one with a button, because iOS shows its prompt once ever. */
+    var permission = signal && (signal.Notifications || signal);
+    if (permission && typeof permission.getPermissionAsync === "function") {
+      permission.getPermissionAsync().then(function (granted) {
+        row({{ content.appcheck_allowed | tojson }}, granted ? "yes" : "no",
+            granted ? {{ content.appcheck_allowed_yes | tojson }}
+                    : {{ content.appcheck_allowed_no | tojson }});
+        if (!granted) { show_ask(permission); }
+      }).catch(function () {
+        row({{ content.appcheck_allowed | tojson }}, "unknown", "");
+        show_ask(permission);
+      });
+    } else if (permission && typeof permission.requestPermission === "function") {
+      row({{ content.appcheck_allowed | tojson }}, "unknown",
+          {{ content.appcheck_allowed_unknown | tojson }});
+      show_ask(permission);
+    }
+
+    function show_ask(api) {
+      var button = document.querySelector("[data-ask]");
+      var note = document.querySelector("[data-ask-note]");
+      if (!button) { return; }
+      button.hidden = false;
+      if (note) { note.hidden = false; }
+      button.addEventListener("click", function () {
+        try { api.requestPermission({fallbackToSettings: true}); }
+        catch (e) { try { api.requestPermission(true); } catch (e2) {} }
+      });
+    }
+  })();
+  </script>
+{% endblock %}

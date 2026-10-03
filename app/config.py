@@ -94,6 +94,15 @@ class BaseConfig:
         "VAPID_SUBJECT", "mailto:isaac@betweensundaysconsulting.com"
     )
 
+    # OneSignal, which is what actually reaches an iPhone. Web Push above
+    # cannot: inside the wrapper the app ships as, Apple exposes no push.
+    #
+    # The App ID is compiled into every copy of the app and is public by
+    # construction, so it is not a secret and is not treated as one. The REST
+    # key can send to the whole church and is read from the environment only.
+    ONESIGNAL_APP_ID = os.environ.get("ONESIGNAL_APP_ID", "")
+    ONESIGNAL_API_KEY = os.environ.get("ONESIGNAL_API_KEY", "")
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
@@ -156,6 +165,15 @@ class ProductionConfig(BaseConfig):
                 "PUSH_TRANSPORT is 'webpush' but VAPID_PRIVATE_KEY is empty. "
                 "A church whose people tapped Turn on notifications and never "
                 "receive one is worse off than a deploy that refused to start."
+            )
+        if app.config.get("PUSH_TRANSPORT") == "onesignal" and not (
+            app.config.get("ONESIGNAL_APP_ID")
+            and app.config.get("ONESIGNAL_API_KEY")
+        ):
+            raise RuntimeError(
+                "PUSH_TRANSPORT is 'onesignal' but ONESIGNAL_APP_ID or "
+                "ONESIGNAL_API_KEY is empty. Same reasoning as above: failing "
+                "at boot is louder than failing once per notification."
             )
         if app.config.get("MAIL_TRANSPORT") == "resend" and not app.config.get(
             "RESEND_API_KEY"

@@ -209,6 +209,32 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
     # read the same short page.
     community_accepted_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
+    # Who this login is, to the push provider.
+    #
+    # OneSignal addresses people by an "external id" the app sets when somebody
+    # signs in, which means the server never has to store a device. There is
+    # nothing to register, nothing to purge when a phone is wiped, and a person
+    # who installs the app on a second device is reached on both without doing
+    # anything.
+    #
+    # Deliberately a random token rather than the user id or the email. One
+    # OneSignal application serves every church on the platform, so an id like
+    # "journey-42" would tell that provider which church somebody attends and
+    # roughly when they joined it. This tells it nothing at all.
+    #
+    # Nullable and minted on first use, like every other token here: a column
+    # backfilled for 400 rows that mostly never sign in is a migration doing
+    # work for nothing.
+    push_external_id: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
+    def ensure_push_external_id(self) -> str:
+        """Mint it on first use. Callers must commit."""
+        import secrets
+
+        if not self.push_external_id:
+            self.push_external_id = secrets.token_urlsafe(24)
+        return self.push_external_id
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0

@@ -119,6 +119,9 @@ def create_app(config_name: str | None = None) -> Flask:
     register_kiosk_guard(app)
     register_idle_reset(app)
 
+    from app.push import register_push_identity
+    register_push_identity(app)
+
     register_security(app)
     register_error_handlers(app)
 

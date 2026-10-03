@@ -8,9 +8,11 @@ from app.push.transport import (
     PushFailed,
     PushMessage,
     SubscriptionGone,
+    OneSignalTransport,
     WebPushTransport,
     build_push_transport,
 )
+from app.push.identity import register_push_identity
 from app.push.send import notify, send_to_person
 
 __all__ = [
@@ -18,6 +20,7 @@ __all__ = [
     "PushFailed",
     "SubscriptionGone",
     "WebPushTransport",
+    "OneSignalTransport",
     "NullPushTransport",
     "MemoryPushTransport",
     "build_push_transport",
@@ -25,4 +28,5 @@ __all__ = [
     "send_to_person",
     "MAX_TITLE",
     "MAX_BODY",
+    "register_push_identity",
 ]

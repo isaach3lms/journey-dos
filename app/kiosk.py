@@ -75,8 +75,9 @@ KIOSK_ENDPOINTS = frozenset({
     "kids.kiosk_check_in",
     "kids.kiosk_forgot",
     # The tags. `kiosk_check_in` renders them itself on the way back, so the
-    # only separate endpoint here is the printable file.
-    "kids.kiosk_labels_pdf",
+    # only separate endpoint here is the printable file, which carries its own
+    # signed authorization and does not consult the session at all.
+    "kids.tags_pdf",
     # Setting the tablet up, and giving it back.
     "kids.kiosk_setup",
     "auth.logout",

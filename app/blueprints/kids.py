@@ -257,6 +257,14 @@ def kiosk_check_in(household_id: int):
 
     db.session.commit()
 
+    # The rows, not just the people, because a tag carries the room and the
+    # pickup code and those live on the check-in.
+    rows = [
+        c for c in checkin_session.checkins
+        if c.household_id == household.id
+        and c.person_id in {p.id for p in checked_in}
+    ]
+
     return render_template(
         "kids/label.html",
         church=g.church,
@@ -264,14 +272,9 @@ def kiosk_check_in(household_id: int):
         household=household,
         code=code,
         checked_in=checked_in,
-        # The rows, not just the people, because a tag carries the room and
-        # the pickup code and those live on the check-in.
         checkin_session=checkin_session,
-        checkins=[
-            c for c in checkin_session.checkins
-            if c.household_id == household.id
-            and c.person_id in {p.id for p in checked_in}
-        ],
+        checkins=rows,
+        pdf_url=tag_pdf_url(checkin_session, rows) if rows else None,
     )
 
 
@@ -359,32 +362,53 @@ def kiosk_forgot():
 # from the iOS app, because Apple's web view implements no print function. The
 # button was silently dead on the one device check-in actually runs on.
 #
-# A PDF fixes both halves of that. It opens outside the web view where the
-# print sheet exists, and it carries real physical dimensions, so a 62mm label
-# prints at 62mm instead of being scaled to whatever the printer guessed.
+# A PDF fixes two of the three problems. It opens in a viewer that has a print
+# sheet, and it carries real physical dimensions, so a 62mm label prints at
+# 62mm instead of being scaled to whatever the printer guessed from an HTML
+# page.
+#
+# The third problem is why this route takes a signed token instead of a
+# session. To reach a print sheet at all the file has to open outside the app,
+# and a browser opened from an app does not carry that app's cookies: an iOS
+# web view and Safari keep separate cookie stores. A `@login_required` PDF
+# would therefore have shown a login screen at the one moment nobody can stop
+# to type a password. See app/labeltoken.py for what the signature covers.
 # ---------------------------------------------------------------------------
 
-@bp.get("/kiosk/labels/<int:session_id>/family/<int:household_id>/")
-@login_required
-@min_role("leader")
-def kiosk_labels_pdf(session_id: int, household_id: int):
-    """The tags for one family, as a file a printer can take.
+@bp.get("/tags/pdf/<token>/")
+def tags_pdf(token: str):
+    """The tags named by a signed token, as a file a printer can take.
 
-    Reachable by a kiosk account, unlike the reprint routes beside it, because
-    this is the first print rather than a second copy. A reprint is a request
-    for another copy of a live pickup code and is logged as one; printing the
-    tag you just created is the check-in finishing.
+    No `login_required`, deliberately: the token is the credential, it is
+    good for ten minutes, and it names the exact check-in rows rather than
+    anything that could be widened.
+
+    Nothing is recorded here. Whoever minted the token was authorized and the
+    reprint was logged at that point; logging again would count one reprint
+    twice and make the log useless for the question it exists to answer.
     """
-    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
-    household = Household.get_for_church(g.church.id, household_id)
-    if checkin_session is None or household is None:
+    from app.labeltoken import verify
+
+    payload = verify(token, g.church.id)
+    if payload is None:
         abort(404)
 
-    checkins = checkin_session.checkins_for_household(household.id)
+    checkins = [
+        checkin for checkin in (
+            Checkin.get_for_church(g.church.id, checkin_id)
+            for checkin_id in payload["k"]
+        )
+        if checkin is not None and checkin.session_id == payload["s"]
+    ]
     if not checkins:
         abort(404)
 
-    return _tag_pdf_response(checkin_session, checkins, household.name)
+    checkin_session = CheckinSession.get_for_church(g.church.id, payload["s"])
+    if checkin_session is None:
+        abort(404)
+
+    who = checkins[0].household_name if len(checkins) > 1 else checkins[0].person.full_name
+    return _tag_pdf_response(checkin_session, checkins, who or "tags")
 
 
 def _tag_pdf_response(checkin_session, checkins, who: str):
@@ -412,53 +436,18 @@ def _tag_pdf_response(checkin_session, checkins, who: str):
     )
 
 
-@bp.get("/tags/<int:session_id>/family/<int:household_id>/pdf/")
-@login_required
-@min_role("leader")
-def tags_for_household_pdf(session_id: int, household_id: int):
-    """The staff reprint, as a file. Logged, like every other reprint."""
-    checkin_session = CheckinSession.get_for_church(g.church.id, session_id)
-    household = Household.get_for_church(g.church.id, household_id)
-    if checkin_session is None or household is None:
-        abort(404)
+def tag_pdf_url(checkin_session, checkins) -> str:
+    """The signed link for these tags. Minted by whoever renders the page."""
+    from app.labeltoken import sign
 
-    checkins = checkin_session.checkins_for_household(household.id)
-    if not checkins:
-        flash(KIDS["tags_none"], "error")
-        return redirect(url_for("kids.index"))
-
-    record(
-        TAG_REPRINTED,
-        KIDS["tags_reprint_family"],
-        subject_type="household",
-        subject_id=household.id,
-        subject_label=household.name,
-        detail=", ".join(c.person.full_name for c in checkins),
+    return url_for(
+        "kids.tags_pdf",
+        token=sign(
+            church_id=g.church.id,
+            session_id=checkin_session.id,
+            checkin_ids=[c.id for c in checkins],
+        ),
     )
-    db.session.commit()
-
-    return _tag_pdf_response(checkin_session, checkins, household.name)
-
-
-@bp.get("/tags/child/<int:checkin_id>/pdf/")
-@login_required
-@min_role("leader")
-def tag_for_child_pdf(checkin_id: int):
-    checkin = Checkin.get_for_church(g.church.id, checkin_id)
-    if checkin is None:
-        abort(404)
-
-    record(
-        TAG_REPRINTED,
-        KIDS["tags_reprint"],
-        subject_type="person",
-        subject_id=checkin.person_id,
-        subject_label=checkin.person.full_name,
-        detail=checkin.household_name or "",
-    )
-    db.session.commit()
-
-    return _tag_pdf_response(checkin.session, [checkin], checkin.person.full_name)
 
 
 # ---------------------------------------------------------------------------
@@ -544,10 +533,7 @@ def tags_for_household(session_id: int, household_id: int):
         content=KIDS,
         checkin_session=checkin_session,
         checkins=checkins,
-        pdf_url=url_for(
-            "kids.tags_for_household_pdf",
-            session_id=checkin_session.id, household_id=household.id,
-        ),
+        pdf_url=tag_pdf_url(checkin_session, checkins),
     )
 
 
@@ -576,7 +562,7 @@ def tag_for_child(checkin_id: int):
         content=KIDS,
         checkin_session=checkin.session,
         checkins=[checkin],
-        pdf_url=url_for("kids.tag_for_child_pdf", checkin_id=checkin.id),
+        pdf_url=tag_pdf_url(checkin.session, [checkin]),
     )
 
 

@@ -15,19 +15,55 @@
      function, so the tap did nothing and said nothing. There is no CSS or
      JavaScript fix for a function the engine does not have.
 
-     A PDF solves both halves. It opens outside the web view, where a print
-     sheet exists, and it carries the real dimensions of the label in the
-     printer, so a 62mm tag prints at 62mm instead of being scaled to whatever
-     the printer guessed from an HTML page. #}
-  <a class="btn wide center" target="_blank" rel="noopener"
-     href="{{ url_for('kids.kiosk_labels_pdf', session_id=checkin_session.id, household_id=household.id) }}">
-    {{ content.label_print }}
-  </a>
-  <p class="muted small center">{{ content.label_print_hint }}</p>
+     A PDF carries the real dimensions of the label in the printer, so a 62mm
+     tag prints at 62mm instead of being scaled to whatever the printer guessed
+     from an HTML page. The link is signed and needs no session, because the
+     browser that opens it does not share the app's cookies. #}
+  {% if pdf_url %}
+    <a class="btn wide center" target="_blank" rel="noopener"
+       data-print-link href="{{ pdf_url }}">{{ content.label_print }}</a>
+    <p class="muted small center">{{ content.label_print_hint }}</p>
+  {% endif %}
   <a class="btn wide center ghostbtn" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
 
   {# The tags stay on the page as well, for a desk running check-in from a
      laptop where printing the page works and opening a second window is
      friction nobody needs. #}
   {% include "kids/_tags.html" %}
+
+  <script>
+  /* Getting the tags in front of a print sheet, on whatever this is running in.
+
+     Three different environments, and `target="_blank"` alone is only right in
+     one of them:
+
+     A real browser opens a new tab and the print sheet is in its own menu.
+     That is the plain anchor, and it still works with JavaScript off.
+
+     Apple's web view does not implement `_blank` at all unless the app that
+     embeds it wrote the delegate for it. Depending on the app it does nothing
+     or it loads the PDF over the top of this screen, which strands a volunteer
+     on a document with no way back to check-in.
+
+     So when the page can see it is inside the wrapper, it asks the wrapper to
+     open the file instead, which puts it in a real browser view with a share
+     button, and leaves the kiosk screen untouched behind it. If the wrapper is
+     there but the browser plugin is not, nothing is guessed at: the link is
+     left alone and the note below it says what to do. */
+  (function () {
+    var link = document.querySelector("[data-print-link]");
+    if (!link) { return; }
+
+    var cap = window.Capacitor;
+    var browser = cap && cap.Plugins && cap.Plugins.Browser;
+    if (!browser || typeof browser.open !== "function") { return; }
+
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      // Absolute, because the wrapper hands this to the system and a path
+      // relative to the app's own origin means nothing out there.
+      browser.open({url: new URL(link.href, window.location.href).href});
+    });
+  })();
+  </script>
 {% endblock %}

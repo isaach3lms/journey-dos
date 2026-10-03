@@ -135,7 +135,7 @@ class TestTheTagAtCheckIn:
         """
         page = check_in(db, staff, webbs, sunday)
         assert "Print name tags" in page
-        assert f"/kids/kiosk/labels/{sunday.id}/family/{webbs.id}/" in page
+        assert "/kids/tags/pdf/" in page
         assert "window.print()" not in page
 
     def test_checking_in_does_not_log_a_reprint(self, db, staff, webbs, sunday):

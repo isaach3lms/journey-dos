@@ -479,3 +479,23 @@ class TestTheSetupCheck:
         sign_in("member@journeychurchsemo.com")
         page = client.get("/me/you/", headers=H).get_data(as_text=True)
         assert "/me/app-check/" in page
+
+    def test_the_button_is_absent_without_the_sdk(self, client, sign_in, linked):
+        sign_in("member@journeychurchsemo.com")
+        """It appeared on a real phone on a build with no SDK in it, because
+        `.btn{display:inline-block}` outranks the browser's own rule for the
+        hidden attribute. A button that does nothing when tapped reads as a
+        broken feature, which is the exact failure this page exists to stop."""
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        # Rendered hidden, and revealed only by the script, only when there is
+        # a permission API to call.
+        assert "data-ask hidden" in page or "hidden data-ask" in page
+        assert "show_ask" in page
+
+    def test_the_hidden_attribute_outranks_everything(self, client):
+        """The global rule that makes the above actually hold."""
+        from pathlib import Path
+
+        css = (Path(__file__).resolve().parents[1] / "app" / "static" / "css"
+               / "app.css").read_text()
+        assert "[hidden]{display:none !important}" in css

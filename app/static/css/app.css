@@ -14,6 +14,20 @@
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 html,body{margin:0;padding:0}
 
+/* `hidden` means hidden, and it has to outrank everything here.
+
+   The browser's own rule for it lives in the user agent stylesheet, which any
+   rule in this file beats. So `.btn{display:inline-block}` quietly defeated
+   `<button hidden>`, and the result was a button that was supposed to be
+   absent sitting on screen doing nothing when tapped. That has now happened
+   twice in this codebase, once on the serving-team filter and once on the
+   notification check, and both times it looked like a broken feature rather
+   than a CSS precedence problem.
+
+   `!important` is right here and almost nowhere else: there is no case where
+   markup says an element is hidden and a style should overrule it. */
+[hidden]{display:none !important}
+
 body{
   font-family:var(--font-body);
   background:var(--bone);

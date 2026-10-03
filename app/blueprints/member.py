@@ -29,6 +29,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    session as http_session,
     url_for,
 )
 from flask_login import current_user, login_required, logout_user
@@ -38,6 +39,7 @@ from app.content import GIVING, GROUPS, MEMBER, MESSAGES, PRIVACY, RESOURCES, SE
 from app.extensions import db
 from app.chat_notify import notify_new_message
 from app.mail import opt_in, opt_out
+from app.push import selftest
 from app.bible import parse as parse_reference
 from app.bible.providers import fetch_passage
 from app.models import (
@@ -299,6 +301,38 @@ def app_check():
         is_preview=False,
         tab=None,
     )
+
+
+@bp.post("/app-check/test/")
+@login_required
+def app_check_test():
+    """Send a notification to the phone asking for it, and say what happened.
+
+    The rows on the check page read settings. This sends, because every one of
+    those rows can say yes while nothing arrives, and the only proof is a phone
+    that buzzes. Answers JSON so the page can report the outcome in place
+    rather than reloading and losing the rest of the checks.
+
+    Signed in, posting, and addressed only to the account that asked: the
+    blast radius of the worst case is one notification on the sender's own
+    phone.
+    """
+    # A double tap is one notification, not two, because they collapse on the
+    # device. This is only here so a stuck finger cannot sit on the provider's
+    # API, and it is short enough not to get in the way of a real retry.
+    now = datetime.now(timezone.utc).timestamp()
+    last = http_session.get("appcheck_test_at")
+    if last is not None and now - last < 5:
+        return {"state": "cooldown", "message": MEMBER["appcheck_test_cooldown"]}
+    http_session["appcheck_test_at"] = now
+
+    state = selftest.run(
+        current_user,
+        title=MEMBER["appcheck_test_title"].format(church=g.church.name),
+        body=MEMBER["appcheck_test_body"],
+        url=url_for("member.app_check"),
+    )
+    return {"state": state, "message": MEMBER[f"appcheck_test_{state}"]}
 
 
 @bp.get("/you/")

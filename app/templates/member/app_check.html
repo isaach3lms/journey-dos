@@ -21,6 +21,15 @@
   </button>
   <p class="muted small center" data-ask-note hidden>{{ content.appcheck_ask_note }}</p>
 
+  {# The one control that proves something rather than reporting something.
+     Every row above can say yes while the phone stays silent, and this is the
+     only way to find that out from the phone itself. #}
+  <button class="btn wide center" type="button" data-test>
+    {{ content.appcheck_test }}
+  </button>
+  <p class="muted small center" data-test-note>{{ content.appcheck_test_note }}</p>
+  {{ csrf_field() }}
+
   <a class="btn wide center ghostbtn" href="{{ url_for('member.you') }}">{{ content.appcheck_back }}</a>
 
   <script>
@@ -138,6 +147,45 @@
           {{ content.appcheck_allowed_unknown | tojson }});
       show_ask(permission);
     }
+
+    /* The send test.
+
+       Deliberately outside the plugin checks above: it has to run even when
+       every one of them says no, because "the app is fine and the server key
+       is wrong" looks identical from the phone to "the app is broken", and the
+       server is the only side that can tell the difference. */
+    (function () {
+      var button = document.querySelector("[data-test]");
+      var note = document.querySelector("[data-test-note]");
+      if (!button) { return; }
+
+      var idle = button.textContent;
+      button.addEventListener("click", function () {
+        button.disabled = true;
+        button.textContent = {{ content.appcheck_test_working | tojson }};
+
+        var token = document.querySelector("input[name=csrf_token]");
+        fetch({{ url_for('member.app_check_test') | tojson }}, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": token ? token.value : ""
+          },
+          /* The reply is read on the same device that is being tested, which
+             may be the one with no working connection. */
+          credentials: "same-origin"
+        }).then(function (response) {
+          return response.json();
+        }).then(function (result) {
+          if (note) { note.textContent = result.message; }
+        }).catch(function () {
+          if (note) { note.textContent = {{ content.appcheck_test_error | tojson }}; }
+        }).then(function () {
+          button.disabled = false;
+          button.textContent = idle;
+        });
+      });
+    })();
 
     function show_ask(api) {
       var button = document.querySelector("[data-ask]");

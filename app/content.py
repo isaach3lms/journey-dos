@@ -1097,6 +1097,50 @@ MEMBER = {
         "If nothing happens, you have already answered once. Open iPhone "
         "Settings, find this app, and turn Notifications on there."
     ),
+
+    # The send test. Every row above reads something; this one actually sends,
+    # because a phone can look completely set up and still receive nothing.
+    "appcheck_test": "Send me a test notification",
+    "appcheck_test_note": (
+        "It goes to this phone. Lock the screen or leave the app for a few "
+        "seconds and it should appear."
+    ),
+    "appcheck_test_working": "Sending...",
+    "appcheck_test_title": "{church}",
+    "appcheck_test_body": "Test notification. Notifications are working.",
+    "appcheck_test_sent": (
+        "Sent. It should arrive within a few seconds. If nothing appears, "
+        "notifications are switched off for this app in iPhone Settings."
+    ),
+    "appcheck_test_not_registered": (
+        "Nothing to send to yet. This phone has not registered with the "
+        "notification service, which usually means you have not allowed "
+        "notifications. Tap the button above, then try again."
+    ),
+    "appcheck_test_blocked": (
+        "The notification service has no device for you. The app is "
+        "installed but notifications are turned off for it. Open iPhone "
+        "Settings, find this app, and turn Notifications on."
+    ),
+    "appcheck_test_failed": (
+        "The notification service refused the send. The key on the server is "
+        "wrong or expired. Nobody at the church is receiving notifications "
+        "until that is fixed."
+    ),
+    "appcheck_test_unconfigured": (
+        "The server has no notification keys, so it cannot send to anybody. "
+        "This is set up on the server, not on this phone."
+    ),
+    "appcheck_test_unlinked": (
+        "Your sign-in is not attached to a person in the directory, so "
+        "notifications have nobody to go to. A staff member has to link it."
+    ),
+    "appcheck_test_cooldown": (
+        "One was just sent. Give it a few seconds before sending another."
+    ),
+    "appcheck_test_error": (
+        "The test could not be run. Check the connection and try again."
+    ),
 }
 
 

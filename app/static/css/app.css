@@ -602,7 +602,32 @@ form.inline .select{min-width:170px}
   display:flex;flex-direction:column;min-height:660px;
 }
 
-.mhead{background:var(--chrome);padding:16px 20px}
+/* Pinned, not scrolled away with the content.
+
+   The tab bar was already sticky at the bottom and the header was not, so on a
+   phone the church's name and logo slid off the top of every page and the app
+   lost its own chrome the moment anybody scrolled. The two halves of the frame
+   now behave the same way.
+
+   The safe-area inset is added rather than assumed. It is zero on a device
+   with no notch and on an iOS wrapper that already insets the web view, so it
+   costs nothing there; where the web view does run under the status bar, it is
+   the difference between the logo being readable and being under the clock.
+   `env()` with a fallback, because a browser that does not know the function
+   must still get the padding. */
+.mhead{
+  background:var(--chrome);
+  padding:calc(16px + env(safe-area-inset-top, 0px)) 20px 16px;
+  position:sticky;top:0;z-index:6;
+}
+
+/* Except in the staff preview, which keeps the phone frame on a computer.
+   The frame is not a scroll container, so a sticky header inside it would
+   detach from the top of the frame and travel down the page, which reads as
+   a rendering fault rather than as a preview of a pinned header. */
+@media (min-width:701px){
+  .memberbody:not(.memberfull) .mhead{position:static}
+}
 /* A fixed box, not height:auto. Until the file decodes, auto height is
    zero, so the header grew a moment after every page load and the whole
    screen jumped. object-fit keeps any church's logo undistorted. */
@@ -614,6 +639,15 @@ form.inline .select{min-width:170px}
 }
 
 .mbody{flex:1;padding:20px 18px 24px;display:grid;gap:14px;align-content:start}
+
+/* Anything the app can jump to has to clear the pinned header.
+
+   Saving a detail on the You tab redirects to #details, and without this the
+   browser puts that row exactly where the header now is, so the person lands
+   on a screen that looks like it did nothing. Written against every element
+   with an id rather than a list of the three that exist today, because the
+   fourth one would be added without anybody remembering this rule. */
+.mbody [id]{scroll-margin-top:calc(82px + env(safe-area-inset-top, 0px))}
 
 .mgreet{font-size:21px;font-weight:600}
 .msub{font-size:12.5px;color:var(--muted);margin:3px 0 4px}

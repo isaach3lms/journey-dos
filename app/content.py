@@ -1066,6 +1066,9 @@ MEMBER = {
         "The app was built before notifications were added. It needs "
         "rebuilding and reinstalling."
     ),
+    "appcheck_sdk_has": "This build has:",
+    "appcheck_build": "App version on this phone",
+    "appcheck_build_is": "Running",
 
     "appcheck_printing": "Name tag printing",
     "appcheck_printing_yes": "Tags can open for printing.",

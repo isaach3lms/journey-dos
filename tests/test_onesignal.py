@@ -215,7 +215,7 @@ class TestTheAppIsToldWhoIsSignedIn:
         db.session.refresh(user)
 
         assert user.push_external_id in page
-        assert "plugins.OneSignal" in page
+        assert "/onesignal/i.test" in page
 
     def test_a_signed_out_page_identifies_nobody(self, client, db, journey,
                                                  sign_in, linked):
@@ -235,7 +235,7 @@ class TestTheAppIsToldWhoIsSignedIn:
         sign_in("member@journeychurchsemo.com")
 
         page = client.get("/me/", headers=H).get_data(as_text=True)
-        assert "plugins.OneSignal" not in page
+        assert "/onesignal/i.test" not in page
 
     def test_it_starts_the_sdk_once_per_app_launch(self, db, journey, client,
                                                    sign_in, linked):
@@ -266,7 +266,7 @@ class TestTheAppIsToldWhoIsSignedIn:
         sign_in("member@journeychurchsemo.com")
         for path in ("/me/", "/me/you/", "/me/serve/"):
             page = client.get(path, headers=H).get_data(as_text=True)
-            assert "plugins.OneSignal" in page, path
+            assert "/onesignal/i.test" in page, path
 
     def test_a_browser_without_the_app_is_untouched(self, db, journey, client,
                                                     sign_in, linked):
@@ -439,8 +439,8 @@ class TestTheSetupCheck:
 
         # Opened in the app rather than a browser.
         assert "window.Capacitor" in page
-        # The SDK is in this build.
-        assert "plugins.OneSignal" in page
+        # The SDK is in this build, found under whatever name it registers.
+        assert "/onesignal/i.test" in page
         # Printing, which rides on a different plugin and fails separately.
         assert "plugins.Browser" in page
 
@@ -499,3 +499,40 @@ class TestTheSetupCheck:
         css = (Path(__file__).resolve().parents[1] / "app" / "static" / "css"
                / "app.css").read_text()
         assert "[hidden]{display:none !important}" in css
+
+    def test_it_finds_the_sdk_under_any_registered_name(self, client, sign_in,
+                                                        linked):
+        """A plugin appears under whatever name its own native code
+        registers, which is not always what the docs call it and has changed
+        between versions. Guessing one name and showing No when it does not
+        match reports a working install as a broken one."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "/onesignal/i.test" in page
+        assert "plugins.OneSignal" not in page
+
+    def test_the_startup_code_finds_it_the_same_way(self, client, sign_in,
+                                                    linked):
+        """The diagnostic finding the plugin is worthless if the code that
+        actually starts it does not. Both look it up the same way."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+        assert "/onesignal/i.test" in page
+
+    def test_it_names_what_the_build_does_have(self, client, sign_in, linked):
+        """On a phone there is no console to open. Without this, No is a dead
+        end; with it, the list either names the plugin under a spelling nobody
+        expected or shows the build predates it."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "This build has:" in page
+        assert "Object.keys(plugins)" in page
+
+    def test_it_reports_which_build_is_running(self, client, sign_in, linked):
+        """"Still says no" has two causes that look identical from here: the
+        plugin registered under an unexpected name, or the rebuild never
+        reached the phone."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/app-check/", headers=H).get_data(as_text=True)
+        assert "App version on this phone" in page
+        assert "getInfo" in page

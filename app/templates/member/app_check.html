@@ -51,17 +51,43 @@
 
     var cap = window.Capacitor;
     var plugins = cap && cap.Plugins;
-    var signal = plugins && plugins.OneSignal;
+
+    /* Not a fixed name. A plugin appears here under whatever name its own
+       native code registers, which is not always what its documentation calls
+       it, and it has changed between versions. Guessing one name and showing
+       No when it does not match is how a working install gets reported as a
+       broken one, so this looks for anything that answers to OneSignal and
+       then shows its real name. */
+    function find_signal() {
+        if (!plugins) { return null; }
+        var names = Object.keys(plugins);
+        for (var i = 0; i < names.length; i++) {
+            if (/onesignal/i.test(names[i])) {
+                return {name: names[i], api: plugins[names[i]]};
+            }
+        }
+        return null;
+    }
+
+    var found = find_signal();
+    var signal = found && found.api;
 
     row({{ content.appcheck_inapp | tojson }},
         cap ? "yes" : "no",
         cap ? {{ content.appcheck_inapp_yes | tojson }}
             : {{ content.appcheck_inapp_no | tojson }});
 
+    /* When it is missing, say what the app DOES have. On a phone there is no
+       console to open, so without this the answer is "no" and the next step is
+       guesswork. With it, the list either names the plugin under a spelling
+       nobody expected, or shows the build predates it. */
+    var installed = plugins ? Object.keys(plugins).sort().join(", ") : "";
     row({{ content.appcheck_sdk | tojson }},
         signal ? "yes" : "no",
-        signal ? {{ content.appcheck_sdk_yes | tojson }}
-               : {{ content.appcheck_sdk_no | tojson }});
+        signal ? {{ content.appcheck_sdk_yes | tojson }} + " (" + found.name + ")"
+               : {{ content.appcheck_sdk_no | tojson }}
+                 + (installed ? " " + {{ content.appcheck_sdk_has | tojson }}
+                                + " " + installed : ""));
 
     row({{ content.appcheck_printing | tojson }},
         (plugins && plugins.Browser) ? "yes" : "no",
@@ -79,6 +105,20 @@
         {{ (push_app_id is not none) | tojson }}
           ? {{ content.appcheck_configured_yes | tojson }}
           : {{ content.appcheck_configured_no | tojson }});
+
+    /* Which build is actually running.
+
+       "It still says no" has two completely different causes that look the
+       same from here: the plugin registered under an unexpected name, or the
+       rebuild never reached the phone and the old binary is still installed.
+       The version answers that without anybody guessing. */
+    if (plugins && plugins.App && typeof plugins.App.getInfo === "function") {
+      plugins.App.getInfo().then(function (info) {
+        row({{ content.appcheck_build | tojson }}, "unknown",
+            {{ content.appcheck_build_is | tojson }} + " " +
+            (info.version || "?") + " (" + (info.build || "?") + ")");
+      }).catch(function () {});
+    }
 
     /* Permission is the one that is genuinely unknown until asked, and the
        only one with a button, because iOS shows its prompt once ever. */

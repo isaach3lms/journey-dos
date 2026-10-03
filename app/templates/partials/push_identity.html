@@ -29,7 +29,17 @@
 <script>
 (function () {
   var plugins = window.Capacitor && window.Capacitor.Plugins;
-  var signal = plugins && plugins.OneSignal;
+  if (!plugins) { return; }
+
+  /* Found by what it is, not by a name guessed from documentation. A plugin
+     registers under whatever its own native code says, that has changed
+     between versions, and a mismatch here is silent: no error, no
+     notification, nothing to debug on a phone. */
+  var signal = null;
+  var names = Object.keys(plugins);
+  for (var i = 0; i < names.length; i++) {
+    if (/onesignal/i.test(names[i])) { signal = plugins[names[i]]; break; }
+  }
   if (!signal) { return; }
 
   /* sessionStorage can throw in a locked-down web view, and none of this is

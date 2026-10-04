@@ -122,3 +122,65 @@ class TestBrandAssetsArePresent:
             path = static / palette.logo_reversed
             assert path.exists(), f"{key} references a missing file: {path}"
             assert path.stat().st_size > 0, f"{key} logo is empty: {path}"
+
+
+class TestTypographyIsABrandToken:
+    """Weight is a brand decision, not a number in the stylesheet.
+
+    The rule this file exists to enforce is that a church is reskinned by
+    editing `brand.py` and nothing else. Colour already obeyed it. Weight did
+    not: the headings carried `font-weight:600` directly, so a church that
+    wanted a quieter or a louder page could only get one by editing CSS, and
+    the typeface token was being half-ignored as a result.
+    """
+
+    CSS = Path(__file__).resolve().parent.parent / "app" / "static" / "css" / "app.css"
+
+    def test_the_weights_are_emitted_as_tokens(self):
+        css = brand_css_vars(None)
+
+        assert "--weight-display:" in css
+        assert "--weight-hero:" in css
+
+    def test_every_palette_declares_both(self):
+        for key, palette in PALETTES.items():
+            assert palette.font_weight_display, key
+            assert palette.font_weight_hero, key
+
+    def test_the_hero_rules_read_the_token_rather_than_a_number(self):
+        """A literal here is the thing that makes a brand token a decoration."""
+        css = self.CSS.read_text()
+
+        for rule in (".mgreet{", ".mbig{", ".topline h1{"):
+            start = css.index(rule)
+            block = css[start:css.index("}", start)]
+            assert "var(--weight-hero" in block, rule
+
+    def test_the_tokens_carry_a_fallback(self):
+        """A `var()` that resolves to nothing computes to `normal`, which is
+        lighter than what it replaced. The page would go quiet and nothing
+        would say why."""
+        css = self.CSS.read_text()
+
+        assert "var(--weight-display)" not in css
+        assert "var(--weight-hero)" not in css
+        assert "var(--weight-display,700)" in css
+        assert "var(--weight-hero,800)" in css
+
+    def test_the_display_face_is_loaded_by_the_font_url(self):
+        """The font the pages ask for has to be one the page actually
+        fetches. A display family missing from the URL falls back silently to
+        a system sans, which looks like nothing happened."""
+        for key, palette in PALETTES.items():
+            first = palette.font_display.split(",")[0].strip().strip("'\"")
+            assert first.replace(" ", "+") in palette.font_url, key
+
+    def test_every_weight_used_is_one_the_font_url_requests(self):
+        """Asking for 800 from a file that carries 400 to 700 gets a browser
+        to synthesise it, which looks smeared on exactly the big headings
+        this was meant to sharpen."""
+        for key, palette in PALETTES.items():
+            requested = palette.font_url.split("wght@")[1].split("&")[0]
+            weights = set(requested.replace(";", " ").split())
+            assert palette.font_weight_display in weights, key
+            assert palette.font_weight_hero in weights, key

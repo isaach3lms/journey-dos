@@ -41,12 +41,31 @@ class Palette:
     good: str = "#0F766E"
     good_bg: str = "#E4F4F1"
 
-    font_display: str = "'Montserrat','Inter',sans-serif"
+    # One family, not two.
+    #
+    # Montserrat was the display face and it is a geometric with wide, circular
+    # letterforms, which is why headings read as decorative rather than
+    # confident. The look this is now matching is Apple's own SF Pro, which
+    # cannot be used on the web: Apple licenses it for its own platforms only.
+    # Inter was drawn in that same lineage as an open substitute and was
+    # already the body face here, so dropping to one family both matches the
+    # reference and removes a font file from every page load.
+    font_display: str = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
     font_body: str = "'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
     font_url: str = (
         "https://fonts.googleapis.com/css2"
-        "?family=Montserrat:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+        "?family=Inter:wght@400;500;600;700;800&display=swap"
     )
+
+    # How heavy a heading is, as a token rather than a number in the
+    # stylesheet, because weight is as much a brand decision as color and a
+    # church that wants a quieter page should be able to say so without
+    # anybody editing CSS.
+    #
+    # Two values because the hero line on a screen carries the weight and
+    # everything below it would shout if it matched.
+    font_weight_display: str = "700"
+    font_weight_hero: str = "800"
 
     logo_reversed: str = "img/journey-logo-white.png"
 
@@ -77,7 +96,7 @@ BETWEEN_SUNDAYS = Palette(
     font_body="'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif",
     font_url=(
         "https://fonts.googleapis.com/css2"
-        "?family=Poppins:wght@400;500;600;700&display=swap"
+        "?family=Poppins:wght@400;500;600;700;800&display=swap"
     ),
     logo_reversed="",
 )
@@ -144,6 +163,8 @@ def brand_tokens(church) -> dict[str, str]:
         "--good-bg": p.good_bg,
         "--font-display": p.font_display,
         "--font-body": p.font_body,
+        "--weight-display": p.font_weight_display,
+        "--weight-hero": p.font_weight_hero,
         "--shadow-sm": f"0 1px 2px {_rgba(p.deep, .07)}, 0 2px 6px {_rgba(p.deep, .06)}",
         "--shadow-md": f"0 4px 14px {_rgba(p.deep, .10)}, 0 1px 3px {_rgba(p.deep, .07)}",
         "--shadow-lg": f"0 18px 48px {_rgba(p.ink, .20)}",

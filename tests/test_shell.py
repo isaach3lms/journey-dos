@@ -1,5 +1,7 @@
 """The shell renders one tenant's brand and nothing of another's."""
 
+from app.brand import JOURNEY
+
 
 class TestShellRendersFromTheRow:
     def test_journey_gets_journey_tokens(self, staff):
@@ -8,7 +10,12 @@ class TestShellRendersFromTheRow:
         assert "--accent:#485B38;" in body
         assert "--chrome:#2F3E24;" in body
         assert "journey-logo-white.png" in body
-        assert "Montserrat" in body
+        # The palette's own display family, read from the palette rather than
+        # named here. This test is about the shell serving the row's brand,
+        # and it used to fail the day somebody changed the typeface, which
+        # told nobody anything about whether the shell was working.
+        assert JOURNEY.font_display.split(",")[0].strip("'\"") in body
+        assert "--weight-hero:" in body
 
     def test_riverbend_gets_different_tokens_from_the_same_code(self, client, sign_in):
         sign_in("pastor@journeychurchsemo.com", host="riverbend.dos.test")

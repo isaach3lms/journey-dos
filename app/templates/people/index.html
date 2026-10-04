@@ -27,23 +27,86 @@
           </select>
         </div>
 
+        <label class="check">
+          <input type="checkbox" name="is_child" value="1" data-child-toggle>
+          <span>{{ content.add_child }}</span>
+        </label>
+
+        {# Hidden by the script below rather than in the markup, so a browser
+           with no JavaScript shows a cluttered form instead of a form with no
+           way to add a child at all. The server enforces the rules either
+           way: a child always needs a family and never gets a sign-in. #}
+        <div data-child-only>
+          <p class="muted small">{{ content.add_child_hint }}</p>
+          <div class="filters">
+            <select class="input select" name="household_id" aria-label="{{ content.household_pick }}">
+              <option value="">{{ content.household_none_option }}</option>
+              {% for home in households %}
+                <option value="{{ home.id }}">
+                  {% if home.members|length == 1 %}
+                    {{ content.household_count_one.format(name=home.name) }}
+                  {% else %}
+                    {{ content.household_count.format(name=home.name, count=home.members|length) }}
+                  {% endif %}
+                </option>
+              {% endfor %}
+            </select>
+            <input class="input" type="text" name="household_name" maxlength="160"
+                   autocomplete="off"
+                   placeholder="{{ content.household_new_placeholder }}"
+                   aria-label="{{ content.household_new_label }}">
+          </div>
+          <div class="filters">
+            <input class="input" type="date" name="birthdate"
+                   aria-label="{{ content.add_birthdate }}">
+            <input class="input" type="text" name="notes" maxlength="500"
+                   placeholder="{{ content.add_notes }}"
+                   aria-label="{{ content.add_notes }}">
+          </div>
+        </div>
+
         {% if current_user.is_staff %}
-          <label class="check">
+          <label class="check" data-adult-only>
             <input type="checkbox" name="with_login" value="1">
             <span>{{ content.add_login }}</span>
           </label>
-          <div class="filters">
+          <div class="filters" data-adult-only>
             <select class="input select" name="role" aria-label="{{ content.add_role }}">
               <option value="member">Member</option>
               <option value="leader">Leader</option>
               <option value="staff">Staff</option>
             </select>
           </div>
-          <p class="muted small">{{ content.add_login_hint }}</p>
+          <p class="muted small" data-adult-only>{{ content.add_login_hint }}</p>
         {% endif %}
 
         <button class="btn" type="submit">{{ content.add_submit }}</button>
       </form>
+
+      <script>
+      (function () {
+        var form = document.querySelector("[data-child-toggle]");
+        if (!form) { return; }
+        var child = Array.prototype.slice.call(
+          document.querySelectorAll("[data-child-only]"));
+        var adult = Array.prototype.slice.call(
+          document.querySelectorAll("[data-adult-only]"));
+
+        function apply() {
+          var on = form.checked;
+          child.forEach(function (el) { el.hidden = !on; });
+          /* The email and phone inputs stay. A child can have neither and
+             usually does, but a teenager with a phone is still a child for
+             check-in, and hiding a field somebody was about to use is worse
+             than showing one they will skip. What goes away is the sign-in,
+             which the server refuses for a child regardless. */
+          adult.forEach(function (el) { el.hidden = on; });
+        }
+
+        form.addEventListener("change", apply);
+        apply();
+      })();
+      </script>
     </div>
   </section>
 </details>

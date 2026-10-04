@@ -100,6 +100,32 @@
             {% endif %}
             <p class="muted small">{{ content.code_what_it_is }}</p>
           </details>
+
+          {# Where staff will actually do this: the parent is already on
+             screen, so there is no family to pick, no surname to retype and
+             no stage to decide. A parent with no family gets one, which is
+             the state anybody who signed themselves up is in. #}
+          {% if not person.is_child %}
+            <details class="hhedit">
+              <summary>{{ content.child_add_open }}</summary>
+              <form method="post" action="{{ url_for('people.add_child', person_id=person.id) }}">
+                {{ csrf_field() }}
+                <p class="muted small">{{ content.child_add_hint }}</p>
+                <input class="input" type="text" name="first_name" required
+                       placeholder="{{ content.child_add_first }}"
+                       aria-label="{{ content.child_add_first }}">
+                <input class="input" type="text" name="last_name"
+                       placeholder="{{ content.child_add_last }}"
+                       aria-label="{{ content.child_add_last }}">
+                <label class="fieldlbl" for="child_birthdate">{{ content.add_birthdate }}</label>
+                <input class="input" id="child_birthdate" type="date" name="birthdate">
+                <input class="input" type="text" name="notes" maxlength="500"
+                       placeholder="{{ content.add_notes }}"
+                       aria-label="{{ content.add_notes }}">
+                <button class="btn" type="submit">{{ content.child_add_submit }}</button>
+              </form>
+            </details>
+          {% endif %}
         </dd></div>
       <div><dt>{{ content.first_seen }}</dt>
         <dd>{{ person.first_seen_on.strftime("%B %-d, %Y") if person.first_seen_on else content.never_seen }}</dd></div>

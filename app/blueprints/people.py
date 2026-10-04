@@ -18,12 +18,13 @@ from flask import (
     request,
     url_for,
 )
-from datetime import date
+from datetime import date, datetime
 
 from flask_login import current_user, login_required
 
 from app.content import AUTOMATION, EMAIL, GIVING, PEOPLE, STUCK
 from app.extensions import db
+from app import households
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
     CONTACT_METHODS,
@@ -111,6 +112,13 @@ def index():
             Person.waiting_for_approval(g.church.id)
         ).all(),
         archived_count=Person.archived_count(g.church.id),
+        # For the child form's family picker. Children are the only thing
+        # added from this page that must belong to one.
+        households=db.session.scalars(
+            db.select(Household)
+            .where(Household.church_id == g.church.id)
+            .order_by(Household.name)
+        ).all(),
         active="people",
     )
 
@@ -1011,6 +1019,12 @@ def add_person():
     if stage not in STAGE_CODES:
         abort(400)
 
+    # A child is a different record with different rules, so it gets its own
+    # path through this route rather than a handful of `if is_child` branches
+    # threaded through an adult's.
+    if request.form.get("is_child"):
+        return _add_child_from_roster(first, last, stage)
+
     person = Person(
         church_id=g.church.id,
         first_name=first[:80],
@@ -1060,3 +1074,187 @@ def add_person():
     db.session.commit()
     flash(message, "notice")
     return redirect(url_for("people.detail", person_id=person.id))
+
+
+# ---------------------------------------------------------------------------
+# Children
+#
+# Staff had no way to create one. `is_child` could only be set by an import or
+# from a shell, which meant the kiosk could check in only the children
+# somebody had already put in the database by hand. A child record exists for
+# exactly one reason, Sunday check-in, and check-in is keyed on the household,
+# so a child without a family is a record that cannot do the only job it has.
+# That is why a household is required here and optional everywhere else.
+# ---------------------------------------------------------------------------
+
+def _parse_birthdate(raw: str):
+    """A date, or a reason it is not one. Returns (value, error_key)."""
+    raw = (raw or "").strip()
+    if not raw:
+        return None, None
+    try:
+        value = datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        return None, "child_birthday_bad"
+    if value > date.today():
+        return None, "child_birthday_future"
+    return value, None
+
+
+def _add_child_from_roster(first: str, last: str, stage: str):
+    """A child entered from the roster page, with their family chosen there.
+
+    The case this is for is a family nobody has met before: a card with a
+    parent and two children on it, and no record for any of them. Staff enter
+    the parent, then each child, naming the new family once and picking it
+    after that.
+    """
+    back = redirect(url_for("people.index", **_filters()))
+
+    birthdate, bad = _parse_birthdate(request.form.get("birthdate"))
+    if bad:
+        flash(PEOPLE[bad], "error")
+        return back
+
+    try:
+        household, started = households.choose(
+            g.church.id,
+            household_id=request.form.get("household_id"),
+            new_name=request.form.get("household_name"),
+        )
+    except households.HouseholdError:
+        flash(PEOPLE["household_unknown"], "error")
+        return back
+
+    # The one rule that differs from adding an adult. A child with no
+    # household cannot be checked in, and nothing on any screen would show
+    # that until a parent was standing at a kiosk on Sunday.
+    if household is None:
+        flash(PEOPLE["child_needs_household"], "error")
+        return back
+
+    # An empty surname follows the family's rather than refusing a form over
+    # something already answered: most children share it, and the household
+    # was just named after it.
+    if not last:
+        last = _surname_in(household) or ""
+
+    try:
+        households.check_room(household, first, last)
+    except households.HouseholdError as refused:
+        flash(PEOPLE[f"child_{refused.reason}"].format(**refused.detail), "error")
+        # A typed name has already created the family by this point. Nothing
+        # commits on this path, but leaving the flush in place would make an
+        # orphan family out of any later commit added to this request.
+        db.session.rollback()
+        return back
+
+    child = households.place_child(
+        household,
+        church_id=g.church.id,
+        first=first,
+        last=last,
+        birthdate=birthdate,
+        stage=stage,
+        notes=request.form.get("notes"),
+        # Entered by a human with roster access, so there is nobody to approve.
+        approved_at=utcnow(),
+    )
+
+    PersonEvent.record(
+        child, KIND_CREATED,
+        PEOPLE["child_event"].format(name=current_user.name),
+        detail=PEOPLE["child_event_detail"].format(household=household.name),
+        actor=current_user,
+    )
+    db.session.commit()
+
+    flash(
+        PEOPLE["child_added_new" if started else "child_added"].format(
+            name=child.first_name, household=household.name
+        ),
+        "notice",
+    )
+    # Ticked on the same form, hidden by its script, and refused here. Saying
+    # so beats dropping a request somebody made on purpose.
+    if request.form.get("with_login"):
+        flash(PEOPLE["child_no_login"], "notice")
+    return redirect(url_for("people.detail", person_id=child.id))
+
+
+def _surname_in(household) -> str | None:
+    """The surname the adults in a family use, if they agree on one."""
+    names = {
+        (m.last_name or "").strip()
+        for m in household.members
+        if not m.is_child and not m.is_archived and (m.last_name or "").strip()
+    }
+    return names.pop() if len(names) == 1 else None
+
+
+@bp.post("/<int:person_id>/family/add/")
+@login_required
+@min_role("leader")
+def add_child(person_id: int):
+    """A child added from a person's own record, into their family.
+
+    The other half of the same job and the half staff will use most: the
+    parent is already on screen, so there is no family to choose and no
+    surname or stage to decide. A parent with no household gets one, because
+    that is the state anybody who signed themselves up is in.
+    """
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    back = redirect(
+        url_for("people.detail", person_id=person.id, _anchor="household")
+    )
+
+    first = (request.form.get("first_name") or "").strip()
+    if not first:
+        flash(PEOPLE["child_first_required"], "error")
+        return back
+
+    birthdate, bad = _parse_birthdate(request.form.get("birthdate"))
+    if bad:
+        flash(PEOPLE[bad], "error")
+        return back
+
+    last = (request.form.get("last_name") or "").strip() or person.last_name
+    household = households.start_for(person)
+
+    try:
+        households.check_room(household, first, last)
+    except households.HouseholdError as refused:
+        flash(PEOPLE[f"child_{refused.reason}"].format(**refused.detail), "error")
+        db.session.rollback()
+        return back
+
+    child = households.place_child(
+        household,
+        church_id=g.church.id,
+        first=first,
+        last=last,
+        birthdate=birthdate,
+        # A family arrives together, so a child starts where their parent is
+        # rather than at the front of a follow-up path meant for adults.
+        stage=person.stage,
+        notes=request.form.get("notes"),
+        approved_at=utcnow(),
+    )
+
+    PersonEvent.record(
+        child, KIND_CREATED,
+        PEOPLE["child_event"].format(name=current_user.name),
+        detail=PEOPLE["child_event_detail"].format(household=household.name),
+        actor=current_user,
+    )
+    db.session.commit()
+
+    flash(
+        PEOPLE["child_added"].format(name=child.first_name,
+                                     household=household.name),
+        "notice",
+    )
+    return back

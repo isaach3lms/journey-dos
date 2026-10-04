@@ -590,6 +590,45 @@ PEOPLE = {
     ),
     "add_event": "Added by {name}",
 
+    # Adding a child. A child record exists for one reason, Sunday check-in,
+    # and check-in works off the family, so the family is the one field here
+    # that is not optional. The copy says that rather than returning a
+    # validation error nobody can act on.
+    "add_child": "This is a child",
+    "add_child_hint": (
+        "A child needs a family, because check-in works off the family and "
+        "not the child. Pick the family or name a new one."
+    ),
+    "add_birthdate": "Birthday",
+    "add_notes": "Allergies, medical notes, anything a volunteer should know",
+    "child_needs_household": (
+        "A child needs a family. Pick one, or type a name to start a new one, "
+        "then add them again."
+    ),
+    "child_first_required": "A first name is the one thing we need.",
+    "child_birthday_bad": "That birthday did not look like a date.",
+    "child_birthday_future": "That birthday is in the future.",
+    "child_unknown": "We could not find that family.",
+    "child_full": "A family can hold {max} people. Start a second family if you need more.",
+    "child_duplicate": "{name} is already in that family.",
+    "child_added": "{name} is in {household} and ready for check-in.",
+    "child_added_new": "{name} is in {household}, a new family, and ready for check-in.",
+    "child_event": "Added by {name}",
+    "child_event_detail": "Added as a child in {household}",
+    "child_no_login": (
+        "No sign-in was created. A child record is for check-in, so it never "
+        "gets an account."
+    ),
+
+    "child_add_open": "Add a child to this family",
+    "child_add_hint": (
+        "They go into this family and get the same check-in code. No email "
+        "and no sign-in: a child record exists for check-in only."
+    ),
+    "child_add_submit": "Add the child",
+    "child_add_first": "First name",
+    "child_add_last": "Last name, if it is different",
+
     "waiting_heading": "Waiting to be let in",
     "waiting_intro": (
         "These people signed themselves up. Their own record works and they "

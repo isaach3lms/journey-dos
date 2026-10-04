@@ -41,6 +41,15 @@ from app.stages import stage_order
 
 def enroll_for_stage(person, actor=None) -> list[SequenceEnrollment]:
     """Start any sequence this stage triggers. Caller commits."""
+    # A child inherits a family's stage rather than walking a path of their
+    # own, so a stage that triggers a welcome series would put a four-year-old
+    # in a staff follow-up queue and address a sequence written for adults to
+    # them. Enforced here rather than left to each caller to remember: the
+    # screens that create children would each have to know, and one of them
+    # forgetting is not a failure anybody would see until it had happened.
+    if person.is_child:
+        return []
+
     started = []
 
     for sequence in triggered_by(person.stage):

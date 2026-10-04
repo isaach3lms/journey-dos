@@ -235,6 +235,40 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
             self.push_external_id = secrets.token_urlsafe(24)
         return self.push_external_id
 
+    # What this person's phone answered when iOS asked. Null means nobody has
+    # asked yet, or they have never opened the app.
+    #
+    # Reported by the device rather than known here, because permission lives
+    # on the phone and can be revoked in iOS Settings weeks later without
+    # anything reaching this server. It is stored at all because the
+    # alternative is a church with no idea whether notifications reached
+    # anybody: with no subscription rows to count, this column is the only
+    # measure of how many people are actually reachable.
+    push_permission: Mapped[Optional[str]] = mapped_column(String(10), index=True)
+    push_asked_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    PUSH_GRANTED = "granted"
+    PUSH_DENIED = "denied"
+
+    @property
+    def push_is_on(self) -> bool:
+        return self.push_permission == self.PUSH_GRANTED
+
+    def record_push_permission(self, granted: bool) -> bool:
+        """Note what the phone said. Returns whether anything changed.
+
+        Only ever called for the signed-in account's own row, and only ever
+        with a boolean: a device is allowed to report its own permission and
+        nothing else.
+        """
+        value = self.PUSH_GRANTED if granted else self.PUSH_DENIED
+        if self.push_permission == value:
+            return False
+        self.push_permission = value
+        if self.push_asked_at is None:
+            self.push_asked_at = utcnow()
+        return True
+
     last_login_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     failed_login_count: Mapped[int] = mapped_column(
         Integer, nullable=False, default=0

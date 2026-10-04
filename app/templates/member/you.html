@@ -361,6 +361,43 @@
 
     function say(text) { note.textContent = text; note.hidden = false; }
 
+    /* Inside the app, notifications come from the provider rather than from
+       Web Push, which iOS does not expose to a wrapped web view at all. The
+       Web Push branch below used to be the only one, so the app showed this
+       screen saying notifications were not supported on the very device they
+       were working on. */
+    if (window.dosPush && window.dosPush.available) {
+      off.hidden = true;
+      window.dosPush.state().then(function (granted) {
+        if (granted === true) {
+          on.hidden = true;
+          state.textContent = {{ content.push_enabled | tojson }};
+          /* No off button. Permission belongs to iOS and only Settings can
+             take it back, so a button here would either lie or do nothing. */
+          say({{ content.push_app_off_hint | tojson }});
+          return;
+        }
+        state.textContent = {{ content.push_none | tojson }};
+        on.hidden = false;
+        if (granted === false) { say({{ content.push_app_settings | tojson }}); }
+      });
+
+      on.addEventListener('click', function () {
+        on.disabled = true;
+        window.dosPush.ask().then(function (granted) {
+          on.disabled = false;
+          if (granted === true) {
+            on.hidden = true;
+            state.textContent = {{ content.push_enabled | tojson }};
+            say({{ content.push_app_off_hint | tojson }});
+            return;
+          }
+          say({{ content.push_app_settings | tojson }});
+        });
+      });
+      return;
+    }
+
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
       on.hidden = true;
       say({{ content.push_unsupported | tojson }});

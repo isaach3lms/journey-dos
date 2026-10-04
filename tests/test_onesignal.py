@@ -274,9 +274,10 @@ class TestTheAppIsToldWhoIsSignedIn:
         and the emails still send."""
         sign_in("member@journeychurchsemo.com")
         page = client.get("/me/", headers=H).get_data(as_text=True)
-        # Guarded on the plugin existing, so nothing runs without it.
+        # Guarded on the plugin existing, so nothing runs without it, and the
+        # rest of the page says so rather than each caller re-checking.
         assert "window.Capacitor" in page
-        assert "if (!signal) { return; }" in page
+        assert "available: !!signal" in page
 
 
 class TestBuildingTheTransport:

@@ -1040,6 +1040,35 @@ MEMBER = {
     "push_saved": "Notifications are on for this device.",
     "push_removed": "Notifications are off for this device.",
 
+    # Inside the app, permission belongs to iOS rather than to this screen,
+    # so the copy points at Settings instead of offering a button that would
+    # either lie or do nothing.
+    "push_app_off_hint": (
+        "To turn these off, open your phone's Settings, find this app, and "
+        "switch Notifications off there."
+    ),
+    "push_app_settings": (
+        "Your phone is set to block notifications for this app. Open your "
+        "phone's Settings, find this app, and switch Notifications on."
+    ),
+
+    # The ask, on the first screen of the app. iPhone shows its prompt once
+    # ever, so this card spends that one chance on somebody who has been told
+    # what it is for.
+    "ask_label": "Turn on notifications",
+    "ask_body": (
+        "{church} can let you know when something needs you: a reply in a "
+        "conversation, a next step, or news for the whole church. Nothing "
+        "private ever appears on your lock screen."
+    ),
+    "ask_body_denied": (
+        "Your phone is blocking notifications for this app. Open your "
+        "phone's Settings, find this app, and switch Notifications on."
+    ),
+    "ask_button": "Turn them on",
+    "ask_button_settings": "Open Settings",
+    "ask_later": "Not now",
+
     # Deleting an account
     "privacy_link": "What is stored about you",
     "delete_heading": "Delete your account",
@@ -2704,12 +2733,15 @@ SETTINGS = {
         "dashboard, then set PUSH_TRANSPORT to webpush."
     ),
     "push_state_no_keys": (
-        "PUSH_TRANSPORT is set to webpush but the private key is missing. "
-        "Nothing can send until it is set."
+        "The transport is set but its key is missing, so nothing can send. "
+        "For OneSignal, set ONESIGNAL_APP_ID and ONESIGNAL_API_KEY in the "
+        "Render dashboard. For web push, VAPID_PUBLIC_KEY and "
+        "VAPID_PRIVATE_KEY."
     ),
     "push_state_nobody_on": (
         "Set up correctly, and nobody has turned notifications on yet. "
-        "People turn them on from the You tab on their own phone."
+        "People are asked the first time they open the app and can turn them "
+        "on later from the You tab."
     ),
     "push_state_all_failing": (
         "Every registered device is failing. That usually means the keys "
@@ -2721,6 +2753,25 @@ SETTINGS = {
     "push_failing": "failing",
     "push_last_success": "Last delivered {when}.",
     "push_never": "Nothing has been delivered yet.",
+
+    # Who can actually be reached. Counted over app accounts rather than the
+    # whole roster: most of a roster has never signed in, and "12 of 400"
+    # makes a working setup look broken.
+    "push_reach_heading": "Who can be reached",
+    "push_reach_hint": (
+        "Counted over people with an account, not the whole roster. iPhone "
+        "asks each person once and only they can answer, so there is no way "
+        "to turn notifications on for somebody else."
+    ),
+    "push_reach_granted": "have them on",
+    "push_reach_denied": "said no",
+    "push_reach_unasked": "have not been asked yet",
+    "push_reach_accounts": "accounts in total",
+    "push_reach_nudge": (
+        "The way to move the last number is to get people into the app. A "
+        "church-wide email from the Messages tab is the one channel that "
+        "reaches everybody regardless of notifications."
+    ),
 
     "brand_heading": "Your brand",
     "church_name": "Church name",

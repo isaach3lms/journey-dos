@@ -23,6 +23,27 @@
   </section>
 {% endif %}
 
+{# Asking for notifications, with a reason, on the first screen of the app.
+
+   iOS shows its prompt once per install and never again. The app used to
+   fire it automatically the moment somebody signed in, which spent that one
+   chance on a person who had not seen the app yet, and a refusal cannot be
+   undone from inside the app at all. So the ask is a button under a sentence
+   saying what it is for.
+
+   Hidden until the script below knows three things that only the device can
+   answer: that this is the app, that the notification system is in it, and
+   that permission has not already been granted. Rendering it server-side
+   would show a card about notifications to everybody on a laptop. #}
+{% if push_app_id %}
+  <section class="mcard mwide" id="pushask" hidden>
+    <div class="mlbl">{{ content.ask_label }}</div>
+    <p class="mnote" data-ask-body>{{ content.ask_body.format(church=church.name) }}</p>
+    <button class="btn wide" type="button" data-ask-go>{{ content.ask_button }}</button>
+    <button class="btn ghostbtn wide" type="button" data-ask-later>{{ content.ask_later }}</button>
+  </section>
+{% endif %}
+
 <section class="mcard dark">
   <div class="mlbl">{{ content.stage_label }}</div>
   <div class="mbig">{{ person.stage_label }}</div>
@@ -58,4 +79,70 @@
   <span class="mtitle">{{ content.support_button }}</span>
   <span class="mnote">{{ content.support_who_sees }}</span>
 </a>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+/* The notification ask.
+
+   Three facts decide whether this card appears and only the device knows
+   any of them, which is why none of this is a server-side condition. */
+(function () {
+  var card = document.getElementById("pushask");
+  if (!card || !window.dosPush || !window.dosPush.available) { return; }
+
+  var body = card.querySelector("[data-ask-body]");
+  var go = card.querySelector("[data-ask-go]");
+  var later = card.querySelector("[data-ask-later]");
+
+  /* Dismissed for this launch only. A card somebody said "not now" to must
+     not reappear on the next tap, and must not disappear forever either:
+     the most common reason to want notifications is having used the app for
+     a week without them. */
+  function dismissed() {
+    try { return !!window.sessionStorage.getItem("dos-push-later"); }
+    catch (e) { return false; }
+  }
+  function dismiss() {
+    try { window.sessionStorage.setItem("dos-push-later", "1"); } catch (e) {}
+    card.hidden = true;
+  }
+
+  window.dosPush.state().then(function (granted) {
+    /* null means the plugin could not answer. Showing the card then would
+       risk telling somebody who already has notifications to turn them on. */
+    if (granted === null || granted === true) { return; }
+    if (dismissed()) { return; }
+
+    /* Already answered no, at some point, on this phone. iOS will not show
+       its prompt again, so the honest instruction is the Settings app. The
+       button still fires the request, because the plugin forwards it to
+       Settings when permission has already been decided. */
+    var known = {{ push_permission | tojson }};
+    if (known === "denied") {
+      body.textContent = {{ content.ask_body_denied | tojson }};
+      go.textContent = {{ content.ask_button_settings | tojson }};
+    }
+
+    card.hidden = false;
+  });
+
+  go.addEventListener("click", function () {
+    go.disabled = true;
+    window.dosPush.ask().then(function (granted) {
+      if (granted === true) {
+        card.hidden = true;
+        return;
+      }
+      /* Refused, or answered long ago and routed to Settings. Either way the
+         card stops asking and says where to go. */
+      body.textContent = {{ content.ask_body_denied | tojson }};
+      go.textContent = {{ content.ask_button_settings | tojson }};
+      go.disabled = false;
+    });
+  });
+
+  later.addEventListener("click", dismiss);
+})();
+</script>
 {% endblock %}

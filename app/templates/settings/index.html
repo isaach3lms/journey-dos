@@ -485,15 +485,31 @@
       {% if push.state != 'on' %}
         <p class="alert error">{{ content['push_state_' ~ push.state] }}</p>
       {% endif %}
+      {# Under a provider there are no device rows here to count and nothing
+         to mark failing: the provider holds the devices and answers at send
+         time. Showing those three zeros read as "notifications are off" on a
+         church whose notifications were working. #}
+      {% if not push.provider %}
+        <div class="metrics">
+          <div><span class="mono mv">{{ push.devices }}</span> {{ content.push_devices }}</div>
+          <div><span class="mono mv">{{ push.people }}</span> {{ content.push_people }}</div>
+          <div><span class="mono mv">{{ push.failing }}</span> {{ content.push_failing }}</div>
+        </div>
+        <p class="muted small">
+          {% if push.last_success %}{{ content.push_last_success.format(when=push.last_success|church_time("%b %-d, %-I:%M%p")) }}
+          {% else %}{{ content.push_never }}{% endif %}
+        </p>
+      {% endif %}
+
+      <h4>{{ content.push_reach_heading }}</h4>
       <div class="metrics">
-        <div><span class="mono mv">{{ push.devices }}</span> {{ content.push_devices }}</div>
-        <div><span class="mono mv">{{ push.people }}</span> {{ content.push_people }}</div>
-        <div><span class="mono mv">{{ push.failing }}</span> {{ content.push_failing }}</div>
+        <div><span class="mono mv">{{ push.granted }}</span> {{ content.push_reach_granted }}</div>
+        <div><span class="mono mv">{{ push.denied }}</span> {{ content.push_reach_denied }}</div>
+        <div><span class="mono mv">{{ push.unasked }}</span> {{ content.push_reach_unasked }}</div>
+        <div><span class="mono mv">{{ push.accounts }}</span> {{ content.push_reach_accounts }}</div>
       </div>
-      <p class="muted small">
-        {% if push.last_success %}{{ content.push_last_success.format(when=push.last_success|church_time("%b %-d, %-I:%M%p")) }}
-        {% else %}{{ content.push_never }}{% endif %}
-      </p>
+      <p class="muted small">{{ content.push_reach_hint }}</p>
+      <p class="muted small">{{ content.push_reach_nudge }}</p>
     </div>
   </details>
 

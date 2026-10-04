@@ -1,12 +1,11 @@
-{# Starting notifications, and telling the app who is signed in.
+{# Starting notifications, telling the app who is signed in, and reporting
+   back what the phone said.
 
    The wrapper around this site loads the live pages rather than bundled
    files, so the web layer the provider's SDK expects to be started from is
    this one. That is the whole design: the wrapper's only job is to exist, and
    everything else is a deploy here rather than a rebuild, a resubmission and
    an App Store review.
-
-   Three calls, each run at a different rhythm and each for a reason:
 
    `initialize` once per app launch. Repeating it on every page would be
    harmless but pointless, and sessionStorage is exactly the lifetime of the
@@ -18,29 +17,58 @@
    those things happened. Setting it on every load means the id is always
    whoever is signed in now.
 
-   `requestPermission` once per app launch, and never on the sign-in screen,
-   because iOS shows its prompt exactly once ever. Asking somebody who has not
-   got into the app yet spends that one chance on a stranger.
+   **It no longer asks for permission on its own, and that is the point of
+   this change.** iOS shows its prompt once per install, ever. Firing it the
+   instant somebody signs in spends that single chance on a person who has
+   not seen the app yet and does not know what they are being asked about,
+   and a refusal is permanent short of a trip into iOS Settings. Asking is
+   now a button on a screen that says why, and this file only hands the
+   screens the means to ask.
 
    Nothing happens in an ordinary browser: there is no SDK there to call, the
    member app works normally, and the only thing missing is a notification a
    browser could not have shown anyway. #}
 {% if push_app_id %}
+{% if push_external_id %}
+  {# The partial carries its own token rather than borrowing one from a form
+     on the page. It is included on staff screens too, and a screen with no
+     form would have had its report silently rejected. #}
+  {{ csrf_field() }}
+{% endif %}
 <script>
-(function () {
+window.dosPush = (function () {
   var plugins = window.Capacitor && window.Capacitor.Plugins;
-  if (!plugins) { return; }
 
   /* Found by what it is, not by a name guessed from documentation. A plugin
      registers under whatever its own native code says, that has changed
      between versions, and a mismatch here is silent: no error, no
      notification, nothing to debug on a phone. */
+  var name = null;
   var signal = null;
-  var names = Object.keys(plugins);
-  for (var i = 0; i < names.length; i++) {
-    if (/onesignal/i.test(names[i])) { signal = plugins[names[i]]; break; }
+  if (plugins) {
+    var names = Object.keys(plugins);
+    for (var i = 0; i < names.length; i++) {
+      if (/onesignal/i.test(names[i])) {
+        name = names[i];
+        signal = plugins[names[i]];
+        break;
+      }
+    }
   }
-  if (!signal) { return; }
+
+  var api = {
+    /* Whether this page is running somewhere notifications can exist at all.
+       False in a browser, which is not a fault and not worth a message. */
+    available: !!signal,
+    plugin: name,
+    permission: signal && (signal.Notifications || signal),
+  };
+
+  if (!signal) {
+    api.ask = function () {};
+    api.state = function () { return Promise.resolve(null); };
+    return api;
+  }
 
   /* sessionStorage can throw in a locked-down web view, and none of this is
      worth failing a page render over. */
@@ -68,14 +96,72 @@
       try { signal.login({{ push_external_id | tojson }}); } catch (e2) {}
     }
   }
-
-  var ask = signal.Notifications || signal;
-  if (typeof ask.requestPermission === "function" && once("dos-push-ask")) {
-    try { ask.requestPermission({fallbackToSettings: false}); } catch (e) {
-      try { ask.requestPermission(false); } catch (e2) {}
-    }
-  }
   {% endif %}
+
+  api.state = function () {
+    var p = api.permission;
+    if (!p || typeof p.getPermissionAsync !== "function") {
+      return Promise.resolve(null);
+    }
+    return p.getPermissionAsync().then(function (granted) {
+      return !!granted;
+    }).catch(function () { return null; });
+  };
+
+  /* Fires the one prompt iOS will ever show. `fallbackToSettings` matters:
+     once somebody has answered, the prompt never appears again, and without
+     this the button would do nothing at all for exactly the people who need
+     to change their answer. */
+  api.ask = function () {
+    var p = api.permission;
+    if (!p || typeof p.requestPermission !== "function") {
+      return Promise.resolve(null);
+    }
+    var asked;
+    try { asked = p.requestPermission({fallbackToSettings: true}); }
+    catch (e) {
+      try { asked = p.requestPermission(true); } catch (e2) { return Promise.resolve(null); }
+    }
+    return Promise.resolve(asked).then(function () {
+      return api.report();
+    }).catch(function () { return null; });
+  };
+
+  {% if push_external_id %}
+  /* Telling the server what the phone said.
+
+     Permission lives on the phone and can be revoked in iOS Settings weeks
+     later with nothing reaching this server, so without this a church cannot
+     tell "nobody turned notifications on" from "everybody did and none are
+     arriving". Posted only when it differs from what the server already
+     thinks, so the ordinary page load costs nothing. */
+  api.report = function () {
+    return api.state().then(function (granted) {
+      if (granted === null) { return null; }
+      var known = {{ push_permission | tojson }};
+      if ((granted && known === "granted") || (!granted && known === "denied")) {
+        return granted;
+      }
+      var token = document.querySelector("input[name=csrf_token]");
+      return fetch({{ url_for('member.push_state') | tojson }}, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": token ? token.value : ""
+        },
+        body: JSON.stringify({granted: granted})
+      }).then(function () { return granted; })
+        .catch(function () { return granted; });
+    });
+  };
+
+  api.report();
+  {% else %}
+  api.report = function () { return Promise.resolve(null); };
+  {% endif %}
+
+  return api;
 })();
 </script>
 {% endif %}

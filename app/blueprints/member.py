@@ -303,6 +303,33 @@ def app_check():
     )
 
 
+@bp.post("/push-state/")
+@login_required
+def push_state():
+    """The phone reporting its own notification permission.
+
+    It has to come from the device because permission lives there: somebody
+    can switch notifications off in iOS Settings weeks later and nothing
+    reaches this server. Without it a church cannot tell "nobody turned
+    notifications on" from "everybody did and none are arriving", which are
+    opposite problems with opposite fixes.
+
+    Narrow on purpose. It writes one boolean to the signed-in account's own
+    row and nothing else: a device is trusted to report its own permission,
+    which it is the only thing that knows, and trusted with nothing further.
+    A phone that lies about it has only misreported itself.
+    """
+    payload = request.get_json(silent=True) or {}
+    granted = payload.get("granted")
+    if not isinstance(granted, bool):
+        return {"ok": False}, 400
+
+    if current_user.record_push_permission(granted):
+        db.session.commit()
+
+    return {"ok": True, "permission": current_user.push_permission}
+
+
 @bp.post("/app-check/test/")
 @login_required
 def app_check_test():

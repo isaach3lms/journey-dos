@@ -31,11 +31,18 @@ def register_push_identity(app) -> None:
             # Still handed out, so the app can start the SDK on a screen
             # somebody reaches before signing in. Nobody is identified and
             # nothing is asked for until there is a person to ask.
-            return {"push_app_id": app_id, "push_external_id": None}
+            return {"push_app_id": app_id, "push_external_id": None,
+                    "push_permission": None}
+
+        # What the server currently believes this phone answered. Rendered so
+        # the page can skip reporting an answer that has not changed, which
+        # is every page load after the first.
+        known = getattr(current_user, "push_permission", None)
 
         existing = getattr(current_user, "push_external_id", None)
         if existing:
-            return {"push_app_id": app_id, "push_external_id": existing}
+            return {"push_app_id": app_id, "push_external_id": existing,
+                    "push_permission": known}
 
         # First page this account has loaded since notifications existed.
         try:
@@ -48,6 +55,8 @@ def register_push_identity(app) -> None:
             # load, and the email is going either way.
             db.session.rollback()
             app.logger.exception("could not mint a push id")
-            return {"push_app_id": app_id, "push_external_id": None}
+            return {"push_app_id": app_id, "push_external_id": None,
+                    "push_permission": known}
 
-        return {"push_app_id": app_id, "push_external_id": minted}
+        return {"push_app_id": app_id, "push_external_id": minted,
+                "push_permission": known}

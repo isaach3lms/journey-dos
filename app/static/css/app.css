@@ -2001,3 +2001,15 @@ ul.policy span{color:var(--muted)}
 /* A heading inside a public form, marking where it stops asking about one
    person and starts asking about another. */
 .formgroup{font-size:14px;margin:26px 0 0;padding-top:18px;border-top:1px solid var(--line-soft)}
+
+/* The two staff markings under a person's snapshot.
+
+   Separated from the definition list above it by a rule, because everything
+   above is a fact the system knows and everything here is a judgement a
+   person made. Reading as one block would make the first look editable and
+   the second look derived. */
+.flagbox{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.flagbox .fieldlbl{margin-bottom:10px}
+.flagbox .check{margin:0}
+.flagbox .fieldhint{margin:2px 0 14px 26px}
+.flagbox .btn{margin-top:2px}

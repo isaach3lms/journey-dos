@@ -141,6 +141,47 @@
       <div><dt>{{ stuck.owner_heading }}</dt>
         <dd>{{ person.owner_name or stuck.owner_none }}</dd></div>
     </dl>
+
+    {# Two things a human knows and the system cannot.
+
+       Directly editable rather than folded behind a toggle, because these
+       exist to be ticked on the day the thing happens. One extra click is
+       the difference between a record staff keep and a record staff mean to
+       keep. #}
+    <form class="flagbox" method="post"
+          action="{{ url_for('people.set_flags', person_id=person.id) }}">
+      {{ csrf_field() }}
+      <div class="fieldlbl">{{ content.flags_heading }}</div>
+
+      <label class="check">
+        <input type="checkbox" name="is_regular_giver" value="1"
+               {% if person.is_regular_giver %}checked{% endif %}>
+        <span>{{ content.flag_giver }}</span>
+      </label>
+      <p class="fieldhint">{{ content.flag_giver_hint }}</p>
+
+      <label class="check">
+        <input type="checkbox" name="background_check_ordered" value="1"
+               {% if person.background_check_ordered %}checked{% endif %}>
+        <span>{{ content.flag_check }}</span>
+      </label>
+      {% if person.background_check_ordered %}
+        {# The date is the point. A tick on its own cannot tell a check
+           ordered on Friday from one sitting since March. #}
+        <p class="fieldhint">
+          {{ content.flag_check_on_date.format(
+               date=person.background_check_ordered_on.strftime("%B %-d, %Y")) }}
+          {% set waiting = (today - person.background_check_ordered_on).days %}
+          {% if waiting > 0 %}
+            &middot; {{ content.flag_check_waiting.format(days=waiting) }}
+          {% endif %}
+        </p>
+      {% else %}
+        <p class="fieldhint">{{ content.flag_check_hint }}</p>
+      {% endif %}
+
+      <button class="btn ghostbtn tiny" type="submit">{{ content.flag_save }}</button>
+    </form>
   </div>
 </section>
 

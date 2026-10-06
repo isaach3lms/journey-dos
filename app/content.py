@@ -467,6 +467,29 @@ PEOPLE = {
 
     # Person detail
     "snapshot": "Snapshot",
+
+    # Two things a human knows and the system cannot work out. Giving arrives
+    # from an outside platform and misses anybody who gives by transfer or in
+    # an envelope; a background check happens entirely outside this app.
+    "flags_heading": "Marked by staff",
+    "flag_giver": "Regular tither",
+    "flag_giver_hint": (
+        "What you know, not what the gift list adds up to. Somebody giving "
+        "by bank transfer or in an envelope does not show up there."
+    ),
+    "flag_check": "Background check ordered",
+    "flag_check_hint": "Tick this the day it goes in, so the wait is visible.",
+    "flag_check_on_date": "Ordered {date}",
+    "flag_check_waiting": "Waiting {days} days",
+    "flag_save": "Save",
+    "flag_saved": "Saved for {name}.",
+    "flag_none": "Nothing marked",
+
+    "flag_event": "Staff marking changed",
+    "flag_giver_on": "Marked as a regular tither",
+    "flag_giver_off": "No longer marked as a regular tither",
+    "flag_check_on": "Background check marked as ordered",
+    "flag_check_off": "Background check no longer marked as ordered",
     "timeline": "Timeline",
     # ---- Pastoral requests --------------------------------------------------
     "timeline_count": "{count} entries",

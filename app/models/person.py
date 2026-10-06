@@ -310,6 +310,30 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     # decided to engage.
     approved_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
+    # Two flags a human sets, both about things the system cannot work out
+    # for itself.
+    #
+    # Giving is mirrored from an outside platform and arrives incomplete: a
+    # family who gives by bank transfer, or in an envelope, looks like
+    # somebody who gives nothing. So this is what staff know rather than what
+    # the gift rows add up to, and nothing derives it.
+    is_regular_giver: Mapped[bool] = mapped_column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+
+    # A date rather than a boolean, and it is still one checkbox on screen.
+    #
+    # "Ordered" is a step in a process, and the question staff actually have
+    # is how long ago. A tick with no date cannot tell a check ordered on
+    # Friday from one that has been sitting since March, which is the only
+    # thing anybody wants to know about a background check that has not come
+    # back yet.
+    background_check_ordered_on: Mapped[Optional[date]] = mapped_column(Date)
+
+    @property
+    def background_check_ordered(self) -> bool:
+        return self.background_check_ordered_on is not None
+
     is_child: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
     is_archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
 

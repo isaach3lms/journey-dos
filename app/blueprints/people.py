@@ -180,6 +180,10 @@ def detail(person_id: int):
             ExternalGift.for_person(g.church.id, person.id)
         ).all(),
         giving_summary=ExternalGift.person_summary(g.church.id, person.id),
+        # For "waiting N days" on the background check. Passed in rather than
+        # computed in the template, so the page and the server agree on what
+        # day it is.
+        today=date.today(),
         recurring=db.session.scalars(
             ExternalRecurringGift.for_person(g.church.id, person.id)
         ).all(),
@@ -1427,4 +1431,50 @@ def resolve_request(request_id: int):
                    else "requests_marked_declined"].format(name=ask.full_name),
             "notice",
         )
+    return back
+
+
+@bp.post("/<int:person_id>/flags/")
+@login_required
+@min_role("leader")
+def set_flags(person_id: int):
+    """The two things on the snapshot a human knows and the system cannot.
+
+    Both are recorded on the timeline rather than only on the record. A
+    background check is a safeguarding fact, and "who said this was done, and
+    when" is the question asked after something has gone wrong, by which
+    point a column holding only the current value answers nothing.
+    """
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    back = redirect(url_for("people.detail", person_id=person.id))
+
+    giver = bool(request.form.get("is_regular_giver"))
+    ordered = bool(request.form.get("background_check_ordered"))
+
+    changes = []
+
+    if giver != person.is_regular_giver:
+        person.is_regular_giver = giver
+        changes.append(PEOPLE["flag_giver_on"] if giver
+                       else PEOPLE["flag_giver_off"])
+
+    if ordered != person.background_check_ordered:
+        # Unticking clears the date rather than keeping it, because a date
+        # left behind on an unticked box is a record that says two things.
+        person.background_check_ordered_on = date.today() if ordered else None
+        changes.append(PEOPLE["flag_check_on"] if ordered
+                       else PEOPLE["flag_check_off"])
+
+    if not changes:
+        return back
+
+    PersonEvent.record(
+        person, KIND_NOTE, PEOPLE["flag_event"],
+        detail=". ".join(changes), actor=current_user,
+    )
+    db.session.commit()
+    flash(PEOPLE["flag_saved"].format(name=person.first_name), "notice")
     return back

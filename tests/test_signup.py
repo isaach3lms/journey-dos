@@ -73,14 +73,31 @@ class TestTheChurchDecides:
             db.select(User).where(User.email == NEW_EMAIL)
         ) is None
 
-    def test_the_login_page_only_links_it_when_open(self, db, client, open_church):
+    def test_the_login_page_no_longer_links_it_at_all(self, db, client,
+                                                       open_church):
+        """The sign-in page offers "Request an account" instead, and only
+        that. Self-signup hands a login to anybody who types an address, and
+        a church routing accounts past a person should not also be showing
+        the door that skips them. The setting still decides whether the route
+        answers; see the test below it."""
         r = client.get("/auth/login", headers={"Host": JOURNEY_HOST})
-        assert b"/auth/join" in r.data
+
+        assert b"/auth/join" not in r.data
+        assert b"/request-account/" in r.data
+
+    def test_the_setting_still_decides_whether_the_route_answers(
+            self, db, client, open_church):
+        """Unlinked is not removed. A church that deliberately wants
+        self-signup keeps it at its own address, and turning the setting off
+        is what closes it."""
+        assert client.get("/auth/join",
+                          headers={"Host": JOURNEY_HOST}).status_code == 200
 
         open_church.allow_self_signup = False
         db.session.commit()
-        r = client.get("/auth/login", headers={"Host": JOURNEY_HOST})
-        assert b"/auth/join" not in r.data
+
+        assert client.get("/auth/join",
+                          headers={"Host": JOURNEY_HOST}).status_code == 404
 
     def test_staff_can_open_and_close_it(self, db, staff):
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
@@ -518,15 +535,20 @@ class TestTheLoginPageOffersItOnlyWhenItIsOn:
         r = client.get("/auth/login", headers={"Host": JOURNEY_HOST})
         assert b"/auth/join" not in r.data
 
-    def test_the_link_appears_once_when_it_is_on(self, db, client):
-        """It was rendered twice by an interrupted edit, so the page offered
-        the same link on two lines."""
+    def test_the_request_link_appears_once(self, db, client):
+        """The original of this test existed because an interrupted edit
+        rendered the join link twice and the page offered the same thing on
+        two lines. The link it guards has changed; the failure it guards
+        against has not."""
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         church.allow_self_signup = True
         db.session.commit()
 
-        body = client.get("/auth/login", headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
-        assert body.count('href="/auth/join"') == 1
+        body = client.get("/auth/login",
+                          headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
+
+        assert body.count('href="/request-account/"') == 1
+        assert body.count('href="/auth/join"') == 0
 
     def test_the_join_page_is_a_404_while_it_is_off(self, db, client):
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))

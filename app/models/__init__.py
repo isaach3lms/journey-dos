@@ -127,6 +127,12 @@ from app.models.support import (  # noqa: F401
     SUPPORT_KINDS,
     SupportRequest,
 )
+from app.models.account_request import (
+    ACCOUNT_OPEN,
+    ACCOUNT_DONE,
+    ACCOUNT_DECLINED,
+    AccountRequest,
+)
 from app.models.guest import (
     HEARD_CHOICES,
     HEARD_LABELS,
@@ -156,6 +162,10 @@ __all__ = [
     "Person",
     "PersonEvent",
     "GuestCard",
+    "AccountRequest",
+    "ACCOUNT_OPEN",
+    "ACCOUNT_DONE",
+    "ACCOUNT_DECLINED",
     "HEARD_CHOICES",
     "HEARD_LABELS",
     "ContactLog",

@@ -1978,3 +1978,16 @@ ul.policy span{color:var(--muted)}
 .cardside{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
 .faded{opacity:.55}
 .wrap{word-break:break-all;white-space:normal}
+
+/* An account request's free-text blocks.
+
+   The address and the household are typed into a textarea and keep their
+   line breaks, so the value needs `pre-wrap` and the label needs to sit
+   above it: inline, the first line starts after the label and every line
+   after it returns hard to the left, which reads as two broken columns. */
+.askblock{display:block;margin-top:10px;padding-left:10px;border-left:2px solid var(--line)}
+.asklbl{
+  display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:600;margin-bottom:2px;
+}
+.askval{display:block;white-space:pre-wrap;color:var(--ink);line-height:1.45}

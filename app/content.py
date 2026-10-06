@@ -282,6 +282,7 @@ AUTH = {
     "unverified_sent": "On its way. Check your inbox and your spam folder.",
 
     "join_link": "New here? Create an account",
+    "request_link": "New here? Request an account",
 
     # Creating an account
     "join_title": "Create your account",
@@ -650,6 +651,45 @@ PEOPLE = {
     "guests_known_person": "Already on the roster",
     "guests_wants_contact": "Asked to be contacted",
     "guests_wants_account": "Asked for an account",
+
+    # Account requests, the staff side. Everything the person typed is in the
+    # email because it is all needed to do the setup, and it is on this page
+    # too so the request survives an inbox.
+    "requests_heading": "Account requests",
+    "requests_sub": "People asking to be set up with a login.",
+    "requests_none": "Nobody is waiting.",
+    "requests_none_hint": (
+        "Requests appear here when somebody uses the link on the sign-in "
+        "page."
+    ),
+    "requests_view": "Account requests",
+    "requests_count": "{count} waiting",
+    "requests_count_one": "1 waiting",
+    "requests_address": "Address",
+    "requests_household": "Household",
+    "requests_none_given": "Not given",
+    "requests_done": "Mark as set up",
+    "requests_declined": "Decline",
+    "requests_reopen": "Put it back",
+    "requests_marked_done": "{name} is marked as set up.",
+    "requests_marked_declined": "{name}'s request is declined.",
+    "requests_reopened": "{name}'s request is back on the list.",
+    "requests_handled_by": "{status} by {name}",
+    "requests_show_all": "Show handled",
+    "requests_hide_all": "Hide handled",
+    "requests_back": "Back to people",
+
+    "request_subject": "{name} asked for an account at {church}",
+    "request_body": (
+        "{name} asked to be set up with a login for {church}.\n\n"
+        "Email: {email}\n"
+        "Phone: {phone}\n\n"
+        "Address:\n{address}\n\n"
+        "Household:\n{household}\n\n"
+        "The request is here, and can be marked off once it is done:\n"
+        "{link}\n"
+    ),
+    "request_none": "not given",
     "guests_heard": "Heard about you: {how}",
     "guests_no_record": "No roster record",
     "guests_open_person": "Open their record",
@@ -3407,4 +3447,64 @@ WELCOME = {
     "sent_again": "Fill in another card",
 
     "privacy_link": "What we do with this",
+}
+
+
+# Requesting a login. Written for somebody on the sign-in page who has just
+# worked out they do not have an account, and who has no idea how this church
+# hands them out.
+ACCOUNT = {
+    "title": "Request an account",
+    "heading": "Request an account",
+    "intro": (
+        "Accounts at {church} are set up by a person, not automatically. "
+        "Tell us who you are and someone will send you a link to choose your "
+        "own password."
+    ),
+
+    "first_name": "First name",
+    "last_name": "Last name",
+    "email": "Email",
+    "email_hint": "This becomes your sign-in, so use one you check.",
+    "phone": "Phone",
+
+    "address_label": "Home address",
+    "address_hint": "Optional. It saves the office asking later.",
+
+    "household_label": "Who else is in your household?",
+    "household_hint": (
+        "A spouse, and any children with their ages. Written however you "
+        "like. This is what gets your family set up for kids check-in."
+    ),
+
+    # Said plainly rather than left for somebody to assume. This form carries
+    # a home address and children's names, and the person filling it in
+    # should know where that goes before they type it.
+    "privacy": (
+        "This goes to the team that looks after {church}'s app, so they can "
+        "set you up. It is not posted anywhere and nobody else sees it."
+    ),
+
+    "submit": "Send the request",
+
+    "needs_name": "We need a first name so we know who is asking.",
+    "needs_email": (
+        "We need an email address that works, because it becomes your "
+        "sign-in and it is how we send you the link."
+    ),
+    "already_asked": (
+        "We already have a request from this address and it is still being "
+        "dealt with. Somebody will be in touch."
+    ),
+    "too_fast": "That one is already on its way. Give it a moment.",
+
+    "sent_heading": "Thank you",
+    "sent_body": (
+        "Your request is in. Somebody from {church} will set you up and "
+        "email you a link to choose a password. If you have not heard in a "
+        "few days, get in touch through the help page."
+    ),
+    "sent_signin": "Back to sign in",
+
+    "privacy_link": "What is stored about you",
 }

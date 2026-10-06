@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}{{ content.requests_heading }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.requests_heading }}{% endblock %}
+{% block subheading %}{{ content.requests_sub }}{% endblock %}
+
+{# A request is read, then acted on somewhere else: the household is free
+   text that a person turns into real records. So the whole of it is on
+   screen, and the only buttons are the ones that take it off the list. #}
+
+{% block content %}
+<div class="filters">
+  {% if show_all %}
+    <a class="btn ghostbtn" href="{{ url_for('people.requests') }}">{{ content.requests_hide_all }}</a>
+  {% else %}
+    <a class="btn ghostbtn" href="{{ url_for('people.requests', all=1) }}">{{ content.requests_show_all }}</a>
+  {% endif %}
+  <a class="btn ghostbtn" href="{{ url_for('people.index') }}">{{ content.requests_back }}</a>
+</div>
+
+{% if asks %}
+  <section class="card">
+    <div class="hd">
+      <h2>
+        {% if waiting == 1 %}{{ content.requests_count_one }}
+        {% else %}{{ content.requests_count.format(count=waiting) }}{% endif %}
+      </h2>
+    </div>
+    <ul class="flaglist cardlist">
+      {% for ask in asks %}
+        <li class="{% if not ask.is_open %}faded{% endif %}">
+          <span class="fl">
+            <span class="pn">{{ ask.full_name }}</span>
+            <span class="pe">
+              {{ ask.created_at|church_time("%b %-d, %-I:%M%p") }}
+              &middot; {{ ask.email }}
+              {% if ask.phone %} &middot; {{ ask.phone }}{% endif %}
+            </span>
+
+            {# Label above the value, not beside it. These are typed into a
+               textarea and keep their line breaks, so an inline label leaves
+               the first line indented and every line after it hard left. #}
+            <span class="askblock">
+              <b class="asklbl">{{ content.requests_address }}</b>
+              <span class="askval">{{ ask.address or content.requests_none_given }}</span>
+            </span>
+            <span class="askblock">
+              <b class="asklbl">{{ content.requests_household }}</b>
+              <span class="askval">{{ ask.household or content.requests_none_given }}</span>
+            </span>
+
+            {% if not ask.is_open and ask.handled_by_name %}
+              <span class="pe">
+                {{ content.requests_handled_by.format(status=ask.status_label,
+                                                      name=ask.handled_by_name) }}
+              </span>
+            {% endif %}
+          </span>
+
+          <span class="cardside">
+            <span class="pill {% if ask.is_open %}pending{% endif %}">{{ ask.status_label }}</span>
+            <form method="post" class="inline"
+                  action="{{ url_for('people.resolve_request', request_id=ask.id) }}">
+              {{ csrf_field() }}
+              {% if show_all %}<input type="hidden" name="all" value="1">{% endif %}
+              {% if ask.is_open %}
+                <button class="btn tiny" type="submit" name="action" value="done">
+                  {{ content.requests_done }}
+                </button>
+                <button class="btn ghostbtn tiny" type="submit" name="action" value="declined">
+                  {{ content.requests_declined }}
+                </button>
+              {% else %}
+                <button class="btn ghostbtn tiny" type="submit" name="action" value="reopen">
+                  {{ content.requests_reopen }}
+                </button>
+              {% endif %}
+            </form>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if pagination.pages > 1 %}
+    <div class="filters">
+      {% if pagination.has_prev %}
+        <a class="btn ghostbtn" href="{{ url_for('people.requests', page=pagination.prev_num, all=1 if show_all else None) }}">&larr;</a>
+      {% endif %}
+      {% if pagination.has_next %}
+        <a class="btn ghostbtn" href="{{ url_for('people.requests', page=pagination.next_num, all=1 if show_all else None) }}">&rarr;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% else %}
+  <section class="card">
+    <div class="bd empty">
+      <div class="t">{{ content.requests_none }}</div>
+      <p class="muted small">{{ content.requests_none_hint }}</p>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

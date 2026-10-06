@@ -25,7 +25,7 @@ from flask import (
     url_for,
 )
 
-from app.content import COMMUNITY, PRIVACY, SUPPORT, WELCOME
+from app.content import ACCOUNT, COMMUNITY, PRIVACY, SUPPORT, WELCOME
 from app.models.guest import HEARD_CHOICES, HEARD_LABELS
 
 bp = Blueprint("public", __name__)
@@ -172,3 +172,79 @@ def welcome_submit():
     # drops between the two requests would otherwise see a browser error
     # after their card had already been saved.
     return page(sent=True)
+
+
+# ---------------------------------------------------------------------------
+# Requesting an account
+#
+# This replaces "Create an account" on the sign-in page. The old link handed
+# a login to anybody who typed an address; this asks the same person who they
+# are and who is in their household, and a human decides.
+#
+# Same three defences as the connect card, and the same reason: it is a form
+# on the open internet. The trap field and the cooldown are shared rather than
+# re-invented, because two copies of a spam defence is how one of them gets
+# improved and the other does not.
+# ---------------------------------------------------------------------------
+
+ACCOUNT_RECENT_KEY = "account_request_at"
+
+
+def _account_page(error=None, sent=False):
+    return render_template(
+        "public/request_account.html",
+        church=g.church,
+        content=ACCOUNT,
+        trap=TRAP_FIELD,
+        error=error,
+        sent=sent,
+        values=request.form if request.method == "POST" else None,
+    )
+
+
+@bp.get("/request-account/")
+def request_account():
+    return _account_page()
+
+
+@bp.post("/request-account/")
+def request_account_submit():
+    from app.extensions import db
+    from app import accounts_requested
+
+    if (request.form.get(TRAP_FIELD) or "").strip():
+        return _account_page(sent=True)
+
+    now = datetime.now(timezone.utc).timestamp()
+    last = session.get(ACCOUNT_RECENT_KEY)
+    if last is not None and now - last < COOLDOWN_SECONDS:
+        return _account_page(error=ACCOUNT["too_fast"])
+
+    try:
+        made = accounts_requested.submit(
+            g.church,
+            first_name=request.form.get("first_name", ""),
+            last_name=request.form.get("last_name", ""),
+            email=request.form.get("email", ""),
+            phone=request.form.get("phone", ""),
+            address=request.form.get("address", ""),
+            household=request.form.get("household", ""),
+        )
+    except accounts_requested.Refused as refused:
+        return _account_page(error=ACCOUNT[refused.reason])
+
+    # Emailing must never fail the request. The row is written and the person
+    # has been told it is in; an error page at this point sends them round the
+    # form again and produces a second one.
+    try:
+        scheme = "https" if request.is_secure else "http"
+        accounts_requested.alert(
+            g.church, made,
+            link=url_for("people.requests", _external=True, _scheme=scheme),
+        )
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception("could not send an account request")
+
+    db.session.commit()
+    session[ACCOUNT_RECENT_KEY] = now
+    return _account_page(sent=True)

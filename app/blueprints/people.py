@@ -27,6 +27,9 @@ from app.extensions import db
 from app import households
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
+    ACCOUNT_DECLINED,
+    ACCOUNT_DONE,
+    AccountRequest,
     GuestCard,
     HEARD_LABELS,
     CONTACT_METHODS,
@@ -117,6 +120,7 @@ def index():
         # On the button, so staff can see there is something to read without
         # opening the page to find out.
         guest_cards=GuestCard.waiting_count(g.church.id),
+        account_requests=AccountRequest.open_count(g.church.id),
         # For the child form's family picker. Children are the only thing
         # added from this page that must belong to one.
         households=db.session.scalars(
@@ -1346,4 +1350,81 @@ def discard_guest(card_id: int):
     if card.discard(actor=current_user):
         db.session.commit()
         flash(PEOPLE["guest_discarded"].format(name=card.full_name), "notice")
+    return back
+
+
+# ---------------------------------------------------------------------------
+# Account requests
+#
+# What somebody filled in on the sign-in page when they asked to be set up.
+# The email that goes out carries all of it, because whoever does the setup
+# needs it in front of them; this page exists so the request survives that
+# inbox.
+# ---------------------------------------------------------------------------
+
+@bp.get("/requests/")
+@login_required
+@min_role("leader")
+def requests():
+    """Account requests, waiting ones first."""
+    show_all = request.args.get("all") == "1"
+    page = max(1, request.args.get("page", type=int) or 1)
+
+    pagination = db.paginate(
+        AccountRequest.for_church(g.church.id, include_done=show_all),
+        page=page, per_page=GUEST_PAGE_SIZE, error_out=False,
+    )
+
+    return render_template(
+        "people/requests.html",
+        church=g.church,
+        content=PEOPLE,
+        asks=pagination.items,
+        pagination=pagination,
+        show_all=show_all,
+        waiting=AccountRequest.open_count(g.church.id),
+        active="people",
+    )
+
+
+@bp.post("/requests/<int:request_id>/")
+@login_required
+@min_role("leader")
+def resolve_request(request_id: int):
+    """Mark one set up, declined, or back on the list.
+
+    Deliberately does not create the login. The household here is free text
+    that a person reads and turns into real records, and a button that made
+    an account straight from it would be guessing at the part that needs
+    judgement.
+    """
+    ask = AccountRequest.get_for_church(g.church.id, request_id)
+    if ask is None:
+        abort(404)
+
+    carried = {}
+    for key in ("all", "page"):
+        value = request.form.get(key) or request.args.get(key)
+        if value:
+            carried[key] = value
+    back = redirect(url_for("people.requests", **carried))
+
+    action = (request.form.get("action") or "").strip()
+
+    if action == "reopen":
+        if ask.reopen():
+            db.session.commit()
+            flash(PEOPLE["requests_reopened"].format(name=ask.full_name), "notice")
+        return back
+
+    if action not in (ACCOUNT_DONE, ACCOUNT_DECLINED):
+        abort(400)
+
+    if ask.resolve(action, actor=current_user):
+        db.session.commit()
+        flash(
+            PEOPLE["requests_marked_done" if action == ACCOUNT_DONE
+                   else "requests_marked_declined"].format(name=ask.full_name),
+            "notice",
+        )
     return back

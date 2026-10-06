@@ -15,6 +15,9 @@
   <a class="btn ghostbtn" href="{{ url_for('people.guests') }}">
     {{ content.guests_view }}{% if guest_cards %} &middot; {{ guest_cards }}{% endif %}
   </a>
+  <a class="btn ghostbtn" href="{{ url_for('people.requests') }}">
+    {{ content.requests_view }}{% if account_requests %} &middot; {{ account_requests }}{% endif %}
+  </a>
 </div>
 
 <details class="addbox">

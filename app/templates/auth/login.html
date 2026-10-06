@@ -59,9 +59,19 @@
       <p class="footnote">
         <a href="{{ url_for('auth.forgot') }}">{{ content.forgot_link }}</a>
         <br><a href="{{ url_for('public.support') }}">{{ content.help_link }}</a>
-        {% if church.allow_self_signup %}
-          <br><a href="{{ url_for('auth.join') }}">{{ content.join_link }}</a>
-        {% endif %}
+        {# One route in, not two.
+
+           This used to offer "Create an account", which handed a login to
+           anybody who typed an address, and only when self-signup was
+           switched on. Asking replaces it outright: a church that wants
+           every account to go past a person should not also be showing a
+           door that skips them, and two links here would make somebody
+           choose between them with no way to tell which is right.
+
+           The self-serve route still exists at its own address for a church
+           that deliberately turns it on, and turning the setting off closes
+           it completely. #}
+        <br><a href="{{ url_for('public.request_account') }}">{{ content.request_link }}</a>
       </p>
     </div>
   </div>

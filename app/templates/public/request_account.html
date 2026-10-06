@@ -1,0 +1,77 @@
+{% extends "public.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+
+{# Replaces "Create an account" on the sign-in page.
+
+   Two fields are required and the rest are not, deliberately. A name and an
+   address are what an account is; everything else saves the office a phone
+   call, and a form that insists on all of it gets abandoned by the person it
+   was built for. #}
+
+{% block inner %}
+  {% if sent %}
+    <h1>{{ content.sent_heading }}</h1>
+    <p class="lede">{{ content.sent_body.format(church=church.name) }}</p>
+    <p><a class="btn" href="{{ url_for('auth.login') }}">{{ content.sent_signin }}</a></p>
+  {% else %}
+    <h1>{{ content.heading }}</h1>
+    <p class="lede">{{ content.intro.format(church=church.name) }}</p>
+
+    {% if error %}
+      <p class="alert error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('public.request_account_submit') }}"
+          class="cardform">
+      {{ csrf_field() }}
+
+      {# Hidden from people, irresistible to a naive bot. The same field the
+         connect card uses, rather than a second one to keep in step. #}
+      <div class="trap" aria-hidden="true">
+        <label for="{{ trap }}">Website</label>
+        <input id="{{ trap }}" name="{{ trap }}" type="text" tabindex="-1"
+               autocomplete="off" value="">
+      </div>
+
+      <label class="fieldlbl" for="first_name">{{ content.first_name }}</label>
+      <input class="input" id="first_name" name="first_name" type="text" required
+             maxlength="80" autocomplete="given-name"
+             value="{{ values.first_name if values else '' }}">
+
+      <label class="fieldlbl" for="last_name">{{ content.last_name }}</label>
+      <input class="input" id="last_name" name="last_name" type="text"
+             maxlength="80" autocomplete="family-name"
+             value="{{ values.last_name if values else '' }}">
+
+      <label class="fieldlbl" for="email">{{ content.email }}</label>
+      <input class="input" id="email" name="email" type="email" required
+             maxlength="255" autocomplete="email" inputmode="email"
+             value="{{ values.email if values else '' }}">
+      <p class="fieldhint">{{ content.email_hint }}</p>
+
+      <label class="fieldlbl" for="phone">{{ content.phone }}</label>
+      <input class="input" id="phone" name="phone" type="tel"
+             maxlength="40" autocomplete="tel" inputmode="tel"
+             value="{{ values.phone if values else '' }}">
+
+      <label class="fieldlbl" for="address">{{ content.address_label }}</label>
+      <textarea class="input" id="address" name="address" rows="3"
+                maxlength="2000"
+                autocomplete="street-address">{{ values.address if values else '' }}</textarea>
+      <p class="fieldhint">{{ content.address_hint }}</p>
+
+      <label class="fieldlbl" for="household">{{ content.household_label }}</label>
+      <textarea class="input" id="household" name="household" rows="4"
+                maxlength="2000">{{ values.household if values else '' }}</textarea>
+      <p class="fieldhint">{{ content.household_hint }}</p>
+
+      <p class="fieldhint">{{ content.privacy.format(church=church.name) }}</p>
+
+      <button class="btn wide" type="submit">{{ content.submit }}</button>
+    </form>
+
+    <p class="footnote">
+      <a href="{{ url_for('public.privacy') }}">{{ content.privacy_link }}</a>
+    </p>
+  {% endif %}
+{% endblock %}

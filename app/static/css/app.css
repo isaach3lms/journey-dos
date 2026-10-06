@@ -1940,7 +1940,35 @@ ul.policy span{color:var(--muted)}
    A card is read, not scanned: the note a guest wrote is the part staff are
    here for, so it wraps and is never truncated. The row grows to fit it
    rather than the text being cut to fit the row. */
-.cardlist li{align-items:flex-start;gap:14px}
+/* The gutter.
+
+   `.flaglist` rows carry no horizontal padding because everywhere else they
+   sit inside a `.bd`, which supplies it. This list sits directly in the card,
+   so its rows ran edge to edge while the heading above them was inset, and
+   the two did not line up.
+
+   Written as `.flaglist.cardlist` rather than `.cardlist` on purpose. The
+   base rule is `.flaglist li:has(> span)`, which outranks a plain
+   `.cardlist li`, and the padding would have been silently ignored. That
+   precedence trap has cost this codebase two visible bugs already.
+
+   18px matches `.card .hd` and `.card .bd`, so a row lines up with the
+   heading above it rather than being close to it. */
+/* The gutter is on the list, not on each row.
+
+   Padding the rows would inset the text but leave each row's top border
+   running the full width of the card, and everywhere else in this app a
+   `.flaglist` sits inside a `.bd` whose padding insets the dividers too.
+   Putting it here keeps this list looking like the others.
+
+   18px matches `.card .hd` and `.card .bd`, so a row lines up with the
+   heading above it rather than being merely close to it. */
+.flaglist.cardlist{padding-left:18px;padding-right:18px;padding-bottom:4px}
+
+/* `.flaglist li:has(> span)` outranks a plain `.cardlist li`, so this has to
+   carry the same weight or the alignment is silently ignored. That
+   precedence trap has cost this codebase two visible bugs already. */
+.flaglist.cardlist li{align-items:flex-start;gap:14px}
 /* The name opens the person. It has to look like it does. */
 .cardlist .pn a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
 .cardlist .pe.note{

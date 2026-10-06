@@ -170,6 +170,10 @@ a{color:inherit;text-decoration:none}
   background:var(--good-bg);color:var(--good);
 }
 .pill.pending{background:var(--flag-bg);color:var(--flag)}
+/* A label, not a verdict. `pending` is the amber attention style, and using
+   it for an ordinary fact makes a page of ordinary facts look like a page of
+   problems. */
+.pill.quiet{background:var(--surface-alt);color:var(--muted);border:1px solid var(--line-soft)}
 .spacer{flex:1}
 
 /* ---------- Proof list ---------- */
@@ -1908,3 +1912,41 @@ ul.policy span{color:var(--muted)}
   ::view-transition-old(*),
   ::view-transition-new(*){animation:none !important}
 }
+
+
+/* The connect card's honeypot.
+
+   Moved off screen rather than `display:none` or `type=hidden`: a bot that
+   parses the page skips anything obviously hidden, and the whole value of the
+   field is that it looks fillable to a script and is invisible to a person.
+   `aria-hidden` and `tabindex=-1` on the markup keep it away from anybody
+   using a screen reader or a keyboard. */
+.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+
+.cardform .fieldlbl{margin-top:16px}
+
+/* A note under the field it is about.
+
+   Deliberately not `.footnote`, which carries a top rule: on a form that rule
+   put every hint below a divider, so each one read as the opening line of the
+   next question instead of the note under the answer above it. */
+.fieldhint{font-size:11.5px;color:var(--muted-2);line-height:1.45;margin:6px 0 0}
+.cardform .input{width:100%}
+.cardform .check{margin:16px 0}
+.cardform textarea.input{font-family:var(--font-body);line-height:1.5;resize:vertical}
+
+/* The connect card list.
+
+   A card is read, not scanned: the note a guest wrote is the part staff are
+   here for, so it wraps and is never truncated. The row grows to fit it
+   rather than the text being cut to fit the row. */
+.cardlist li{align-items:flex-start;gap:14px}
+/* The name opens the person. It has to look like it does. */
+.cardlist .pn a{color:var(--accent);text-decoration:underline;text-underline-offset:2px}
+.cardlist .pe.note{
+  white-space:pre-wrap;color:var(--ink);margin-top:6px;
+  padding-left:10px;border-left:2px solid var(--line);
+}
+.cardside{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
+.faded{opacity:.55}
+.wrap{word-break:break-all;white-space:normal}

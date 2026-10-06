@@ -79,9 +79,15 @@
         <div class="tvalue muted">&ndash;</div>
         {% if tile.key == "attendance" %}
           <a class="ttrend link" href="{{ url_for('services.plan', service_id=tile.link) if tile.link else url_for('services.index') }}#headcount">{{ dash.empty_attendance }}</a>
+        {% elif tile.key == "guests" %}
+          <a class="ttrend link" href="{{ url_for('people.guests') }}">{{ dash.empty_guests }}</a>
         {% else %}
           <a class="ttrend link" href="{{ url_for('giving.index') }}">{{ dash.empty_giving }}</a>
         {% endif %}
+      {% elif tile.key == "guests" %}
+        {# The one number on this row somebody can act on. Everything behind
+           it is a person who filled in a card, so the number opens them. #}
+        <a class="tvalue link" href="{{ url_for('people.guests') }}">{{ tile.value }}</a>
       {% else %}
         <div class="tvalue">{{ tile.value }}</div>
         {% if tile.trend %}

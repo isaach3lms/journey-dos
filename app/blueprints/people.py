@@ -27,6 +27,8 @@ from app.extensions import db
 from app import households
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
+    GuestCard,
+    HEARD_LABELS,
     CONTACT_METHODS,
     KIND_CONTACT,
     KIND_CREATED,
@@ -1257,4 +1259,88 @@ def add_child(person_id: int):
                                      household=household.name),
         "notice",
     )
+    return back
+
+
+# ---------------------------------------------------------------------------
+# Connect cards
+#
+# What guests submitted, in their own words. Separate from the roster view
+# because most of a card has nowhere to live on a person: how they heard
+# about the church, whether they asked to be contacted, and whatever they
+# wrote in the box.
+# ---------------------------------------------------------------------------
+
+GUEST_PAGE_SIZE = 40
+
+
+@bp.get("/guests/")
+@login_required
+@min_role("leader")
+def guests():
+    """Every connect card, newest first.
+
+    Where the dashboard tile points. Somebody who sees "6 first time guests"
+    wants to know who they were, and until now the only answer was a roster
+    filtered by a date nobody could see.
+    """
+    show_discarded = request.args.get("discarded") == "1"
+    page = max(1, request.args.get("page", type=int) or 1)
+
+    pagination = db.paginate(
+        GuestCard.for_church(g.church.id, include_discarded=show_discarded),
+        page=page, per_page=GUEST_PAGE_SIZE, error_out=False,
+    )
+
+    return render_template(
+        "people/guests.html",
+        church=g.church,
+        content=PEOPLE,
+        # Built from the request rather than typed into a setting, so it is
+        # right on whatever hostname this church actually uses and cannot
+        # drift from it.
+        card_url=url_for("public.welcome", _external=True, _scheme="https"),
+        cards=pagination.items,
+        pagination=pagination,
+        show_discarded=show_discarded,
+        heard_labels=HEARD_LABELS,
+        total=GuestCard.waiting_count(g.church.id),
+        active="people",
+    )
+
+
+@bp.post("/guests/<int:card_id>/discard/")
+@login_required
+@min_role("leader")
+def discard_guest(card_id: int):
+    """Rubbish from a public form, put out of the way.
+
+    Not a delete, and deliberately not touching the person. A card and a
+    roster record are different things: a staff member clearing a junk
+    submission is saying this card is noise, not that the person it matched
+    should be removed from the church.
+    """
+    card = GuestCard.get_for_church(g.church.id, card_id)
+    if card is None:
+        abort(404)
+
+    # `_filters` carries the roster's stage and search, which this page does
+    # not have. What it does have is the discarded toggle, and losing it would
+    # bounce somebody out of the view they were clearing.
+    carried = {}
+    for key in ("discarded", "page"):
+        value = request.form.get(key) or request.args.get(key)
+        if value:
+            carried[key] = value
+    back = redirect(url_for("people.guests", **carried))
+
+    if request.form.get("restore"):
+        if card.restore():
+            db.session.commit()
+            flash(PEOPLE["guest_restored"].format(name=card.full_name), "notice")
+        return back
+
+    if card.discard(actor=current_user):
+        db.session.commit()
+        flash(PEOPLE["guest_discarded"].format(name=card.full_name), "notice")
     return back

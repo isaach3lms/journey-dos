@@ -181,6 +181,7 @@ DASHBOARD = {
 
     "tile_attendance": "Attendance last Sunday",
     "tile_guests": "First time guests",
+    "empty_guests": "See the connect cards",
     "tile_next_steps": "Next steps taken",
     "tile_giving": "Giving month to date",
     "trend_attendance_up": "Up {n}% over 4 weeks",
@@ -628,6 +629,37 @@ PEOPLE = {
     "child_add_submit": "Add the child",
     "child_add_first": "First name",
     "child_add_last": "Last name, if it is different",
+
+    # Connect cards. The staff side of the public form: what guests wrote, in
+    # their own words, with the roster record each one became.
+    "guests_heading": "Connect cards",
+    "guests_sub": "What guests filled in, newest first.",
+    "guests_none": "No cards yet.",
+    "guests_none_hint": (
+        "Cards appear here the moment somebody fills one in. Share the link "
+        "below, or print it as a QR code for the welcome desk."
+    ),
+    "guests_link_label": "The link guests fill in",
+    "guests_link_hint": (
+        "Anybody with this link can fill in a card. No sign-in, nothing to "
+        "install."
+    ),
+    "guests_count": "{count} cards",
+    "guests_count_one": "1 card",
+    "guests_new_person": "New to us",
+    "guests_known_person": "Already on the roster",
+    "guests_wants_contact": "Asked to be contacted",
+    "guests_heard": "Heard about you: {how}",
+    "guests_no_record": "No roster record",
+    "guests_open_person": "Open their record",
+    "guests_discard": "Discard",
+    "guests_discarded": "{name}'s card is discarded.",
+    "guests_restore": "Put it back",
+    "guests_restored": "{name}'s card is back on the list.",
+    "guests_show_discarded": "Show discarded",
+    "guests_hide_discarded": "Hide discarded",
+    "guests_discarded_by": "Discarded by {name}",
+    "guests_back": "Back to people",
 
     "waiting_heading": "Waiting to be let in",
     "waiting_intro": (
@@ -3268,4 +3300,49 @@ ERRORS = {
         "Try again in a moment, and if it keeps happening, email "
         "isaac@betweensundaysconsulting.com."
     ),
+}
+
+
+# The connect card, written for somebody standing in a lobby holding a phone,
+# who has never used this app and may never use it again. Short labels, no
+# church vocabulary, and a reason given for every field that is not obvious.
+WELCOME = {
+    "title": "Welcome",
+    "heading": "Nice to meet you",
+    "intro": (
+        "Fill this in and someone from {church} will say hello. It takes "
+        "about thirty seconds."
+    ),
+
+    "first_name": "First name",
+    "last_name": "Last name",
+    "email": "Email",
+    "phone": "Phone",
+    "contact_hint": "Either one is fine. We need one way to reach you.",
+
+    "heard_label": "How did you hear about us?",
+    "heard_blank": "Choose one",
+
+    "note_label": "Anything you would like us to know?",
+    "note_hint": "A question, something to pray about, or nothing at all.",
+
+    "wants_contact": "I would like someone to reach out to me",
+
+    "submit": "Send it",
+
+    "needs_name": "We need a first name so we know who to say hello to.",
+    "needs_contact": (
+        "We need either an email or a phone number, otherwise there is no "
+        "way for anyone to get back to you."
+    ),
+    "too_fast": "That one is already on its way. Give it a moment.",
+
+    "sent_heading": "Thank you",
+    "sent_body": (
+        "We have it. Someone from {church} will be in touch soon, and we are "
+        "glad you came."
+    ),
+    "sent_again": "Fill in another card",
+
+    "privacy_link": "What we do with this",
 }

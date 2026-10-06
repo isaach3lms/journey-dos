@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ content.guests_heading }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.guests_heading }}{% endblock %}
+{% block subheading %}{{ content.guests_sub }}{% endblock %}
+
+{# What the dashboard tile points at.
+
+   A card is shown as what somebody wrote, not as a row of columns: the note
+   is the part staff actually read, and squeezing it into a table cell is how
+   it stops being read. Everything else about the person lives on their own
+   record, one click away. #}
+
+{% block content %}
+<section class="card">
+  <div class="bd">
+    <div class="fieldlbl">{{ content.guests_link_label }}</div>
+    {# Selectable rather than a link: this is for copying onto a sign, a
+       bulletin or a QR generator, not for staff to click. #}
+    <p class="mono code wrap" id="cardlink">{{ card_url }}</p>
+    <p class="muted small">{{ content.guests_link_hint }}</p>
+  </div>
+</section>
+
+<div class="filters">
+  {% if show_discarded %}
+    <a class="btn ghostbtn" href="{{ url_for('people.guests') }}">{{ content.guests_hide_discarded }}</a>
+  {% else %}
+    <a class="btn ghostbtn" href="{{ url_for('people.guests', discarded=1) }}">{{ content.guests_show_discarded }}</a>
+  {% endif %}
+  <a class="btn ghostbtn" href="{{ url_for('people.index') }}">{{ content.guests_back }}</a>
+</div>
+
+{% if cards %}
+  <section class="card">
+    <div class="hd">
+      <h2>
+        {% if total == 1 %}{{ content.guests_count_one }}
+        {% else %}{{ content.guests_count.format(count=total) }}{% endif %}
+      </h2>
+    </div>
+    <ul class="flaglist cardlist">
+      {% for card in cards %}
+        <li class="{% if card.is_discarded %}faded{% endif %}">
+          <span class="fl">
+            <span class="pn">
+              {% if card.person_id %}
+                <a href="{{ url_for('people.detail', person_id=card.person_id) }}">{{ card.full_name }}</a>
+              {% else %}
+                {{ card.full_name }}
+              {% endif %}
+            </span>
+            <span class="pe">
+              {{ card.created_at|church_time("%b %-d, %-I:%M%p") }}
+              {% if card.email %} &middot; {{ card.email }}{% endif %}
+              {% if card.phone %} &middot; {{ card.phone }}{% endif %}
+            </span>
+            {% if card.heard %}
+              <span class="pe">{{ content.guests_heard.format(how=heard_labels.get(card.heard, card.heard)) }}</span>
+            {% endif %}
+            {% if card.note %}
+              {# The reason this page exists. Shown whole, never truncated:
+                 a guest writing something down is the one piece of this a
+                 pastor needs to read in full. #}
+              <span class="pe note">{{ card.note }}</span>
+            {% endif %}
+            {% if card.is_discarded and card.discarded_by_name %}
+              <span class="pe">{{ content.guests_discarded_by.format(name=card.discarded_by_name) }}</span>
+            {% endif %}
+          </span>
+
+          <span class="cardside">
+            {% if card.wants_contact %}
+              <span class="pill">{{ content.guests_wants_contact }}</span>
+            {% endif %}
+            <span class="pill quiet">
+              {% if card.is_new_person %}{{ content.guests_new_person }}
+              {% else %}{{ content.guests_known_person }}{% endif %}
+            </span>
+            <form method="post" class="inline"
+                  action="{{ url_for('people.discard_guest', card_id=card.id) }}">
+              {{ csrf_field() }}
+              {% if show_discarded %}<input type="hidden" name="discarded" value="1">{% endif %}
+              {% if card.is_discarded %}
+                <input type="hidden" name="restore" value="1">
+                <button class="btn ghostbtn tiny" type="submit">{{ content.guests_restore }}</button>
+              {% else %}
+                <button class="btn ghostbtn tiny" type="submit">{{ content.guests_discard }}</button>
+              {% endif %}
+            </form>
+          </span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {% if pagination.pages > 1 %}
+    <div class="filters">
+      {% if pagination.has_prev %}
+        <a class="btn ghostbtn" href="{{ url_for('people.guests', page=pagination.prev_num, discarded=1 if show_discarded else None) }}">&larr;</a>
+      {% endif %}
+      {% if pagination.has_next %}
+        <a class="btn ghostbtn" href="{{ url_for('people.guests', page=pagination.next_num, discarded=1 if show_discarded else None) }}">&rarr;</a>
+      {% endif %}
+    </div>
+  {% endif %}
+{% else %}
+  <section class="card">
+    <div class="bd empty">
+      <div class="t">{{ content.guests_none }}</div>
+      <p class="muted small">{{ content.guests_none_hint }}</p>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

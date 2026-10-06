@@ -127,6 +127,11 @@ from app.models.support import (  # noqa: F401
     SUPPORT_KINDS,
     SupportRequest,
 )
+from app.models.guest import (
+    HEARD_CHOICES,
+    HEARD_LABELS,
+    GuestCard,
+)
 from app.models.person_event import (  # noqa: F401
     EVENT_KINDS,
     KIND_CONTACT,
@@ -150,6 +155,9 @@ __all__ = [
     "Household",
     "Person",
     "PersonEvent",
+    "GuestCard",
+    "HEARD_CHOICES",
+    "HEARD_LABELS",
     "ContactLog",
     "NextStep",
     "OutboxMessage",

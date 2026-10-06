@@ -1,8 +1,10 @@
 """The pages anybody can reach without signing in.
 
-Two of them, and both exist because somebody outside the app needs them: a
-member who cannot sign in, and an app store reviewer who has to see that
-support and a privacy policy exist before the app is allowed to ship.
+Three of them read, and one writes. The read-only pages exist because
+somebody outside the app needs them: a member who cannot sign in, and an app
+store reviewer who has to see that support and a privacy policy exist before
+the app is allowed to ship. The fourth is the connect card, which is the only
+form in this product that anybody on the internet can post to.
 
 Per church, from the same brand tokens as every other screen, because a page
 that says "Between Sundays" to a member of Journey is a page they do not
@@ -11,9 +13,12 @@ trust.
 
 from __future__ import annotations
 
-from flask import Blueprint, g, render_template
+from datetime import datetime, timezone
 
-from app.content import COMMUNITY, PRIVACY, SUPPORT
+from flask import Blueprint, g, render_template, request, session
+
+from app.content import COMMUNITY, PRIVACY, SUPPORT, WELCOME
+from app.models.guest import HEARD_CHOICES, HEARD_LABELS
 
 bp = Blueprint("public", __name__)
 
@@ -58,3 +63,89 @@ def community():
         church=g.church,
         content=COMMUNITY,
     )
+
+
+# ---------------------------------------------------------------------------
+# The connect card
+#
+# The one page here that writes to the database, and the only form in the
+# product that anybody on the internet can post to. Everything below is
+# shaped by that: three cheap defences at the door rather than a review queue
+# behind it, because a queue is work somebody has to keep doing and these are
+# not.
+# ---------------------------------------------------------------------------
+
+# A field no human sees and every naive bot fills in. Named like something
+# worth filling rather than "honeypot", and left out of the success message
+# either way so a bot learns nothing from the response.
+TRAP_FIELD = "website"
+
+# Two cards from one phone inside this window is a person pressing submit
+# twice, or a script. A welcome desk tablet taking cards one after another
+# needs to get through, so this is seconds rather than one-per-session.
+COOLDOWN_SECONDS = 15
+RECENT_KEY = "guest_card_at"
+
+
+@bp.get("/welcome/")
+def welcome():
+    """The card itself, reachable by anybody with the link or a QR code."""
+    return render_template(
+        "public/welcome.html",
+        church=g.church,
+        content=WELCOME,
+        heard_choices=[(code, HEARD_LABELS[code]) for code in HEARD_CHOICES],
+        trap=TRAP_FIELD,
+        sent=False,
+    )
+
+
+@bp.post("/welcome/")
+def welcome_submit():
+    from app.extensions import db
+    from app import guests
+
+    def page(error=None, sent=False):
+        return render_template(
+            "public/welcome.html",
+            church=g.church,
+            content=WELCOME,
+            heard_choices=[(code, HEARD_LABELS[code]) for code in HEARD_CHOICES],
+            trap=TRAP_FIELD,
+            error=error,
+            sent=sent,
+            # So a refused card does not make somebody type it all again.
+            values=request.form,
+        )
+
+    # A filled trap is answered exactly like a good card. Telling a bot it
+    # failed is how it learns to stop filling the field.
+    if (request.form.get(TRAP_FIELD) or "").strip():
+        return page(sent=True)
+
+    now = datetime.now(timezone.utc).timestamp()
+    last = session.get(RECENT_KEY)
+    if last is not None and now - last < COOLDOWN_SECONDS:
+        return page(error=WELCOME["too_fast"])
+
+    try:
+        guests.submit(
+            g.church.id,
+            first_name=request.form.get("first_name", ""),
+            last_name=request.form.get("last_name", ""),
+            email=request.form.get("email", ""),
+            phone=request.form.get("phone", ""),
+            heard=(request.form.get("heard") or "").strip(),
+            note=request.form.get("note", ""),
+            wants_contact=bool(request.form.get("wants_contact")),
+        )
+    except guests.CardRefused as refused:
+        return page(error=WELCOME[refused.reason])
+
+    db.session.commit()
+    session[RECENT_KEY] = now
+
+    # Rendered rather than redirected, because a guest on a lobby wifi that
+    # drops between the two requests would otherwise see a browser error
+    # after their card had already been saved.
+    return page(sent=True)

@@ -1,0 +1,83 @@
+{% extends "public.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+
+{# The connect card.
+
+   Written for a thumb on a phone in a lobby, by somebody who has never seen
+   this app and is standing next to a person waiting to talk to them. Every
+   field that is not obviously necessary says why it is there, and the only
+   required ones are a first name and one way to answer. #}
+
+{% block inner %}
+  {% if sent %}
+    <h1>{{ content.sent_heading }}</h1>
+    <p class="lede">{{ content.sent_body.format(church=church.name) }}</p>
+    {# A family at a welcome desk fills several of these in a row. #}
+    <p><a class="btn" href="{{ url_for('public.welcome') }}">{{ content.sent_again }}</a></p>
+  {% else %}
+    <h1>{{ content.heading }}</h1>
+    <p class="lede">{{ content.intro.format(church=church.name) }}</p>
+
+    {% if error %}
+      <p class="alert error">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('public.welcome_submit') }}" class="cardform">
+      {{ csrf_field() }}
+
+      {# Hidden from people, irresistible to a naive bot. Off the tab order
+         and off the screen rather than `type=hidden`, which a bot skips. #}
+      <div class="trap" aria-hidden="true">
+        <label for="{{ trap }}">Website</label>
+        <input id="{{ trap }}" name="{{ trap }}" type="text" tabindex="-1"
+               autocomplete="off" value="">
+      </div>
+
+      <label class="fieldlbl" for="first_name">{{ content.first_name }}</label>
+      <input class="input" id="first_name" name="first_name" type="text" required
+             maxlength="80" autocomplete="given-name"
+             value="{{ values.first_name if values else '' }}">
+
+      <label class="fieldlbl" for="last_name">{{ content.last_name }}</label>
+      <input class="input" id="last_name" name="last_name" type="text"
+             maxlength="80" autocomplete="family-name"
+             value="{{ values.last_name if values else '' }}">
+
+      <label class="fieldlbl" for="email">{{ content.email }}</label>
+      <input class="input" id="email" name="email" type="email"
+             maxlength="255" autocomplete="email" inputmode="email"
+             value="{{ values.email if values else '' }}">
+
+      <label class="fieldlbl" for="phone">{{ content.phone }}</label>
+      <input class="input" id="phone" name="phone" type="tel"
+             maxlength="40" autocomplete="tel" inputmode="tel"
+             value="{{ values.phone if values else '' }}">
+      <p class="fieldhint">{{ content.contact_hint }}</p>
+
+      <label class="fieldlbl" for="heard">{{ content.heard_label }}</label>
+      <select class="input select" id="heard" name="heard">
+        <option value="">{{ content.heard_blank }}</option>
+        {% for code, label in heard_choices %}
+          <option value="{{ code }}"
+            {% if values and values.heard == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <label class="fieldlbl" for="note">{{ content.note_label }}</label>
+      <textarea class="input" id="note" name="note" rows="4" maxlength="2000">{{ values.note if values else '' }}</textarea>
+      <p class="fieldhint">{{ content.note_hint }}</p>
+
+      <label class="check">
+        <input type="checkbox" name="wants_contact" value="1"
+               {% if values and values.wants_contact %}checked{% endif %}>
+        <span>{{ content.wants_contact }}</span>
+      </label>
+
+      <button class="btn wide" type="submit">{{ content.submit }}</button>
+    </form>
+
+    <p class="footnote">
+      <a href="{{ url_for('public.privacy') }}">{{ content.privacy_link }}</a>
+    </p>
+  {% endif %}
+{% endblock %}

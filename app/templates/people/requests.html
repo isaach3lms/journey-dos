@@ -43,6 +43,14 @@
               <b class="asklbl">{{ content.requests_address }}</b>
               <span class="askval">{{ ask.address or content.requests_none_given }}</span>
             </span>
+            {% if ask.has_spouse %}
+              <span class="askblock">
+                <b class="asklbl">{{ content.requests_spouse }}</b>
+                <span class="askval">{{ ask.spouse_name or content.requests_none_given }}{% if ask.spouse_email %}
+{{ ask.spouse_email }}{% endif %}{% if ask.spouse_phone %}
+{{ ask.spouse_phone }}{% endif %}</span>
+              </span>
+            {% endif %}
             <span class="askblock">
               <b class="asklbl">{{ content.requests_household }}</b>
               <span class="askval">{{ ask.household or content.requests_none_given }}</span>

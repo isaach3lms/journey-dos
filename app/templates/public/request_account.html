@@ -60,6 +60,27 @@
                 autocomplete="street-address">{{ values.address if values else '' }}</textarea>
       <p class="fieldhint">{{ content.address_hint }}</p>
 
+      {# Its own group with a heading, because it is about a different
+         person. Three unlabelled boxes after the address would read as more
+         of the asker's own details. #}
+      <h2 class="formgroup">{{ content.spouse_heading }}</h2>
+      <p class="fieldhint">{{ content.spouse_hint }}</p>
+
+      <label class="fieldlbl" for="spouse_name">{{ content.spouse_name }}</label>
+      <input class="input" id="spouse_name" name="spouse_name" type="text"
+             maxlength="160"
+             value="{{ values.spouse_name if values else '' }}">
+
+      <label class="fieldlbl" for="spouse_email">{{ content.spouse_email }}</label>
+      <input class="input" id="spouse_email" name="spouse_email" type="email"
+             maxlength="255" inputmode="email"
+             value="{{ values.spouse_email if values else '' }}">
+
+      <label class="fieldlbl" for="spouse_phone">{{ content.spouse_phone }}</label>
+      <input class="input" id="spouse_phone" name="spouse_phone" type="tel"
+             maxlength="40" inputmode="tel"
+             value="{{ values.spouse_phone if values else '' }}">
+
       <label class="fieldlbl" for="household">{{ content.household_label }}</label>
       <textarea class="input" id="household" name="household" rows="4"
                 maxlength="2000">{{ values.household if values else '' }}</textarea>

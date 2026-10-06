@@ -1933,7 +1933,13 @@ ul.policy span{color:var(--muted)}
 .fieldhint{font-size:11.5px;color:var(--muted-2);line-height:1.45;margin:6px 0 0}
 .cardform .input{width:100%}
 .cardform .check{margin:16px 0}
-.cardform textarea.input{font-family:var(--font-body);line-height:1.5;resize:vertical}
+/* `display:block` matters more than it looks. An inline-block textarea sits
+   on a text baseline, which leaves a strip of whitespace under it, so the
+   hint below a textarea sat noticeably lower than the same hint below an
+   input and the form read as unevenly spaced. */
+.cardform textarea.input{
+  display:block;font-family:var(--font-body);line-height:1.5;resize:vertical;
+}
 
 /* The connect card list.
 
@@ -1991,3 +1997,7 @@ ul.policy span{color:var(--muted)}
   color:var(--muted-2);font-weight:600;margin-bottom:2px;
 }
 .askval{display:block;white-space:pre-wrap;color:var(--ink);line-height:1.45}
+
+/* A heading inside a public form, marking where it stops asking about one
+   person and starts asking about another. */
+.formgroup{font-size:14px;margin:26px 0 0;padding-top:18px;border-top:1px solid var(--line-soft)}

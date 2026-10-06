@@ -431,3 +431,87 @@ class TestItCreatesNoAccountByItself:
         assert db.session.scalar(
             db.select(User).where(User.email == "marcus@example.com")
         ) is None
+
+
+class TestTheSpouse:
+    """Their own email and phone, as fields rather than buried in prose.
+
+    This is the one part of a household that usually needs a second login. An
+    account is an email address, and kids check-in looks a family up by phone,
+    so both have to come out of the form as values rather than be read out of
+    a sentence by whoever does the setup.
+    """
+
+    SPOUSE = {
+        **ASK,
+        "spouse_name": "Carla Delgado",
+        "spouse_email": "Carla@Example.com",
+        "spouse_phone": "(573) 555-0199",
+    }
+
+    def test_the_form_asks_for_them(self, client):
+        page = client.get("/request-account/", headers=H).get_data(as_text=True)
+
+        assert 'name="spouse_email"' in page
+        assert 'name="spouse_phone"' in page
+        assert 'name="spouse_name"' in page
+
+    def test_they_are_stored(self, db, journey, client):
+        client.post("/request-account/", data=self.SPOUSE, headers=H)
+
+        made = asks(db, journey)[0]
+        assert made.spouse_name == "Carla Delgado"
+        assert made.spouse_phone == "(573) 555-0199"
+
+    def test_the_spouse_email_is_lowercased(self, db, journey, client):
+        """It is an account address too, and two spellings of it are two
+        people as far as any lookup goes."""
+        client.post("/request-account/", data=self.SPOUSE, headers=H)
+
+        assert asks(db, journey)[0].spouse_email == "carla@example.com"
+
+    def test_they_are_in_the_email(self, db, journey, client):
+        """Whoever sets the accounts up needs both addresses in front of
+        them, not one and a sentence mentioning the other."""
+        client.post("/request-account/", data=self.SPOUSE, headers=H)
+
+        body = mail(db, journey)[0].body_text
+        assert "Carla Delgado" in body
+        assert "carla@example.com" in body
+        assert "555-0199" in body
+
+    def test_they_are_on_the_staff_list(self, db, journey, client, staff):
+        client.post("/request-account/", data=self.SPOUSE, headers=H)
+
+        page = client.get("/people/requests/", headers=H).get_data(as_text=True)
+
+        assert "Carla Delgado" in page
+        assert "carla@example.com" in page
+
+    def test_a_request_with_no_spouse_still_works(self, db, journey, client):
+        """Most will not have one, and the fields are optional."""
+        client.post("/request-account/", data=ASK, headers=H)
+
+        made = asks(db, journey)[0]
+        assert made.spouse_email is None
+        assert made.has_spouse is False
+
+    def test_the_spouse_block_is_hidden_when_there_is_none(self, db, journey,
+                                                           client, staff):
+        """An empty labelled block on every request is noise on the screen
+        somebody is working through."""
+        client.post("/request-account/", data=ASK, headers=H)
+
+        page = client.get("/people/requests/", headers=H).get_data(as_text=True)
+
+        assert "Mill Street" in page
+        assert ">Spouse<" not in page
+
+    def test_a_phone_alone_is_enough_to_show_the_block(self, db, journey,
+                                                       client, staff):
+        """Somebody who gives one of the three has given something worth
+        showing, and a block that needed all three would hide it."""
+        client.post("/request-account/",
+                    data={**ASK, "spouse_phone": "(573) 555-0199"}, headers=H)
+
+        assert asks(db, journey)[0].has_spouse is True

@@ -229,6 +229,9 @@ def request_account_submit():
             phone=request.form.get("phone", ""),
             address=request.form.get("address", ""),
             household=request.form.get("household", ""),
+            spouse_name=request.form.get("spouse_name", ""),
+            spouse_email=request.form.get("spouse_email", ""),
+            spouse_phone=request.form.get("spouse_phone", ""),
         )
     except accounts_requested.Refused as refused:
         return _account_page(error=ACCOUNT[refused.reason])

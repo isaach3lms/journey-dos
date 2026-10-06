@@ -60,6 +60,26 @@ class AccountRequest(TenantScoped, TimestampMixin, db.Model):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[Optional[str]] = mapped_column(String(40))
 
+    # A spouse's own contact details, separate from the household text.
+    #
+    # Collected as fields rather than left in the free-text box because this
+    # is the one part of a household that usually needs a second login: an
+    # account is an email address, and a phone number is what kids check-in
+    # looks a family up by. Pulling either out of a sentence by hand is how
+    # one of them gets typed wrong.
+    #
+    # The name is here too, which is one more field than was asked for. It is
+    # what makes the other two usable: an address with no name attached
+    # cannot be turned into an account without going back to the household
+    # text to work out whose it is.
+    spouse_name: Mapped[Optional[str]] = mapped_column(String(160))
+    spouse_email: Mapped[Optional[str]] = mapped_column(String(255))
+    spouse_phone: Mapped[Optional[str]] = mapped_column(String(40))
+
+    @property
+    def has_spouse(self) -> bool:
+        return bool(self.spouse_name or self.spouse_email or self.spouse_phone)
+
     # Free text, both of them, and deliberately so. A household is "my wife
     # Carla and two boys, 7 and 4" far more often than it is a set of fields,
     # and a form that insists on structure gets abandoned or filled with

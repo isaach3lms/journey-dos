@@ -667,6 +667,7 @@ PEOPLE = {
     "requests_count_one": "1 waiting",
     "requests_address": "Address",
     "requests_household": "Household",
+    "requests_spouse": "Spouse",
     "requests_none_given": "Not given",
     "requests_done": "Mark as set up",
     "requests_declined": "Decline",
@@ -685,6 +686,9 @@ PEOPLE = {
         "Email: {email}\n"
         "Phone: {phone}\n\n"
         "Address:\n{address}\n\n"
+        "Spouse: {spouse_name}\n"
+        "Spouse email: {spouse_email}\n"
+        "Spouse phone: {spouse_phone}\n\n"
         "Household:\n{household}\n\n"
         "The request is here, and can be marked off once it is done:\n"
         "{link}\n"
@@ -3471,10 +3475,21 @@ ACCOUNT = {
     "address_label": "Home address",
     "address_hint": "Optional. It saves the office asking later.",
 
+    "spouse_heading": "Your spouse",
+    "spouse_hint": (
+        "Only if you have one. Their own email means they get their own "
+        "sign-in rather than sharing yours, and a phone number is what "
+        "kids check-in looks your family up by."
+    ),
+    "spouse_name": "Their name",
+    "spouse_email": "Their email",
+    "spouse_phone": "Their phone",
+
     "household_label": "Who else is in your household?",
     "household_hint": (
-        "A spouse, and any children with their ages. Written however you "
-        "like. This is what gets your family set up for kids check-in."
+        "Children with their ages, and anybody else living with you. "
+        "Written however you like. This is what gets your family set up for "
+        "kids check-in."
     ),
 
     # Said plainly rather than left for somebody to assume. This form carries

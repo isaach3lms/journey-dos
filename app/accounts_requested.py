@@ -44,7 +44,9 @@ def clean(value: str | None, limit: int) -> str:
 
 
 def submit(church, *, first_name: str, last_name: str = "", email: str = "",
-           phone: str = "", address: str = "", household: str = "") -> AccountRequest:
+           phone: str = "", address: str = "", household: str = "",
+           spouse_name: str = "", spouse_email: str = "",
+           spouse_phone: str = "") -> AccountRequest:
     """Record a request. Caller commits."""
     first = clean(first_name, 80)
     email = clean(email, 255).lower()
@@ -78,6 +80,11 @@ def submit(church, *, first_name: str, last_name: str = "", email: str = "",
         phone=clean(phone, 40) or None,
         address=clean(address, MAX_TEXT) or None,
         household=clean(household, MAX_TEXT) or None,
+        spouse_name=clean(spouse_name, 160) or None,
+        # Lowercased like the main one, because it is an account address too
+        # and two spellings of it are two people as far as any lookup goes.
+        spouse_email=clean(spouse_email, 255).lower() or None,
+        spouse_phone=clean(spouse_phone, 40) or None,
     )
     db.session.add(made)
     db.session.flush()
@@ -108,6 +115,9 @@ def alert(church, made: AccountRequest, *, link: str) -> int:
                     phone=made.phone or PEOPLE["request_none"],
                     address=made.address or PEOPLE["request_none"],
                     household=made.household or PEOPLE["request_none"],
+                    spouse_name=made.spouse_name or PEOPLE["request_none"],
+                    spouse_email=made.spouse_email or PEOPLE["request_none"],
+                    spouse_phone=made.spouse_phone or PEOPLE["request_none"],
                     link=link,
                 ),
                 to_email=address,

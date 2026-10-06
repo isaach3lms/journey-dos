@@ -2013,3 +2013,8 @@ ul.policy span{color:var(--muted)}
 .flagbox .check{margin:0}
 .flagbox .fieldhint{margin:2px 0 14px 26px}
 .flagbox .btn{margin-top:2px}
+
+/* A heading over one age band on the check-in screen. Big, because the
+   person reading it is standing at an iPad with a queue behind them. */
+.bandhead{font-size:15px;margin:20px 0 10px}
+.bandhead:first-of-type{margin-top:4px}

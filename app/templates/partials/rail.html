@@ -25,7 +25,10 @@
           </a>
         {% endfor %}
 
-        {# Kids on the end, counted on their own. See the dashboard rail. #}
+        {# Kids and youth on the end, counted on their own and apart from
+           each other. A thirteen year old and a four year old need different
+           rooms and different volunteers, and one number covering both tells
+           whoever runs either of them nothing. See the dashboard rail. #}
         <a class="stage kidstage" href="{{ url_for('people.index', stage=kids_filter) }}"
            {% if active_stage == kids_filter %}aria-current="true"{% endif %}
            title="{{ content.kids_meaning }}">
@@ -33,6 +36,15 @@
           <div class="scount mono">{{ kids_count }}</div>
           <div class="bar"><i style="width: {{ ((kids_count / total * 100) if total else 0)|round(1) }}%"></i></div>
         </a>
+        {% if youth_filter %}
+          <a class="stage kidstage" href="{{ url_for('people.index', stage=youth_filter) }}"
+             {% if active_stage == youth_filter %}aria-current="true"{% endif %}
+             title="{{ content.youth_meaning }}">
+            <div class="sname">{{ content.youth_label }}</div>
+            <div class="scount mono">{{ youth_count }}</div>
+            <div class="bar"><i style="width: {{ ((youth_count / total * 100) if total else 0)|round(1) }}%"></i></div>
+          </a>
+        {% endif %}
       </div>
     {% endif %}
   </div>

@@ -335,6 +335,34 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         return self.background_check_ordered_on is not None
 
     is_child: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
+
+    # Which side of the kids/youth line, when the birthday is not the answer.
+    #
+    # Null is the normal state and means "work it out from the age", so a
+    # child becomes a youth on their thirteenth birthday with nobody doing
+    # anything. Set, it wins: a church keeping a thirteen year old with the
+    # kids, moving a twelve year old up, or classifying one of the many
+    # children whose birthday nobody ever recorded.
+    youth_override: Mapped[Optional[bool]] = mapped_column(db.Boolean)
+
+    @property
+    def age_group(self) -> str:
+        """kid, youth or adult. The one answer; see app/ages.py."""
+        from app.ages import group_for
+
+        return group_for(self)
+
+    @property
+    def is_youth(self) -> bool:
+        from app.ages import YOUTH
+
+        return self.age_group == YOUTH
+
+    @property
+    def is_kid(self) -> bool:
+        from app.ages import KID
+
+        return self.age_group == KID
     is_archived: Mapped[bool] = mapped_column(db.Boolean, nullable=False, default=False)
 
     notification_preferences: Mapped[list["NotificationPreference"]] = relationship(  # noqa: F821
@@ -461,16 +489,23 @@ class Person(TenantScoped, TimestampMixin, db.Model):
         stage: str | None = None,
         include_archived: bool = False,
         children: bool | None = None,
+        group: str | None = None,
     ):
         """`children` is a third state on purpose.
 
         None is everybody, True is the children on their own, and False is
         the adults. A stage filter passes False, because a five year old
         whose family are Members is not a Member the church is discipling.
+
+        `group` is the finer cut, one of kid, youth or adult, and it wins
+        when both are given: a caller asking for youth has already said
+        something about children.
         """
         query = cls.for_church(church_id, include_archived)
 
-        if children is not None:
+        if group is not None:
+            query = query.where(cls.in_group(group))
+        elif children is not None:
             query = query.where(cls.is_child.is_(children))
 
         if stage:
@@ -488,6 +523,51 @@ class Person(TenantScoped, TimestampMixin, db.Model):
             )
 
         return query.order_by(cls.last_name, cls.first_name)
+
+    @classmethod
+    def in_group(cls, group: str):
+        """The kids/youth/adults rule as something the database can answer.
+
+        It has to mean exactly what `app.ages.group_for` means, which is why
+        the shape is the same three branches in the same order. Keeping it in
+        SQL is what makes the roster filter and the rail counts a query
+        rather than a loop over every person in the church.
+        """
+        from app.ages import ADULT, KID, YOUTH, born_on_or_before
+
+        if group == ADULT:
+            return cls.is_child.is_(False)
+
+        cutoff = born_on_or_before()
+        by_age = db.and_(
+            cls.youth_override.is_(None),
+            cls.birthdate.is_not(None),
+            cls.birthdate <= cutoff,
+        )
+
+        if group == YOUTH:
+            return db.and_(
+                cls.is_child.is_(True),
+                db.or_(cls.youth_override.is_(True), by_age),
+            )
+
+        if group == KID:
+            return db.and_(
+                cls.is_child.is_(True),
+                db.not_(db.or_(cls.youth_override.is_(True), by_age)),
+            )
+
+        raise ValueError(f"{group!r} is not an age group.")
+
+    @classmethod
+    def group_count(cls, church_id: int, group: str) -> int:
+        return db.session.scalar(
+            db.select(func.count(cls.id)).where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.in_group(group),
+            )
+        ) or 0
 
     @classmethod
     def stage_counts(cls, church_id: int) -> dict[str, int]:

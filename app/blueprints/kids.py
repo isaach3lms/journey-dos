@@ -30,6 +30,7 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app.audit import record
+from app.ages import bands_for
 from app.content import KIDS
 from app.models.audit import CHILD_CHECKED_OUT, TAG_REPRINTED
 from app.extensions import db
@@ -205,6 +206,10 @@ def kiosk_family(household_id: int):
         content=KIDS,
         household=household,
         members=household.members,
+        # Grouped so a volunteer can see which room somebody is for. Built
+        # here rather than in the template, because the order is the point:
+        # kids first, because this screen is mostly used for them.
+        bands=bands_for(household.members),
         already=already,
         open_session=checkin_session,
     )

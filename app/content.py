@@ -161,6 +161,8 @@ DASHBOARD = {
     # not at a stage of anything; they are somebody's kid.
     "kids_label": "Kids",
     "kids_meaning": "Children on the roster, ready for check-in.",
+    "youth_label": "Youth",
+    "youth_meaning": "Thirteen and over, counted apart from the kids.",
     "kids_note": "In families",
     "open_people": "Open People",
     "stage_stuck": "{count} stuck",
@@ -442,7 +444,10 @@ PEOPLE = {
 
     "kids_label": "Kids",
     "kids_meaning": "Children on the roster, ready for check-in.",
+    "youth_label": "Youth",
+    "youth_meaning": "Thirteen and over, counted apart from the kids.",
     "kids_filter": "Kids",
+    "youth_filter": "Youth",
     "kids_tag": "Child",
     "kids_age": "{years} yrs",
     "kids_age_one": "1 yr",
@@ -490,6 +495,21 @@ PEOPLE = {
     "flag_giver_off": "No longer marked as a regular tither",
     "flag_check_on": "Background check marked as ordered",
     "flag_check_off": "Background check no longer marked as ordered",
+    "flag_group_changed": "Moved from {before} to {after}",
+    "flag_group_set": "Kids or youth set by hand",
+
+    # The kids/youth line on a child's own record. Three states: work it out
+    # from the birthday, or say which it is.
+    "youth_group_label": "Kids or youth",
+    "youth_group_auto": "Work it out from their birthday (currently {group})",
+    "youth_group_kid": "Kids",
+    "youth_group_youth": "Youth",
+    "youth_group_adult": "Adults",
+    "youth_group_hint": (
+        "Anyone {age} or over counts as youth once their birthday is on "
+        "file. Set it by hand for a child with no birthday recorded, or when "
+        "the age is not the right answer for them."
+    ),
     "timeline": "Timeline",
     # ---- Pastoral requests --------------------------------------------------
     "timeline_count": "{count} entries",

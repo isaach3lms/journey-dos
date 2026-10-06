@@ -171,6 +171,9 @@
             {{ stage.label }}
           </option>
         {% endfor %}
+        <option value="{{ youth_filter }}" {% if active_stage == youth_filter %}selected{% endif %}>
+          {{ content.youth_filter }}
+        </option>
         <option value="{{ kids_filter }}" {% if active_stage == kids_filter %}selected{% endif %}>
           {{ content.kids_filter }}
         </option>

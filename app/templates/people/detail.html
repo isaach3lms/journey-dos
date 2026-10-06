@@ -160,6 +160,25 @@
       </label>
       <p class="fieldhint">{{ content.flag_giver_hint }}</p>
 
+      {# Only for a child, because the kids/youth line does not apply to
+         anybody else, and a three-way box on an adult's record is a question
+         nobody asked. #}
+      {% if person.is_child %}
+        <label class="fieldlbl" for="youth_override">{{ content.youth_group_label }}</label>
+        <select class="input select" id="youth_override" name="youth_override">
+          <option value="" {% if person.youth_override is none %}selected{% endif %}>
+            {{ content.youth_group_auto.format(group=content['youth_group_' ~ person.age_group]) }}
+          </option>
+          <option value="kid" {% if person.youth_override is sameas false %}selected{% endif %}>
+            {{ content.youth_group_kid }}
+          </option>
+          <option value="youth" {% if person.youth_override is sameas true %}selected{% endif %}>
+            {{ content.youth_group_youth }}
+          </option>
+        </select>
+        <p class="fieldhint">{{ content.youth_group_hint.format(age=youth_from_age) }}</p>
+      {% endif %}
+
       <label class="check">
         <input type="checkbox" name="background_check_ordered" value="1"
                {% if person.background_check_ordered %}checked{% endif %}>

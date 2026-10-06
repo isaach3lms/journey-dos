@@ -7,21 +7,36 @@
   {% if members %}
     <form method="post">
       {{ csrf_field() }}
-      <div class="prefgrid">
-        {% for member in members %}
-          <div class="pref">
-            {% if member.id in already %}
-              <span class="tag">{{ content.family_already }}</span>
-              <span class="fl"><span class="pn">{{ member.full_name }}</span></span>
-            {% else %}
-              <label class="check">
-                <input type="checkbox" name="person_id" value="{{ member.id }}">
-                <span class="fl"><span class="pn">{{ member.full_name }}</span></span>
-              </label>
-            {% endif %}
+
+      {# Grouped, not filtered.
+
+         A volunteer at the iPad is deciding which room somebody walks to,
+         and a thirteen year old in a list with a four year old tells them
+         nothing. Everyone in the household is still here and still
+         checkable, including adults: this screen has never filtered anybody
+         out and starting now would quietly stop a family who have been
+         checking in for months. The headings are the whole change. #}
+      {% for band in bands %}
+        {% if band.members %}
+          <h2 class="bandhead">{{ band.label }}</h2>
+          <div class="prefgrid">
+            {% for member in band.members %}
+              <div class="pref">
+                {% if member.id in already %}
+                  <span class="tag">{{ content.family_already }}</span>
+                  <span class="fl"><span class="pn">{{ member.full_name }}</span></span>
+                {% else %}
+                  <label class="check">
+                    <input type="checkbox" name="person_id" value="{{ member.id }}">
+                    <span class="fl"><span class="pn">{{ member.full_name }}</span></span>
+                  </label>
+                {% endif %}
+              </div>
+            {% endfor %}
           </div>
-        {% endfor %}
-      </div>
+        {% endif %}
+      {% endfor %}
+
       <button class="btn wide" type="submit">{{ content.check_in }}</button>
     </form>
   {% else %}

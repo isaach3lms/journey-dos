@@ -60,7 +60,10 @@ from app.automation import enroll_for_stage, on_contact_logged, on_stage_changed
 from app.models.audit import SEQUENCE_STOPPED
 from app.mail import NotQueued, opt_in, opt_out, queue
 from app.security import min_role
+from app.ages import KID as AGE_KID, YOUTH as AGE_YOUTH, YOUTH_FROM_AGE
 from app.stages import (
+    AGE_FILTERS,
+    YOUTH,
     CONTACT_WINDOW_DAYS,
     STAGE_BY_CODE,
     is_forward,
@@ -84,20 +87,25 @@ def index():
     stage = (request.args.get("stage") or "").strip() or None
     page = max(1, request.args.get("page", type=int) or 1)
 
-    if stage and stage not in STAGE_BY_CODE and stage != KIDS:
+    if stage and stage not in STAGE_BY_CODE and stage not in AGE_FILTERS:
         # An unknown stage in the query string is a typo or a probe. Showing
         # everyone would silently misreport the filter, so refuse instead.
         abort(404)
 
-    # Kids are a filter, not a stage. Filtering by a real stage excludes them
-    # for the same reason the rail does not count them into one.
-    children = None
+    # Kids and youth are filters, not stages. Filtering by a real stage
+    # excludes both, for the same reason the rail does not count them into
+    # one: a child carries their family's stage so the roster has something
+    # to sort by, and is not somebody the church is discipling through it.
+    children, group = None, None
     if stage == KIDS:
-        children, stage = True, None
+        group, stage = AGE_KID, None
+    elif stage == YOUTH:
+        group, stage = AGE_YOUTH, None
     elif stage:
         children = False
 
-    query = Person.search(g.church.id, term=term, stage=stage, children=children)
+    query = Person.search(g.church.id, term=term, stage=stage,
+                          children=children, group=group)
     pagination = db.paginate(query, page=page, per_page=PAGE_SIZE, error_out=False)
 
     return render_template(
@@ -108,8 +116,10 @@ def index():
         pagination=pagination,
         stages=stages_for(g.church),
         counts=Person.stage_counts(g.church.id),
-        kids_count=Person.child_count(g.church.id),
+        kids_count=Person.group_count(g.church.id, AGE_KID),
         kids_filter=KIDS,
+        youth_count=Person.group_count(g.church.id, AGE_YOUTH),
+        youth_filter=YOUTH,
         total=Person.total_for_church(g.church.id),
         active_stage=request.args.get("stage") or None,
         term=term,
@@ -184,6 +194,7 @@ def detail(person_id: int):
         # computed in the template, so the page and the server agree on what
         # day it is.
         today=date.today(),
+        youth_from_age=YOUTH_FROM_AGE,
         recurring=db.session.scalars(
             ExternalRecurringGift.for_person(g.church.id, person.id)
         ).all(),
@@ -1467,6 +1478,22 @@ def set_flags(person_id: int):
         person.background_check_ordered_on = date.today() if ordered else None
         changes.append(PEOPLE["flag_check_on"] if ordered
                        else PEOPLE["flag_check_off"])
+
+    # The kids/youth line. Blank means "work it out from the birthday", which
+    # is the normal state and the one a church should land back on after a
+    # birthday gets corrected.
+    raw = (request.form.get("youth_override") or "").strip()
+    if person.is_child and raw in ("", "kid", "youth"):
+        wanted = None if raw == "" else (raw == "youth")
+        if wanted != person.youth_override:
+            was = person.age_group
+            person.youth_override = wanted
+            if person.age_group != was:
+                changes.append(PEOPLE["flag_group_changed"].format(
+                    before=PEOPLE["youth_group_" + was],
+                    after=PEOPLE["youth_group_" + person.age_group]))
+            else:
+                changes.append(PEOPLE["flag_group_set"])
 
     if not changes:
         return back

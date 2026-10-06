@@ -76,6 +76,16 @@ STAGES: tuple[Stage, ...] = (
 # their family has, and moves through these once they are not a child.
 KIDS = "kids"
 
+# Youth sit beside kids for the same reason and are counted separately from
+# them: a thirteen year old and a four year old need different rooms, a
+# different volunteer team and a different safeguarding answer, and one
+# number covering both tells the people running either of them nothing.
+YOUTH = "youth"
+
+# What the roster's stage box accepts beyond the real stages. Neither is a
+# stage, and a filter that is not one of these is a typo or a probe.
+AGE_FILTERS = (KIDS, YOUTH)
+
 TRANSITIONAL_STAGES: tuple[Stage, ...] = tuple(s for s in STAGES if s.is_transitional)
 
 STAGE_CODES: tuple[str, ...] = tuple(stage.code for stage in STAGES)

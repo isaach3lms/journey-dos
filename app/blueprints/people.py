@@ -114,6 +114,9 @@ def index():
             Person.waiting_for_approval(g.church.id)
         ).all(),
         archived_count=Person.archived_count(g.church.id),
+        # On the button, so staff can see there is something to read without
+        # opening the page to find out.
+        guest_cards=GuestCard.waiting_count(g.church.id),
         # For the child form's family picker. Children are the only thing
         # added from this page that must belong to one.
         households=db.session.scalars(

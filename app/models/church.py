@@ -26,6 +26,32 @@ from app.models.base import TimestampMixin
 SLUG_RE = re.compile(r"^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$")
 
 
+# Where a request for a login goes when a church has not named an inbox.
+#
+# A constant rather than a column default, so changing it is a deploy and not
+# a migration plus a backfill of every church row.
+DEFAULT_ACCOUNT_REQUEST_EMAIL = "isaac@betweensundaysconsulting.com"
+
+
+def _addresses(raw: str | None) -> list[str]:
+    """A typed list of addresses, cleaned. One parser for every such setting.
+
+    Commas and newlines both separate, because a person given a box types
+    whichever they think of first. Anything without an `@` is dropped rather
+    than queued and bounced, and duplicates are collapsed so one inbox does
+    not get two copies of the same alert.
+    """
+    text = (raw or "").replace(",", "\n")
+    seen, out = set(), []
+    for line in text.splitlines():
+        address = line.strip().lower()
+        if not address or "@" not in address or address in seen:
+            continue
+        seen.add(address)
+        out.append(address)
+    return out
+
+
 class Church(TimestampMixin, db.Model):
     __tablename__ = "church"
     __table_args__ = (
@@ -135,15 +161,29 @@ class Church(TimestampMixin, db.Model):
     @property
     def pastoral_recipients(self) -> list[str]:
         """The addresses, cleaned. Empty list means fall back to staff."""
-        raw = (self.pastoral_alert_emails or "").replace(",", "\n")
-        seen, out = set(), []
-        for line in raw.splitlines():
-            address = line.strip().lower()
-            if not address or "@" not in address or address in seen:
-                continue
-            seen.add(address)
-            out.append(address)
-        return out
+        return _addresses(self.pastoral_alert_emails)
+
+    # Who hears that a connect card came in. Same shape and same fallback as
+    # the pastoral list above: empty means every active staff account.
+    guest_alert_emails: Mapped[Optional[str]] = mapped_column(Text)
+
+    @property
+    def guest_recipients(self) -> list[str]:
+        return _addresses(self.guest_alert_emails)
+
+    # Where a guest's request for a login goes.
+    #
+    # Not the church's own staff by default, because creating an account is
+    # not a thing most church staff do: it is platform administration, and on
+    # every deployment so far that has been whoever set the church up. A
+    # church that wants to handle its own puts its address here.
+    account_request_email: Mapped[Optional[str]] = mapped_column(String(255))
+
+    @property
+    def account_request_recipients(self) -> list[str]:
+        """Where to send an account request. Falls back to the platform."""
+        named = _addresses(self.account_request_email)
+        return named or [DEFAULT_ACCOUNT_REQUEST_EMAIL]
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 

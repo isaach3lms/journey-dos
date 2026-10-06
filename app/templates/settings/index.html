@@ -373,6 +373,47 @@
     </div>
   </details>
 
+  {# Connect cards. Beside the pastoral row because they are the same kind of
+     decision: who reads something a person handed over about themselves. #}
+  <details class="setrow" id="guests" {% if open_row == 'guests' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.guests_heading }}</span>
+        <span class="pe">
+          {% if church.guest_recipients|length == 1 %}{{ content.guests_sub_one }}
+          {% elif church.guest_recipients %}{{ content.guests_sub.format(count=church.guest_recipients|length) }}
+          {% else %}{{ content.guests_sub_staff }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.guest_recipients %}pending{% endif %}">
+        {% if church.guest_recipients %}{{ content.guests_on }}{% else %}{{ content.guests_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.guests_intro }}</p>
+      <p class="muted small">{{ content.guests_privacy }}</p>
+      <form method="post" action="{{ url_for('settings.save_guest_recipients') }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="guest-emails">{{ content.guests_label }}</label>
+        <textarea class="input" id="guest-emails" name="emails" rows="4"
+                  spellcheck="false">{{ church.guest_alert_emails or "" }}</textarea>
+        <p class="muted small">{{ content.guests_empty_hint }}</p>
+
+        <h3>{{ content.guests_account_heading }}</h3>
+        <p class="muted small">{{ content.guests_account_intro }}</p>
+        <label class="flabel" for="account-email">{{ content.guests_account_label }}</label>
+        <input class="input" id="account-email" name="account_email" type="email"
+               spellcheck="false" maxlength="255"
+               placeholder="{{ church.account_request_recipients[0] }}"
+               value="{{ church.account_request_email or "" }}">
+        <p class="muted small">{{ content.guests_account_hint.format(fallback=church.account_request_recipients[0]) }}</p>
+
+        <button class="btn" type="submit">{{ content.guests_save }}</button>
+      </form>
+    </div>
+  </details>
+
   {# Check-in tablets.
 
      Here rather than under Kids because it is an account and a device, not a

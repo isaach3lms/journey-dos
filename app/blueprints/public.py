@@ -15,7 +15,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from flask import Blueprint, g, render_template, request, session
+from flask import (
+    Blueprint,
+    current_app,
+    g,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from app.content import COMMUNITY, PRIVACY, SUPPORT, WELCOME
 from app.models.guest import HEARD_CHOICES, HEARD_LABELS
@@ -129,7 +137,7 @@ def welcome_submit():
         return page(error=WELCOME["too_fast"])
 
     try:
-        guests.submit(
+        card = guests.submit(
             g.church.id,
             first_name=request.form.get("first_name", ""),
             last_name=request.form.get("last_name", ""),
@@ -138,9 +146,24 @@ def welcome_submit():
             heard=(request.form.get("heard") or "").strip(),
             note=request.form.get("note", ""),
             wants_contact=bool(request.form.get("wants_contact")),
+            wants_account=bool(request.form.get("wants_account")),
         )
     except guests.CardRefused as refused:
         return page(error=WELCOME[refused.reason])
+
+    # Telling staff must never be able to fail the submission. The guest has
+    # handed over their details and the row is written; an error page here
+    # would tell them their card did not go through when it did, and they
+    # would fill it in again.
+    try:
+        scheme = "https" if request.is_secure else "http"
+        path = url_for("people.guests")
+        link = url_for("people.guests", _external=True, _scheme=scheme)
+        guests.alert_staff(g.church, card, link=link, path=path)
+        if card.wants_account:
+            guests.request_account(g.church, card, link=link)
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception("could not alert staff about a card")
 
     db.session.commit()
     session[RECENT_KEY] = now

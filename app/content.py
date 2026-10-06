@@ -649,6 +649,7 @@ PEOPLE = {
     "guests_new_person": "New to us",
     "guests_known_person": "Already on the roster",
     "guests_wants_contact": "Asked to be contacted",
+    "guests_wants_account": "Asked for an account",
     "guests_heard": "Heard about you: {how}",
     "guests_no_record": "No roster record",
     "guests_open_person": "Open their record",
@@ -660,6 +661,31 @@ PEOPLE = {
     "guests_hide_discarded": "Hide discarded",
     "guests_discarded_by": "Discarded by {name}",
     "guests_back": "Back to people",
+    "guests_view": "View connect cards",
+
+    # What staff are told. Never what the guest wrote: a copy of somebody's
+    # words sitting in four inboxes cannot be taken back.
+    "guest_alert_subject": "{name} filled in a connect card",
+    "guest_alert_new": "Somebody new to us",
+    "guest_alert_known": "Already on the roster",
+    "guest_alert_body": (
+        "{name} filled in a connect card at {church}.\n\n"
+        "{what}.\n\n"
+        "What they wrote is on the card, here:\n{link}\n"
+    ),
+    "guest_push_title": "New connect card",
+    "guest_push_body": "{name} filled one in. Tap to read it.",
+
+    "account_request_subject": "{name} asked for an app account at {church}",
+    "account_request_body": (
+        "{name} filled in a connect card at {church} and asked to be set up "
+        "with a login for the app.\n\n"
+        "Email: {email}\n"
+        "Phone: {phone}\n\n"
+        "Their card is here:\n{link}\n"
+    ),
+    "account_request_no_email": "not given",
+    "account_request_no_phone": "not given",
 
     "waiting_heading": "Waiting to be let in",
     "waiting_intro": (
@@ -2789,6 +2815,37 @@ SETTINGS = {
     # Who can actually be reached. Counted over app accounts rather than the
     # whole roster: most of a roster has never signed in, and "12 of 400"
     # makes a working setup look broken.
+    # Connect card alerts, beside the pastoral ones in Settings.
+    "guests_heading": "Connect card alerts",
+    "guests_sub": "{count} addresses",
+    "guests_sub_one": "1 address",
+    "guests_sub_staff": "Every active staff account",
+    "guests_on": "Named",
+    "guests_off": "All staff",
+    "guests_intro": (
+        "Who is told when a guest fills in a connect card. Leave the box "
+        "empty and every active staff account is told, on email and on their "
+        "phone if they have notifications on."
+    ),
+    "guests_privacy": (
+        "The alert never carries what the guest wrote. It says a card came "
+        "in and links to it, so their words stay in the app."
+    ),
+    "guests_label": "One address per line",
+    "guests_empty_hint": "Empty means every active staff account.",
+    "guests_save": "Save",
+    "guests_saved": "Saved. New connect cards will go to these addresses.",
+
+    "guests_account_heading": "Requests for an app account",
+    "guests_account_intro": (
+        "A guest can tick a box asking to be set up with a login. Creating "
+        "one is platform administration rather than something church staff "
+        "normally do, so it goes to whoever set this church up unless you "
+        "name somebody else."
+    ),
+    "guests_account_label": "Send account requests to",
+    "guests_account_hint": "Empty sends them to {fallback}.",
+
     "push_reach_heading": "Who can be reached",
     "push_reach_hint": (
         "Counted over people with an account, not the whole roster. iPhone "
@@ -3327,6 +3384,11 @@ WELCOME = {
     "note_hint": "A question, something to pray about, or nothing at all.",
 
     "wants_contact": "I would like someone to reach out to me",
+    "wants_account": "Set me up with an account for the church app",
+    "wants_account_hint": (
+        "You will get an email with a link to choose your own password. "
+        "Nothing to install first."
+    ),
 
     "submit": "Send it",
 

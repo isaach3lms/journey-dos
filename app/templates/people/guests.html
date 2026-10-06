@@ -72,6 +72,9 @@
             {% if card.wants_contact %}
               <span class="pill">{{ content.guests_wants_contact }}</span>
             {% endif %}
+            {% if card.wants_account %}
+              <span class="pill">{{ content.guests_wants_account }}</span>
+            {% endif %}
             <span class="pill quiet">
               {% if card.is_new_person %}{{ content.guests_new_person }}
               {% else %}{{ content.guests_known_person }}{% endif %}

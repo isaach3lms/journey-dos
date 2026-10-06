@@ -73,6 +73,13 @@
         <span>{{ content.wants_contact }}</span>
       </label>
 
+      <label class="check">
+        <input type="checkbox" name="wants_account" value="1"
+               {% if values and values.wants_account %}checked{% endif %}>
+        <span>{{ content.wants_account }}</span>
+      </label>
+      <p class="fieldhint">{{ content.wants_account_hint }}</p>
+
       <button class="btn wide" type="submit">{{ content.submit }}</button>
     </form>
 

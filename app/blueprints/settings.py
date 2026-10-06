@@ -45,7 +45,8 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # redirect passes back so staff land on the row they just used.
 ROWS = (
     "brand", "accounts", "signup", "giving", "ccli",
-    "announcements", "pastoral", "kiosk", "email", "push", "audit", "support",
+    "announcements", "pastoral", "guests", "kiosk", "email", "push", "audit",
+    "support",
 )
 
 
@@ -420,6 +421,49 @@ def save_pastoral_recipients():
         "notice",
     )
     return _back("pastoral")
+
+
+@bp.post("/guests/")
+@login_required
+@min_role("staff")
+def save_guest_recipients():
+    """Who hears that a connect card came in, and who sets up a login.
+
+    Audited for the same reason the pastoral list is. Both decide who reads
+    something a person outside the church handed over about themselves, and
+    the second one routes it to an address that may not be at this church at
+    all, which is exactly the setting somebody should be able to look up a
+    year later.
+    """
+    church = g.church
+    before = (church.guest_recipients, church.account_request_recipients)
+
+    church.guest_alert_emails = (request.form.get("emails") or "").strip() or None
+    church.account_request_email = (
+        request.form.get("account_email") or "").strip().lower() or None
+
+    after = (church.guest_recipients, church.account_request_recipients)
+
+    if after != before:
+        alerts, accounts = after
+        record(
+            BRAND_CHANGED,
+            "Connect card alerts now go to "
+            + (f"{len(alerts)} named addresses" if alerts else "all active staff"),
+            actor=current_user,
+            subject_type="church",
+            subject_id=church.id,
+            subject_label=church.name,
+            detail=(
+                "cards: "
+                + (", ".join(alerts) if alerts else "every active staff account")
+                + " | account requests: " + ", ".join(accounts)
+            ),
+        )
+    db.session.commit()
+
+    flash(SETTINGS["guests_saved"], "notice")
+    return _back("guests")
 
 
 @bp.post("/kids-codes/")

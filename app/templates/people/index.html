@@ -8,6 +8,15 @@
 
 {# Collapsed by default: the roster is for reading, and a form sitting open
    above it pushes the list down every time somebody opens the tab. #}
+{# Where the cards are. The dashboard tile opens them too, but somebody
+   working through the roster is not looking at the dashboard, and a page
+   nobody can find is a page nobody reads. #}
+<div class="filters">
+  <a class="btn ghostbtn" href="{{ url_for('people.guests') }}">
+    {{ content.guests_view }}{% if guest_cards %} &middot; {{ guest_cards }}{% endif %}
+  </a>
+</div>
+
 <details class="addbox">
   <summary class="btn">{{ content.add_open }}</summary>
   <section class="card">

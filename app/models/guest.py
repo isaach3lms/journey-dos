@@ -86,6 +86,14 @@ class GuestCard(TenantScoped, TimestampMixin, db.Model):
         db.Boolean, nullable=False, default=False, server_default=db.false()
     )
 
+    # Asked to be set up with a login for the app. Separate from
+    # `wants_contact` because they are answered by different people: a
+    # conversation is the church's job, an account is whoever administers
+    # this platform for them.
+    wants_account: Mapped[bool] = mapped_column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+
     # Whether this card created a roster record or matched one that existed.
     # Worth keeping: "we had 27 guests" and "27 people we had never met" are
     # different numbers and a church will eventually ask for the second.

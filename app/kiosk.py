@@ -88,6 +88,7 @@ KIOSK_ENDPOINTS = frozenset({
     "pwa.manifest",
     "pwa.service_worker",
     "pwa.offline",
+    "pwa.favicon",
     "public.privacy",
     "public.community",
 })

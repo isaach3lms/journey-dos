@@ -69,6 +69,15 @@ class Palette:
 
     logo_reversed: str = "img/journey-logo-white.png"
 
+    # The folder holding this church's browser icons, under `static/img/`.
+    #
+    # A token rather than a path in a template, for the same reason the
+    # colours are: a second church on this platform must not get the first
+    # one's logo in its tab strip. Empty means this church has not supplied a
+    # mark yet, and the icon tags are left out entirely rather than falling
+    # back to somebody else's.
+    icon_dir: str = "img/icons/journey"
+
     radii: dict = field(default_factory=lambda: {"sm": "8px", "md": "14px", "lg": "20px"})
 
 
@@ -99,6 +108,7 @@ BETWEEN_SUNDAYS = Palette(
         "?family=Poppins:wght@400;500;600;700;800&display=swap"
     ),
     logo_reversed="",
+    icon_dir="",
 )
 
 PALETTES: dict[str, Palette] = {

@@ -12,6 +12,28 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css', v=asset_version) }}">
 <link rel="manifest" href="{{ url_for('pwa.manifest') }}">
 <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+
+{# The tab icon.
+
+   There was none, on any screen. A browser with no `rel="icon"` asks the
+   site root for `/favicon.ico`, which did not exist either, so every church
+   showed a blank page icon and every cold page load spent a request on a
+   404. Both ends are now answered: these tags, and a route at the root for
+   the request a browser makes anyway on a typed address or a bookmark.
+
+   Per church, from a brand token. A second church on this platform must not
+   get the first one's logo in its tab strip, so a church with no mark of its
+   own gets no tag rather than somebody else's. #}
+{% if palette.icon_dir %}
+  <link rel="icon" type="image/png" sizes="32x32"
+        href="{{ url_for('static', filename=palette.icon_dir ~ '/favicon-32.png', v=asset_version) }}">
+  <link rel="icon" type="image/png" sizes="16x16"
+        href="{{ url_for('static', filename=palette.icon_dir ~ '/favicon-16.png', v=asset_version) }}">
+  {# For a tab strip at higher density, and for Android's "add to home
+     screen" when it reads the link tags rather than the manifest. #}
+  <link rel="icon" type="image/png" sizes="192x192"
+        href="{{ url_for('static', filename=palette.icon_dir ~ '/favicon-192.png', v=asset_version) }}">
+{% endif %}
 <meta name="theme-color" content="{{ palette.deep }}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">

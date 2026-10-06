@@ -25,7 +25,18 @@ tradeoff at all.
 
 from __future__ import annotations
 
-from flask import Blueprint, Response, g, render_template, url_for
+from pathlib import Path
+
+from flask import (
+    Blueprint,
+    Response,
+    abort,
+    current_app,
+    g,
+    render_template,
+    send_from_directory,
+    url_for,
+)
 
 from app.brand import palette_for
 from app.content import PWA
@@ -49,7 +60,11 @@ def _asset_fingerprint() -> str:
 
     static = _Path(__file__).resolve().parent.parent / "static"
     digest = hashlib.sha256()
-    for name in sorted(("css/app.css", "img/icon-192.png")):
+    # The tab icon counts too. Without it, swapping a church's mark leaves
+    # every browser that has the page cached showing the old one, with
+    # nothing in a deploy to explain why.
+    for name in sorted(("css/app.css", "img/icon-192.png",
+                        "img/icons/journey/favicon-32.png")):
         path = static / name
         if path.exists():
             digest.update(path.read_bytes())
@@ -205,3 +220,31 @@ def offline():
     on a device that may have been handed to somebody else.
     """
     return render_template("pwa/offline.html", church=g.church, content=PWA)
+
+
+@bp.get("/favicon.ico")
+def favicon():
+    """The icon a browser asks for without being told to.
+
+    Link tags in the head cover a page somebody is already looking at. This
+    covers the rest: a typed address, a bookmark, a history entry, an RSS
+    reader, a link preview. Browsers request this path at the site root on
+    their own, and before this existed every one of those requests was a 404
+    that got logged and rendered a blank page icon.
+
+    A route rather than a file at the root, because the answer depends on
+    which church the hostname resolved to. A static `/favicon.ico` would
+    serve one church's logo to all of them.
+    """
+    palette = palette_for(g.church)
+    if not palette.icon_dir:
+        # No mark for this church. A 404 is the honest answer and the browser
+        # draws its own default; serving another church's logo would not be.
+        abort(404)
+
+    return send_from_directory(
+        Path(current_app.root_path) / "static" / palette.icon_dir,
+        "favicon.ico",
+        mimetype="image/x-icon",
+        max_age=60 * 60 * 24 * 30,
+    )

@@ -1027,6 +1027,12 @@ MEMBER = {
         "to read it and to mark it dealt with:\n{link}\n\n"
         "Nobody else has been told."
     ),
+    # The notification carries less than the email, which carries less than
+    # the request. A lock screen is read by whoever is standing near it, so
+    # this says a name and the fact of it and stops. Not the kind of ask, not
+    # how they want to be reached, and certainly not a word they wrote.
+    "support_push_title": "Someone asked for support",
+    "support_push_body": "{name} asked for pastoral support. Tap to read it.",
     "support_no_person": (
         "Your login is not linked to a record yet, so we cannot route this to "
         "a pastor. Email the church office and they will sort it in a minute."
@@ -2083,10 +2089,34 @@ SERVICES = {
     "who_heading": "Who is serving",
     "who_empty": "Nobody asked yet.",
     "assign": "Ask them",
-    "assigned": "{name} asked to play {position}.",
+    # Two of these, because the flash message used to claim something that
+    # had not happened. "Asked to play drums" was shown for a plan that sent
+    # nothing, so a leader believed the team knew. Now the wording says which
+    # of the two actually occurred.
+    "assigned": "{name} added to the plan. Publish it to ask them.",
+    "assigned_asked": "{name} asked to play {position}.",
     "already_asked": "{name} has already been asked for that.",
     "unassign": "Remove",
     "unassigned": "Removed from the plan.",
+    "unassigned_told": "Removed from the plan, and told.",
+
+    # Being taken off a plan, for somebody who was asked about it. Nobody who
+    # was never asked hears this.
+    "removed_subject": "You are off the plan for {date}",
+    "removed_body": (
+        "Hi {name},\n\n"
+        "You have been taken off the plan for {service} on {date}. You were "
+        "down for {position}.\n\n"
+        "Nothing is needed from you. If this looks wrong, reply to whoever "
+        "asked you and they can put you back on.\n\n{church}"
+    ),
+    "removed_push_title": "{church}",
+    "removed_push_body": "You are off the plan for {date} ({position}).",
+
+    # The running order does not fit in a notification and reads as nonsense
+    # truncated, so this says the plan is out and which slot they are in.
+    "plan_push_title": "{service} plan is out",
+    "plan_push_body": "You are on for {position}, {date}. Tap for the order.",
 
     "send_heading": "Send the plan",
     "send_hint": (
@@ -2377,6 +2407,46 @@ KIDS = {
         "{church}"
     ),
 
+    # ---------------------------------------------------------------------
+    # Telling a household who is in a room and who has left it.
+    #
+    # The pickup code appears in none of these. It is a live credential for
+    # removing a child from a room, it already lives on the printed tag that
+    # was handed to one person, and a notification is rendered on a lock
+    # screen in a crowded lobby and delivered by a company that is not us.
+    # ---------------------------------------------------------------------
+    "notify_somebody": "Your family",
+    "notify_in_subject": "{names} checked in",
+    "notify_in_body": (
+        "Hi {name},\n\n"
+        "{names} checked in at {church} this morning.{where}\n\n"
+        "The pickup code is on the tag printed at the desk. You will need it "
+        "to collect them, and it is not in this email on purpose.\n\n"
+        "{church}"
+    ),
+    "notify_in_rooms": " Room: {rooms}.",
+    "notify_in_no_room": "",
+    "notify_in_push_title": "{church}",
+    "notify_in_push": "{names} checked in.",
+    "notify_in_push_rooms": "{names} checked in. Room: {rooms}.",
+
+    "notify_out_subject": "{names} collected",
+    "notify_out_body": (
+        "Hi {name},\n\n"
+        "{names} have been collected from kids at {church}.{by}\n\n"
+        "If that was not expected, find a leader at the desk now rather than "
+        "replying to this.\n\n"
+        "{church}"
+    ),
+    # Free text a volunteer typed, so it goes in as written. Often a
+    # grandparent who is not on the roster, which is exactly the case worth
+    # telling a parent sitting in the service about.
+    "notify_out_by": " Collected by: {who}.",
+    "notify_out_by_nobody": " Nobody was recorded as collecting them.",
+    "notify_out_push_title": "{church}",
+    "notify_out_push": "{names} have been collected.",
+    "notify_out_push_by": "{names} collected by {who}.",
+
     # Check-out
     "checkout_heading": "Collect a child",
     "checkout_prompt": "Enter the pickup code from the check-in.",
@@ -2514,6 +2584,11 @@ MESSAGES = {
     "alert_action_report": "reported",
     "alert_action_block": "blocked the author of",
     "alert_reason": "Their reason: {reason}\n\n",
+    # No reporter name, no author name, no reason. All three are on the
+    # reports screen a tap away, and a notification naming two members of a
+    # church to each other is a notification that makes things worse.
+    "alert_push_title": "A message was reported",
+    "alert_push_body": "In {room}. Tap to decide what happens to it.",
 
     "post_empty": "Say something first.",
     "post_forbidden": "You cannot post here.",
@@ -2947,6 +3022,25 @@ SETTINGS = {
         "The way to move the last number is to get people into the app. A "
         "church-wide email from the Messages tab is the one channel that "
         "reaches everybody regardless of notifications."
+    ),
+
+    # The list of what is supposed to send. This row exists because the only
+    # symptom available was "some come through but not all": a notification
+    # that does not arrive looks exactly like one nobody sent, and no screen
+    # said which was which.
+    "sends_heading": "What sends a notification",
+    "sends_sub": "{count} things this app tells people about",
+    "sends_pill": "{count} send notifications",
+    "sends_intro": (
+        "Every message this app sends on its own, who hears about it, and "
+        "whether it arrives as an email, a notification, or both. If "
+        "something on this list is not reaching you, say which row and "
+        "whether the email or the notification is the half that is missing."
+    ),
+    "sends_hint": (
+        "Members choose which of these they want under their own settings, "
+        "except the ones about accounts, kids check-in, pastoral requests, "
+        "connect cards and chat reports. Those always send."
     ),
 
     "brand_heading": "Your brand",

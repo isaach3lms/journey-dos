@@ -32,6 +32,7 @@ from flask_login import current_user, login_required
 from app.audit import record
 from app.ages import bands_for
 from app.content import KIDS
+from app.kids_notify import tell_checked_in, tell_checked_out
 from app.models.audit import CHILD_CHECKED_OUT, TAG_REPRINTED
 from app.extensions import db
 from app.mail import NotQueued, queue
@@ -260,6 +261,12 @@ def kiosk_check_in(household_id: int):
         )
         checked_in.append(person)
 
+    # Committed before the rows are read, and that is load bearing. The loop
+    # above read `checkin_session.checkins` to skip anybody already in, which
+    # loads the collection; new rows added to the session do not appear in a
+    # collection that is already loaded until something expires it. A flush
+    # here instead of a commit leaves `rows` empty, which silently prints a
+    # label page with no tags on it.
     db.session.commit()
 
     # The rows, not just the people, because a tag carries the room and the
@@ -269,6 +276,14 @@ def kiosk_check_in(household_id: int):
         if c.household_id == household.id
         and c.person_id in {p.id for p in checked_in}
     ]
+
+    # Tell the household's adults. Not the pickup code: that stays on the
+    # printed tag, where it is handed to one person rather than rendered on a
+    # lock screen. See app/kids_notify.py.
+    if rows:
+        tell_checked_in(g.church, household, checked_in, rows,
+                        by_user=current_user)
+        db.session.commit()
 
     return render_template(
         "kids/label.html",
@@ -704,6 +719,11 @@ def check_out_one(checkin_id: int):
         subject_label=checkin.person.full_name,
         detail=KIDS["roster_no_name"],
     )
+
+    # Told the same way as the desk, with no name for who collected them,
+    # because that is the truth here and this route refuses to invent one.
+    tell_checked_out(g.church, [checkin], collected_by=None, by_user=current_user)
+
     db.session.commit()
 
     flash(KIDS["roster_checked_out"].format(name=checkin.person.full_name),
@@ -743,12 +763,14 @@ def do_checkout():
 
     collected_by = (request.form.get("collected_by") or "").strip()
     names = []
+    collected = []
     for checkin_id in checkin_ids:
         checkin = allowed.get(checkin_id)
         if checkin is None or not checkin.is_present:
             continue
         checkin.check_out(collected_by=collected_by, user=current_user)
         names.append(checkin.person.full_name)
+        collected.append(checkin)
         # The pickup code is deliberately not recorded. Who left with a child
         # is the fact worth keeping; the code that authorised it is a secret.
         record(
@@ -760,6 +782,13 @@ def do_checkout():
             subject_id=checkin.id,
             subject_label=checkin.person.full_name,
         )
+
+    # The notification somebody is actually waiting on. A grandparent collects
+    # a child at 11:40 and the parent in the service used to find out by
+    # walking to an empty room.
+    if collected:
+        tell_checked_out(g.church, collected, collected_by=collected_by,
+                         by_user=current_user)
 
     db.session.commit()
 

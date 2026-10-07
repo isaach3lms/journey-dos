@@ -554,6 +554,41 @@
     </div>
   </details>
 
+  {# What is supposed to happen, so "some come through but not all" can be
+     reported as something specific. A notification that does not arrive looks
+     exactly like one nobody sent, and before this row there was no screen
+     anywhere that said which was which. See app/notify_catalogue.py. #}
+  <details class="setrow" id="sends" {% if open_row == 'sends' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.sends_heading }}</span>
+        <span class="pe">{{ content.sends_sub.format(count=sends_count) }}</span>
+      </span>
+      <span class="pill">{{ content.sends_pill.format(count=sends_pushing) }}</span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.sends_intro }}</p>
+      {% for group in sends %}
+        <h4 class="sendgroup">{{ group.title }}</h4>
+        <ul class="sendlist">
+          {% for event in group.events %}
+            <li>
+              <div class="tlt">{{ event.what }}</div>
+              <div class="tld">
+                {{ event.channel_label }} &middot; {{ event.who }}
+              </div>
+              {% if event.note %}
+                <div class="tld">{{ event.note }}</div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endfor %}
+      <p class="muted small">{{ content.sends_hint }}</p>
+    </div>
+  </details>
+
   <details class="setrow" id="audit" {% if open_row == 'audit' %}open{% endif %}>
     <summary>
       <span class="fl">

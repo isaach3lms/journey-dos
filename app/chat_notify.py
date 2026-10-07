@@ -32,6 +32,81 @@ WINDOW_MINUTES = 30
 EXCERPT_CHARS = 300
 
 
+def notify_announcement(conversation, message, body: str, *,
+                        also_email: bool = False) -> tuple[int, int]:
+    """Tell the church an announcement was posted. Returns (emailed, pushed).
+
+    Caller commits.
+
+    **Announcements pushed nobody at all.** `notify_new_message` excludes them
+    on purpose, because emailing three hundred people every time somebody
+    posts to the whole church is how a church teaches its members to filter
+    its mail. But that exclusion was written when email was the only channel,
+    and it took the notification out with it: a pastor posted an announcement
+    in the app and not one phone made a sound unless they also ticked a box
+    labelled "email it as well".
+
+    So the two channels split the way they should have from the start. **The
+    notification always goes**, because that is what somebody installing a
+    church app is asking for and it costs them a glance. **The email goes only
+    when the person posting ticked the box**, because that is a letter and it
+    cannot be taken back.
+
+    Who counts as "everyone" comes from `app.broadcast` rather than being
+    decided here, so this and the Send email screen cannot disagree about it.
+    They did disagree before: the email loop here reached children, archived
+    people, and self-registered people still waiting for approval, because it
+    checked only for an address and consent.
+    """
+    from app.broadcast import EVERYONE, resolve
+    from app.content import MESSAGES as COPY
+
+    emailed = pushed = 0
+    try:
+        path = url_for("member.chat_thread", conversation_id=conversation.id)
+    except Exception:  # noqa: BLE001
+        path = "/"
+
+    # One key per post, so a double-submitted form is one announcement. The
+    # message id rather than a count of messages in the room: the old key
+    # used `len(conversation.messages)`, which two posts in one second can
+    # read the same value for.
+    stem = f"announcement:{conversation.id}:message:{message.id}"
+    excerpt = (body or "").strip()[:EXCERPT_CHARS]
+
+    for person in resolve(conversation.church_id, EVERYONE):
+        try:
+            result = notify(
+                person=person,
+                church_id=conversation.church_id,
+                category="announcement",
+                subject=COPY["email_subject"].format(
+                    church=person.church.name, title=conversation.title
+                ),
+                body_text=body,
+                push_title=conversation.title,
+                push_body=excerpt[:140],
+                url=path,
+                # One tag for the whole channel. An announcement replaces the
+                # last one rather than stacking: a member who was away for a
+                # week comes back to one badge, not nine.
+                tag="announcement",
+                dedupe_key=f"{stem}:person:{person.id}",
+                email=also_email,
+            )
+        except NotQueued:
+            continue
+        except Exception:  # noqa: BLE001
+            current_app.logger.exception("Announcement notification failed")
+            continue
+        if result.emailed:
+            person.ensure_unsubscribe_token()
+            emailed += 1
+        pushed += result.pushed
+
+    return emailed, pushed
+
+
 def _window_key(now) -> str:
     """The half hour this message falls in, as a stable string."""
     stamp = now.replace(second=0, microsecond=0)
@@ -69,8 +144,13 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
     queued = 0
     for membership in conversation.members:
         person = membership.person
-        if person is None or person.id == author_id or not person.email:
+        if person is None or person.id == author_id:
             continue
+        # No email address is not a reason to skip. `notify` pushes somebody
+        # whose roster record has no address, and the `not person.email` gate
+        # that used to be on this line threw away their notification along
+        # with the email they were never going to get. On an app-first roster
+        # that is most of a youth group.
         if person.is_archived:
             continue
         # Somebody who blocked this author asked not to see them. An email is

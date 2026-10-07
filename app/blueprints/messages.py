@@ -36,10 +36,9 @@ from app.models.moderation import (
     REPORT_REMOVED,
     MessageReport,
 )
-from app.chat_notify import notify_new_message
+from app.chat_notify import notify_announcement, notify_new_message
 from app.moderation import objectionable_terms
 from app.extensions import db
-from app.mail import NotQueued, queue
 from app.models import (
     CONVERSATION_KINDS,
     KIND_ANNOUNCEMENT,
@@ -186,11 +185,20 @@ def post(conversation_id: int):
 
     posted = Message.post(conversation, person, body[:4000], author_name=current_user.name)
     db.session.flush()
-    notify_new_message(conversation, posted, author_person=person, author_name=current_user.name)
 
     queued = 0
-    if request.form.get("also_email") == "on" and conversation.is_announcement:
-        queued = _email_announcement(conversation, body)
+    if conversation.is_announcement:
+        # Both channels through one call, with the tick box choosing only
+        # whether email is one of them. An announcement pushed nobody at all
+        # before this: the chat notifier excludes announcements, and the only
+        # thing here was the email. See app/chat_notify.py.
+        queued, _ = notify_announcement(
+            conversation, posted, body,
+            also_email=request.form.get("also_email") == "on",
+        )
+    else:
+        notify_new_message(conversation, posted, author_person=person,
+                           author_name=current_user.name)
 
     db.session.commit()
 
@@ -201,39 +209,11 @@ def post(conversation_id: int):
     return redirect(url_for("messages.thread", conversation_id=conversation.id))
 
 
-def _email_announcement(conversation, body: str) -> int:
-    """Send an announcement by email as well as posting it.
-
-    Under the `announcement` category, which is opt-out-able. Somebody who
-    turned church announcements off still sees it in the app; they simply do
-    not get a second copy in their inbox, which is what they asked for.
-
-    Who counts as "everyone" comes from `app.broadcast` rather than being
-    decided here, so this and the Send email screen cannot disagree about it.
-    They did disagree before: this loop emailed children, archived people, and
-    self-registered people still waiting for approval, because it checked only
-    for an address and consent.
-    """
-    queued = 0
-    for person in resolve(g.church.id, EVERYONE):
-        try:
-            message = queue(
-                church_id=g.church.id,
-                category="announcement",
-                subject=MESSAGES["email_subject"].format(
-                    church=g.church.name, title=conversation.title
-                ),
-                body_text=body,
-                person=person,
-                dedupe_key=f"announcement:{conversation.id}:{len(conversation.messages)}"
-                f":person:{person.id}",
-            )
-        except NotQueued:
-            continue
-        if message is not None:
-            person.ensure_unsubscribe_token()
-            queued += 1
-    return queued
+# Emailing an announcement used to live here as its own loop, which is how it
+# came to push nobody: this function was the whole of "tell the church
+# something was posted", and it only knew about email. It now lives in
+# app/chat_notify.py as `notify_announcement`, which does both channels and
+# takes the tick box as an argument.
 
 
 # ---------------------------------------------------------------------------

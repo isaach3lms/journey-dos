@@ -187,19 +187,6 @@ def submit(church_id: int, *, first_name: str, last_name: str = "",
 # copy of somebody's words sitting in four inboxes cannot be taken back.
 # ---------------------------------------------------------------------------
 
-def _staff_users(church_id: int):
-    from app.models import User
-
-    return db.session.scalars(
-        db.select(User).where(
-            User.church_id == church_id,
-            User.role == "staff",
-            User.is_active_account.is_(True),
-            User.is_kiosk.is_(False),
-        )
-    ).all()
-
-
 def alert_staff(church, card: GuestCard, *, link: str, path: str) -> int:
     """Tell the church a card came in. Returns how many were told.
 
@@ -211,76 +198,31 @@ def alert_staff(church, card: GuestCard, *, link: str, path: str) -> int:
     has already handed over their details and an error page would tell them
     their card did not go through when it did.
     """
+    from app.alerts import tell_staff
     from app.content import PEOPLE
-    from app.mail import NotQueued, queue
-    from app.notify import notify
 
-    subject = PEOPLE["guest_alert_subject"].format(name=card.full_name)
-    body = PEOPLE["guest_alert_body"].format(
-        name=card.full_name,
-        church=church.name,
-        what=PEOPLE["guest_alert_new"] if card.is_new_person
-        else PEOPLE["guest_alert_known"],
-        link=link,
-    )
-
-    told = 0
-    named = church.guest_recipients
-
-    if named:
-        # Addresses rather than accounts: most of a care team is not a login
-        # in this system. Email only, because there is no person to push to.
-        for address in named:
-            try:
-                queue(
-                    church_id=church.id,
-                    category=CATEGORY,
-                    subject=subject,
-                    body_text=body,
-                    to_email=address,
-                    dedupe_key=f"guest:{card.id}:{address}",
-                )
-            except NotQueued:
-                continue
-            told += 1
-        return told
-
-    # Nobody named, so every active staff account. These are people, so they
-    # get the notification on their phone as well as the email, which on a
-    # Sunday morning is the half that actually reaches anybody.
-    for user in _staff_users(church.id):
-        if user.person is not None:
-            notify(
-                person=user.person,
-                church_id=church.id,
-                category=CATEGORY,
-                subject=subject,
-                body_text=body,
-                push_title=PEOPLE["guest_push_title"],
-                push_body=PEOPLE["guest_push_body"].format(name=card.full_name),
-                url=path,
-                tag="guest-card",
-                dedupe_key=f"guest:{card.id}:{user.id}",
-            )
-            told += 1
-            continue
-        if not user.email:
-            continue
-        try:
-            queue(
-                church_id=church.id,
-                category=CATEGORY,
-                subject=subject,
-                body_text=body,
-                to_email=user.email,
-                to_name=user.name,
-                dedupe_key=f"guest:{card.id}:{user.id}",
-            )
-        except NotQueued:
-            continue
-        told += 1
-
-    return told
+    # Both branches, named addresses and staff accounts, used to live here.
+    # Three other screens had their own copy of the same two branches and
+    # three of them got the push half wrong, so there is now one of it. See
+    # app/alerts.py.
+    return tell_staff(
+        church,
+        category=CATEGORY,
+        subject=PEOPLE["guest_alert_subject"].format(name=card.full_name),
+        body_text=PEOPLE["guest_alert_body"].format(
+            name=card.full_name,
+            church=church.name,
+            what=PEOPLE["guest_alert_new"] if card.is_new_person
+            else PEOPLE["guest_alert_known"],
+            link=link,
+        ),
+        push_title=PEOPLE["guest_push_title"],
+        push_body=PEOPLE["guest_push_body"].format(name=card.full_name),
+        path=path,
+        tag="guest-card",
+        key=f"guest:{card.id}",
+        named=church.guest_recipients,
+    ).reached
 
 
 def request_account(church, card: GuestCard, *, link: str) -> int:

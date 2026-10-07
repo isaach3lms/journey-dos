@@ -1378,9 +1378,20 @@ nothing. `flask purge-push` runs on the same cron as the outbox.
 **A payload says little.** Lock screens are readable by whoever is standing
 nearby, so a notification carries a title and one short line: enough to get
 somebody to open the app, which is the only thing it needs to do. No giving
-amounts, nothing from a private conversation, no child's name. Notifications
-carry a tag so a repeat replaces rather than stacks, because three copies of
-the same reminder is how somebody turns them off for good.
+amounts, nothing from a private conversation, no pickup code, and nothing a
+person wrote when they asked for help. Notifications carry a tag so a repeat
+replaces rather than stacks, because three copies of the same reminder is how
+somebody turns them off for good.
+
+A child's first name is the one exception, and only on the notification
+telling that child's own household they were checked in or collected. The
+rule it bends to is that a notification has to be worth opening: a parent of
+three reading "a child was checked in" has learned nothing, and a parent in
+the service reading "collected by Grandma Webb" has learned the only thing
+that matters. What stays out is the part that is a credential. The pickup
+code is never in a notification or an email, on any screen, for anybody. It
+goes on the printed tag, handed to one person at the desk, because that is
+the whole safety model and a lock screen is not it.
 
 **Setup.** `flask vapid-keys` generates the pair. One pair covers every church:
 VAPID identifies this application to the push services, not the tenant.
@@ -1532,6 +1543,100 @@ once, here, and never committed.
 
 The client demo deploys as a separate free static site from `./public`, so the
 link you have already shared keeps working.
+
+---
+
+## What actually sends a notification
+
+This section exists because of the shape of the bug that produced it.
+
+Push was built, tested, and wired to nothing: `send_to_person` had no callers
+and every notification in the system went out by email only. That was fixed by
+writing `app/notify.py`, one function that does both channels, so a caller
+that forgets push is a caller that does not exist. Then four more send sites
+turned up still calling `app.mail.queue` directly, and three things were
+sending nothing at all.
+
+**The symptom was "some come through but not all", and that is the only
+symptom available.** A notification that does not arrive looks exactly like
+one nobody sent. The email that does arrive makes the feature look finished.
+Nobody can report this precisely, so nobody did, for months.
+
+Three things came out of that.
+
+### One function, and a test that enforces it
+
+`app/notify.py::notify` emails and pushes. `tests/test_notify_coverage.py`
+parses every module under `app/` and fails if anything calls `queue` outside a
+list of exemptions, each of which carries a written reason. A new send site has
+two ways past it: use `notify`, or write a sentence a reviewer can argue with.
+The same test checks the exemptions are still live, so a file that stops
+sending email loses its permission to forget push rather than keeping it for
+whoever edits that file next.
+
+On its first run it caught three stale exemptions written minutes earlier.
+
+### One function for telling staff
+
+A connect card, a pastoral request, a reported message and an account request
+all needed "email the addresses this church typed in, or notify the staff
+accounts". Four copies existed and three had the second branch wrong. Two also
+missed that a **kiosk account holds staff role**, because the lobby iPad needs
+it to run check-in: those two would have emailed a member's request for
+pastoral help to a shared device and pushed it to a screen facing a room full
+of families.
+
+`app/alerts.py::tell_staff` is the one copy. The kiosk exclusion is in it, and
+a test asserts a kiosk account is neither emailed nor pushed.
+
+### A screen that says what is supposed to happen
+
+`app/notify_catalogue.py` lists every event, who hears about it, and which
+channels it uses, rendered in Settings. It turns "notifications are flaky"
+into "scheduled to serve says email and notification and I only got the
+email", which is a bug report somebody can act on.
+
+It is checked against the code rather than trusted: every category it names
+has to exist, every category a member can switch off has to appear on it, and
+`tests/test_notify_catalogue.py` fails if the modules behind the four
+previously broken paths stop sending. A hand-kept list drifts within a month
+and then actively misleads, which is worse than no list.
+
+### What the three silent paths were
+
+**Being scheduled to serve.** Adding somebody to a plan sent nothing. The
+flash message said "asked to play drums" about a person who had not been
+asked anything; the only thing that ever sent was a button a leader had to
+remember to press. Assigning is now asking, publishing releases the asks a
+draft built up, and a draft still sends nothing so a leader can move people
+around on Thursday without pinging the team twelve times. One function in
+`app/serving_notify.py` serves all three, sharing one dedupe key, so
+assigning somebody and pressing "Ask the rest again" a minute later is one
+notification.
+
+**A child or youth being checked in or collected.** Check-in was survivable
+without one, because the parent walks away from the desk holding the tag.
+Check-out was not: a grandparent collects at 11:40 and the parent in the
+service finds out by walking to an empty room. Both now tell the adults in
+that household, and `app/kids_notify.py` holds the rules about who counts as
+an adult, who was standing at the desk, and what may not travel.
+
+**A church-wide announcement.** The chat notifier excludes announcements on
+purpose, because emailing everybody whenever somebody posts is how a church
+teaches its members to filter its mail. That exclusion was written when email
+was the only channel and it took the notification with it. The two channels
+are now separate: the notification always goes, the email goes only when the
+person posting ticks the box.
+
+### A regression worth recording
+
+The first attempt at the check-in notification flushed instead of committing,
+so it could read the rows back. The check-in loop had already loaded
+`session.checkins` to skip anybody already in, and a collection that is
+already loaded does not see new rows until something expires it. The label
+page rendered with no tags on it and reported success. A child in a room with
+no name badge and no pickup code, from a one-word change, caught by a test
+written for something else. There is a permanent guard for it now.
 
 ---
 

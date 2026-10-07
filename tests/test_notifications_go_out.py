@@ -117,12 +117,46 @@ class TestPushIsWiredToSomething:
         assert "queue(" not in source
 
     def test_the_invite_route_uses_the_helper(self, db):
+        """The send moved out of the route, so this follows it one hop.
+
+        It used to read the route's own source for `notify(`. The ask is now
+        shared with assigning somebody and with publishing a plan, so it lives
+        in app/serving_notify.py and the route delegates. Checking only the
+        route would have passed on a route that delegated to something sending
+        email alone, so both ends of the hop are asserted.
+        """
         import inspect
 
         from app.blueprints import services
 
-        source = inspect.getsource(services.send_invites)
-        assert "notify(" in source
+        route = inspect.getsource(services.send_invites)
+        assert "ask_to_serve(" in route, (
+            "the invite route no longer delegates to the shared ask"
+        )
+
+        from app import serving_notify
+
+        sender = inspect.getsource(serving_notify.ask_to_serve)
+        assert "notify(" in sender
+        assert "queue(" not in sender
+
+    def test_every_serving_send_goes_through_the_same_function(self, db):
+        """Assigning, publishing and chasing are three buttons and one send.
+
+        Three copies is how the original bug happened: one of them remembers
+        push and the other two look fine in testing.
+        """
+        import inspect
+
+        from app.blueprints import services
+
+        for route in (services.assign, services.toggle_publish,
+                      services.send_invites):
+            source = inspect.getsource(route)
+            assert "ask_to_serve(" in source or "ask_everyone_waiting(" in source, (
+                f"{route.__name__} does not use the shared ask"
+            )
+            assert "queue(" not in source
 
 
 class TestOneOptOutNotTwo:
@@ -541,7 +575,11 @@ class TestAskedAndAnsweredAreDifferentThings:
         from datetime import timedelta
 
         from app.models import OutboxMessage
-        import app.blueprints.services as services_bp
+        # Patched where the dedupe key is now built. The send moved out of
+        # the route into app/serving_notify.py when assigning and publishing
+        # started sharing it, and patching the blueprint stopped reaching the
+        # clock that decides whether today's ask is a new one.
+        import app.serving_notify as serving_notify
 
         service = a_service(db, journey, days=9)
         put_on_plan(db, journey, service, a_person(db, journey))
@@ -549,6 +587,6 @@ class TestAskedAndAnsweredAreDifferentThings:
         assert len(db.session.scalars(db.select(OutboxMessage)).all()) == 1
 
         tomorrow = utcnow() + timedelta(days=1)
-        monkeypatch.setattr(services_bp, "utcnow", lambda: tomorrow)
+        monkeypatch.setattr(serving_notify, "utcnow", lambda: tomorrow)
         staff.post(f"/services/{service.id}/invite/", headers=H)
         assert len(db.session.scalars(db.select(OutboxMessage)).all()) == 2

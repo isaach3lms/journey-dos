@@ -26,7 +26,8 @@ from flask_login import current_user, login_required
 from app.audit import record as audit_record
 from app.content import SERVICES
 from app.extensions import db
-from app.mail import NotQueued, queue
+from app.notify import notify
+from app.serving_notify import ask_everyone_waiting, ask_to_serve, tell_removed
 from app.models import (
     ServiceTrack,
     add_track,
@@ -437,14 +438,20 @@ def toggle_publish(service_id: int):
     """Draft to published and back.
 
     Publishing shows the running order to everyone on the team in their Serve
-    tab. It sends nothing; "Send plan to team" is the email. Unpublishing
-    hides it again, for a plan that went out too early.
+    tab and asks everybody on it whether they can serve. It did neither of
+    those second things before: publishing was silent, and so was assigning,
+    so a plan could be built and published with nobody on it told anything.
+
+    "Send plan to team" is still separate and still a deliberate press. That
+    one mails the running order to people already committed, which is a
+    different message at a different point in the week.
     """
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
         abort(404)
 
     track = _track_for(service)
+    asked = 0
 
     if service.is_published:
         service.unpublish()
@@ -455,10 +462,20 @@ def toggle_publish(service_id: int):
             return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
         service.publish()
+        # Everybody who has not answered, which on a first publish is
+        # everybody. Nobody is asked twice: the dedupe key is per person per
+        # slot per day, shared with the "Ask the rest again" button.
+        asked = ask_everyone_waiting(service, g.church)
         message = SERVICES["published"]
     db.session.commit()
 
     flash(message.format(name=service.name), "notice")
+    if asked:
+        flash(
+            (SERVICES["invite_sent_one"] if asked == 1
+             else SERVICES["invite_sent"].format(count=asked)),
+            "notice",
+        )
     return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
 
@@ -703,23 +720,32 @@ def assign(service_id: int):
         return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
 
-    db.session.add(
-        ServiceAssignment(
-            church_id=g.church.id,
-            service_id=service.id,
-            track_id=track.id,
-            person_id=person.id,
-            position_id=position.id if position else None,
-            # Copied, not looked up later. A renamed or deleted position must
-            # not turn "Drums, 12 March" into "None, 12 March".
-            position_name=position.name if position else None,
-            status=INVITED,
-        )
+    assignment = ServiceAssignment(
+        church_id=g.church.id,
+        service_id=service.id,
+        track_id=track.id,
+        person_id=person.id,
+        position_id=position.id if position else None,
+        # Copied, not looked up later. A renamed or deleted position must
+        # not turn "Drums, 12 March" into "None, 12 March".
+        position_name=position.name if position else None,
+        status=INVITED,
+    )
+    db.session.add(assignment)
+    db.session.flush()
+
+    # Assigning is asking. This used to send nothing at all, so a leader added
+    # somebody and the flash message said "asked to play drums" about a person
+    # who had not been asked anything. A draft still sends nothing; publishing
+    # is what releases the asks. See app/serving_notify.py.
+    asked = (
+        ask_to_serve(service, assignment, g.church)
+        if service.is_published else False
     )
     db.session.commit()
 
     flash(
-        SERVICES["assigned"].format(
+        (SERVICES["assigned_asked"] if asked else SERVICES["assigned"]).format(
             name=person.full_name, position=position.name if position else "serve"
         ),
         "notice",
@@ -738,10 +764,16 @@ def unassign(service_id: int, assignment_id: int):
         abort(404)
 
     track = assignment.track
+
+    # Before the delete, because the person and the slot name are read off the
+    # row. Only somebody who was asked is told, so moving people around a
+    # draft stays silent.
+    told = tell_removed(service, assignment, g.church)
+
     db.session.delete(assignment)
     db.session.commit()
 
-    flash(SERVICES["unassigned"], "notice")
+    flash(SERVICES["unassigned_told"] if told else SERVICES["unassigned"], "notice")
     return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
 
@@ -760,9 +792,11 @@ def send_invites(service_id: int):
     Only people who have not answered are asked. Re-running this after adding
     somebody chases the new person and leaves the rest alone, which is the
     behaviour a leader wants on a Thursday when half the team has replied.
-    """
-    from app.notify import notify
 
+    The send itself lives in app/serving_notify.py, shared with assigning and
+    publishing, so the three cannot disagree about what an ask says or how
+    often one can arrive.
+    """
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
         abort(404)
@@ -775,50 +809,10 @@ def send_invites(service_id: int):
         return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
 
-    when = format_local(service.starts_at, g.church, "%A %-d %B, %-I:%M%p")
-    asked = 0
-
-    for assignment in waiting:
-        person = assignment.person
-        if person is None or not person.email:
-            continue
-
-        token = assignment.ensure_respond_token()
-        link = url_for("invite.respond", token=token, _external=True, _scheme="https")
-
-        result = notify(
-            person=person,
-            church_id=g.church.id,
-            # Serving, not marketing. Somebody who left the newsletter still
-            # needs to be asked whether they can play on Sunday.
-            category="group",
-            subject=SERVICES["invite_subject"].format(date=when),
-            body_text=SERVICES["invite_body"].format(
-                name=person.first_name,
-                service=service.name,
-                date=when,
-                position=assignment.role_name,
-                link=link,
-                church=g.church.name,
-            ),
-            push_title=SERVICES["invite_push_title"].format(church=g.church.name),
-            push_body=SERVICES["invite_push_body"].format(
-                position=assignment.role_name, date=when
-            ),
-            url=url_for("invite.respond", token=token),
-            # One ask per person per slot per day. A double-clicked button
-            # must not email a volunteer twice, and chasing the quiet ones
-            # tomorrow still goes out, which is what "Ask the rest again" on
-            # the plan promises.
-            tag=f"invite:{assignment.id}",
-            dedupe_key=f"invite:{service.id}:{assignment.id}:"
-            f"{utcnow().date().isoformat()}",
-        )
-
-        if result.emailed or result.pushed:
-            person.ensure_unsubscribe_token()
-            assignment.invited_at = utcnow()
-            asked += 1
+    asked = sum(
+        1 for assignment in waiting
+        if ask_to_serve(service, assignment, g.church)
+    )
 
     db.session.commit()
 
@@ -835,7 +829,12 @@ def send_invites(service_id: int):
 @login_required
 @min_role("leader")
 def send_plan(service_id: int):
-    """Email everyone on the plan. Queued, never sent inside this request."""
+    """Send the running order to everyone on the plan.
+
+    Queued, never sent inside this request. This was email only, which meant
+    the Sunday morning message with the actual running order in it was the
+    one that did not reach a phone, while the Thursday "can you serve" did.
+    """
     service = Service.get_for_church(g.church.id, service_id)
     if service is None:
         abort(404)
@@ -858,38 +857,47 @@ def send_plan(service_id: int):
     queued = 0
     for assignment in service.assignments:
         person = assignment.person
-        if person is None or not person.email:
+        # No address is not a reason to skip. `notify` pushes somebody with no
+        # email on their roster record, and the gate that used to be here
+        # dropped the notification along with the email.
+        if person is None:
             continue
-        try:
-            message = queue(
-                church_id=g.church.id,
-                # Serving, not marketing. Somebody who left the newsletter
-                # still needs to know they are on the plan on Sunday.
-                category="group",
-                subject=SERVICES["email_subject"].format(
-                    service=service.name, date=when
-                ),
-                body_text=SERVICES["email_body"].format(
-                    name=person.first_name,
-                    service=service.name,
-                    date=when,
-                    position=assignment.role_name,
-                    plan=plan_lines,
-                    church=g.church.name,
-                ),
-                person=person,
-                # One send per person per service per calendar day. A
-                # double-clicked button must not email a volunteer twice, and
-                # a genuine resend next week, after the plan changed, still
-                # goes out. Keying on plan_sent_at would defeat the first
-                # case, because the first send sets it before the second
-                # request reads it.
-                dedupe_key=f"service:{service.id}:person:{person.id}:"
-                f"{utcnow().date().isoformat()}",
-            )
-        except NotQueued:
-            continue
-        if message is not None:
+        result = notify(
+            person=person,
+            church_id=g.church.id,
+            # Serving, not marketing. Somebody who left the newsletter
+            # still needs to know they are on the plan on Sunday.
+            category="group",
+            subject=SERVICES["email_subject"].format(
+                service=service.name, date=when
+            ),
+            body_text=SERVICES["email_body"].format(
+                name=person.first_name,
+                service=service.name,
+                date=when,
+                position=assignment.role_name,
+                plan=plan_lines,
+                church=g.church.name,
+            ),
+            # The running order does not fit in a notification and reads as
+            # nonsense truncated. The notification says the plan is out and
+            # which slot they are in; the plan itself is a tap away.
+            push_title=SERVICES["plan_push_title"].format(service=service.name),
+            push_body=SERVICES["plan_push_body"].format(
+                position=assignment.role_name, date=when
+            ),
+            url=url_for("member.serve"),
+            tag=f"plan:{service.id}",
+            # One send per person per service per calendar day. A
+            # double-clicked button must not email a volunteer twice, and
+            # a genuine resend next week, after the plan changed, still
+            # goes out. Keying on plan_sent_at would defeat the first
+            # case, because the first send sets it before the second
+            # request reads it.
+            dedupe_key=f"service:{service.id}:person:{person.id}:"
+            f"{utcnow().date().isoformat()}",
+        )
+        if result.emailed or result.pushed:
             person.ensure_unsubscribe_token()
             queued += 1
 

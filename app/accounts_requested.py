@@ -96,34 +96,34 @@ def alert(church, made: AccountRequest, *, link: str) -> int:
 
     Goes to the same setting the connect card's account box uses, so a church
     that moved one moved both and there is no second place to remember.
-    """
-    from app.content import PEOPLE
-    from app.mail import NotQueued, queue
 
-    told = 0
-    for address in church.account_request_recipients:
-        try:
-            queue(
-                church_id=church.id,
-                category=CATEGORY,
-                subject=PEOPLE["request_subject"].format(
-                    name=made.full_name, church=church.name),
-                body_text=PEOPLE["request_body"].format(
-                    name=made.full_name,
-                    church=church.name,
-                    email=made.email,
-                    phone=made.phone or PEOPLE["request_none"],
-                    address=made.address or PEOPLE["request_none"],
-                    household=made.household or PEOPLE["request_none"],
-                    spouse_name=made.spouse_name or PEOPLE["request_none"],
-                    spouse_email=made.spouse_email or PEOPLE["request_none"],
-                    spouse_phone=made.spouse_phone or PEOPLE["request_none"],
-                    link=link,
-                ),
-                to_email=address,
-                dedupe_key=f"accountreq:{made.id}:{address}",
-            )
-        except NotQueued:
-            continue
-        told += 1
-    return told
+    Addresses rather than staff accounts, and deliberately so. Creating a
+    login is platform administration: on every deployment so far it has been
+    whoever set the church up, who is not on that church's staff and has no
+    account on its tenant to push to. `account_request_recipients` always
+    returns at least the platform default, so this never falls through to
+    church staff, which is why nothing here is a notification.
+    """
+    from app.alerts import tell_staff
+    from app.content import PEOPLE
+
+    return tell_staff(
+        church,
+        category=CATEGORY,
+        subject=PEOPLE["request_subject"].format(
+            name=made.full_name, church=church.name),
+        body_text=PEOPLE["request_body"].format(
+            name=made.full_name,
+            church=church.name,
+            email=made.email,
+            phone=made.phone or PEOPLE["request_none"],
+            address=made.address or PEOPLE["request_none"],
+            household=made.household or PEOPLE["request_none"],
+            spouse_name=made.spouse_name or PEOPLE["request_none"],
+            spouse_email=made.spouse_email or PEOPLE["request_none"],
+            spouse_phone=made.spouse_phone or PEOPLE["request_none"],
+            link=link,
+        ),
+        key=f"accountreq:{made.id}",
+        named=church.account_request_recipients,
+    ).reached

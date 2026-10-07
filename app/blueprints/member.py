@@ -37,7 +37,7 @@ from flask_login import current_user, login_required, logout_user
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.content import GIVING, GROUPS, MEMBER, MESSAGES, PRIVACY, RESOURCES, SERVICES
 from app.extensions import db
-from app.chat_notify import notify_new_message
+from app.chat_notify import notify_announcement, notify_new_message
 from app.mail import opt_in, opt_out
 from app.push import selftest
 from app.bible import parse as parse_reference
@@ -217,7 +217,7 @@ def send_support():
 
 
 def _alert_pastors(ask, person) -> None:
-    """Email the care team that a request exists. Never what it says.
+    """Tell the care team a request exists. Never what it says.
 
     Who gets it is the church's setting. A named list is the normal case for a
     church with a care team, and it can include somebody who is not a staff
@@ -225,57 +225,48 @@ def _alert_pastors(ask, person) -> None:
     the right default for a church that has not set one: the people who can
     already read the request are the people told it exists.
 
-    What is in the email has not changed and will not. Staff are told a
-    request exists and given a link. A copy of what somebody wrote, sitting in
-    three inboxes, cannot be taken back. See app/models/support.py.
+    **This used to be email only**, which meant a pastoral request arrived in
+    an inbox and never on a phone. Somebody asking for help on a Sunday
+    evening is the clearest case in this system for a notification that
+    arrives now rather than whenever somebody next opens their mail, and it
+    was the one case not getting one. `tell_staff` does both channels; see
+    app/alerts.py for why it exists.
+
+    What is in the message has not changed and will not. Staff are told a
+    request exists and given a link, and the notification carries even less
+    than the email: a name and the fact of it. A copy of what somebody wrote,
+    sitting in three inboxes or on a lock screen in a crowded room, cannot be
+    taken back. See app/models/support.py.
 
     Caller commits.
     """
-    from app.mail import NotQueued, queue
-    from app.models import User
+    from app.alerts import tell_staff
 
     link = url_for("people.detail", person_id=person.id, _external=True,
                    _scheme="https" if request.is_secure else "http")
 
-    named = g.church.pastoral_recipients
-    if named:
-        # Keyed on the address rather than a user id, because most of these
-        # are not accounts in this system at all.
-        recipients = [(address, None, f"support:{ask.id}:{address}")
-                      for address in named]
-    else:
-        recipients = [
-            (user.email, user.name, f"support:{ask.id}:{user.id}")
-            for user in db.session.scalars(
-                db.select(User).where(
-                    User.church_id == g.church.id,
-                    User.role == "staff",
-                    User.is_active_account.is_(True),
-                )
-            ).all()
-        ]
-
-    for address, name, key in recipients:
-        if not address:
-            continue
-        try:
-            queue(
-                church_id=g.church.id,
-                category="pastoral",
-                subject=MEMBER["support_alert_subject"].format(name=person.full_name),
-                body_text=MEMBER["support_alert_body"].format(
-                    name=person.full_name,
-                    kind=ask.kind_label.lower(),
-                    contact=ask.contact_label.lower(),
-                    link=link,
-                    church=g.church.name,
-                ),
-                to_email=address,
-                to_name=name,
-                dedupe_key=key,
-            )
-        except NotQueued:
-            continue
+    tell_staff(
+        g.church,
+        category="pastoral",
+        subject=MEMBER["support_alert_subject"].format(name=person.full_name),
+        body_text=MEMBER["support_alert_body"].format(
+            name=person.full_name,
+            kind=ask.kind_label.lower(),
+            contact=ask.contact_label.lower(),
+            link=link,
+            church=g.church.name,
+        ),
+        push_title=MEMBER["support_push_title"],
+        # The kind of ask and nothing else. "Prayer request" on a lock screen
+        # is already more than the person chose to tell the room they are
+        # standing in, so the words they wrote are not here and neither is
+        # anything about their situation.
+        push_body=MEMBER["support_push_body"].format(name=person.full_name),
+        path=url_for("people.detail", person_id=person.id),
+        tag=f"support:{ask.id}",
+        key=f"support:{ask.id}",
+        named=g.church.pastoral_recipients,
+    )
 
 
 @bp.get("/app-check/")
@@ -1100,7 +1091,14 @@ def chat_post(conversation_id: int):
 
     posted = Message.post(conversation, person, body[:4000])
     db.session.flush()
-    notify_new_message(conversation, posted, author_person=person)
+    if conversation.is_announcement:
+        # Never also emailed from here. A member posting to the whole church
+        # is allowed five a day and cannot choose to put any of them in three
+        # hundred inboxes; that tick box is on the staff screen, where the
+        # person pressing it is accountable for it.
+        notify_announcement(conversation, posted, body, also_email=False)
+    else:
+        notify_new_message(conversation, posted, author_person=person)
     db.session.commit()
 
     return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
@@ -1337,13 +1335,15 @@ def _message_this_person_can_see(conversation_id: int, message_id: int):
 
 
 def _alert_staff(report, reporter, message, conversation, source: str) -> None:
-    """Email every active staff member. Caller commits.
+    """Tell every active staff member. Caller commits.
 
     "Timely responses to concerns" is part of Guideline 1.2, and a report that
-    waits for somebody to happen to open a screen is not timely.
+    waits for somebody to happen to open a screen is not timely. Which is the
+    argument for the notification as well as the email, and this was email
+    only until now: the fastest channel was the one not being used for the
+    thing with the shortest fuse in the whole system.
     """
-    from app.mail import NotQueued, queue
-    from app.models import User
+    from app.alerts import tell_staff
 
     action = (
         MESSAGES["alert_action_block"] if source == SOURCE_BLOCK
@@ -1354,37 +1354,32 @@ def _alert_staff(report, reporter, message, conversation, source: str) -> None:
     )
     link = url_for("messages.reports", _external=True,
                    _scheme="https" if request.is_secure else "http")
-    staff = db.session.scalars(
-        db.select(User).where(
-            User.church_id == g.church.id,
-            User.role == "staff",
-            User.is_active_account.is_(True),
-        )
-    ).all()
-    for user in staff:
-        try:
-            queue(
-                church_id=g.church.id,
-                category="moderation",
-                subject=MESSAGES["alert_subject"].format(room=conversation.title),
-                # The words of the message are deliberately not in the email.
-                # Staff read them in the app, where removing them removes them
-                # everywhere; a copy in forty inboxes cannot be taken back.
-                body_text=MESSAGES["alert_body"].format(
-                    reporter=reporter.full_name,
-                    action=action,
-                    author=message.author_name or "someone",
-                    room=conversation.title,
-                    reason=reason,
-                    link=link,
-                    church=g.church.name,
-                ),
-                to_email=user.email,
-                to_name=user.name,
-                dedupe_key=f"report:{report.id}:{source}:{user.id}",
-            )
-        except NotQueued:
-            continue
+
+    # Staff accounts, never a church's named care-team list: a reported
+    # message is read and removed in the app, so the people told are the
+    # people who can act on it.
+    tell_staff(
+        g.church,
+        category="moderation",
+        subject=MESSAGES["alert_subject"].format(room=conversation.title),
+        # The words of the message are deliberately not in the email.
+        # Staff read them in the app, where removing them removes them
+        # everywhere; a copy in forty inboxes cannot be taken back.
+        body_text=MESSAGES["alert_body"].format(
+            reporter=reporter.full_name,
+            action=action,
+            author=message.author_name or "someone",
+            room=conversation.title,
+            reason=reason,
+            link=link,
+            church=g.church.name,
+        ),
+        push_title=MESSAGES["alert_push_title"],
+        push_body=MESSAGES["alert_push_body"].format(room=conversation.title),
+        path=url_for("messages.reports"),
+        tag=f"report:{report.id}",
+        key=f"report:{report.id}:{source}",
+    )
 
 
 @bp.post("/chat/<int:conversation_id>/messages/<int:message_id>/report/")

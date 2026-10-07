@@ -27,6 +27,8 @@ from app.brand import assert_accent_readable
 from app.content import SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
+from app.notify_catalogue import GROUPS as notify_groups
+from app.notify_catalogue import every_event
 from app.push.health import push_health
 from app.models import AuditEvent, Church, PasswordResetToken, User
 from app.models.audit import ROLE_CHANGED
@@ -45,8 +47,8 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # redirect passes back so staff land on the row they just used.
 ROWS = (
     "brand", "accounts", "signup", "giving", "ccli",
-    "announcements", "pastoral", "guests", "kiosk", "email", "push", "audit",
-    "support",
+    "announcements", "pastoral", "guests", "kiosk", "email", "push", "sends",
+    "audit", "support",
 )
 
 
@@ -94,6 +96,11 @@ def index():
         roles=ROLES,
         email=email_health(g.church.id),
         push=push_health(g.church.id),
+        # What is supposed to send, so a gap can be reported as a specific
+        # row on a screen rather than "notifications are flaky".
+        sends=notify_groups,
+        sends_count=len(every_event()),
+        sends_pushing=sum(1 for event in every_event() if event.pushes),
         kiosk_account=kiosk_account_for(g.church.id),
         kiosk_links=live_setup_links(g.church.id),
         label_sizes=LABEL_SIZES,

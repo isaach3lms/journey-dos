@@ -75,6 +75,7 @@ def notify(
     dedupe_key: str | None = None,
     actor=None,
     push: bool = True,
+    email: bool = True,
 ) -> Delivered:
     """Email and push one person about one thing.
 
@@ -93,26 +94,35 @@ def notify(
     whole reason this function exists is that callers forgot push; a caller
     that wants email only has to say so, and the only one that does is a
     church-wide email long enough to make a poor notification.
+
+    `email=False` is the mirror of it, and has exactly one caller: posting a
+    church-wide announcement, where whether a second copy lands in three
+    hundred inboxes is a tick box the person posting chose. Without this
+    argument that screen had to reach past this function to the push
+    machinery directly, which is the shape of the bug this module exists to
+    make impossible. Both channels still run the same opt-out check, so
+    `email=False` is "do not also mail this", never "ignore what they chose".
     """
     emailed = False
     suppressed = False
 
-    try:
-        message = queue(
-            church_id=church_id,
-            category=category,
-            subject=subject,
-            body_text=body_text,
-            person=person,
-            dedupe_key=dedupe_key,
-            actor=actor,
-        )
-        emailed = message is not None
-    except NotQueued as exc:
-        # Opted out, or no address. Neither is an error here: the caller asked
-        # for this person to be told, and the system's answer is that they
-        # have said not to, or cannot be reached.
-        suppressed = "opted out" in str(exc)
+    if email:
+        try:
+            message = queue(
+                church_id=church_id,
+                category=category,
+                subject=subject,
+                body_text=body_text,
+                person=person,
+                dedupe_key=dedupe_key,
+                actor=actor,
+            )
+            emailed = message is not None
+        except NotQueued as exc:
+            # Opted out, or no address. Neither is an error here: the caller
+            # asked for this person to be told, and the system's answer is
+            # that they have said not to, or cannot be reached.
+            suppressed = "opted out" in str(exc)
 
     pushed = 0
     if not push:

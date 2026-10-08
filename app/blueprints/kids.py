@@ -38,7 +38,7 @@ from app.extensions import db
 from app.mail import NotQueued, queue
 from app.models import Checkin, CheckinSession, Household, Person
 from app.pickup import normalize
-from app.security import min_role
+from app.security import min_role, sign_in
 from app.timeutil import from_local
 
 bp = Blueprint("kids", __name__, url_prefix="/kids")
@@ -574,9 +574,6 @@ def kiosk_setup(token: str):
     is fetched by every preview bot that sees it, and a GET that signed
     somebody in would be burned before a human touched it.
     """
-    from flask_login import login_user
-
-    from app.kiosk import KIOSK_SESSION
     from app.models.kiosk import KioskSetupToken
 
     found = KioskSetupToken.redeem(g.church.id, token)
@@ -603,9 +600,10 @@ def kiosk_setup(token: str):
 
     # A year, so nobody meets a login screen on a Sunday morning. What makes
     # that safe is that a kiosk account can only reach these screens; see
-    # app/kiosk.py.
-    login_user(user, remember=True, duration=KIOSK_SESSION)
-    session.permanent = True
+    # app/kiosk.py. `sign_in` knows this account is a kiosk and applies the
+    # year itself, so the duration is no longer written out twice in two
+    # files that could disagree.
+    sign_in(user)
 
     flash(KIDS["kiosk_setup_done"], "notice")
     return redirect(url_for("kids.kiosk"))

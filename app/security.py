@@ -27,7 +27,7 @@ from __future__ import annotations
 from functools import wraps
 
 from flask import abort, current_app, flash, g, redirect, request, url_for
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager, current_user, login_user
 
 from app.content import AUTH
 from app.extensions import db
@@ -79,6 +79,69 @@ def load_user(composite_id: str):
         # under the old one stops working, on every device.
         return None
     return user
+
+
+def sign_in(user, remember: bool = True) -> None:
+    """Sign somebody in so that they stay signed in. The one way to do it.
+
+    There were four places that signed a person in and only one of them did
+    this, which is why members had to log in every time they opened the app.
+    The other three, confirming an email address after signing up, finishing
+    a password reset, and replacing a temporary password, called
+    `login_user(user)` bare. A new member's first act in the app was therefore
+    to be signed out of it.
+
+    **`session.permanent` is the load-bearing line, and it fixes two separate
+    logouts at once.**
+
+    The first is obvious once seen. Without it Flask issues a session cookie
+    with no expiry, which a browser is entitled to drop the moment the browser
+    session ends, and iOS does exactly that when an app is closed. The config
+    has said `PERMANENT_SESSION_LIFETIME = 14 days` the whole time; nothing
+    was asking for it.
+
+    The second is not obvious at all. `session_protection = "strong"`, set
+    just above, hashes the client's IP address and user agent into the session
+    and wipes the session **and the remember cookie** when that hash changes.
+    A phone changes IP every time it moves between wifi and the mobile
+    network, so strong protection was signing people out for walking out of
+    the building. Flask-Login's own code takes a different branch for a
+    permanent session: it marks the session stale instead of destroying it,
+    which keeps the person signed in. Nothing here requires a fresh session,
+    so that branch costs nothing.
+
+    So strong protection stays on, and is simply no longer destructive. That
+    is better than turning it down, which is the usual advice and gives up the
+    protection for everybody rather than only where it misfires.
+
+    `remember` is the person's own choice on a shared computer, and defaults
+    to staying signed in. The remember cookie is the belt to the session's
+    braces: it outlives the session cookie and silently restores the session
+    when somebody opens the app after a fortnight away.
+
+    **A long cookie is safe here because `load_user` above re-checks it on
+    every single request:** the account still exists, still belongs to this
+    church, is still active, and the password has not changed since the cookie
+    was minted. Deactivating somebody in Settings signs their phone out on its
+    next tap, whatever the cookie says. That invalidation path is what a long
+    session needs to be defensible, and it was already built.
+    """
+    from flask import session
+
+    session.permanent = True
+
+    # A kiosk account gets a year whether or not anybody ticked anything. A
+    # tablet that logs out is a tablet somebody signs into with their own
+    # account to get past the login screen, which is the problem the kiosk
+    # exists to remove. What makes it safe is that the account can only reach
+    # the check-in screens; see app/kiosk.py.
+    if getattr(user, "is_kiosk", False):
+        from app.kiosk import KIOSK_SESSION
+
+        login_user(user, remember=True, duration=KIOSK_SESSION)
+        return
+
+    login_user(user, remember=remember)
 
 
 def assert_cookie_scope_is_safe(app) -> None:

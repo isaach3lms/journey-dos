@@ -106,10 +106,53 @@ class BaseConfig:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = False
+
+    # How long somebody stays signed in.
+    #
+    # These two numbers sat here for months doing nothing, because the login
+    # route never marked a session permanent and the remember box defaulted
+    # to off. Every member therefore got a cookie with no expiry at all,
+    # which iOS discards when the app closes. See `sign_in` in
+    # app/security.py for the fix and for why it also cured a second logout
+    # nobody had connected to this one.
+    #
+    # Fourteen days on the session, and Flask slides it forward on every
+    # request, so somebody who opens the app most weeks is never asked again.
     PERMANENT_SESSION_LIFETIME = timedelta(days=14)
+
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SAMESITE = "Lax"
-    REMEMBER_COOKIE_DURATION = timedelta(days=30)
+    # A year, raised from thirty days. Thirty is long enough for a weekly
+    # attender and too short for the person who opens the app when there is
+    # something on, which is most of a congregation: they came back after six
+    # weeks and met a login screen, which is the whole complaint.
+    #
+    # The length is not what makes a session safe here. `load_user` re-checks
+    # the account on every single request, so a deactivated account or a
+    # changed password signs that device out on its next tap no matter how
+    # long the cookie had left. A year of cookie is a year of *convenience*,
+    # not a year of unrevokable access.
+    REMEMBER_COOKIE_DURATION = timedelta(days=365)
+
+    # **REMEMBER_COOKIE_REFRESH_EACH_REQUEST is deliberately off.**
+    #
+    # It looks like exactly what this wants: it would slide the year forward
+    # on every visit instead of measuring it from the day somebody signed in.
+    # What it actually does is set `session["_remember"] = "set"` on every
+    # response for every signed-in user, and then write the cookie. It never
+    # consults whether that person asked to be remembered, so switching it on
+    # quietly issues a year-long cookie to the staff member who unticked the
+    # box on a shared computer. Read `_update_remember_cookie` in
+    # flask_login/login_manager.py; the choice is simply not in that code
+    # path. A test caught this, which is the only reason it is written down
+    # rather than shipped.
+    #
+    # Nothing is really lost. The session cookie slides on every request
+    # (SESSION_REFRESH_EACH_REQUEST, on by default), so anybody who opens the
+    # app within a fortnight is carried by that and never reaches the
+    # remember cookie at all. The remember cookie is the fallback for a
+    # longer gap than that, and a fixed year of it is long enough for the
+    # person who turns up at Christmas and Easter.
     WTF_CSRF_TIME_LIMIT = None
 
     TESTING = False

@@ -21,7 +21,7 @@ from flask import (
     request,
     url_for,
 )
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import current_user, login_required, logout_user
 
 from app.audit import record
 from app.content import AUTH
@@ -33,6 +33,7 @@ from app.mail import NotQueued, queue
 from app.models import KIND_CREATED, PersonEvent
 from app.models.base import utcnow
 from app.forms import ForgotPasswordForm, LoginForm, ResetPasswordForm, SignupForm
+from app.security import sign_in
 from app.automation import enroll_for_stage
 from app.models import (
     KIND_CREATED,
@@ -126,17 +127,11 @@ def login():
         # Flask-Login rotates the session on login, which retires any
         # pre-authentication session identifier an attacker could have planted.
         #
-        # A kiosk account gets a year whether or not anybody ticked the box. A
-        # tablet that logs out is a tablet somebody signs into with their own
-        # account to get past the login screen, which is the problem this is
-        # here to remove. What makes the long session safe is that the account
-        # can only reach the check-in screens; see app/kiosk.py.
-        if getattr(user, "is_kiosk", False):
-            from app.kiosk import KIOSK_SESSION
-
-            login_user(user, remember=True, duration=KIOSK_SESSION)
-        else:
-            login_user(user, remember=bool(form.remember.data))
+        # `sign_in` handles the kiosk's longer session and, more importantly,
+        # makes the session permanent. That one line is what stops a member
+        # being signed out every time they close the app and every time their
+        # phone changes network. See app/security.py.
+        sign_in(user, remember=bool(form.remember.data))
         current_app.logger.info("User %s signed in at church %s", user.id, g.church.id)
 
         return redirect(safe_next_url(request.args.get("next"), "shell.index"))
@@ -262,8 +257,10 @@ def reset(token: str):
         db.session.commit()
 
         # set_password bumped session_version, so every other device is now
-        # signed out. This login mints a cookie carrying the new version.
-        login_user(user)
+        # signed out. This login mints a cookie carrying the new version, and
+        # a durable one: somebody who has just proved who they are should not
+        # be asked again the next time they open the app.
+        sign_in(user)
         current_app.logger.info(
             "Password reset completed for user %s at church %s", user.id, g.church.id
         )
@@ -419,7 +416,10 @@ def verify(token: str):
         enroll_for_stage(person)
 
     db.session.commit()
-    login_user(user)
+    # Durable, because this is the first moment a new member is inside the
+    # app. A bare login_user here meant their very first act was to close the
+    # app and be signed out of it.
+    sign_in(user)
 
     flash(AUTH["verify_done"], "notice")
     return redirect(url_for("shell.index"))
@@ -470,7 +470,7 @@ def change_password():
         # person who just set the password is the one signed out.
         user.session_version = (user.session_version or 1) + 1
         db.session.flush()
-        login_user(user)
+        sign_in(user)
 
         record(
             PASSWORD_RESET,

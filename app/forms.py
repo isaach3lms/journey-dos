@@ -33,7 +33,15 @@ class LoginForm(FlaskForm):
         validators=[DataRequired(message=AUTH["password_required"])],
         render_kw={"autocomplete": "current-password"},
     )
-    remember = BooleanField(AUTH["remember_label"])
+    # Ticked by default. An installed church app that signs you out every
+    # time you close it is an app people stop opening, and the box that
+    # prevented that was off unless somebody noticed it and understood what
+    # it meant. Nobody did.
+    #
+    # It stays a box rather than disappearing, because the one case it is
+    # genuinely for is real: a staff member signing in on a shared computer,
+    # who can untick it and get a session that ends with the browser.
+    remember = BooleanField(AUTH["remember_label"], default=True)
     submit = SubmitField(AUTH["submit_label"])
 
 

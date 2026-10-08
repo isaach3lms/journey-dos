@@ -346,3 +346,165 @@ class TestTheRollList:
         assert size_for("dk9999").code == "dk1202"
         assert size_for(None).code == "dk1202"
         assert size_for("").code == "dk1202"
+
+
+class TestOneTapPrinting:
+    """What the volunteer's thumb actually has to do.
+
+    A video of the lobby iPad settled what the earlier guesswork could not:
+    check-in runs in **Safari**, not in the installed app. The tag PDF opened
+    perfectly. It opened full screen, with Safari's toolbar auto-hidden, so
+    there was no share button anywhere on the screen and no way to print it.
+
+    `window.print()` works in Safari and has for years. The screen was not
+    offering it because the code was written for the app's web view, where it
+    genuinely does not exist, and that assumption was never re-checked against
+    the device the church actually uses. Four taps and a hunt, to route around
+    a problem this device did not have.
+    """
+
+    def test_the_page_offers_a_direct_print_button(
+        self, app, db, journey, family, staff
+    ):
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "data-print-now" in body
+        assert "window.print()" in body
+
+    def test_the_direct_button_starts_hidden(
+        self, app, db, journey, family, staff
+    ):
+        """It is shown only once the device says it can print. A button that
+        does nothing is the bug this whole thread started with."""
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        found = re.search(r"<button[^>]*data-print-now([^>]*)>", body)
+        assert found, "the print button is not in the markup"
+        assert "hidden" in found.group(1)
+
+    def test_it_asks_the_engine_rather_than_the_user_agent(
+        self, app, db, journey, family, staff
+    ):
+        """A user agent is a guess about a browser. `typeof window.print` is
+        the engine answering for itself."""
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert 'typeof window.print === "function"' in body
+
+    def test_the_file_link_survives_as_the_second_option(
+        self, app, db, journey, family, staff
+    ):
+        """Still the right answer for a tag that comes out the wrong size, and
+        the only answer on a device with no print function."""
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "data-print-link" in body
+        assert "Open as a file instead" in body
+
+    def test_the_tags_are_on_the_page_to_be_printed(
+        self, app, db, journey, family, staff
+    ):
+        """Printing the page only works because the tags are already on it.
+        Without this the button opens a dialog that prints a pickup code and
+        two buttons."""
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "data-tagsheet" in body
+        assert "nametag" in body
+
+
+class TestThePrinterIsToldThePaperSize:
+    """Why an HTML tag used to come out wrong, and what fixes it.
+
+    A web page states no physical size, so AirPrint assumes Letter and a 62mm
+    tag arrives shrunk into the corner of the label it was meant to fill. That
+    was the original argument for the PDF and it was a real one. `@page size`
+    is the answer: it is the only way a browser can state a page size, and it
+    has to be per church because the roll is a setting.
+    """
+
+    def test_the_page_carries_the_size_of_the_roll(
+        self, app, db, journey, family, staff
+    ):
+        journey.kids_label_size = "dk1202"
+        db.session.commit()
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "@page" in body
+        assert "size: 62mm 100mm" in body
+
+    def test_a_different_roll_gives_a_different_size(
+        self, app, db, journey, family, staff
+    ):
+        journey.kids_label_size = "dk1201"
+        db.session.commit()
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "size: 29mm 90mm" in body
+
+    def test_a_roll_prints_one_tag_per_label(
+        self, app, db, journey, family, staff
+    ):
+        """A roll is one label per tag by its physical nature. The stylesheet
+        lays tags two across for a sheet of paper, which on a roll puts half
+        the second tag on the next label."""
+        journey.kids_label_size = "dk2205"
+        db.session.commit()
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "page-break-after: always" in body
+
+    def test_a_roll_gets_no_page_margin(
+        self, app, db, journey, family, staff
+    ):
+        """A label has no margin to give. The printer's own unprintable edge
+        is the margin, and a quarter inch on top of it loses the last line."""
+        journey.kids_label_size = "dk1202"
+        db.session.commit()
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "margin: 0" in body
+
+    def test_plain_paper_is_left_alone(self, app, db, journey, family, staff):
+        """A sheet of Letter wants the normal margin and several tags on it,
+        which the stylesheet already does. Forcing a page size here would
+        undo that."""
+        journey.kids_label_size = "letter"
+        db.session.commit()
+        body = check_in(staff, family, child(family)).get_data(as_text=True)
+        assert "@page" not in body
+
+    def test_the_reprint_screen_says_the_same_size(self, app, db, journey,
+                                                   family, staff):
+        """Two screens print the same tags. A size right on one and wrong on
+        the other is the kind of difference nobody finds until a Sunday."""
+        journey.kids_label_size = "dk1202"
+        db.session.commit()
+        check_in(staff, family, child(family))
+        row = db.session.scalars(db.select(Checkin)).first()
+        body = staff.get(f"/kids/tags/child/{row.id}/", headers=H).get_data(as_text=True)
+        assert "size: 62mm 100mm" in body
+
+    def test_the_reprint_toggle_goes_away_on_a_roll(self, app, db, journey,
+                                                    family, staff):
+        """It offered a choice the page size then overrode, which is a control
+        that lies about what it does."""
+        journey.kids_label_size = "dk1202"
+        db.session.commit()
+        check_in(staff, family, child(family))
+        row = db.session.scalars(db.select(Checkin)).first()
+        body = staff.get(f"/kids/tags/child/{row.id}/", headers=H).get_data(as_text=True)
+        # The control, not the string. The script still looks for the input
+        # and correctly finds nothing; what must be gone is the checkbox.
+        assert not re.search(r"<input[^>]*data-one-per-page", body)
+        assert "One tag per label" in body
+
+    def test_the_reprint_can_still_print_without_the_toggle(
+        self, app, db, journey, family, staff
+    ):
+        """The Print button sat below an early return that fired when the
+        toggle was absent, so hiding the toggle would have taken printing
+        with it."""
+        journey.kids_label_size = "dk1202"
+        db.session.commit()
+        check_in(staff, family, child(family))
+        row = db.session.scalars(db.select(Checkin)).first()
+        body = staff.get(f"/kids/tags/child/{row.id}/", headers=H).get_data(as_text=True)
+
+        wiring = body.index('print.addEventListener')
+        early_return = body.index("if (!box || !sheet) { return; }")
+        assert wiring < early_return, (
+            "the Print button is wired after the early return, so it is dead "
+            "whenever the toggle is hidden"
+        )

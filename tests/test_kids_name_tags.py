@@ -123,20 +123,40 @@ class TestTheTagAtCheckIn:
         ).data.decode()
         assert code in page
 
-    def test_the_print_button_points_at_a_file_not_window_print(
+    def test_the_page_offers_a_route_that_works_on_either_device(
         self, db, staff, webbs, sunday
     ):
-        """This test used to assert `data-print` was on the page, which is
-        exactly the bug: the button was there, it called `window.print()`, and
-        on the iPad the church runs check-in on that function does not exist.
-        The button existed and printing did not happen.
+        """Third wording of this test, and the first one that is not a guess.
 
-        What has to be on the page is a link to a file.
+        It first asserted a button calling `window.print()`. That was wrong:
+        the button existed, the function did not on the device in question,
+        and printing silently did not happen.
+
+        So it was rewritten to assert `window.print()` was **absent** and a
+        file link present. That was wrong too, in the opposite direction, and
+        a video of the lobby iPad is what settled it: the church runs check-in
+        in Safari, where `window.print()` has worked for years. Banning it
+        cost the volunteer a new tab, a toolbar Safari auto-hides, a share
+        button that is therefore not on screen, and a second Print.
+
+        Both earlier versions asserted one device's behaviour as if it were
+        the only one. What actually has to be true is that **every device has
+        a route**: the one that can print gets a print button, the one that
+        cannot gets a file. So that is what this asserts, and the page decides
+        between them by asking the engine rather than by assuming.
         """
         page = check_in(db, staff, webbs, sunday)
         assert "Print name tags" in page
+
+        # The direct route, for Safari and anything else with a print
+        # function. Hidden until the device says it has one.
+        assert "window.print()" in page
+        assert "data-print-now" in page
+        assert 'typeof window.print === "function"' in page
+
+        # And the file, which is still the only route on a device without one
+        # and the better one for a tag that comes out the wrong size.
         assert "/kids/tags/pdf/" in page
-        assert "window.print()" not in page
 
     def test_checking_in_does_not_log_a_reprint(self, db, staff, webbs, sunday):
         """The first print comes off this page, so the reprint log stays clean

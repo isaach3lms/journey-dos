@@ -8,21 +8,43 @@
   <div class="pickupcode mono">{{ code }}</div>
   <p class="lede">{{ content.label_hint }}</p>
 
-  {# A link to a PDF, not a button that calls window.print().
+  {# Two ways to the printer, and the right one depends on the device.
 
-     The button used to call window.print() and was silently dead on the one
-     device check-in actually runs on: Apple's web view implements no print
-     function, so the tap did nothing and said nothing. There is no CSS or
-     JavaScript fix for a function the engine does not have.
+     **Printing the page is one tap and is the default where it works.** The
+     tags are already on this page and the stylesheet already hides
+     everything else, so `window.print()` opens the printer dialog straight
+     away. On an iPad in Safari that is the AirPrint sheet: tap Print name
+     tags, pick the printer, done.
 
-     A PDF carries the real dimensions of the label in the printer, so a 62mm
-     tag prints at 62mm instead of being scaled to whatever the printer guessed
-     from an HTML page. The link is signed and needs no session, because the
-     browser that opens it does not share the app's cookies. #}
+     This screen did not offer that, and the reasoning was wrong in an
+     instructive way. `window.print()` is genuinely absent from Apple's web
+     view, so when check-in ran inside the installed app the button was dead
+     and the fix was to open a PDF instead. But the lobby runs check-in in
+     Safari, where `window.print()` has worked for years, and the PDF route
+     costs the volunteer a new tab, a hidden toolbar, a share button they
+     have to go looking for, and a second Print. Four taps and a hunt, to
+     avoid a problem the device did not have.
+
+     So the page asks the device rather than assuming: if it can print, the
+     button prints. The PDF stays as the second option, because it is still
+     the better answer twice over. It carries true physical dimensions, so it
+     is what to use if an HTML tag comes out the wrong size, and it is the
+     only route at all on a device with no print function. The link is signed
+     and needs no session, because a browser opened from an app does not
+     share that app's cookies. #}
   {% if pdf_url %}
+    {# Order matters. The hint describes whichever of these two is the real
+       button, so it sits between them: under the print button where printing
+       works, and the script moves it below the link where it does not. Left
+       where it was, it read as a caption for "Open as a file instead" and
+       told a volunteer the printer box opens straight away from a link that
+       opens a file. #}
+    <button class="btn wide center" type="button" data-print-now hidden>
+      {{ content.label_print }}
+    </button>
+    <p class="muted small center" data-print-hint>{{ content.label_print_hint }}</p>
     <a class="btn wide center" target="_blank" rel="noopener"
        data-print-link href="{{ pdf_url }}">{{ content.label_print }}</a>
-    <p class="muted small center" data-print-hint>{{ content.label_print_hint }}</p>
     {# Shown only when this device is one that cannot print, and hidden for
        everybody else. Marked hidden in the markup rather than by a class, so
        a device with JavaScript off never sees a warning aimed at a case it
@@ -44,38 +66,44 @@
   {% include "kids/_tags.html" %}
 
   <script>
-  /* Getting the tags in front of a print sheet, on whatever this is running in.
+  /* Picking the route the device can actually take, in this order:
 
-     Three different environments, and `target="_blank"` alone is only right in
-     one of them:
+     1. **It can print.** Safari, Chrome, a laptop at the desk. One tap opens
+        the printer dialog over this screen, the volunteer picks the printer,
+        and check-in is still underneath when the dialog closes. This is the
+        case the lobby iPad is in, and the one the screen used to skip.
+     2. **It cannot print but can open a file.** The wrapper with a browser
+        plugin. The PDF opens in a real browser view with a share button.
+     3. **Neither.** The wrapper without one. Nothing works, so say so rather
+        than leaving a button that does nothing.
 
-     A real browser opens a new tab and the print sheet is in its own menu.
-     That is the plain anchor, and it still works with JavaScript off.
-
-     Apple's web view does not implement `_blank` at all unless the app that
-     embeds it wrote the delegate for it. Depending on the app it does nothing
-     or it loads the PDF over the top of this screen, which strands a volunteer
-     on a document with no way back to check-in.
-
-     So when the page can see it is inside the wrapper, it asks the wrapper to
-     open the file instead, which puts it in a real browser view with a share
-     button, and leaves the kiosk screen untouched behind it.
-
-     **The wrapper without that plugin is the case that was broken.** The code
-     here used to return quietly and leave the anchor alone, on the reasoning
-     that the note underneath said what to do. It did not: the note says to
-     use the share button in the window that opens, and no window opens. A
-     volunteer taps Print name tags, nothing happens, and there is nothing on
-     the screen suggesting the tablet is the problem. That is the whole bug,
-     and it is why check-in has been running without tags.
-
-     So that case now says so, and says the one thing that works today, which
-     is opening check-in in Safari rather than in the app. Adding the plugin
-     to the wrapper is the real fix and needs a new build of the app; this
-     screen cannot do it and should not pretend the tap did something. */
+     Asked of the device, never inferred from the user agent. A user agent is
+     a guess about a browser; `typeof window.print` is the engine answering. */
   (function () {
     var link = document.querySelector("[data-print-link]");
+    var now = document.querySelector("[data-print-now]");
+    var hint = document.querySelector("[data-print-hint]");
+    var cannot = document.querySelector("[data-print-cannot]");
     if (!link) { return; }
+
+    // 1. Printing works here. Make it the button, and keep the file as a
+    //    quieter second option for a tag that comes out the wrong size.
+    if (typeof window.print === "function") {
+      if (now) {
+        now.hidden = false;
+        now.addEventListener("click", function () { window.print(); });
+      }
+      link.classList.add("ghostbtn");
+      link.textContent = {{ content.label_print_file | tojson }};
+      if (hint) { hint.textContent = {{ content.label_print_now_hint | tojson }}; }
+      return;
+    }
+
+    /* No print function, so the file link is the real button and the hint
+       belongs under it rather than under a button nobody can see. */
+    if (hint && link.parentNode) {
+      link.parentNode.insertBefore(hint, link.nextSibling);
+    }
 
     var cap = window.Capacitor;
     var plugins = cap && cap.Plugins;
@@ -97,6 +125,8 @@
       }
     }
 
+    // 2. No print function, but the wrapper can hand the file to something
+    //    that has one.
     if (browser) {
       link.addEventListener("click", function (event) {
         event.preventDefault();
@@ -107,14 +137,13 @@
       return;
     }
 
-    // A real browser. The plain anchor is correct and already works.
+    // 3. Neither. A plain browser with no print function does not exist in
+    //    practice, so this is the wrapper, and the tap would do nothing.
     if (!cap) { return; }
-
-    // Inside the wrapper with nothing that can open a file. Say so.
-    var cannot = document.querySelector("[data-print-cannot]");
-    var hint = document.querySelector("[data-print-hint]");
     if (cannot) { cannot.hidden = false; }
     if (hint) { hint.hidden = true; }
   })();
   </script>
 {% endblock %}
+
+{% block page_size %}{% include "partials/tag_page_size.html" %}{% endblock %}

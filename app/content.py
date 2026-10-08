@@ -2318,10 +2318,18 @@ KIDS = {
     "label_children": "Checked in: {names}",
     "label_done": "Done",
     "label_print": "Print name tags",
+    # The fallback wording, for a device with no print function. On anything
+    # that can print, the script swaps this for the one below, because the
+    # tags do not open in a separate window there: the printer dialog comes
+    # up over this screen and check-in is still underneath it.
     "label_print_hint": (
         "The tags open in a separate window. Use the share button there, then "
         "Print."
     ),
+    "label_print_now_hint": (
+        "The printer box opens straight away. Pick the printer and tap Print."
+    ),
+    "label_print_file": "Open as a file instead",
     # Shown only on a tablet that is inside the installed app and has no way
     # to open a file. Names the device as the problem, because a volunteer's
     # first assumption is that they tapped the wrong thing.
@@ -2418,6 +2426,12 @@ KIDS = {
     "tags_per_page_hint": (
         "Turn this on for a label printer. Leave it off to fit several tags on "
         "a sheet of paper."
+    ),
+    # Shown instead of the toggle once a roll is set, because a roll is one
+    # label per tag whatever anybody ticks.
+    "tags_on_a_roll": (
+        "One tag per label, at {size}. Change the roll in Settings if that is "
+        "not what is in the printer."
     ),
     "tags_pickup_title": "Pickup tag",
     "tags_pickup_for": "For the adult who brought them",

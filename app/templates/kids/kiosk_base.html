@@ -9,6 +9,9 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ church.name }}{% endblock %}</title>
 {% include "partials/head_meta.html" %}
+{# The physical page size, for screens that print. Empty on the ones that
+   do not, and the stylesheet's own print rules apply instead. #}
+{% block page_size %}{% endblock %}
 </head>
 <body class="kioskbody">
 <header class="kioskhead">

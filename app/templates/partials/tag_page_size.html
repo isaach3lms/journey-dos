@@ -1,0 +1,54 @@
+{# The physical size of the paper, told to the printer.
+
+   Without this, printing the page sends AirPrint a web page with no stated
+   size, it assumes Letter, and a 62mm name tag arrives shrunk into the
+   corner of a label it was supposed to fill. The `@page` rule is the only
+   way a browser can state a physical page size, and it has to be written
+   here rather than in app.css because it is per church: the roll in the
+   printer is a setting.
+
+   Plain paper is left alone. A sheet of Letter wants the normal margin and
+   several tags on it, which is what the stylesheet already does.
+
+   This is a partial rather than two copies because the check-in screen and
+   the staff reprint screen both print the same tags, and a size that is
+   right on one and wrong on the other is the kind of difference nobody
+   finds until a Sunday. #}
+{% if size and size.code != "letter" %}
+<style>
+  @media print {
+    /* No margin. A label roll has no margin to give: the printer's own
+       unprintable edge is the margin, and adding a quarter inch on top of it
+       is how a tag loses its last line. */
+    @page { size: {{ size.width_mm }}mm {{ size.height_mm }}mm; margin: 0; }
+    /* One tag per label, which is what a roll is. The stylesheet lays tags
+       out two across for a sheet of paper; on a roll that would put half of
+       the second tag on the next label.
+
+       !important because app.css has to use it on the kiosk screen: that
+       screen hides everything and names the tag sheet as the exception, and
+       an exception without !important does not survive the rule it is an
+       exception to. This is the more specific instruction of the two, so it
+       is the one that wins. */
+    .tagsheet, .tagbody .tagsheet,
+    .kioskcard > .tagsheet { display: block !important; }
+    .tagsheet .nametag {
+      break-after: page;
+      page-break-after: always;
+      /* The tag fills the label rather than sitting in the top left of it.
+         Borderless for the same reason there is no margin: the edge of the
+         label is the edge of the tag. */
+      width: auto;
+      margin: 0;
+      border: none;
+      box-sizing: border-box;
+      padding: 3mm;
+      min-height: calc({{ size.height_mm }}mm - 6mm);
+    }
+    .tagsheet .nametag:last-child {
+      break-after: auto;
+      page-break-after: auto;
+    }
+  }
+</style>
+{% endif %}

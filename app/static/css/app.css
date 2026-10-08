@@ -970,8 +970,26 @@ form.inline .select{min-width:170px}
   .kioskbody,.kioskhead,.kioskwrap,.kioskcard{
     background:#fff;box-shadow:none;padding:0;margin:0;min-height:0;
   }
-  .kioskcard h1,.kioskcard .lede,.kioskcard .mlbl,.kioskcard .pickupcode,
-  .kioskcard .btn,.kioskhead,.alert,.footnote{display:none !important}
+  .kioskhead{display:none !important}
+
+  /* **An allowlist, not a list of things to hide.**
+     This was a blocklist naming h1, .lede, .mlbl, .pickupcode, .btn, .alert
+     and .footnote, and it worked right up until somebody added a paragraph
+     that was none of those. A print hint then printed on its own, which on a
+     roll of labels means the first label out of the printer carries a
+     sentence about printing and a volunteer peels it off and bins it.
+
+     Hiding everything and naming the one thing that prints cannot fail that
+     way. The next element added to this screen is invisible on paper by
+     default, which is the right default for a screen whose printed output is
+     a name tag. */
+  .kioskcard > *{display:none !important}
+  /* Put back the one thing that prints, as flex rather than block: the
+     !important needed to beat the rule above would otherwise also beat the
+     two-across layout below, and every tag would come out in a single column
+     down the left edge of the paper. A label roll overrides this again, with
+     its own !important, in partials/tag_page_size.html. */
+  .kioskcard > .tagsheet{display:flex !important}
   /* Two tags across a sheet of paper rather than one down the left edge. */
   .tagsheet,.tagbody .tagsheet{
     display:flex;flex-wrap:wrap;gap:0 .18in;max-width:none;margin:0;

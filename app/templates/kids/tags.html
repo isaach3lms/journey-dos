@@ -10,24 +10,34 @@
 <meta name="robots" content="noindex, nofollow">
 <title>{{ content.tags_title }} | {{ church.name }}</title>
 {% include "partials/head_meta.html" %}
+{% include "partials/tag_page_size.html" %}
 </head>
 <body class="tagbody">
 
+{% set on_a_roll = size and size.code != "letter" %}
 <div class="tagbar noprint">
   <a class="btn ghostbtn" href="{{ url_for('kids.index') }}">{{ content.tags_back }}</a>
   <div class="spacer"></div>
-  <label class="tagtoggle">
-    <input type="checkbox" data-one-per-page>
-    <span>{{ content.tags_per_page }}</span>
-  </label>
+  {# The toggle is only a question on plain paper. A roll is one label per
+     tag by its physical nature, and offering a choice that the page size
+     then overrides is a control that lies about what it does. #}
+  {% if not on_a_roll %}
+    <label class="tagtoggle">
+      <input type="checkbox" data-one-per-page>
+      <span>{{ content.tags_per_page }}</span>
+    </label>
+  {% endif %}
   {# Both, because the two desks are different machines. A laptop prints this
-     page; a tablet cannot print anything and needs the file. #}
+     page; a tablet with no print function needs the file. #}
   {% if pdf_url %}
     <a class="btn ghostbtn" target="_blank" rel="noopener" href="{{ pdf_url }}">{{ content.tags_pdf }}</a>
   {% endif %}
   <button class="btn" type="button" data-print>{{ content.tags_print }}</button>
 </div>
-<p class="muted small noprint tagnote">{{ content.tags_per_page_hint }}</p>
+<p class="muted small noprint tagnote">
+  {% if on_a_roll %}{{ content.tags_on_a_roll.format(size=size.label) }}
+  {% else %}{{ content.tags_per_page_hint }}{% endif %}
+</p>
 
 {% include "kids/_tags.html" %}
 
@@ -40,6 +50,12 @@
   var box = document.querySelector("[data-one-per-page]");
   var sheet = document.querySelector("[data-tagsheet]");
   var print = document.querySelector("[data-print]");
+
+  // The Print button is wired first and unconditionally. It used to sit
+  // below an early return that fired whenever the toggle was absent, so
+  // hiding the toggle on a label roll would have taken printing with it.
+  if (print) { print.addEventListener("click", function () { window.print(); }); }
+
   if (!box || !sheet) { return; }
 
   var KEY = "kids-tags-one-per-page";
@@ -52,8 +68,6 @@
     apply();
     try { window.localStorage.setItem(KEY, box.checked ? "1" : "0"); } catch (e) {}
   });
-
-  if (print) { print.addEventListener("click", function () { window.print(); }); }
 })();
 </script>
 </body>

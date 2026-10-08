@@ -294,6 +294,10 @@ def kiosk_check_in(household_id: int):
         checked_in=checked_in,
         checkin_session=checkin_session,
         checkins=rows,
+        # The roll, so the page can tell the printer what size the paper is.
+        # Printing the page itself is the one-tap path and it needs a page
+        # size or AirPrint assumes Letter and shrinks a 62mm tag onto it.
+        size=g.church.label_size,
         pdf_url=tag_pdf_url(checkin_session, rows) if rows else None,
     )
 
@@ -638,6 +642,7 @@ def tags_for_household(session_id: int, household_id: int):
         content=KIDS,
         checkin_session=checkin_session,
         checkins=checkins,
+        size=g.church.label_size,
         pdf_url=tag_pdf_url(checkin_session, checkins),
     )
 
@@ -667,6 +672,7 @@ def tag_for_child(checkin_id: int):
         content=KIDS,
         checkin_session=checkin.session,
         checkins=[checkin],
+        size=g.church.label_size,
         pdf_url=tag_pdf_url(checkin.session, [checkin]),
     )
 

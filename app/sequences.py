@@ -79,7 +79,12 @@ WELCOME = Sequence(
         "the moment anyone actually talks to them."
     ),
     trigger_stage="visitor",
-    target_stage="attender",
+    # Was "attender", which is the stage that stopped this series. With
+    # Attender retired the next thing up the rail is Member, so that is the
+    # stop now. In practice the early stop fires rarely: somebody rarely
+    # becomes a member inside three weeks, and the series ends by running out
+    # of steps instead, which is the same outcome by a different route.
+    target_stage="member",
     steps=(
         Step(
             day=0,
@@ -119,33 +124,14 @@ WELCOME = Sequence(
                 "{church}"
             ),
         ),
-    ),
-)
-
-# The code is the one in-flight rows already carry, so it stays what it is.
-# The stage it fires on moved when Guest was folded into Visitor and Attender.
-GUEST_FOLLOW_UP = Sequence(
-    code="guest_follow_up",
-    name="Attender follow up",
-    description=(
-        "Two notes for somebody who is here most Sundays but has not taken a "
-        "next step. Stops as soon as they do, or as soon as a person calls."
-    ),
-    trigger_stage="attender",
-    target_stage="member",
-    steps=(
-        Step(
-            day=5,
-            category="next_step",
-            subject="Good to see you again, {first_name}",
-            body=(
-                "Hello {first_name},\n\n"
-                "You have been around a few times now and we are glad.\n\n"
-                "When you are ready, the next thing most people do is join a "
-                "group. No pressure and no deadline.\n\n"
-                "{church}"
-            ),
-        ),
+        # The closing touch, inherited from the Attender follow up when that
+        # series was retired with its trigger stage. Three weeks out is late
+        # enough that somebody who came back a few times is reading it as a
+        # door rather than a chase, and the wording asks nothing of somebody
+        # who only ever came once.
+        #
+        # It says it is the last one because it is, and because a series that
+        # tells people when it ends is a series fewer people unsubscribe from.
         Step(
             day=21,
             category="next_step",
@@ -162,7 +148,29 @@ GUEST_FOLLOW_UP = Sequence(
     ),
 )
 
-SEQUENCES: tuple[Sequence, ...] = (WELCOME, GUEST_FOLLOW_UP)
+# ---------------------------------------------------------------------------
+# Retired
+#
+# `guest_follow_up`, the "Attender follow up": two notes to somebody here most
+# Sundays who had not taken a next step. It triggered on Attender, and when
+# that stage was retired the series had no way to start. A sequence pointing
+# at a stage that does not exist is worse than no sequence: it sits on the
+# dashboard's automation list looking live, and the engine's trigger check
+# silently never matches.
+#
+# Its closing note moved into WELCOME above rather than being deleted, since
+# a last gentle touch three weeks out was the half of it that did not depend
+# on knowing somebody attends regularly. Its day 5 note did depend on that
+# ("You have been around a few times now"), and there is no longer a stage
+# that means it, so it is gone.
+#
+# **In-flight enrollments are safe.** `automation._still_running` reads
+# `enrollment.sequence`, gets None for a code that no longer resolves, and
+# returns REASON_FINISHED, so anybody mid-series is completed cleanly on the
+# next worker run instead of erroring. The rows keep their code for history.
+# ---------------------------------------------------------------------------
+
+SEQUENCES: tuple[Sequence, ...] = (WELCOME,)
 
 SEQUENCE_BY_CODE: dict[str, Sequence] = {s.code: s for s in SEQUENCES}
 SEQUENCE_CODES: tuple[str, ...] = tuple(s.code for s in SEQUENCES)

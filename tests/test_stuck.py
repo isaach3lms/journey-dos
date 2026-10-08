@@ -118,7 +118,14 @@ class TestTheQueryMatchesTheProperty:
         add_person(db, "journey", "B", "Contacted", "visitor", 60, 3)
         add_person(db, "journey", "C", "Fresh", "visitor", 2, None)
         add_person(db, "journey", "D", "Member", "member", 2000, None)
-        add_person(db, "journey", "E", "Attender", "attender", 200, 40)
+        # A migrated ex-Attender: Visitor with a stage clock running since
+        # long before the stage was retired, and nobody has called. This row
+        # was an Attender far past a 90 day limit, which only meant anything
+        # while there were two transitional stages with two limits. What it
+        # covers now is the shape the retirement migration actually produces,
+        # since that migration moves people across and leaves stage_since
+        # alone on purpose.
+        add_person(db, "journey", "E", "Longstanding", "visitor", 200, None)
 
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         by_query = {p.id for p in db.session.scalars(Person.stuck(church.id))}
@@ -515,23 +522,32 @@ class TestTheBoundaryIsTheSameInBothPlaces:
     """
 
     def test_they_agree_across_the_whole_boundary(self, db):
-        from app.stages import STAGE_BY_CODE
+        """Swept per transitional stage rather than for one named stage.
 
-        limit = STAGE_BY_CODE["attender"].expected_days
-        for hours in range(limit * 24 - 6, limit * 24 + 54, 3):
-            person = add_person(
-                db, "journey", f"H{hours}", "Boundary", "attender", 0, None
-            )
-            person.stage_since = utcnow() - timedelta(hours=hours)
-            db.session.commit()
+        This read STAGE_BY_CODE["attender"] until that stage was retired.
+        Naming a stage was the mistake: the test is about any stage with an
+        expectation on it, and parametrising on TRANSITIONAL_STAGES means the
+        next stage change extends the sweep instead of breaking it.
+        """
+        assert TRANSITIONAL_STAGES, "nothing transitional left to sweep"
+        for stage in TRANSITIONAL_STAGES:
+            limit = stage.expected_days
+            for hours in range(limit * 24 - 6, limit * 24 + 54, 3):
+                person = add_person(
+                    db, "journey", f"H{stage.code}{hours}", "Boundary",
+                    stage.code, 0, None
+                )
+                person.stage_since = utcnow() - timedelta(hours=hours)
+                db.session.commit()
 
-            church = person.church_id
-            in_query = person.id in {
-                p.id for p in db.session.scalars(Person.stuck(church))
-            }
-            assert in_query == person.is_stuck, (
-                f"{hours}h: query said {in_query}, property said {person.is_stuck}"
-            )
+                church = person.church_id
+                in_query = person.id in {
+                    p.id for p in db.session.scalars(Person.stuck(church))
+                }
+                assert in_query == person.is_stuck, (
+                    f"{stage.code} at {hours}h: query said {in_query}, "
+                    f"property said {person.is_stuck}"
+                )
 
     def test_they_agree_across_the_contact_window_boundary(self, db):
         """The same bug on the other side of the AND.
@@ -542,7 +558,8 @@ class TestTheBoundaryIsTheSameInBothPlaces:
         """
         for hours in range(CONTACT_WINDOW_DAYS * 24 - 6, CONTACT_WINDOW_DAYS * 24 + 54, 3):
             person = add_person(
-                db, "journey", f"C{hours}", "Window", "attender", 300, None
+                db, "journey", f"C{hours}", "Window", TRANSITIONAL_STAGES[0].code,
+                300, None
             )
             person.last_contact_at = utcnow() - timedelta(hours=hours)
             db.session.commit()
@@ -558,12 +575,11 @@ class TestTheBoundaryIsTheSameInBothPlaces:
 
     def test_a_flagged_person_always_has_a_reason(self, db):
         """The card rendered "None" for anyone caught in the gap."""
-        from app.stages import STAGE_BY_CODE
-
-        limit = STAGE_BY_CODE["attender"].expected_days
+        limit = TRANSITIONAL_STAGES[0].expected_days
         for hours in (limit * 24, limit * 24 + 1, limit * 24 + 25):
             person = add_person(
-                db, "journey", f"R{hours}", "Reason", "attender", 0, None
+                db, "journey", f"R{hours}", "Reason", TRANSITIONAL_STAGES[0].code,
+                0, None
             )
             person.stage_since = utcnow() - timedelta(hours=hours)
             db.session.commit()

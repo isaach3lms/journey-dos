@@ -432,9 +432,18 @@ class TestGettingItInFrontOfAPrintSheet:
 
     def test_it_asks_the_wrapper_rather_than_navigating(self, db, journey, staff,
                                                         family, sunday):
+        """Still the rule. Only the way the plugin is located has changed.
+
+        This asserted the literal string "Plugins.Browser", which was a
+        hardcoded lookup. A plugin registers under whatever name its native
+        code chose and that name has changed between versions, so one spelling
+        reports a working install as a missing one: the same mistake that
+        made the push check say No on a phone that was receiving. The lookup
+        is a pattern now, and this asserts the pattern.
+        """
         page = self._label_page(staff, family, sunday)
         assert "window.Capacitor" in page
-        assert "Plugins.Browser" in page
+        assert "browser|inappbrowser|safari" in page
         assert "preventDefault" in page
 
     def test_it_hands_the_wrapper_an_absolute_url(self, db, journey, staff,
@@ -444,11 +453,29 @@ class TestGettingItInFrontOfAPrintSheet:
         page = self._label_page(staff, family, sunday)
         assert "new URL(" in page
 
-    def test_nothing_is_guessed_at_when_the_plugin_is_missing(
+    def test_a_wrapper_that_cannot_open_a_file_says_so(
         self, db, journey, staff, family, sunday
     ):
-        """A wrapper without the browser plugin leaves the plain link alone
-        rather than inventing a path that does not exist."""
+        """This test used to assert the opposite, and the opposite was the bug.
+
+        It read: "a wrapper without the browser plugin leaves the plain link
+        alone rather than inventing a path that does not exist." Leaving the
+        link alone is correct as far as it goes, since there is genuinely
+        nothing this page can do to print from inside the app. What was wrong
+        was doing it in silence. A volunteer tapped Print name tags, nothing
+        happened, nothing on the screen suggested the tablet was the problem,
+        and check-in ran for weeks without tags while the server generated
+        correct PDFs the whole time.
+
+        So the contract changed on purpose: the link is still left alone, and
+        the screen now says the tablet cannot print and where to go instead.
+        """
         page = self._label_page(staff, family, sunday)
-        assert 'typeof browser.open !== "function"' in page
-        assert "return; }" in page
+
+        # Still no invented path: the plain anchor is untouched.
+        assert 'target="_blank"' in page
+
+        # And the case is now reported rather than swallowed.
+        assert "data-print-cannot" in page
+        assert "cannot print from inside the app" in page
+        assert "Safari" in page

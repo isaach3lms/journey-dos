@@ -49,7 +49,7 @@ def alicia(db, journey):
     """The person behind the `member` client."""
     person = Person(
         church_id=journey.id, first_name="Alicia", last_name="Romero",
-        email=MEMBER_EMAIL, stage="attender",
+        email=MEMBER_EMAIL, stage="member",
     )
     db.session.add(person)
     db.session.flush()

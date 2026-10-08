@@ -164,6 +164,10 @@ DASHBOARD = {
     "youth_label": "Youth",
     "youth_meaning": "Thirteen and over, counted apart from the kids.",
     "kids_note": "In families",
+    # Youth are in families too, and saying so twice down a row reads as a
+    # copy-paste rather than a fact. This says the thing a pastor would
+    # actually want on the youth segment.
+    "youth_note": "13 and over",
     "open_people": "Open People",
     "stage_stuck": "{count} stuck",
     "stage_moving": "Moving",
@@ -2318,6 +2322,70 @@ KIDS = {
         "The tags open in a separate window. Use the share button there, then "
         "Print."
     ),
+    # Shown only on a tablet that is inside the installed app and has no way
+    # to open a file. Names the device as the problem, because a volunteer's
+    # first assumption is that they tapped the wrong thing.
+    "label_cannot_print": "This tablet cannot print from inside the app.",
+    "label_cannot_print_why": (
+        "Apple does not allow printing from an app's built-in browser. The "
+        "tags are ready and nothing is lost. To print them, open check-in in "
+        "Safari instead of the app and use the share button:"
+    ),
+
+    # ---------------------------------------------------------------------
+    # The print self-test. Written for a volunteer holding the tablet, not
+    # for whoever maintains the app: every line says what to do next rather
+    # than what is technically true.
+    # ---------------------------------------------------------------------
+    "kiosk_printcheck": "Can this tablet print?",
+    "printcheck_heading": "Can this tablet print?",
+    "printcheck_intro": (
+        "Worth two minutes on a weekday. Everything below is read off this "
+        "tablet, right now."
+    ),
+    "printcheck_yes": "Yes",
+    "printcheck_no": "No",
+    # Phrased as a yes or no question, because the answer is rendered as a
+    # Yes or No pill. "Where this is running" with a No beside it answers a
+    # question nobody asked.
+    "printcheck_where": "Running somewhere that can print",
+    "printcheck_where_app": "No. This is inside the installed app",
+    "printcheck_where_browser": "Yes. This is a normal browser",
+    "printcheck_opener": "Can open a tag outside the app",
+    "printcheck_opener_yes": "Yes, found",
+    "printcheck_opener_no": "No.",
+    "printcheck_opener_has": "This app has:",
+    "printcheck_opener_none": "This app has no plugins at all.",
+    "printcheck_window": "Printing built into this screen",
+    "printcheck_window_yes": "Available",
+    "printcheck_window_no": "Not available, which is normal on an iPad",
+    "printcheck_ok": "This tablet can print name tags.",
+    "printcheck_ok_why": (
+        "Tap the sample below. It should open with a share button, and Print "
+        "is in there."
+    ),
+    "printcheck_bad": "This tablet cannot print name tags.",
+    "printcheck_bad_why": (
+        "Apple does not allow printing from inside an app. Nothing is wrong "
+        "with the printer or with check-in. Open this address in Safari "
+        "instead of the app and everything here will work:"
+    ),
+    "printcheck_try": "Try a real one",
+    "printcheck_try_hint": (
+        "A sample tag with made-up details, on the roll this church is set "
+        "to: {size}. If it comes out blank or spread across several labels, "
+        "the roll setting is wrong rather than the printer."
+    ),
+    "printcheck_sample": "Print a sample tag",
+    "printcheck_back": "Back to check-in",
+
+    # What is on the sample. Invented, and visibly so: a volunteer must never
+    # mistake a sample for a tag that authorises collecting a child.
+    "sample_first": "Sample",
+    "sample_last": "Not a real child",
+    "sample_room": "Test print",
+    "sample_code": "SAMPLE",
+    "sample_when": "Test print",
 
     # The tablet, as a device rather than as a screen.
     "kiosk_only": (
@@ -2927,9 +2995,15 @@ SETTINGS = {
     "kiosk_revoked": "Every tablet is signed out and unused links are dead.",
 
     "kiosk_label_heading": "What the tags print on",
+    # Says "roll, not printer" out loud, because the list reads as a list of
+    # printers to anybody who has not bought DK rolls before, and a church
+    # that cannot find its own model concludes the printer is unsupported.
     "kiosk_label_hint": (
-        "The code is printed on the box the label roll came in. Getting this "
-        "wrong is why a tag comes out blank or across several labels."
+        "Pick the roll loaded in the printer, not the printer itself. The "
+        "code is printed on the box the roll came in, and it starts with DK. "
+        "Every Brother QL takes these, including the QL-800, QL-810W and "
+        "QL-820NWB. Getting this wrong is why a tag comes out blank or across "
+        "several labels."
     ),
     "kiosk_label_save": "Save",
     "kiosk_label_saved": "Tags will print on {label}.",
@@ -3285,7 +3359,7 @@ PRIVACY = {
         {
             "name": "Where you are in the church's own steps",
             "why": (
-                "Visitor, attender, member and so on, plus notes staff write "
+                "Visitor, member, volunteer and so on, plus notes staff write "
                 "about conversations they have had with you."
             ),
         },

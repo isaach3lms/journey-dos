@@ -333,7 +333,7 @@ class TestInTheReader:
 
         person = Person(
             church_id=journey.id, first_name="Alicia", last_name="Romero",
-            email="member@journeychurchsemo.com", stage="attender",
+            email="member@journeychurchsemo.com", stage="member",
         )
         db.session.add(person)
         db.session.flush()

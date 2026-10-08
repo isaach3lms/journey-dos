@@ -38,8 +38,11 @@ class Stage:
     # Journey's roster flagged 39 of 54 people, because a Member of three
     # years read as "overdue" against a 365 day expectation. But a Member of
     # three years is not stuck. They are exactly where the church wants them.
-    # Only Visitor and Attender are places someone should be moving out of,
-    # so only those two can produce a stage flag.
+    # Visitor is the one place someone should be moving out of, so it is the
+    # only stage that produces a stage flag. Attender was the other until
+    # Journey retired it; the field stays a field rather than becoming
+    # `is_visitor` because the next church to want six stages will want two
+    # of them transitional again.
     is_transitional: bool
 
     # How long someone can sit in a transitional stage before it is worth a
@@ -47,26 +50,34 @@ class Stage:
     expected_days: int | None
 
 
+# Attender was here, between Visitor and Member, and is gone for the same
+# reason Guest went before it: it sat at zero because it described a judgement
+# nobody at the desk was actually making. "Here most Sundays" is something a
+# church knows about somebody months after it is true, so the column stayed
+# empty while real people sat in Visitor, and a stage nobody files anybody
+# into is a stage that makes the rail longer and tells staff less.
+#
+# The orders below are contiguous and renumbered rather than leaving a gap at
+# 1. `stage_order` is compared with `>=` in the sequence engine and `>` in
+# `is_forward`, so a hole would work, but `next_stage` indexes STAGES by
+# order + 1 and would hand back the wrong stage. See migration e3a81f52c7d9.
 STAGES: tuple[Stage, ...] = (
-    # Transitional. People should be moving out of these.
+    # Transitional. People should be moving out of this one.
     Stage("visitor", "Visitor", 0,
-          "Has been here once. We may not know their name yet.",
+          "Has been here once, or a few times. Not committed yet.",
           is_transitional=True, expected_days=21),
-    Stage("attender", "Attender", 1,
-          "Here most Sundays. Not yet committed to anything else.",
-          is_transitional=True, expected_days=90),
 
     # Destinations. Staying here for years is the point, not a problem.
-    Stage("member", "Member", 2,
+    Stage("member", "Member", 1,
           "Has committed to this church publicly.",
           is_transitional=False, expected_days=None),
-    Stage("volunteer", "Volunteer", 3,
+    Stage("volunteer", "Volunteer", 2,
           "Serving on a team.",
           is_transitional=False, expected_days=None),
-    Stage("disciple", "Disciple", 4,
+    Stage("disciple", "Disciple", 3,
           "In a group and growing on purpose.",
           is_transitional=False, expected_days=None),
-    Stage("leader", "Leader", 5,
+    Stage("leader", "Leader", 4,
           "Leading others. Reproducing what they were given.",
           is_transitional=False, expected_days=None),
 )
@@ -141,7 +152,6 @@ CONTACT_WINDOW_DAYS = 21
 # first so the common case is one click instead of a blank field.
 NEXT_STEP_BY_STAGE = {
     "visitor": "Send a personal thank you for visiting",
-    "attender": "Invite into a group",
     "member": "Ask them to serve on a team",
     "volunteer": "Invite into a group, or to lead one",
     "disciple": "Ask them to disciple someone else",

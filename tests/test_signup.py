@@ -217,7 +217,7 @@ class TestLinkingNeedsAConfirmedAddress:
     def test_no_person_is_attached_before_confirmation(self, db, client, open_church):
         person = Person(
             church_id=open_church.id, first_name="Nina", last_name="Ibarra",
-            email=NEW_EMAIL, stage="attender",
+            email=NEW_EMAIL, stage="member",
         )
         db.session.add(person)
         db.session.commit()
@@ -229,7 +229,7 @@ class TestLinkingNeedsAConfirmedAddress:
     def test_confirming_attaches_the_roster_record(self, db, client, open_church):
         person = Person(
             church_id=open_church.id, first_name="Nina", last_name="Ibarra",
-            email=NEW_EMAIL, stage="attender",
+            email=NEW_EMAIL, stage="member",
         )
         db.session.add(person)
         db.session.commit()
@@ -249,7 +249,7 @@ class TestLinkingNeedsAConfirmedAddress:
             db.session.add(
                 Person(
                     church_id=open_church.id, first_name=first, last_name="Ibarra",
-                    email=NEW_EMAIL, stage="attender",
+                    email=NEW_EMAIL, stage="member",
                 )
             )
         db.session.commit()

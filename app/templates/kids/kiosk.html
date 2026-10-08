@@ -45,5 +45,13 @@
         <a href="{{ url_for('kids.kiosk_forgot') }}">{{ content.kiosk_forgot }}</a>
       </p>
     {% endif %}
+
+    {# Small and last, because families use this screen and this is for the
+       volunteer setting the tablet up. It is here rather than in Settings
+       because the test has to run on the tablet itself, and the kiosk guard
+       keeps this account out of Settings by design. #}
+    <p class="footnote">
+      <a href="{{ url_for('kids.print_check') }}">{{ content.kiosk_printcheck }}</a>
+    </p>
   {% endif %}
 {% endblock %}

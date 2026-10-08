@@ -440,7 +440,12 @@ def _tag_pdf_response(checkin_session, checkins, who: str):
         church=g.church,
         checkin_session=checkin_session,
         size=g.church.label_size,
-        when=format_local(checkin_session.starts_at, "%b %-d"),
+        # `format_local(value, church, fmt)`. The church argument was missing
+        # here, so the format string landed in it and every tag ever printed
+        # carried the default format instead: "Thursday 9:30am" where the
+        # date belongs. It never raised, because `zone_for` falls back rather
+        # than throwing on a bad value, which is why it survived this long.
+        when=format_local(checkin_session.starts_at, g.church, "%b %-d"),
     )
     safe = "".join(c for c in who if c.isalnum() or c in " -_").strip() or "tags"
     return Response(
@@ -467,6 +472,86 @@ def tag_pdf_url(checkin_session, checkins) -> str:
             session_id=checkin_session.id,
             checkin_ids=[c.id for c in checkins],
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Can this tablet print?
+#
+# Built because the answer was unknowable from here. Name tags were not coming
+# out of the lobby iPad, the server was generating correct PDFs the whole time,
+# and the difference was the device: Apple's web view has no print function, so
+# inside the installed app the Print button did nothing and said nothing.
+#
+# There is no way to diagnose that remotely. The wrapper is a separate project,
+# the tablet has no console, and the only person who can see the screen is a
+# volunteer on a Sunday morning. So the tablet reports on itself, the same way
+# the push problem was finally pinned down by a page that asked the phone.
+#
+# The sample tag matters as much as the report. "Your device says it can open
+# files" is a claim; a tag coming out of the printer is the answer, and it can
+# be had on a Tuesday rather than discovered during check-in.
+# ---------------------------------------------------------------------------
+
+@bp.get("/kiosk/print-check/")
+@login_required
+def print_check():
+    """What this tablet can and cannot do with a tag."""
+    from app.labeltoken import sign_sample
+
+    return render_template(
+        "kids/print_check.html",
+        church=g.church,
+        content=KIDS,
+        size=g.church.label_size,
+        sample_url=url_for("kids.sample_tag_pdf",
+                           token=sign_sample(church_id=g.church.id)),
+        kiosk_url=url_for("kids.kiosk"),
+    )
+
+
+@bp.get("/tags/sample/<token>/")
+def sample_tag_pdf(token: str):
+    """One tag with invented details, on the church's real label size.
+
+    No `login_required`, for the same reason the real tags have none: the
+    point is to open it outside the app, where the app's cookies do not reach.
+    The token is the credential.
+
+    Nothing real is on it. No pickup code, no child, no family, no session, so
+    a leaked sample link discloses the church's name and the fact that it owns
+    a label printer.
+    """
+    from app.labeltoken import verify_sample
+    from app.labels import render_tags
+    from types import SimpleNamespace
+
+    if not verify_sample(token, g.church.id):
+        abort(404)
+
+    sample = SimpleNamespace(
+        person=SimpleNamespace(first_name=KIDS["sample_first"],
+                               last_name=KIDS["sample_last"]),
+        room=KIDS["sample_room"],
+        # Visibly not a code. A real one is letters from a restricted
+        # alphabet, and a volunteer must never be able to mistake this tag
+        # for one that authorises collecting a child.
+        pickup_code=KIDS["sample_code"],
+    )
+    pdf = render_tags(
+        checkins=[sample],
+        church=g.church,
+        checkin_session=SimpleNamespace(name=KIDS["sample_room"]),
+        size=g.church.label_size,
+        when=KIDS["sample_when"],
+    )
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="sample tag.pdf"',
+            "Cache-Control": "no-store, private",
+        },
     )
 
 

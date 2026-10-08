@@ -10,6 +10,7 @@ import pytest
 
 from app.checkin_pin import PIN_LENGTH, blocklist, candidate, generate_pin
 from app.models import Church, Household, NextStep, Person, User
+from app.stages import stage_label
 from tests.conftest import JOURNEY_HOST, PASSWORD
 
 MEMBER_EMAIL = "member@journeychurchsemo.com"
@@ -28,7 +29,7 @@ def linked_member(db):
         first_name="Alicia",
         last_name="Romero",
         email=MEMBER_EMAIL,
-        stage="attender",
+        stage="member",
         household_id=household.id,
     )
     sibling = Person(
@@ -181,7 +182,7 @@ class TestUserToPersonLink:
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         person = Person(
             church_id=church.id, first_name="Alicia", last_name="Romero",
-            email=MEMBER_EMAIL, stage="attender",
+            email=MEMBER_EMAIL, stage="member",
         )
         db.session.add(person)
         db.session.commit()
@@ -240,7 +241,7 @@ class TestUserToPersonLink:
         db.session.add(
             Person(
                 church_id=church.id, first_name="Alicia", last_name="Romero",
-                email=MEMBER_EMAIL, stage="attender",
+                email=MEMBER_EMAIL, stage="member",
             )
         )
         db.session.commit()
@@ -262,7 +263,11 @@ class TestMemberApp:
         r = member.get("/me/", headers={"Host": JOURNEY_HOST})
         assert r.status_code == 200
         assert b"Alicia" in r.data
-        assert b"Attender" in r.data
+        # Her stage label, whatever the fixture puts her on. Hardcoding
+        # "Attender" is what broke when that stage was retired, and the test
+        # is about the screen showing a person their own stage rather than
+        # about which stage she happens to be at.
+        assert stage_label(linked_member.stage).encode() in r.data
 
     def test_home_shows_an_assigned_next_step(self, db, linked_member, member):
         db.session.add(

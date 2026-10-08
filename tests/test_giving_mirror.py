@@ -53,7 +53,7 @@ def journey(db):
 def chris(db, journey):
     person = Person(
         church_id=journey.id, first_name="Chris", last_name="Vaughn",
-        email="chris.vaughn@example.com", phone="573-555-4085", stage="attender",
+        email="chris.vaughn@example.com", phone="573-555-4085", stage="member",
     )
     db.session.add(person)
     db.session.commit()
@@ -202,7 +202,7 @@ class TestMatching:
         this whole module exists to avoid."""
         spouse = Person(
             church_id=journey.id, first_name="Alina", last_name="Vaughn",
-            email="chris.vaughn@example.com", stage="attender",
+            email="chris.vaughn@example.com", stage="member",
         )
         db.session.add(spouse)
         db.session.commit()

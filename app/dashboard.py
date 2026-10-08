@@ -19,6 +19,9 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models.base import utcnow
+from app.ages import KID, YOUTH
+from app.stages import KIDS as STAGE_FILTER_KIDS
+from app.stages import YOUTH as STAGE_FILTER_YOUTH
 from app.stages import STAGES, TRANSITIONAL_STAGES
 
 WEEKS = 7
@@ -409,9 +412,24 @@ def build(church) -> dict:
         "stuck_by_stage": stuck,
         "transitional": {s.code for s in TRANSITIONAL_STAGES},
         "total": Person.total_for_church(church.id),
-        # The last segment of the rail. Not a stage, and never counted into
-        # one: see Person.stage_counts.
-        "kids_count": Person.child_count(church.id),
+        # The last two segments of the rail. Neither is a stage and neither is
+        # ever counted into one: see Person.stage_counts.
+        #
+        # **These used to disagree with the People screen**, which is worse
+        # than the missing Youth segment that led here. This read
+        # `child_count`, every child on the roster, while People read
+        # `group_count(KID)`, which stops at thirteen. So one screen said
+        # "Kids 23" meaning kids and youth together and the other said "Kids
+        # 14, Youth 9", and a pastor comparing the two was reading two
+        # different questions with one label on them. Both now ask the same
+        # thing of the same function.
+        "kids_count": Person.group_count(church.id, KID),
+        "youth_count": Person.group_count(church.id, YOUTH),
+        # The filters the segments link to, rather than strings typed into the
+        # markup. The dashboard had 'kids' hardcoded, which is how it ended up
+        # being the rail that never heard about youth.
+        "kids_filter": STAGE_FILTER_KIDS,
+        "youth_filter": STAGE_FILTER_YOUTH,
         "stuck_count": sum(stuck.values()),
         # Somebody asking for a pastor is the one follow-up that is not
         # inferred from a rule. It goes above the flags, because a person

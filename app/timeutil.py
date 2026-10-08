@@ -82,6 +82,26 @@ def from_local(value: datetime | None, church) -> datetime | None:
 
 
 def format_local(value: datetime | None, church, fmt: str = "%A %-I:%M%p") -> str:
+    """Format a UTC datetime on a church's wall clock.
+
+    The church argument is not optional-looking by accident: `None` is a real
+    case, used outside a request where there is no tenant, and it falls back
+    to the default zone.
+
+    A string in that position is always a bug, and a loud one is better than
+    the alternative. `format_local(dt, "%b %-d")` reads perfectly well, and
+    what it does is pass the format as the church and then format with the
+    default: the kids name tags printed "Thursday 9:30am" where the date
+    belonged for as long as that call existed, because `zone_for` falls back
+    on a bad value rather than raising and nothing else ever noticed. The one
+    thing that would have caught it is this check.
+    """
+    if isinstance(church, str):
+        raise TypeError(
+            "format_local(value, church, fmt): the second argument is the "
+            f"church, not the format. Got the string {church!r}, which means "
+            "the format is being ignored."
+        )
     local = to_local(value, church)
     if local is None:
         return ""

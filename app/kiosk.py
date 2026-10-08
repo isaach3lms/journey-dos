@@ -78,6 +78,11 @@ KIOSK_ENDPOINTS = frozenset({
     # only separate endpoint here is the printable file, which carries its own
     # signed authorization and does not consult the session at all.
     "kids.tags_pdf",
+    # Proving the tablet can print, before a Sunday rather than during one.
+    # The check page needs the session; the sample file carries its own token
+    # for the same reason the real tags do.
+    "kids.print_check",
+    "kids.sample_tag_pdf",
     # Setting the tablet up, and giving it back.
     "kids.kiosk_setup",
     "auth.logout",

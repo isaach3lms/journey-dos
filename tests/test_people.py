@@ -32,7 +32,7 @@ def roster(db):
                               email="marcus@example.com"),
         "dana": make_person(db, "journey", "Dana", "Webb", "volunteer",
                             email="dana@example.com"),
-        "chris": make_person(db, "journey", "Chris", "Vaughn", "attender"),
+        "chris": make_person(db, "journey", "Chris", "Vaughn", "disciple"),
         "other": make_person(db, "riverbend", "Someone", "Else", "member",
                              email="someone@example.com"),
     }
@@ -51,7 +51,7 @@ class TestStages:
         assert not is_forward("member", "member")
 
     def test_next_stage_runs_out_at_the_end(self):
-        assert next_stage("visitor").code == "attender"
+        assert next_stage("visitor").code == "member"
         assert next_stage(STAGES[-1].code) is None
 
     def test_an_unknown_code_does_not_crash_ordering(self):
@@ -179,17 +179,17 @@ class TestStageMoves:
         person = roster["marcus"]
         staff.post(
             f"/people/{person.id}/stage/",
-            data={"stage": "attender"},
+            data={"stage": "member"},
             headers={"Host": JOURNEY_HOST},
         )
         db.session.refresh(person)
-        assert person.stage == "attender"
+        assert person.stage == "member"
 
         events = [e for e in db.session.scalars(
             PersonEvent.for_person(person.church_id, person.id)
         ) if e.kind == KIND_STAGE_CHANGE]
         assert events[0].kind == KIND_STAGE_CHANGE
-        assert "Visitor" in events[0].summary and "Attender" in events[0].summary
+        assert "Visitor" in events[0].summary and "Member" in events[0].summary
 
     def test_moving_restarts_the_clock(self, db, roster, staff):
         """Increment 3's stuck engine measures from stage_since."""
@@ -202,7 +202,7 @@ class TestStageMoves:
 
         staff.post(
             f"/people/{person.id}/stage/",
-            data={"stage": "attender"},
+            data={"stage": "member"},
             headers={"Host": JOURNEY_HOST},
         )
         db.session.refresh(person)
@@ -212,7 +212,7 @@ class TestStageMoves:
         person = roster["marcus"]
         staff.post(
             f"/people/{person.id}/stage/",
-            data={"stage": "attender"},
+            data={"stage": "member"},
             headers={"Host": JOURNEY_HOST},
         )
         events = [e for e in db.session.scalars(
@@ -225,11 +225,11 @@ class TestStageMoves:
         person = roster["dana"]
         staff.post(
             f"/people/{person.id}/stage/",
-            data={"stage": "attender"},
+            data={"stage": "member"},
             headers={"Host": JOURNEY_HOST},
         )
         db.session.refresh(person)
-        assert person.stage == "attender"
+        assert person.stage == "member"
         events = [e for e in db.session.scalars(
             PersonEvent.for_person(person.church_id, person.id)
         ) if e.kind == "stage_change"]
@@ -506,9 +506,9 @@ class TestAHouseholdMayShareOneEmail:
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         db.session.add_all([
             Person(church_id=church.id, first_name="Chris", last_name="Vaughn",
-                   email="vaughns@example.com", stage="attender"),
+                   email="vaughns@example.com", stage="member"),
             Person(church_id=church.id, first_name="Alina", last_name="Vaughn",
-                   email="vaughns@example.com", stage="attender"),
+                   email="vaughns@example.com", stage="member"),
         ])
         db.session.commit()
         assert len(db.session.scalars(Person.search(church.id, term="vaughns@")).all()) == 2
@@ -521,7 +521,7 @@ class TestAHouseholdMayShareOneEmail:
         for first in ("Chris", "Alina"):
             db.session.add(
                 Person(church_id=church.id, first_name=first, last_name="Vaughn",
-                       email="member@journeychurchsemo.com", stage="attender")
+                       email="member@journeychurchsemo.com", stage="member")
             )
         db.session.commit()
 
@@ -540,7 +540,7 @@ class TestAHouseholdMayShareOneEmail:
         church = db.session.scalar(db.select(Church).where(Church.slug == "journey"))
         db.session.add(
             Person(church_id=church.id, first_name="Alicia", last_name="Romero",
-                   email="member@journeychurchsemo.com", stage="attender")
+                   email="member@journeychurchsemo.com", stage="member")
         )
         db.session.commit()
 

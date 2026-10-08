@@ -22,7 +22,19 @@
   {% if pdf_url %}
     <a class="btn wide center" target="_blank" rel="noopener"
        data-print-link href="{{ pdf_url }}">{{ content.label_print }}</a>
-    <p class="muted small center">{{ content.label_print_hint }}</p>
+    <p class="muted small center" data-print-hint>{{ content.label_print_hint }}</p>
+    {# Shown only when this device is one that cannot print, and hidden for
+       everybody else. Marked hidden in the markup rather than by a class, so
+       a device with JavaScript off never sees a warning aimed at a case it
+       cannot be in. #}
+    <div class="alert error center" data-print-cannot hidden>
+      <p><b>{{ content.label_cannot_print }}</b></p>
+      <p class="small">{{ content.label_cannot_print_why }}</p>
+      <p class="small mono">{{ request.host }}{{ url_for('kids.kiosk') }}</p>
+      <p class="small">
+        <a href="{{ url_for('kids.print_check') }}">{{ content.kiosk_printcheck }}</a>
+      </p>
+    </div>
   {% endif %}
   <a class="btn wide center ghostbtn" href="{{ url_for('kids.kiosk') }}">{{ content.label_done }}</a>
 
@@ -47,23 +59,62 @@
 
      So when the page can see it is inside the wrapper, it asks the wrapper to
      open the file instead, which puts it in a real browser view with a share
-     button, and leaves the kiosk screen untouched behind it. If the wrapper is
-     there but the browser plugin is not, nothing is guessed at: the link is
-     left alone and the note below it says what to do. */
+     button, and leaves the kiosk screen untouched behind it.
+
+     **The wrapper without that plugin is the case that was broken.** The code
+     here used to return quietly and leave the anchor alone, on the reasoning
+     that the note underneath said what to do. It did not: the note says to
+     use the share button in the window that opens, and no window opens. A
+     volunteer taps Print name tags, nothing happens, and there is nothing on
+     the screen suggesting the tablet is the problem. That is the whole bug,
+     and it is why check-in has been running without tags.
+
+     So that case now says so, and says the one thing that works today, which
+     is opening check-in in Safari rather than in the app. Adding the plugin
+     to the wrapper is the real fix and needs a new build of the app; this
+     screen cannot do it and should not pretend the tap did something. */
   (function () {
     var link = document.querySelector("[data-print-link]");
     if (!link) { return; }
 
     var cap = window.Capacitor;
-    var browser = cap && cap.Plugins && cap.Plugins.Browser;
-    if (!browser || typeof browser.open !== "function") { return; }
+    var plugins = cap && cap.Plugins;
 
-    link.addEventListener("click", function (event) {
-      event.preventDefault();
-      // Absolute, because the wrapper hands this to the system and a path
-      // relative to the app's own origin means nothing out there.
-      browser.open({url: new URL(link.href, window.location.href).href});
-    });
+    /* Found by pattern, not by a fixed name, for the reason the push check
+       learned the hard way: a plugin registers under whatever name its native
+       code chose, that name has changed between versions, and looking for one
+       spelling reports a working install as a missing one. */
+    var browser = null;
+    if (plugins) {
+      var names = Object.keys(plugins);
+      for (var i = 0; i < names.length; i++) {
+        var api = plugins[names[i]];
+        if (/browser|inappbrowser|safari/i.test(names[i])
+            && api && typeof api.open === "function") {
+          browser = api;
+          break;
+        }
+      }
+    }
+
+    if (browser) {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        // Absolute, because the wrapper hands this to the system and a path
+        // relative to the app's own origin means nothing out there.
+        browser.open({url: new URL(link.href, window.location.href).href});
+      });
+      return;
+    }
+
+    // A real browser. The plain anchor is correct and already works.
+    if (!cap) { return; }
+
+    // Inside the wrapper with nothing that can open a file. Say so.
+    var cannot = document.querySelector("[data-print-cannot]");
+    var hint = document.querySelector("[data-print-hint]");
+    if (cannot) { cannot.hidden = false; }
+    if (hint) { hint.hidden = true; }
   })();
   </script>
 {% endblock %}

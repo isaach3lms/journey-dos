@@ -33,11 +33,50 @@ from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 # signer that happens to share the application secret.
 SALT = "kids-name-tags"
 
+# The sample tag gets its own salt and therefore its own signer. A sample
+# token must not be loadable as a real one and a real one must not be loadable
+# as a sample: the two routes return different things and one of them carries
+# a live pickup code. Separate salts make that structural rather than a check
+# somebody has to remember to write.
+SALT_SAMPLE = "kids-sample-tag"
+
 MAX_AGE_SECONDS = 10 * 60
+
+# Longer than a real tag's, on purpose. A sample carries no pickup code, no
+# child's name and nothing about any family, so the reason real tokens expire
+# in ten minutes does not apply. A volunteer testing a printer on a Tuesday
+# evening should not have the link die while they walk to the desk.
+SAMPLE_MAX_AGE_SECONDS = 60 * 60
 
 
 def _serializer() -> URLSafeTimedSerializer:
     return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt=SALT)
+
+
+def _sample_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(
+        current_app.config["SECRET_KEY"], salt=SALT_SAMPLE
+    )
+
+
+def sign_sample(*, church_id: int) -> str:
+    """A token for a sample tag, which names no family and no session."""
+    return _sample_serializer().dumps({"c": int(church_id)})
+
+
+def verify_sample(token: str, church_id: int) -> bool:
+    """Whether this is a live sample token for this church. Never raises."""
+    if not token:
+        return False
+    try:
+        payload = _sample_serializer().loads(
+            token, max_age=SAMPLE_MAX_AGE_SECONDS
+        )
+    except (BadSignature, SignatureExpired):
+        return False
+    except Exception:  # noqa: BLE001 - a malformed token is not an error here
+        return False
+    return isinstance(payload, dict) and payload.get("c") == int(church_id)
 
 
 def sign(*, church_id: int, session_id: int, checkin_ids) -> str:

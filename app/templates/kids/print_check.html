@@ -1,0 +1,141 @@
+{# Does this tablet print?
+
+   The question that could not be answered from the server. Name tags were
+   not coming out of the lobby iPad while the server generated correct PDFs
+   the whole time, and the difference was the device: Apple's web view has no
+   print function, so inside the installed app the button did nothing and
+   said nothing at all.
+
+   Everything here is read off the device it is running on, and nothing is
+   inferred from the user agent. A user agent string is a guess about a
+   browser; `window.Capacitor` is the wrapper answering for itself. #}
+{% extends "kids/kiosk_base.html" %}
+{% block title %}{{ content.printcheck_heading }} | {{ church.name }}{% endblock %}
+{% block content %}
+  <h1>{{ content.printcheck_heading }}</h1>
+  <p class="lede">{{ content.printcheck_intro }}</p>
+
+  <ul class="cardlist" id="checks"></ul>
+
+  <div id="verdict"></div>
+
+  {# The real test. A report saying the device can open files is a claim; a
+     tag coming out of the printer is the answer. On the church's actual roll
+     size, so a wrong setting shows up here as a tag across four labels
+     rather than on a Sunday. #}
+  <h2 class="mlbl">{{ content.printcheck_try }}</h2>
+  <p class="muted small">{{ content.printcheck_try_hint.format(size=size.label) }}</p>
+  <a class="btn wide center" target="_blank" rel="noopener"
+     data-print-link href="{{ sample_url }}">{{ content.printcheck_sample }}</a>
+
+  <a class="btn wide center ghostbtn" href="{{ kiosk_url }}">{{ content.printcheck_back }}</a>
+
+  <script>
+  (function () {
+    var list = document.getElementById("checks");
+    var verdict = document.getElementById("verdict");
+
+    function row(label, state, detail) {
+      var li = document.createElement("li");
+      var fl = document.createElement("span");
+      fl.className = "fl";
+      var name = document.createElement("span");
+      name.className = "pn";
+      name.textContent = label;
+      var note = document.createElement("span");
+      note.className = "pe";
+      note.textContent = detail || "";
+      fl.appendChild(name);
+      fl.appendChild(note);
+      var pill = document.createElement("span");
+      pill.className = "pill" + (state === "yes" ? "" : " pending");
+      pill.textContent = state === "yes" ? {{ content.printcheck_yes | tojson }}
+                                         : {{ content.printcheck_no | tojson }};
+      li.appendChild(fl);
+      li.appendChild(pill);
+      list.appendChild(li);
+    }
+
+    var cap = window.Capacitor;
+    var plugins = cap && cap.Plugins;
+
+    /* Found by pattern rather than by one fixed name. A plugin registers
+       under whatever name its native code chose, that has changed between
+       versions, and looking for a single spelling reports a working install
+       as a missing one. The push check learned this the hard way. */
+    var opener = null;
+    if (plugins) {
+      var names = Object.keys(plugins);
+      for (var i = 0; i < names.length; i++) {
+        var api = plugins[names[i]];
+        if (/browser|inappbrowser|safari/i.test(names[i])
+            && api && typeof api.open === "function") {
+          opener = names[i];
+          break;
+        }
+      }
+    }
+
+    row({{ content.printcheck_where | tojson }},
+        cap ? "no" : "yes",
+        cap ? {{ content.printcheck_where_app | tojson }}
+            : {{ content.printcheck_where_browser | tojson }});
+
+    /* When it is missing, name what the app DOES have. On a tablet there is
+       no console to open, so without this the answer is "no" and the next
+       step is guesswork; with it, the list either names the plugin under a
+       spelling nobody expected or shows the build predates it. */
+    var installed = plugins ? Object.keys(plugins).sort().join(", ") : "";
+    if (cap) {
+      row({{ content.printcheck_opener | tojson }},
+          opener ? "yes" : "no",
+          opener ? {{ content.printcheck_opener_yes | tojson }} + " (" + opener + ")"
+                 : {{ content.printcheck_opener_no | tojson }}
+                   + (installed ? " " + {{ content.printcheck_opener_has | tojson }}
+                                  + " " + installed
+                                : " " + {{ content.printcheck_opener_none | tojson }}));
+    }
+
+    /* Asked of the engine rather than assumed from the platform. A desktop
+       browser has it, Apple's web view does not, and a wrapper on Android
+       may. Nothing here needs to know which of those this is. */
+    row({{ content.printcheck_window | tojson }},
+        (typeof window.print === "function") ? "yes" : "no",
+        (typeof window.print === "function")
+          ? {{ content.printcheck_window_yes | tojson }}
+          : {{ content.printcheck_window_no | tojson }});
+
+    var can = !cap || !!opener;
+    var box = document.createElement("div");
+    box.className = "alert " + (can ? "notice" : "error");
+    var head = document.createElement("p");
+    head.innerHTML = "<b>" + (can ? {{ content.printcheck_ok | tojson }}
+                                  : {{ content.printcheck_bad | tojson }}) + "</b>";
+    box.appendChild(head);
+    var why = document.createElement("p");
+    why.className = "small";
+    why.textContent = can ? {{ content.printcheck_ok_why | tojson }}
+                          : {{ content.printcheck_bad_why | tojson }};
+    box.appendChild(why);
+    if (!can) {
+      var where = document.createElement("p");
+      where.className = "small mono";
+      where.textContent = window.location.host + {{ kiosk_url | tojson }};
+      box.appendChild(where);
+    }
+    verdict.appendChild(box);
+
+    // The sample opens the same way a real tag does, or the test proves
+    // nothing about the path a volunteer actually takes.
+    var link = document.querySelector("[data-print-link]");
+    if (link && opener) {
+      link.addEventListener("click", function (event) {
+        event.preventDefault();
+        plugins[opener].open({
+          url: new URL(link.href, window.location.href).href
+        });
+      });
+    }
+  })();
+  </script>
+{% endblock %}

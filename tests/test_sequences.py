@@ -233,27 +233,75 @@ class TestHardStopTargetStage:
         db.session.refresh(enrollment)
         assert enrollment.status == STATUS_COMPLETED
 
-    def test_moving_to_another_stage_short_of_the_target_stops_it(self, db, visitor):
-        """Backwards, since Guest was retired and there is no stage between
-        Visitor and Attender to move sideways into. An Attender who turns out
-        to have been a one-off visit is aimed at by a sequence they are no
-        longer the subject of."""
-        visitor.stage = "attender"
-        db.session.commit()
-        enrollment = enrol(db, visitor)
-        assert enrollment.sequence.target_stage == "member"
+    def test_moving_to_another_stage_short_of_the_target_stops_it(
+        self, db, journey, visitor, monkeypatch
+    ):
+        """Off the trigger stage, but not yet where the series was pointing.
 
-        visitor.stage = "visitor"
-        on_stage_changed(visitor, "attender")
+        Tested against a sequence built here rather than a shipped one, and
+        that is the point. The real rail has no stage between Visitor and
+        Member any more, so with the shipped welcome series every move off the
+        trigger also reaches the target and REASON_TARGET_STAGE wins first.
+        The engine rule still has to hold for the moment a church runs six
+        stages, which is what `stages_for(church)` exists for, so the rule is
+        tested with a sequence that leaves room between the two.
+        """
+        from app.sequences import Sequence, Step
+
+        far = Sequence(
+            code="test_long_haul",
+            name="Long haul",
+            description="Trigger at the bottom, target at the top.",
+            trigger_stage="visitor",
+            target_stage="leader",
+            steps=(Step(day=0, category="welcome", subject="Hello",
+                        body="Hello {first_name}."),),
+        )
+        monkeypatch.setattr("app.sequences.SEQUENCES", (far,))
+        monkeypatch.setattr("app.sequences.SEQUENCE_BY_CODE", {far.code: far})
+
+        enrollment = enrol(db, visitor)
+        assert enrollment.sequence_code == "test_long_haul"
+
+        # Member is off the trigger and well short of Leader.
+        visitor.stage = "member"
+        on_stage_changed(visitor, "visitor")
         db.session.commit()
 
         db.session.refresh(enrollment)
         assert enrollment.status == STATUS_STOPPED
         assert enrollment.end_reason == REASON_STAGE_LEFT
 
-    def test_moving_stage_may_start_the_next_sequence(self, db, visitor):
+    def test_moving_stage_may_start_the_next_sequence(
+        self, db, journey, visitor, monkeypatch
+    ):
+        """One series ending can begin another.
+
+        This asserted that moving to Attender started `guest_follow_up`. Both
+        were retired together, and only one sequence ships now, so chaining is
+        asserted against a pair defined here. Deleting the test instead would
+        have quietly dropped the only cover on `enroll_for_stage` firing on a
+        move rather than on a person being created.
+        """
+        from app.sequences import Sequence, Step
+
+        second = Sequence(
+            code="test_after_member",
+            name="After they join",
+            description="Fires when somebody becomes a Member.",
+            trigger_stage="member",
+            target_stage="leader",
+            steps=(Step(day=0, category="next_step", subject="Welcome in",
+                        body="Hello {first_name}."),),
+        )
+        monkeypatch.setattr("app.sequences.SEQUENCES", (WELCOME, second))
+        monkeypatch.setattr(
+            "app.sequences.SEQUENCE_BY_CODE",
+            {WELCOME.code: WELCOME, second.code: second},
+        )
+
         enrol(db, visitor)
-        visitor.stage = "attender"
+        visitor.stage = "member"
         on_stage_changed(visitor, "visitor")
         db.session.commit()
 
@@ -261,13 +309,30 @@ class TestHardStopTargetStage:
             e.sequence_code
             for e in db.session.scalars(db.select(SequenceEnrollment))
         }
-        assert "guest_follow_up" in codes
+        assert "test_after_member" in codes
+
+    def test_a_stage_with_no_sequence_starts_nothing(self, db, visitor):
+        """The shipped reality after the retirement: one series, no chain.
+
+        Worth asserting rather than assuming. A move that silently enrolled
+        somebody in whatever happened to be first in the tuple would be a
+        church emailing its volunteers a welcome series.
+        """
+        enrol(db, visitor)
+        before = db.session.scalars(db.select(SequenceEnrollment)).all()
+
+        visitor.stage = "volunteer"
+        on_stage_changed(visitor, "visitor")
+        db.session.commit()
+
+        after = db.session.scalars(db.select(SequenceEnrollment)).all()
+        assert len(after) == len(before)
 
     def test_moving_through_the_route_stops_it(self, db, visitor, staff):
         enrollment = enrol(db, visitor)
         staff.post(
             f"/people/{visitor.id}/stage/",
-            data={"stage": "attender"},
+            data={"stage": "member"},
             headers={"Host": JOURNEY_HOST},
         )
         db.session.refresh(enrollment)
@@ -276,7 +341,7 @@ class TestHardStopTargetStage:
     def test_reaching_the_target_between_due_and_send_stops_it(self, db, visitor):
         enrollment = enrol(db, visitor)
         make_due(db, enrollment)
-        visitor.stage = "attender"
+        visitor.stage = "member"
         db.session.commit()
 
         counts = run_due(church_id=visitor.church_id)

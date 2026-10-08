@@ -49,11 +49,24 @@ class LabelSize:
 #
 # DK-2205 is a continuous roll with no fixed length, so a cut length is chosen
 # here rather than left to the printer. 90mm is a normal name tag.
+# **These are rolls, not printers.** A church looking for its printer model
+# here will not find it and will reasonably conclude the printer is
+# unsupported: that is what happened with a QL-820NWB. Every Brother QL in
+# this range takes the same DK rolls, tops out at 62mm wide, and what the tag
+# has to match is the roll, not the machine. The labels below therefore name
+# the roll code, which is printed on the box, and the setting's description
+# says in words that this is the roll.
+#
+# DK-2251 is dimensionally identical to DK-2205 and is here anyway, because
+# somebody holding a DK-2251 box needs to find DK-2251. A list that silently
+# expects you to know two codes are the same size is a list that prints blanks.
 SIZES: tuple[LabelSize, ...] = (
-    LabelSize("dk1202", "Brother DK-1202 shipping label, 62 x 100mm", 62, 100),
-    LabelSize("dk2205", "Brother DK-2205 continuous roll, 62mm wide", 62, 90),
-    LabelSize("dk1201", "Brother DK-1201 address label, 29 x 90mm", 29, 90),
-    LabelSize("dk1208", "Brother DK-1208 large address label, 38 x 90mm", 38, 90),
+    LabelSize("dk1202", "DK-1202 shipping label, 62 x 100mm", 62, 100),
+    LabelSize("dk2205", "DK-2205 continuous roll, 62mm wide", 62, 90),
+    LabelSize("dk2251", "DK-2251 continuous roll, 62mm wide, black and red",
+              62, 90),
+    LabelSize("dk1201", "DK-1201 address label, 29 x 90mm", 29, 90),
+    LabelSize("dk1208", "DK-1208 large address label, 38 x 90mm", 38, 90),
     LabelSize("letter", "Plain paper, one tag per sheet", 215.9, 279.4),
 )
 

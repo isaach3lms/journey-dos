@@ -45,9 +45,12 @@ class TestTheGuestStageIsGone:
         assert "guest" not in STAGE_CODES
         assert STAGE_BY_CODE.get("guest") is None
 
-    def test_the_rail_is_six_stages(self):
+    def test_the_rail_is_five_stages(self):
+        """Six until Attender was retired too. Spelled out rather than
+        derived, so a stage disappearing is a test failure somebody reads
+        rather than a tautology that passes on any list."""
         assert [s.code for s in STAGES] == [
-            "visitor", "attender", "member", "volunteer", "disciple", "leader"]
+            "visitor", "member", "volunteer", "disciple", "leader"]
 
     def test_the_order_has_no_hole_in_it(self):
         assert [s.order for s in STAGES] == list(range(len(STAGES)))
@@ -64,19 +67,96 @@ class TestTheGuestStageIsGone:
             db.session.commit()
         db.session.rollback()
 
-    def test_the_follow_up_sequence_moved_rather_than_died(self):
-        from app.sequences import get
+    def test_the_follow_up_sequence_did_eventually_die(self):
+        """It moved to Attender when Guest went, and went when Attender did.
 
-        sequence = get("guest_follow_up")
-        assert sequence.trigger_stage == "attender"
-        assert sequence.target_stage == "member"
-        assert sequence.name == "Attender follow up"
+        Kept as a test rather than deleted because the thing worth asserting
+        is that it is gone from the registry entirely. A sequence left in
+        `SEQUENCES` pointing at a stage that no longer exists would sit on the
+        dashboard's automation list looking live while the engine's trigger
+        check silently never matched.
+        """
+        from app.sequences import SEQUENCE_CODES, get
+
+        assert get("guest_follow_up") is None
+        assert "guest_follow_up" not in SEQUENCE_CODES
 
     def test_nothing_recommends_a_next_step_for_it(self):
         from app.stages import NEXT_STEP_BY_STAGE
 
         assert "guest" not in NEXT_STEP_BY_STAGE
         assert set(NEXT_STEP_BY_STAGE) == set(STAGE_CODES)
+
+
+class TestTheAttenderStageIsGone:
+    """The second stage retired for the same reason as the first.
+
+    Guest sat between Visitor and Attender and nobody used it. Attender sat
+    between Visitor and Member and did the same: "here most Sundays" is
+    something a church knows about somebody months after it is true, so the
+    column stayed at zero while the people it described sat in Visitor.
+
+    Written as the twin of the class above on purpose. This has now happened
+    twice, so the next time somebody retires a stage there is a shape to copy
+    and a list of the four places that have to be checked.
+    """
+
+    def test_it_is_not_a_stage(self):
+        assert "attender" not in STAGE_CODES
+        assert STAGE_BY_CODE.get("attender") is None
+
+    def test_the_order_still_has_no_hole_in_it(self):
+        """`next_stage` indexes STAGES by order + 1, so a gap left where
+        Attender used to be would hand back the wrong stage rather than
+        failing."""
+        assert [s.order for s in STAGES] == list(range(len(STAGES)))
+
+    def test_the_rail_closed_up_behind_it(self):
+        from app.stages import next_stage
+
+        assert next_stage("visitor").code == "member"
+
+    def test_the_database_refuses_it(self, db):
+        import sqlalchemy
+
+        church = journey(db)
+        db.session.add(Person(church_id=church.id, first_name="Old",
+                              last_name="Attender", stage="attender"))
+        with pytest.raises(sqlalchemy.exc.IntegrityError):
+            db.session.commit()
+        db.session.rollback()
+
+    def test_nothing_recommends_a_next_step_for_it(self):
+        from app.stages import NEXT_STEP_BY_STAGE
+
+        assert "attender" not in NEXT_STEP_BY_STAGE
+        assert set(NEXT_STEP_BY_STAGE) == set(STAGE_CODES)
+
+    def test_no_sequence_points_at_it(self):
+        """The failure mode that is invisible rather than loud.
+
+        A sequence whose trigger stage does not exist never raises. It simply
+        never fires, while still appearing on the dashboard's automation list
+        as something the church has running.
+        """
+        from app.sequences import SEQUENCES
+
+        for sequence in SEQUENCES:
+            assert sequence.trigger_stage in STAGE_CODES, sequence.code
+            assert sequence.target_stage in STAGE_CODES, sequence.code
+
+    def test_the_welcome_series_kept_its_closing_note(self):
+        """The half of the retired follow-up that did not depend on knowing
+        somebody attends regularly moved here rather than being dropped."""
+        from app.sequences import WELCOME
+
+        assert WELCOME.steps[-1].day == 21
+        assert "last note like this" in WELCOME.steps[-1].body
+
+    def test_only_visitor_is_transitional_now(self):
+        from app.stages import TRANSITIONAL_STAGES
+
+        assert [s.code for s in TRANSITIONAL_STAGES] == ["visitor"]
 
 
 class TestChildrenAreNotInTheStageCounts:

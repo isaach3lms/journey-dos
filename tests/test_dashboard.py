@@ -7,6 +7,7 @@ import pytest
 from app import dashboard
 from app.models import Church, ContactLog, OutboxMessage, Person, SequenceEnrollment
 from app.models.base import utcnow
+from app.sequences import SEQUENCES
 from app.models.contact import NextStep
 from app.models.giving_mirror import ExternalGift
 from app.models.group import Group, GroupMembership
@@ -74,13 +75,32 @@ class TestPage:
 
 class TestNumbers:
     def test_stuck_counted_per_stage(self, db):
+        """Counted per stage, and only transitional stages can appear.
+
+        This used to assert {"visitor": 2, "attender": 1}, which read as a
+        test about two stages and was really a test about one rule: a stage
+        with an expectation on it can hold stuck people and a destination
+        cannot. Attender was retired, so the rule is asserted directly rather
+        than through whichever stages happen to exist.
+        """
+        from app.stages import STAGES, TRANSITIONAL_STAGES
+
         old = utcnow() - timedelta(days=200)
-        person(db, "visitor", stage_since=old, last_contact_at=old)
-        person(db, "visitor", stage_since=old, last_contact_at=old)
-        person(db, "attender", stage_since=old, last_contact_at=old)
-        person(db, "member", stage_since=old, last_contact_at=old)  # destinations never stick
+        for stage in STAGES:
+            person(db, stage.code, stage_since=old, last_contact_at=old)
+        person(db, TRANSITIONAL_STAGES[0].code, stage_since=old, last_contact_at=old)
         db.session.commit()
-        assert dashboard.stuck_by_stage(journey(db).id) == {"visitor": 2, "attender": 1}
+
+        counts = dashboard.stuck_by_stage(journey(db).id)
+
+        # Every transitional stage, and nothing else. A destination stage
+        # appearing here is the bug that flagged 39 of Journey's 54 people.
+        transitional = {s.code for s in TRANSITIONAL_STAGES}
+        assert set(counts) == transitional
+        # Two were seeded on the first transitional stage, one on each other.
+        assert counts[TRANSITIONAL_STAGES[0].code] == 2
+        for stage in TRANSITIONAL_STAGES[1:]:
+            assert counts[stage.code] == 1
 
     def test_attendance_uses_headcounts_and_compares_to_four_weeks(self, db):
         c = journey(db)
@@ -157,7 +177,12 @@ class TestNumbers:
         db.session.commit()
         rows = {r["name"]: r for r in dashboard.automation_rows(c.id)}
         assert rows["First visit welcome"]["sent"] == 2
-        assert rows["Attender follow up"]["sent"] == 0
+        # "Attender follow up" was the second row here until it was retired
+        # with the stage it fired on. A retired sequence must not appear at
+        # all: a row on this screen reads as something the church has
+        # running, and one that can never fire is worse than a missing row.
+        assert "Attender follow up" not in rows
+        assert set(rows) == {s.name for s in SEQUENCES}
 
     def test_other_churches_do_not_leak(self, db):
         other = db.session.scalar(db.select(Church).where(Church.slug == "riverbend"))

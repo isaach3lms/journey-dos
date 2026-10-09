@@ -31,6 +31,7 @@ from app.models import (
     ACCOUNT_DONE,
     AccountRequest,
     GuestCard,
+    NextStepSignup,
     HEARD_LABELS,
     CONTACT_METHODS,
     KIND_CONTACT,
@@ -131,6 +132,7 @@ def index():
         # opening the page to find out.
         guest_cards=GuestCard.waiting_count(g.church.id),
         account_requests=AccountRequest.open_count(g.church.id),
+        signup_count=NextStepSignup.open_count(g.church.id),
         # For the child form's family picker. Children are the only thing
         # added from this page that must belong to one.
         households=db.session.scalars(
@@ -1505,3 +1507,65 @@ def set_flags(person_id: int):
     db.session.commit()
     flash(PEOPLE["flag_saved"].format(name=person.first_name), "notice")
     return back
+
+
+# ---------------------------------------------------------------------------
+# Next step sign-ups
+#
+# People who tapped a tile on the home screen of the app to say they are
+# interested in baptism, volunteering, or whatever else the church offers.
+# See app/next_steps.py for the offers and app/signups.py for the alert.
+#
+# Its own screen rather than a filter on the roster, for the same reason
+# connect cards have one: the question "who is waiting to hear back from us"
+# is not answerable by looking at people, and a church that cannot answer it
+# is a church where somebody asked to be baptised in March and nobody
+# noticed.
+# ---------------------------------------------------------------------------
+
+SIGNUP_PAGE_SIZE = 50
+
+
+@bp.get("/signups/")
+@login_required
+@min_role("leader")
+def signups():
+    from app.models import NextStepSignup
+
+    show_done = request.args.get("done") == "1"
+    query = (
+        NextStepSignup.recent_for_church(g.church.id, limit=SIGNUP_PAGE_SIZE)
+        if show_done
+        else NextStepSignup.open_for_church(g.church.id, limit=SIGNUP_PAGE_SIZE)
+    )
+
+    return render_template(
+        "people/signups.html",
+        church=g.church,
+        content=PEOPLE,
+        signups=db.session.scalars(query).all(),
+        show_done=show_done,
+        open_count=NextStepSignup.open_count(g.church.id),
+        active="people",
+    )
+
+
+@bp.post("/signups/<int:signup_id>/done/")
+@login_required
+@min_role("leader")
+def mark_signup_done(signup_id: int):
+    """Dealt with. Not a delete: the ask and who answered it stay."""
+    from app.models import NextStepSignup
+
+    signup = NextStepSignup.get_for_church(g.church.id, signup_id)
+    if signup is None:
+        abort(404)
+
+    # `handle` refuses to overwrite, so a double-tapped button does not
+    # rewrite who dealt with it to whoever happened to tap second.
+    changed = signup.handle(actor=current_user)
+    db.session.commit()
+
+    flash(PEOPLE["signups_marked"] if changed else PEOPLE["signups_already"],
+          "notice" if changed else "error")
+    return redirect(url_for("people.signups"))

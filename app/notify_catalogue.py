@@ -91,6 +91,13 @@ GROUPS = (
             "reports screen, where removing one removes it everywhere.",
         ),
         Event(
+            "Somebody asks about baptism, volunteering or another next step",
+            "Every staff account",
+            "signup", BOTH,
+            "What they wrote is behind the link rather than in the message, "
+            "the same way a pastoral request works.",
+        ),
+        Event(
             "Somebody asks for an account",
             "Whoever sets accounts up, from Settings",
             "guest_card", EMAIL,

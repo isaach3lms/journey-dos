@@ -18,6 +18,13 @@
   <a class="btn ghostbtn" href="{{ url_for('people.requests') }}">
     {{ content.requests_view }}{% if account_requests %} &middot; {{ account_requests }}{% endif %}
   </a>
+  {# The count is on the button for the same reason the others carry one:
+     somebody asking to be baptised is the most important message this app
+     carries, and a page you have to open to find out whether it is empty is
+     a page that gets opened on Wednesdays. #}
+  <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">
+    {{ content.signups_view }}{% if signup_count %} &middot; {{ signup_count }}{% endif %}
+  </a>
 </div>
 
 <details class="addbox">

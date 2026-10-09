@@ -73,6 +73,44 @@
   {% endif %}
 </section>
 
+{# Things to put your hand up for.
+
+   Below the assigned next step rather than inside it, and the separation is
+   the point: that card is what staff decided somebody should do, and this is
+   what somebody can decide for themselves. Folding the two together would
+   mean a card that fills itself in whenever a tile is tapped, and a card
+   that populates itself stops being read.
+
+   The tiles come from app/next_steps.py. Adding Child Dedication is four
+   lines in that file and nothing here changes. #}
+{% if offers %}
+  <section class="mwide nextsteps">
+    <h2 class="nstitle">{{ content.offers_heading }}</h2>
+    <p class="nssub">{{ content.offers_sub }}</p>
+    <div class="nsgrid">
+      {% for offer in offers %}
+        <a class="nstile" href="{{ url_for('member.next_step', code=offer.code) }}">
+          {# `currentColor` on the stroke, tint set on the wrapper, so one
+             path works on any background and a theme change never has to
+             touch an icon. #}
+          <span class="nsicon" style="color: {{ offer.tint }}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <path d="{{ icon_path(offer.icon) }}"></path>
+            </svg>
+          </span>
+          <span class="nsname">{{ offer.title }}</span>
+          <span class="nsnote">
+            {% if offer.code in asked %}{{ content.offers_asked }}
+            {% else %}{{ offer.subtitle }}{% endif %}
+          </span>
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+
 {# A link, not a form. Asking for a pastor is a screen of its own, so the
    emergency numbers sit above the box rather than beside it. #}
 <a class="mcard mlink asklink mwide" href="{{ url_for('member.support') }}">

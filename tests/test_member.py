@@ -358,6 +358,13 @@ class TestNoWayToSeeSomeoneElse:
         # is scheduled on a published service that uses the song, and 404s
         # otherwise. Names a file, never a person.
         "chart_id",
+        # Which next step somebody is asking about: "baptism", "volunteer".
+        # Not an id of anything. It is matched against app.next_steps.OFFERS
+        # and 404s when it is not one of them, so it cannot be used to name
+        # a row of any kind. The sign-up it records is written against
+        # g.church.id and current_user.person, neither of which the URL
+        # names. See test_next_steps.py for the 404.
+        "code",
     }
 
     def test_no_member_route_accepts_a_person_id(self, app):

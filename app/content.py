@@ -767,6 +767,45 @@ PEOPLE = {
     "guest_push_title": "New connect card",
     "guest_push_body": "{name} filled one in. Tap to read it.",
 
+    # Somebody put their hand up from the home screen. The alert carries the
+    # name and what they asked about, and a link; whatever they typed is
+    # behind the link rather than in the message, for the same reason a
+    # pastoral request works that way.
+    "signup_alert_subject": "{name} asked about {offer}",
+    "signup_alert_body": (
+        "{name} {did} at {church}.\n\n"
+        "{note}\n"
+        "Open their record to follow it up:\n{link}\n\n"
+        "It stays on the sign-ups list until somebody marks it done."
+    ),
+    # Whether they wrote something, never what. The offers are a growing
+    # list and the baptism prompt invites exactly the kind of thing that
+    # should not sit in four inboxes: "anything you would like us to know"
+    # is answered with a marriage, an illness, a fear of water. Same rule as
+    # a pastoral request and a reported message, for the same reason.
+    "signup_alert_note": "They wrote a note, which is on the sign-ups list.\n",
+    "signup_alert_no_note": "They did not write anything else.\n",
+    "signup_push_title": "Someone asked about {offer}",
+    "signup_push_body": "{name} put their hand up. Tap to see it.",
+
+    # The staff list.
+    "signups_view": "Sign-ups",
+    "signups_heading": "Next step sign-ups",
+    "signups_intro": (
+        "People who put their hand up from the app. They stay here until "
+        "somebody marks them done."
+    ),
+    "signups_empty": "Nobody has asked for anything yet.",
+    "signups_none_open": "Everything here has been dealt with.",
+    "signups_asked": "Asked {when}",
+    "signups_done": "Mark done",
+    "signups_done_by": "Done by {name}",
+    "signups_marked": "Marked done.",
+    "signups_already": "Somebody had already marked that one done.",
+    "signups_open_count": "{count} waiting",
+    "signups_show_all": "Show the ones already done",
+    "signups_show_open": "Show only the ones waiting",
+
     "account_request_subject": "{name} asked for an app account at {church}",
     "account_request_body": (
         "{name} filled in a connect card at {church} and asked to be set up "
@@ -1054,6 +1093,34 @@ MEMBER = {
     "next_step_none_hint": "When there is a next step for you, it shows up here.",
     "next_step_owner": "{owner} is following up",
     "next_step_due": "By {date}",
+
+    # ---------------------------------------------------------------------
+    # Putting your hand up. The tiles themselves are in app/next_steps.py,
+    # because each one's wording belongs with its icon and its colour; what
+    # is here is the frame around them, which is the same whatever they are.
+    # ---------------------------------------------------------------------
+    "offers_heading": "Take the next step",
+    "offers_sub": "Tell us you are interested and somebody will be in touch.",
+    # Shown on a tile somebody has already tapped. Not hidden: a tile that
+    # disappears reads as a bug, and somebody who asked last week wants to
+    # see that the app still knows.
+    "offers_asked": "You have asked",
+    "offers_back": "Back",
+    "offers_submit": "Count me in",
+    "offers_update": "Update what I wrote",
+    "offers_already_note": (
+        "You asked on {when} and we have it. Nothing else is needed from "
+        "you. If there is more you want to add, change the box below."
+    ),
+    "offers_who_sees": "Seen by: the church staff.",
+    "signup_thanks": (
+        "Thank you. Somebody will be in touch about {offer}."
+    ),
+    "signup_already": (
+        "You had already asked about {offer}, so nothing has changed. We "
+        "still have it."
+    ),
+    "signup_event": "Asked about {offer}",
 
     "stage_label": "Where you are",
     "stage_meaning": "{meaning}",

@@ -718,6 +718,49 @@ form.inline .select{min-width:170px}
 .mstep:first-of-type{border-top:none;padding-top:0}
 .mmeta{font-size:11.5px;color:var(--muted-2);margin-top:2px}
 
+/* ---------- Take the next step ----------
+   Tiles for the things a member can put their hand up for. Two across,
+   because the titles are one or two words and a single column down a phone
+   would make six of them a scroll on their own.
+
+   A filled tile rather than an outlined card, so the group reads as one
+   block of choices and does not compete with the real cards above it: those
+   carry what the church has said to this person, and these are an invitation
+   to browse. The icon is the only colour, which is what makes six of them
+   scannable without reading a word. */
+.nextsteps{margin-top:18px}
+.nstitle{
+  font-family:var(--font-display);font-size:19px;
+  font-weight:var(--weight-hero,800);line-height:1.15;margin:0;
+}
+.nssub{font-size:12.5px;color:var(--muted);margin:3px 0 11px}
+.nsgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nstile{
+  display:block;background:var(--surface-alt,var(--mist));
+  border:1px solid transparent;border-radius:var(--r);
+  padding:13px 13px 14px;text-decoration:none;color:inherit;
+  /* A tap target that does not move under a thumb. */
+  -webkit-tap-highlight-color:transparent;
+}
+.nstile:hover{border-color:var(--line-soft)}
+.nstile:active{transform:scale(.985)}
+.nsicon{display:block;line-height:0;margin-bottom:22px}
+.nsicon svg{width:22px;height:22px}
+.nsicon.big{margin-bottom:10px}
+.nsicon.big svg{width:30px;height:30px}
+.nsname{display:block;font-size:15px;font-weight:var(--weight-display,700)}
+.nsnote{display:block;font-size:12.5px;color:var(--muted);margin-top:1px}
+.nsheading{
+  font-family:var(--font-display);font-size:21px;
+  font-weight:var(--weight-hero,800);line-height:1.15;margin:0 0 2px;
+}
+/* One column on a narrow phone. Two tiles of "Child Dedication" side by side
+   at 320px wrap to three lines each and stop looking like a grid. */
+@media (max-width:359px){
+  .nsgrid{grid-template-columns:1fr}
+  .nsicon{margin-bottom:10px}
+}
+
 /* Progress along the rail. Gold on the deep card, which is the one
    surface where gold has the contrast to carry meaning. */
 .mrail{display:flex;gap:4px;margin-top:13px}

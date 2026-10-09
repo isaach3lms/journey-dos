@@ -138,6 +138,7 @@ from app.models.guest import (
     HEARD_LABELS,
     GuestCard,
 )
+from app.models.signup import NextStepSignup  # noqa: F401
 from app.models.person_event import (  # noqa: F401
     EVENT_KINDS,
     KIND_CONTACT,
@@ -162,6 +163,7 @@ __all__ = [
     "Person",
     "PersonEvent",
     "GuestCard",
+    "NextStepSignup",
     "AccountRequest",
     "ACCOUNT_OPEN",
     "ACCOUNT_DONE",

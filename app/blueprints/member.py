@@ -106,6 +106,22 @@ def home():
     if person.first_seen_on:
         days = (today - person.first_seen_on).days + 1
 
+    from app.models import NextStepSignup
+    from app.next_steps import icon_path, offers_for
+
+    # Which tiles this person has already tapped and nobody has dealt with
+    # yet. Shown as "Asked" rather than hidden: a tile that disappears looks
+    # like a bug, and somebody who asked last week wants to see that the app
+    # still knows.
+    asked = {
+        signup.offer
+        for signup in db.session.scalars(
+            NextStepSignup.open_for_church(g.church.id).where(
+                NextStepSignup.person_id == person.id
+            )
+        )
+    }
+
     return render_template(
         "member/home.html",
         verse=WeeklyVerse.current(g.church.id, today),
@@ -115,6 +131,77 @@ def home():
         open_steps=open_steps,
         stage=STAGE_BY_CODE.get(person.stage),
         stages=stages_for(g.church),
+        offers=offers_for(g.church),
+        icon_path=icon_path,
+        asked=asked,
+        tab="home",
+        **_base_context(person),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Putting your hand up
+#
+# A tile on the home screen, a short form, and a notification to staff. The
+# form is short because the person is signed in: the app already knows their
+# name, their email and their phone, and asking again is how a two-tap action
+# becomes an abandoned one. See app/next_steps.py for the offers and
+# app/signups.py for what happens to an answer.
+# ---------------------------------------------------------------------------
+
+@bp.route("/next-step/<code>/", methods=["GET", "POST"])
+@login_required
+def next_step(code: str):
+    from app.models import NextStepSignup
+    from app.next_steps import get as offer_for
+    from app.next_steps import icon_path
+    from app.signups import NotSigned, alert_staff, submit
+
+    offer = offer_for(code)
+    if offer is None:
+        abort(404)
+
+    person = current_user.person
+    if person is None:
+        flash(MEMBER["support_no_person"], "error")
+        return redirect(url_for("member.home"))
+
+    if request.method == "POST":
+        note = (request.form.get("note") or "").strip()[:2000]
+        try:
+            signup, is_new = submit(g.church.id, person, offer.code, note)
+        except NotSigned as exc:
+            flash(str(exc), "error")
+            return redirect(url_for("member.home"))
+
+        if is_new:
+            PersonEvent.record(
+                person,
+                KIND_NOTE,
+                MEMBER["signup_event"].format(offer=offer.title),
+                # The note is on the sign-up, not repeated onto the
+                # timeline. One copy of what somebody wrote is enough, and
+                # the timeline is read by more people than the list is.
+                detail=None,
+                actor=None,
+            )
+            # Wrapped by `alert_staff` itself, so a notification that cannot
+            # be built never turns a recorded ask into an error page.
+            alert_staff(g.church, signup, person)
+
+        db.session.commit()
+        flash(
+            (MEMBER["signup_thanks"] if is_new else MEMBER["signup_already"])
+            .format(offer=offer.title),
+            "notice",
+        )
+        return redirect(url_for("member.home"))
+
+    return render_template(
+        "member/next_step.html",
+        offer=offer,
+        icon_path=icon_path,
+        already=NextStepSignup.already_asked(g.church.id, person.id, offer.code),
         tab="home",
         **_base_context(person),
     )

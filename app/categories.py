@@ -64,6 +64,18 @@ CATEGORIES: tuple[Category, ...] = (
         is_transactional=True,
     ),
     Category(
+        "signup",
+        "Next step sign-ups",
+        "Sent to staff when somebody asks about baptism, volunteering or "
+        "another next step. These always send.",
+        # Transactional, and the reason is the point of the flag. A staff
+        # member who turned off "Next steps" turned off the drip series that
+        # invites people to take one. If that also silenced the alert that
+        # somebody asked to be baptised, the church would stop hearing the
+        # most important message the app carries, and nobody would know.
+        is_transactional=True,
+    ),
+    Category(
         "giving_receipt",
         "Giving receipts",
         "Receipts and year-end statements. These always send.",

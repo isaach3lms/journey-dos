@@ -284,9 +284,18 @@ class TestMemberApp:
         assert b"Next Steps lunch" in r.data
         assert b"Pastor Reed" in r.data
 
-    def test_home_says_so_when_there_is_no_next_step(self, db, linked_member, member):
+    def test_home_shows_no_next_step_card_when_there_is_no_next_step(
+        self, db, linked_member, member
+    ):
+        """This used to assert the card said "Nothing on your list right now".
+
+        It was an empty box at the top of the screen for the majority of
+        people, who have no assigned step most of the time. The card is now
+        absent instead of blank.
+        """
         r = member.get("/me/", headers={"Host": JOURNEY_HOST})
-        assert b"Nothing on your list" in r.data
+        assert b"Nothing on your list" not in r.data
+        assert b"Your next step" not in r.data
 
     def test_the_you_tab_shows_the_household_pin(self, db, linked_member, member):
         r = member.get("/me/you/", headers={"Host": JOURNEY_HOST})

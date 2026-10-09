@@ -1089,8 +1089,8 @@ MEMBER = {
         "meantime, and church-wide messages appear once they have."
     ),
 
-    "next_step_none": "Nothing on your list right now.",
-    "next_step_none_hint": "When there is a next step for you, it shows up here.",
+    # There is no empty state for the next step card. When nobody has set
+    # one, the card is not on the screen at all. See member/home.html.
     "next_step_owner": "{owner} is following up",
     "next_step_due": "By {date}",
 

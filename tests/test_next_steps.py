@@ -232,13 +232,20 @@ class TestItDoesNotWriteANextStep:
             "tile is tapped stops being read."
         )
 
-    def test_the_home_screen_still_says_nothing_is_on_their_list(
+    def test_the_home_screen_shows_no_next_step_card_after_signing_up(
         self, app, db, journey, member, linked
     ):
+        """This used to assert the card read "Nothing on your list right now".
+
+        The empty state is gone: a card with no step in it is no longer
+        rendered at all. The point of the test is unchanged, that tapping a
+        tile does not put anything in the assigned card, so it now checks the
+        card stays off the screen.
+        """
         member.post("/me/next-step/baptism/", data={"note": ""},
                     headers=H, follow_redirects=True)
         body = member.get("/me/", headers=H).get_data(as_text=True)
-        assert "Nothing on your list" in body
+        assert "Your next step" not in body
 
 
 class TestTwoTapsIsOneAsk:

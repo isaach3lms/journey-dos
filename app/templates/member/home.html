@@ -55,9 +55,16 @@
   </div>
 </section>
 
-<section class="mcard">
-  <div class="mlbl">{{ content.next_step_label }}</div>
-  {% if open_steps %}
+{# No card at all when staff have not set a next step.
+
+   It used to say "Nothing on your list right now", which is an empty box
+   telling somebody about the absence of a thing they did not ask about. Most
+   people have no assigned step most of the time, so for most people that was
+   the first thing on the screen and it was always blank. The tiles below are
+   what somebody with nothing on their list should be looking at. #}
+{% if open_steps %}
+  <section class="mcard">
+    <div class="mlbl">{{ content.next_step_label }}</div>
     {% for step in open_steps %}
       <div class="mstep">
         <div class="mtitle">{{ step.title }}</div>
@@ -67,11 +74,8 @@
         </div>
       </div>
     {% endfor %}
-  {% else %}
-    <div class="mtitle">{{ content.next_step_none }}</div>
-    <p class="mnote">{{ content.next_step_none_hint }}</p>
-  {% endif %}
-</section>
+  </section>
+{% endif %}
 
 {# Things to put your hand up for.
 

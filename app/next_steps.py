@@ -68,7 +68,11 @@ OFFERS: tuple[Offer, ...] = (
         title="Volunteer",
         subtitle="Join a team",
         icon="hand",
-        tint="#d1702f",
+        # Darkened from #d1702f when the tiles went grey. On the old cream it
+        # cleared 3:1 against its background; on the grey it did not, and an
+        # icon that has gone muddy is the one thing on the tile somebody sees
+        # before they read anything.
+        tint="#C2611E",
         heading="Join a team",
         blurb=(
             "Tell us you are interested and somebody will be in touch about "

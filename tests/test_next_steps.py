@@ -111,6 +111,21 @@ class TestTheOffers:
         tints = [o.tint for o in OFFERS]
         assert len(set(tints)) == len(tints)
 
+    def test_every_tint_is_visible_on_the_tile(self):
+        """The tiles are grey, not the cream they started on, and a pastel
+        that was fine on cream goes muddy on grey. 3:1 is the floor for a
+        graphic that carries meaning, and the icon is the thing somebody
+        picks the right tile by before reading a word of it."""
+        from app.brand import PALETTES, contrast
+
+        for palette in PALETTES.values():
+            for offer in OFFERS:
+                got = contrast(offer.tint, palette.tile)
+                assert got >= 3.0, (
+                    f"{offer.code} at {offer.tint} is {got:.2f}:1 on "
+                    f"{palette.name}'s tile. Darken the tint."
+                )
+
     def test_a_retired_offer_still_has_a_name(self):
         """Rows outlive the tuple. A sign-up for something the church stopped
         running has to render as something a human can read."""

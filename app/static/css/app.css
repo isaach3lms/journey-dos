@@ -736,7 +736,7 @@ form.inline .select{min-width:170px}
 .nssub{font-size:12.5px;color:var(--muted);margin:3px 0 11px}
 .nsgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .nstile{
-  display:block;background:var(--surface-alt,var(--mist));
+  display:block;background:var(--tile,var(--mist));
   border:1px solid transparent;border-radius:var(--r);
   padding:13px 13px 14px;text-decoration:none;color:inherit;
   /* A tap target that does not move under a thumb. */

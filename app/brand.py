@@ -34,6 +34,16 @@ class Palette:
     surface: str = "#FFFFFF"
     surface_alt: str = "#FAF9F3"
 
+    # The next-step tiles, and anything else that wants to sit *under* the
+    # page rather than on top of it.
+    #
+    # Its own token rather than `surface_alt`, which is a shade lighter than
+    # the page and is used by empty states, quiet pills and open settings
+    # rows. Those want to recede. A tile wants to be picked up and tapped, so
+    # it reads as a slab laid on the page, which means darker than the page
+    # rather than lighter. One token cannot be both.
+    tile: str = "#ECECEF"
+
     # Semantic colors sit deliberately outside the brand hues, so a flag can
     # never be mistaken for decoration.
     flag: str = "#9A3412"
@@ -163,6 +173,7 @@ def brand_tokens(church) -> dict[str, str]:
         "--mist": p.mist,
         "--white": p.surface,
         "--surface-alt": p.surface_alt,
+        "--tile": p.tile,
         "--line": _rgba(p.deep, 0.14),
         "--line-soft": _rgba(p.deep, 0.09),
         "--muted": _rgba(p.ink, 0.62),

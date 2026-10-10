@@ -17,7 +17,15 @@ from typing import Optional
 
 import re
 
-from sqlalchemy import String, Boolean, Text, UniqueConstraint, false, true
+from sqlalchemy import (
+    Boolean,
+    Float,
+    String,
+    Text,
+    UniqueConstraint,
+    false,
+    true,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.extensions import db
@@ -139,11 +147,45 @@ class Church(TimestampMixin, db.Model):
     # never opens this setting still prints.
     kids_label_size: Mapped[Optional[str]] = mapped_column(String(20))
 
+    # Moving the whole tag, in millimetres, for a printer that prints
+    # off-centre.
+    #
+    # A Brother QL does not centre what it prints on the page it is handed:
+    # the head is narrower than the roll and sits to one side of it, and how
+    # far depends on the machine and on how the roll is sitting. The tag
+    # layout leaves enough clear space to absorb the usual amount, which is
+    # the fix for most churches. This is for the one whose printer is worse
+    # than usual, and it beats the alternative, which is a church printing
+    # half a name every Sunday with nothing they can do about it.
+    #
+    # Integers in tenths of a millimetre would be false precision. A float in
+    # millimetres is what somebody reads off the alignment test label.
+    kids_tag_nudge_x: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, server_default="0"
+    )
+    kids_tag_nudge_y: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, server_default="0"
+    )
+
+    # Past this the tag is off the label whatever the printer does, and the
+    # person typing it has misread the test print.
+    NUDGE_LIMIT_MM = 15.0
+
     @property
     def label_size(self):
         from app.labels import size_for
 
         return size_for(self.kids_label_size)
+
+    @property
+    def tag_nudge(self) -> tuple:
+        """(right, up) in millimetres. Clamped, so a bad value in the
+        database cannot produce a blank label nobody can explain."""
+        limit = self.NUDGE_LIMIT_MM
+        return (
+            max(-limit, min(limit, self.kids_tag_nudge_x or 0.0)),
+            max(-limit, min(limit, self.kids_tag_nudge_y or 0.0)),
+        )
 
     # Who hears about a pastoral request.
     #

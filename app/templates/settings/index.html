@@ -493,6 +493,35 @@
           </div>
         </form>
 
+        {# For a printer that puts the tag off to one side.
+
+           A Brother QL does not centre what it prints on the page it is
+           handed, and how far off depends on the machine. The tag leaves
+           enough clear space to absorb the usual amount. This is for the one
+           that is worse than usual, and the test label is what turns "it
+           looks shifted" into a number to type in here. #}
+        <h3 class="mlbl">{{ content.kiosk_nudge_heading }}</h3>
+        <p class="muted small">{{ content.kiosk_nudge_hint }}</p>
+        <p class="muted small">
+          <a href="{{ alignment_url }}" target="_blank" rel="noopener">
+            {{ content.kiosk_nudge_test }}
+          </a>
+        </p>
+        <form method="post" action="{{ url_for('settings.save_tag_nudge') }}">
+          {{ csrf_field() }}
+          <div class="filters">
+            <label class="mlbl" for="nudge_x">{{ content.kiosk_nudge_x }}</label>
+            <input class="input" id="nudge_x" type="number" name="nudge_x"
+                   step="0.5" min="-15" max="15"
+                   value="{{ church.kids_tag_nudge_x or 0 }}">
+            <label class="mlbl" for="nudge_y">{{ content.kiosk_nudge_y }}</label>
+            <input class="input" id="nudge_y" type="number" name="nudge_y"
+                   step="0.5" min="-15" max="15"
+                   value="{{ church.kids_tag_nudge_y or 0 }}">
+            <button class="btn" type="submit">{{ content.kiosk_nudge_save }}</button>
+          </div>
+        </form>
+
         <form method="post" action="{{ url_for('settings.revoke_kiosk') }}"
               onsubmit='return confirm({{ content.kiosk_revoke_confirm | tojson }})'>
           {{ csrf_field() }}

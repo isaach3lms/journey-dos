@@ -3089,6 +3089,24 @@ SETTINGS = {
     "kiosk_label_save": "Save",
     "kiosk_label_saved": "Tags will print on {label}.",
 
+    # Moving the tag. Named for the symptom, because that is what somebody
+    # searching this page has in their hand: a label with half a name on it.
+    "kiosk_nudge_heading": "Names printing off the edge",
+    "kiosk_nudge_hint": (
+        "Brother printers do not always print in the middle of the label, so "
+        "a tag can come out shifted with letters missing off one side. Print "
+        "the test label below, hold it up, and read the number sitting at the "
+        "paper edge on each side. If the left edge shows 20 and the right "
+        "shows 26, the tag is 3mm too far left: put 3 in the first box. "
+        "Negative moves it left, and up is positive in the second."
+    ),
+    "kiosk_nudge_test": "Print the test label",
+    "kiosk_nudge_x": "Right, mm",
+    "kiosk_nudge_y": "Up, mm",
+    "kiosk_nudge_save": "Save",
+    "kiosk_nudge_saved": "Tags will print {x}mm right and {y}mm up from centre.",
+    "kiosk_nudge_cleared": "Tags will print centred on the label.",
+
     # App notifications. Separate from email because the failures are
     # different and so are the fixes.
     "push_heading": "App notifications",

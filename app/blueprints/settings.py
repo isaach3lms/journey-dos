@@ -36,6 +36,7 @@ from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
 from app.models.audit import ACTIONS, BRAND_CHANGED, RETENTION_DAYS
 from app.labels import SIZES as LABEL_SIZES
+from app.labeltoken import sign_sample
 from app.security import min_role
 from app.timeutil import COMMON_TIMEZONES, is_valid_timezone, zone_for
 
@@ -104,6 +105,12 @@ def index():
         kiosk_account=kiosk_account_for(g.church.id),
         kiosk_links=live_setup_links(g.church.id),
         label_sizes=LABEL_SIZES,
+        # Opens outside the app, like the sample tag, so the token is the
+        # credential rather than the session cookie.
+        alignment_url=url_for(
+            "kids.alignment_tag_pdf",
+            token=sign_sample(church_id=g.church.id),
+        ),
         # Shown once, on the redirect that created it, and never again. It is
         # held in the session rather than the database for the same reason a
         # reset token is hashed: a link that can be read back later is a
@@ -270,6 +277,43 @@ def save_label_size():
     db.session.commit()
 
     flash(SETTINGS["kiosk_label_saved"].format(label=BY_CODE[code].label), "notice")
+    return _back("kiosk")
+
+
+@bp.post("/kiosk/nudge/")
+@login_required
+@min_role("staff")
+def save_tag_nudge():
+    """Move the printed tag, in millimetres.
+
+    Clamped rather than rejected. Somebody reading a number off the test
+    label and typing 40 has misread it, and the useful response is a tag
+    that still prints with the nudge pinned at the limit, not a form error
+    on a Sunday morning.
+    """
+    church = g.church
+    limit = type(church).NUDGE_LIMIT_MM
+
+    def reading(field: str) -> float:
+        raw = (request.form.get(field) or "0").strip().replace(",", ".")
+        try:
+            value = float(raw or 0)
+        except ValueError:
+            return 0.0
+        return max(-limit, min(limit, value))
+
+    church.kids_tag_nudge_x = reading("nudge_x")
+    church.kids_tag_nudge_y = reading("nudge_y")
+    db.session.commit()
+
+    if church.kids_tag_nudge_x or church.kids_tag_nudge_y:
+        flash(
+            SETTINGS["kiosk_nudge_saved"].format(
+                x=f"{church.kids_tag_nudge_x:g}", y=f"{church.kids_tag_nudge_y:g}"),
+            "notice",
+        )
+    else:
+        flash(SETTINGS["kiosk_nudge_cleared"], "notice")
     return _back("kiosk")
 
 

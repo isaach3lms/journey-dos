@@ -444,6 +444,7 @@ def _tag_pdf_response(checkin_session, checkins, who: str):
         church=g.church,
         checkin_session=checkin_session,
         size=g.church.label_size,
+        nudge=g.church.tag_nudge,
         # `format_local(value, church, fmt)`. The church argument was missing
         # here, so the format string landed in it and every tag ever printed
         # carried the default format instead: "Thursday 9:30am" where the
@@ -547,6 +548,7 @@ def sample_tag_pdf(token: str):
         church=g.church,
         checkin_session=SimpleNamespace(name=KIDS["sample_room"]),
         size=g.church.label_size,
+        nudge=g.church.tag_nudge,
         when=KIDS["sample_when"],
     )
     return Response(
@@ -554,6 +556,39 @@ def sample_tag_pdf(token: str):
         mimetype="application/pdf",
         headers={
             "Content-Disposition": 'inline; filename="sample tag.pdf"',
+            "Cache-Control": "no-store, private",
+        },
+    )
+
+
+@bp.get("/tags/alignment/<token>/")
+def alignment_tag_pdf(token: str):
+    """A ruler on a label, for a printer that prints off-centre.
+
+    The same token as the sample tag and for the same reason: it has to open
+    outside the app, where the app's cookies do not reach, and it carries
+    nothing about anybody. A leaked link is a picture of a ruler.
+
+    This exists because "the names are cut off" is not a number. Nothing in
+    the print path reports how far the printer has moved the page, so the
+    only honest way to find out is to print a scale and read it.
+    """
+    from app.labels import render_alignment_test
+    from app.labeltoken import verify_sample
+
+    if not verify_sample(token, g.church.id):
+        abort(404)
+
+    pdf = render_alignment_test(
+        church=g.church,
+        size=g.church.label_size,
+        nudge=g.church.tag_nudge,
+    )
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        headers={
+            "Content-Disposition": 'inline; filename="label alignment.pdf"',
             "Cache-Control": "no-store, private",
         },
     )

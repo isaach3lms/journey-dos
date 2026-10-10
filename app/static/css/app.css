@@ -1821,6 +1821,11 @@ ul.policy span{color:var(--muted)}
   background:var(--accent);display:grid;place-items:center;margin-bottom:1px;
 }
 .composersend svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+/* Sending. The button goes quiet the moment it is pressed, because a send
+   that looks untouched gets pressed again, which is how one message arrived
+   six times. */
+.composersend:disabled{opacity:.45;cursor:default}
+.composer.sending .composerinput{opacity:.6}
 
 /* On a phone the tab bar is pinned to the bottom, so the composer sits just
    above it. On a computer the tabs are at the top and it pins to the edge. */

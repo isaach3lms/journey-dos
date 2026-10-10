@@ -183,6 +183,11 @@ def post(conversation_id: int):
         flash(MESSAGES["filter_refused"].format(terms='", "'.join(terms)), "error")
         return redirect(url_for("messages.thread", conversation_id=conversation.id))
 
+    # See `Message.repeat_of`. Staff post from the same slow page members do.
+    if Message.repeat_of(conversation, person, body[:4000],
+                         author_name=current_user.name) is not None:
+        return redirect(url_for("messages.thread", conversation_id=conversation.id))
+
     posted = Message.post(conversation, person, body[:4000], author_name=current_user.name)
     db.session.flush()
 

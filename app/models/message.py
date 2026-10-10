@@ -368,6 +368,70 @@ class Message(TenantScoped, TimestampMixin, db.Model):
             db.select(cls).where(cls.id == message_id, cls.church_id == church_id)
         )
 
+    # How long after a message an identical one from the same person counts as
+    # the same send rather than a second one.
+    #
+    # Short on purpose. It has to cover a thumb tapping send twice and a phone
+    # retrying a request nobody saw finish, which is a few seconds, not a
+    # conversation. The other half of the rule, that nothing was said in
+    # between, is what keeps it from eating a real repeat.
+    REPEAT_SECONDS = 30
+
+    @classmethod
+    def repeat_of(cls, conversation, author_person, body: str,
+                  author_name: str | None = None):
+        """The message this one would be a duplicate of, or None.
+
+        Somebody pressed send, nothing visibly happened, so they pressed it
+        again. Five more times, in the case that prompted this. Posting is
+        slow enough to invite that (every device in the room is pushed before
+        the page comes back), and a chat that shows a message six times is a
+        chat people stop trusting.
+
+        Three things have to be true, and the third is what makes this safe:
+
+        1. Same words, same person, same room.
+        2. Within `REPEAT_SECONDS`.
+        3. **It is still the newest thing in the room.** Somebody writing
+           "Amen" twice in a minute is a real repeat if anybody spoke in
+           between. With nothing in between it is a thumb, not a sentence.
+
+        A message that was deleted is not a match. The point of deleting is
+        that it is gone, and a guard that silently refuses to let somebody
+        re-say a thing they just removed is a guard arguing with them.
+        """
+        # church_id is in the filter so this uses
+        # `ix_message_church_conv_time`, whose leading column it is. Without
+        # it this is a scan on every send.
+        newest = db.session.scalar(
+            db.select(cls)
+            .where(
+                cls.church_id == conversation.church_id,
+                cls.conversation_id == conversation.id,
+            )
+            .order_by(cls.sent_at.desc(), cls.id.desc())
+            .limit(1)
+        )
+        if newest is None or newest.is_deleted:
+            return None
+        if newest.body != body:
+            return None
+
+        person_id = getattr(author_person, "id", None)
+        if person_id is not None:
+            if newest.author_person_id != person_id:
+                return None
+        else:
+            # A staff login with no roster record is identified by the name it
+            # posts under, the same way `post` records it.
+            if newest.author_person_id is not None:
+                return None
+            if not author_name or newest.author_name != author_name:
+                return None
+
+        age = (utcnow() - newest.sent_at).total_seconds()
+        return newest if 0 <= age <= cls.REPEAT_SECONDS else None
+
     @classmethod
     def post(cls, conversation, author_person, body: str,
              author_name: str | None = None) -> "Message":

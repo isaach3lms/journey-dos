@@ -1176,6 +1176,13 @@ def chat_post(conversation_id: int):
         flash(MESSAGES["announce_limit"].format(count=MEMBER_ANNOUNCEMENTS_PER_DAY), "error")
         return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
 
+    # The same send twice is one message. See `Message.repeat_of`. Silent
+    # rather than an error: somebody who tapped send twice did not make a
+    # mistake worth telling them about, and the thread they land on already
+    # shows what they wrote.
+    if Message.repeat_of(conversation, person, body[:4000]) is not None:
+        return redirect(url_for("member.chat_thread", conversation_id=conversation.id))
+
     posted = Message.post(conversation, person, body[:4000])
     db.session.flush()
     if conversation.is_announcement:

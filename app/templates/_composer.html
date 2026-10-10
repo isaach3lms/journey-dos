@@ -1,6 +1,14 @@
 {# Shared by the staff and member threads: open at the newest message, let the
    box grow as you type, Enter sends and Shift+Enter makes a new line. One copy
-   so the two sides cannot drift apart. #}
+   so the two sides cannot drift apart.
+
+   **Send is locked once it fires.** Posting is not instant, because every
+   device in the room is pushed before the page comes back, and a send button
+   that looks untouched after a tap gets tapped again. It was, six times, in a
+   room at Journey. The server refuses the repeat as well, in
+   `Message.repeat_of`, because a locked button does nothing for a phone that
+   retried the request on its own. This is the half that stops somebody
+   watching nothing happen and trying harder. #}
 <script>
 (function () {
   function toBottom() { window.scrollTo(0, document.documentElement.scrollHeight); }
@@ -8,12 +16,45 @@
   window.addEventListener("load", toBottom);
   var box = document.querySelector(".composerinput");
   if (!box) { return; }
+  var form = box.form;
+  var sent = false;
+
   function fit() { box.style.height = "auto"; box.style.height = Math.min(box.scrollHeight, 140) + "px"; }
   box.addEventListener("input", fit);
+
+  if (form) {
+    form.addEventListener("submit", function (e) {
+      if (sent) { e.preventDefault(); return; }
+      sent = true;
+      var send = form.querySelector(".composersend");
+      if (send) { send.disabled = true; }
+      /* Not disabled, because a disabled field is not submitted and the
+         message would arrive empty. Read-only keeps the words and stops the
+         typing. */
+      box.readOnly = true;
+      form.classList.add("sending");
+    });
+
+    /* Back from the thread, or a restore from the page cache, hands back the
+       same page with the button still dead. Safari serves it from bfcache
+       without re-running this file, so the state has to be undone here. */
+    window.addEventListener("pageshow", function (e) {
+      if (!e.persisted) { return; }
+      sent = false;
+      var send = form.querySelector(".composersend");
+      if (send) { send.disabled = false; }
+      box.readOnly = false;
+      form.classList.remove("sending");
+    });
+  }
+
   box.addEventListener("keydown", function (e) {
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
-      if (box.value.trim()) { box.form.requestSubmit ? box.form.requestSubmit() : box.form.submit(); }
+      if (sent) { return; }
+      if (box.value.trim() && form) {
+        form.requestSubmit ? form.requestSubmit() : form.submit();
+      }
     }
   });
 })();

@@ -1,12 +1,25 @@
 {% extends "kids/kiosk_base.html" %}
 {% block title %}{{ content.label_heading }} | {{ church.name }}{% endblock %}
 {% block content %}
-  <h1>{{ content.label_heading }}</h1>
+  <h1>{% if first_time %}{{ content.first_time_done }}{% else %}{{ content.label_heading }}{% endif %}</h1>
   <p class="lede">{{ content.label_children.format(names=checked_in|map(attribute='full_name')|join(', ')) }}</p>
 
   <div class="mlbl">{{ content.label_code }}</div>
   <div class="pickupcode mono">{{ code }}</div>
   <p class="lede">{{ content.label_hint }}</p>
+
+  {# Below the pickup code, deliberately.
+
+     A first time parent is being handed two four-character codes in the
+     same minute and only one of them is for today. Putting next week's
+     above the one they need to collect their child invites exactly the
+     mix-up the paragraph above spends a sentence warning about. Today
+     leads; next week is a footnote. #}
+  {% if first_time %}
+    <p class="muted small">
+      {{ content.first_time_next_week.format(pin=household.checkin_pin) }}
+    </p>
+  {% endif %}
 
   {# Two ways to the printer, and the right one depends on the device.
 

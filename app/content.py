@@ -2349,7 +2349,52 @@ KIDS = {
     "kiosk_clear": "Clear",
     "kiosk_delete": "Delete",
     "kiosk_forgot": "Forgot your code?",
-    "kiosk_new_family": "First time here? Start a new family",
+    # Was "kiosk_new_family", written for a screen that was never built and
+    # referenced by nothing for months. The screen exists now and the
+    # wording is the one on it.
+    "kiosk_first_time": "First time here? Check your child in",
+
+    # First time at this church, standing at the kiosk.
+    #
+    # The wording avoids "register" and "sign up" throughout. A parent is
+    # being asked for their child's name so the child can be looked after
+    # for an hour, not enrolled in anything, and the words that imply
+    # otherwise are the words that make somebody put the iPad down.
+    "first_time_heading": "Welcome. Let's get them checked in.",
+    "first_time_lede": (
+        "A couple of details and we will print a name tag. It takes about a "
+        "minute, and next week you will just need your phone number."
+    ),
+    "first_time_you": "About you",
+    "first_time_first": "Your first name",
+    "first_time_last": "Last name",
+    "first_time_phone": "Mobile number",
+    "first_time_phone_hint": (
+        "This is how we reach you if we need you during the service, and how "
+        "you check in next time."
+    ),
+    "first_time_kids": "Who are we looking after?",
+    "first_time_kids_hint": (
+        "First name is all we need. A birthday helps us put them in the "
+        "right room."
+    ),
+    "first_time_child_first": "Child's first name",
+    "first_time_child_birthdate": "Date of birth",
+    "first_time_another": "Add another child",
+    "first_time_submit": "Check them in",
+    "first_time_back": "Back",
+    "first_time_needs_parent_name": "We need your first name.",
+    "first_time_needs_phone": "We need a phone number so we can reach you.",
+    "first_time_needs_child": "Add at least one child's first name.",
+    "first_time_needs_more": "Something was missing. Have another look.",
+    # Written on the card so a pastor reading the Guests screen on Monday
+    # knows where this family came from and why there is no email on it.
+    "first_time_card_note": "First visit, checked a child in at kids check-in.",
+    "first_time_done": "You are all set.",
+    "first_time_next_week": (
+        "Next week, type your phone number or your family code {pin} to "
+        "check in."
+    ),
     "kiosk_unknown": "We do not recognise that code. Try again, or ask a volunteer.",
     "kiosk_too_many": (
         "Too many tries. Ask a volunteer at the desk and they will check you in."

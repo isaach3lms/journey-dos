@@ -939,6 +939,34 @@ form.inline .select{min-width:170px}
   font-size:38px;text-align:center;letter-spacing:.22em;
   padding:16px 12px;margin-bottom:6px;
 }
+
+/* The first time link. Bigger than the volunteer's footnotes below it and
+   in the accent, because a family who has never been here cannot type
+   anything into the box above and this is the only line on the screen that
+   is for them. */
+.kioskcard .footnote.firsttime{
+  font-size:14px;border-top:none;padding-top:0;margin-top:14px;
+}
+.kioskcard .footnote.firsttime a{color:var(--accent);font-weight:600}
+
+/* The first time form. Inputs sized for a thumb on a tablet held by
+   somebody who is also holding a child. */
+.ftform{text-align:left}
+.ftlabel{
+  font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);margin:22px 0 8px;
+}
+.ftform .ftlabel:first-child{margin-top:4px}
+.fthint{font-size:12.5px;color:var(--muted);margin:-2px 0 10px}
+.ftrow{display:flex;gap:8px;margin-bottom:8px}
+.ftrow > *{flex:1;min-width:0}
+.ftform .input{font-size:17px;padding:14px 12px}
+/* One per line under about 420px: two inputs side by side on a phone-sized
+   kiosk leaves each too narrow to read what has been typed into it. */
+@media (max-width:420px){
+  .ftrow{display:block}
+  .ftrow > * + *{margin-top:8px}
+}
 .pickupcode{
   font-size:60px;font-weight:700;letter-spacing:.14em;text-align:center;
   color:var(--deep);background:var(--mist);

@@ -40,6 +40,13 @@
       <button class="btn wide" type="submit">{{ content.check_in }}</button>
     </form>
 
+    {# Above the volunteer's links and below the box, because a family who
+       has never been here cannot type anything into it and this is the only
+       thing on the screen for them. #}
+    <p class="footnote firsttime">
+      <a href="{{ url_for('kids.kiosk_first_time') }}">{{ content.kiosk_first_time }}</a>
+    </p>
+
     {% if not church.phone_checkin %}
       <p class="footnote">
         <a href="{{ url_for('kids.kiosk_forgot') }}">{{ content.kiosk_forgot }}</a>

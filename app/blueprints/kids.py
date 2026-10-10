@@ -19,6 +19,7 @@ from flask import (
     Blueprint,
     Response,
     abort,
+    current_app,
     flash,
     g,
     redirect,
@@ -31,6 +32,7 @@ from flask_login import current_user, login_required
 
 from app.audit import record
 from app.ages import bands_for
+from app import guests
 from app.content import KIDS
 from app.kids_notify import tell_checked_in, tell_checked_out
 from app.models.audit import CHILD_CHECKED_OUT, TAG_REPRINTED
@@ -300,6 +302,128 @@ def kiosk_check_in(household_id: int):
         size=g.church.label_size,
         pdf_url=tag_pdf_url(checkin_session, rows) if rows else None,
     )
+
+
+@bp.route("/kiosk/first-time/", methods=["GET", "POST"])
+@login_required
+@min_role("leader")
+def kiosk_first_time():
+    """A family nobody has met, checking a child in.
+
+    The whole point is that it finishes in the lobby: the family is on the
+    roster, the child has a tag in their hand, and a connect card is waiting
+    for a pastor, all before the service starts. A paper form promising that
+    somebody will add them later is the version this replaces.
+
+    It checks the children in itself rather than redirecting to the family
+    screen, because a parent who has just typed their children's names has
+    already said who is being checked in, and a second screen asking the
+    same question is the one they walk away from.
+    """
+    from app.firsttime import read_children, register
+    from app.guests import CardRefused
+
+    checkin_session = CheckinSession.open_session(g.church.id)
+    if checkin_session is None:
+        flash(KIDS["kiosk_closed"], "error")
+        return redirect(url_for("kids.kiosk"))
+
+    if request.method == "GET":
+        return render_template(
+            "kids/first_time.html",
+            church=g.church,
+            content=KIDS,
+            open_session=checkin_session,
+            rows=range(FIRST_TIME_ROWS),
+        )
+
+    last = (request.form.get("parent_last") or "").strip()
+    try:
+        household, parent, kids, card = register(
+            g.church,
+            parent_first=request.form.get("parent_first"),
+            parent_last=last,
+            phone=request.form.get("phone"),
+            children=read_children(request.form, last_name=last),
+            note=KIDS["first_time_card_note"],
+        )
+    except CardRefused as refused:
+        flash(KIDS.get(f"first_time_{refused.reason}", KIDS["first_time_needs_more"]),
+              "error")
+        return redirect(url_for("kids.kiosk_first_time"))
+
+    code = checkin_session.issue_pickup_code(household.id)
+
+    # Already in, skipped. A parent who taps the button twice, or who comes
+    # back to add a third child and retypes the first two, is not asking for
+    # a second check-in. Without this the second submission hits the unique
+    # constraint on (session, person) and the family gets an error page in
+    # the lobby. The family screen has had this guard since it was written;
+    # this route needed its own.
+    already = {
+        c.person_id for c in checkin_session.checkins
+        if c.household_id == household.id
+    }
+    for child in kids:
+        if child.id in already:
+            continue
+        db.session.add(
+            Checkin(
+                church_id=g.church.id,
+                session_id=checkin_session.id,
+                person_id=child.id,
+                household_id=household.id,
+                household_name=household.name,
+                pickup_code=code,
+                checked_in_by_user_id=current_user.id,
+            )
+        )
+    db.session.commit()
+
+    # See `kiosk_check_in` for why this is read after the commit rather than
+    # after a flush: the collection is already loaded and new rows do not
+    # appear in it, which prints a label page with no tags on it.
+    rows = [
+        c for c in checkin_session.checkins
+        if c.household_id == household.id
+        and c.person_id in {child.id for child in kids}
+    ]
+
+    # The pastor's half. Wrapped, because the family is already on the
+    # roster and their child already has a tag: a notification that cannot
+    # be built must not turn that into an error page in a lobby.
+    try:
+        guests.alert_staff(
+            g.church, card,
+            link=url_for("people.detail", person_id=parent.id,
+                         _external=True, _scheme="https"),
+            path=url_for("people.guests"),
+        )
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception(
+            "First time guest alert failed for card %s", card.id)
+
+    return render_template(
+        "kids/label.html",
+        church=g.church,
+        content=KIDS,
+        household=household,
+        code=code,
+        checked_in=kids,
+        checkin_session=checkin_session,
+        checkins=rows,
+        size=g.church.label_size,
+        pdf_url=tag_pdf_url(checkin_session, rows) if rows else None,
+        first_time=True,
+    )
+
+
+# How many children the form offers room for. Six covers every family this
+# has seen and the form stays one screen; a seventh child is two visits
+# through the same form, or a volunteer adding them afterwards.
+FIRST_TIME_ROWS = 6
 
 
 @bp.route("/kiosk/forgot/", methods=["GET", "POST"])

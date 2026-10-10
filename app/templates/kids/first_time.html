@@ -1,0 +1,80 @@
+{% extends "kids/kiosk_base.html" %}
+{% block title %}{{ content.first_time_heading }} | {{ church.name }}{% endblock %}
+{% block content %}
+  {# One screen, on purpose.
+
+     A parent is standing in a lobby holding a toddler and the service is
+     about to start. Every extra screen between them and a name tag is a
+     family who gives up and a volunteer who ends up writing on masking
+     tape. So the parent and all of the children are asked for together,
+     and the only required answers are the parent's first name, a phone
+     number, and at least one child's first name. #}
+  <h1>{{ content.first_time_heading }}</h1>
+  <p class="lede">{{ content.first_time_lede }}</p>
+
+  <form method="post" class="ftform">
+    {{ csrf_field() }}
+
+    <h2 class="ftlabel">{{ content.first_time_you }}</h2>
+    <div class="ftrow">
+      <input class="input" type="text" name="parent_first" autofocus required
+             autocomplete="off" autocapitalize="words"
+             aria-label="{{ content.first_time_first }}"
+             placeholder="{{ content.first_time_first }}">
+      <input class="input" type="text" name="parent_last"
+             autocomplete="off" autocapitalize="words"
+             aria-label="{{ content.first_time_last }}"
+             placeholder="{{ content.first_time_last }}">
+    </div>
+    {# A number rather than an address, because this is the thing the kiosk
+       searches on next Sunday and the thing a pastor rings on Tuesday. #}
+    <input class="input" type="tel" name="phone" inputmode="tel" required
+           autocomplete="off" aria-label="{{ content.first_time_phone }}"
+           placeholder="{{ content.first_time_phone }}">
+    <p class="fthint">{{ content.first_time_phone_hint }}</p>
+
+    <h2 class="ftlabel">{{ content.first_time_kids }}</h2>
+    <p class="fthint">{{ content.first_time_kids_hint }}</p>
+
+    {% for index in rows %}
+      {# After the first two, rows stay out of the way until they are
+         needed. A form showing six empty children reads as six questions. #}
+      <div class="ftrow ftchild" {% if index >= 2 %}hidden data-extra{% endif %}>
+        <input class="input" type="text" name="child_first_{{ index }}"
+               autocomplete="off" autocapitalize="words"
+               aria-label="{{ content.first_time_child_first }}"
+               placeholder="{{ content.first_time_child_first }}">
+        <input class="input" type="date" name="child_birthdate_{{ index }}"
+               aria-label="{{ content.first_time_child_birthdate }}">
+      </div>
+    {% endfor %}
+
+    <button class="btn ghostbtn wide" type="button" id="morekids" hidden>
+      {{ content.first_time_another }}
+    </button>
+
+    <button class="btn wide" type="submit">{{ content.first_time_submit }}</button>
+  </form>
+
+  <p class="footnote">
+    <a href="{{ url_for('kids.kiosk') }}">{{ content.first_time_back }}</a>
+  </p>
+
+  <script>
+  (function () {
+    var hidden = Array.prototype.slice.call(
+      document.querySelectorAll("[data-extra]"));
+    var more = document.getElementById("morekids");
+    if (!more || !hidden.length) { return; }
+
+    /* Shown only once the script has run. Without JavaScript every row is
+       visible instead, which is a longer form rather than a broken one. */
+    more.hidden = false;
+    more.addEventListener("click", function () {
+      var next = hidden.shift();
+      if (next) { next.hidden = false; next.querySelector("input").focus(); }
+      if (!hidden.length) { more.hidden = true; }
+    });
+  })();
+  </script>
+{% endblock %}

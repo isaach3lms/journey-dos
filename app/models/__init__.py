@@ -26,6 +26,17 @@ from app.models.outbox import (  # noqa: F401
     NotificationPreference,
     OutboxMessage,
 )
+from app.models.push_queue import (  # noqa: F401
+    PUSH_EXPIRED,
+    PUSH_FAILED,
+    PUSH_MAX_ATTEMPTS,
+    PUSH_QUEUED,
+    PUSH_SENT,
+    PUSH_STATUSES,
+    PUSH_SUPPRESSED,
+    STALE_MINUTES,
+    PushQueueItem,
+)
 from app.models.giving_mirror import (  # noqa: F401
     LAPSE_GRACE_DAYS,
     MATCH_IGNORED,

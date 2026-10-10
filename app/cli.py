@@ -689,6 +689,138 @@ a{{
             f"failed {counts['failed']}"
         )
 
+    @app.cli.command("send-push-queue")
+    @click.option("--church", "church_slug", default=None)
+    @click.option("--limit", default=None, type=int)
+    def send_push_queue(church_slug, limit):
+        """Send the notifications that are waiting.
+
+        The push half of `send-outbox`. Both are run by `worker-loop` every
+        couple of seconds and by `worker-tick` every five minutes, and
+        claiming is atomic, so the two can overlap safely.
+        """
+        from app.push.queue import send_queued
+
+        church_id = None
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            church_id = church.id
+
+        counts = send_queued(
+            limit=limit or current_app.config.get("PUSH_BATCH_SIZE", 100),
+            church_id=church_id,
+        )
+        click.echo(
+            f"sent {counts['sent']}, "
+            f"opted out {counts['suppressed']}, "
+            f"too old {counts['expired']}, "
+            f"retrying {counts['retrying']}, "
+            f"failed {counts['failed']}"
+        )
+
+    @app.cli.command("purge-push-queue")
+    @click.option("--days", default=3, type=int)
+    def purge_push_queue(days):
+        """Delete finished notifications older than `days`.
+
+        A work queue, not a record. What went out on Sunday is on the
+        person's phone; the outbox is the thing a church may need in March.
+        """
+        from app.push.queue import purge
+
+        click.echo(f"removed {purge(older_than_days=days)} finished notifications")
+
+    @app.cli.command("worker-loop")
+    @click.option("--seconds", default=2.0, type=float,
+                  help="How long to wait between passes when there is nothing to do.")
+    @click.option("--housekeeping-minutes", default=5, type=int)
+    @click.option("--max-passes", default=0, type=int,
+                  help="Stop after this many passes. 0 means never, which is "
+                       "what the Render worker runs. Anything else is a test.")
+    def worker_loop(seconds, housekeeping_minutes, max_passes):
+        """Send both queues continuously. Never exits.
+
+        **Why this exists.** The cron job runs every five minutes, which is
+        fine for email and useless for a notification: a phone buzzing five
+        minutes after somebody posted is not a notification, it is an
+        interruption about something already read. Until this existed, push
+        was sent inside the web request instead, which made posting slow
+        enough that people pressed send repeatedly and a room filled with
+        duplicates.
+
+        **The cron job stays.** This loop is the fast path, not the only
+        path. If it crashes, gets stuck on a hung socket, or is still
+        building after a deploy, `worker-tick` still drains both queues
+        within five minutes. Claiming is atomic, so the two never send the
+        same row twice. A free safety net for a service that now has a single
+        point of failure it did not have before.
+
+        Housekeeping, the purges and the claim release, runs on its own timer
+        rather than every pass: those are five minute jobs and running them
+        twice a second would be a database load with no purpose.
+        """
+        import time
+
+        from app.mail import send_pending
+        from app.push.queue import release_claims as release_push
+        from app.push.queue import send_queued
+
+        mail_batch = current_app.config.get("OUTBOX_BATCH_SIZE", 50)
+        push_batch = current_app.config.get("PUSH_BATCH_SIZE", 100)
+
+        click.echo(
+            f"worker-loop started: every {seconds}s, "
+            f"housekeeping every {housekeeping_minutes}m"
+        )
+
+        passes = 0
+        last_housekeeping = 0.0
+
+        while True:
+            passes += 1
+            did_work = 0
+
+            # Each queue in its own try. A push provider refusing everything
+            # must never be the reason email stops going out, which is the
+            # failure `worker-tick` was restructured to prevent and would be
+            # just as bad here.
+            try:
+                counts = send_queued(limit=push_batch)
+                did_work += counts["sent"] + counts["failed"] + counts["expired"]
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("worker-loop: push pass failed")
+
+            try:
+                counts = send_pending(limit=mail_batch)
+                did_work += counts["sent"] + counts["failed"]
+            except Exception:
+                db.session.rollback()
+                current_app.logger.exception("worker-loop: mail pass failed")
+
+            now = time.monotonic()
+            if now - last_housekeeping >= housekeeping_minutes * 60:
+                last_housekeeping = now
+                try:
+                    release_push(minutes=15)
+                except Exception:
+                    db.session.rollback()
+                    current_app.logger.exception("worker-loop: housekeeping failed")
+
+            # A session held open across a loop that runs for weeks is a
+            # connection that eventually goes stale and a transaction that
+            # never sees anybody else's writes.
+            db.session.remove()
+
+            if max_passes and passes >= max_passes:
+                click.echo(f"worker-loop stopped after {passes} passes")
+                return
+
+            if not did_work:
+                time.sleep(seconds)
+
     @app.cli.command("outbox-status")
     @click.option("--church", "church_slug", default=None)
     def outbox_status(church_slug):
@@ -738,9 +870,15 @@ a{{
             ("run-sequences", ["run-sequences"]),
             ("release-claims", ["release-claims", "--minutes", "15"]),
             ("send-outbox", ["send-outbox"]),
+            # The safety net under `worker-loop`. If the continuous worker is
+            # down, stuck, or mid-deploy, notifications still go out within
+            # five minutes instead of not at all. Claiming is atomic, so the
+            # two senders never collide.
+            ("send-push-queue", ["send-push-queue"]),
             ("purge-reset-tokens", ["purge-reset-tokens"]),
             ("purge-audit", ["purge-audit"]),
             ("purge-push", ["purge-push"]),
+            ("purge-push-queue", ["purge-push-queue"]),
         )
         failed = []
         for name, args in steps:

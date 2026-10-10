@@ -542,6 +542,25 @@
         </p>
       {% endif %}
 
+      {# Whether anything is draining the queue.
+
+         Notifications are sent by a worker now, not by the app, which means
+         "nothing is arriving" became a thing that can be true while every
+         other row on this page is green. A worker that died at two in the
+         morning looks exactly like a quiet Tuesday unless somebody is
+         counting what is waiting. #}
+      <h4>{{ content.push_queue_heading }}</h4>
+      {% if push.queue_stuck %}
+        <p class="alert error">
+          {{ content.push_queue_stuck.format(
+               count=push.queue_waiting, minutes=push.queue_minutes|round|int) }}
+        </p>
+      {% elif push.queue_waiting %}
+        <p class="muted small">{{ content.push_queue_busy.format(count=push.queue_waiting) }}</p>
+      {% else %}
+        <p class="muted small">{{ content.push_queue_clear }}</p>
+      {% endif %}
+
       <h4>{{ content.push_reach_heading }}</h4>
       <div class="metrics">
         <div><span class="mono mv">{{ push.granted }}</span> {{ content.push_reach_granted }}</div>

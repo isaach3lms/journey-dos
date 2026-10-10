@@ -27,6 +27,14 @@ grant it, a subscription expires silently, a phone is off. If push fails the
 email still goes, and the caller is never told about it, because there is
 nothing anybody can do with that fact. Email failing is a real problem and is
 visible on the delivery screen in Settings.
+
+**Neither channel sends here.** Both queue. Push used to be the exception,
+sent inline, one HTTPS call per device with a ten second timeout, with the
+person who pressed the button waiting through all of them. In a room of
+twenty that is twenty round trips before the page comes back, and the visible
+result was a church thread with the same message in it six times, because a
+send button that looks untouched gets pressed again. The worker sends both
+queues now. See `app.push.queue`.
 """
 
 from __future__ import annotations
@@ -36,8 +44,7 @@ from dataclasses import dataclass
 from flask import current_app
 
 from app.mail import NotQueued, queue
-from app.push.send import send_to_person
-from app.push.transport import PushMessage
+from app.push.queue import enqueue
 
 
 def _first_line(text: str | None) -> str:
@@ -51,7 +58,18 @@ def _first_line(text: str | None) -> str:
 
 @dataclass(frozen=True)
 class Delivered:
-    """What actually went out. Mostly for tests and the staff screens."""
+    """What went out. Mostly for tests and the staff screens.
+
+    `pushed` counts **people**, so it is 1 or 0. It used to count devices,
+    because push was sent here and the transport came back with a number. Now
+    that it is queued there is no number to come back with until the worker
+    runs, and one per person is the honest answer at this point: a
+    notification is on its way to this person, on whatever they carry.
+
+    The screens that add these up were already reporting "how many people
+    were told", which is what they now get. Before, a staff member with a
+    phone and a laptop counted twice.
+    """
 
     emailed: bool
     pushed: int
@@ -129,21 +147,24 @@ def notify(
         return Delivered(emailed=emailed, pushed=0, suppressed=suppressed)
 
     try:
-        counts = send_to_person(
-            person,
-            PushMessage(
-                title=(push_title or subject)[:80],
-                body=push_body or _first_line(body_text),
-                url=url,
-                tag=tag,
-            ),
-            category,
+        item = enqueue(
+            person=person,
+            category=category,
+            title=(push_title or subject)[:80],
+            body=push_body or _first_line(body_text),
+            url=url,
+            tag=tag,
+            # The email's key would collide with it, and the two channels
+            # queue separately: somebody can be emailed and not pushable.
+            dedupe_key=f"push:{dedupe_key}" if dedupe_key else None,
         )
-        pushed = counts.get("sent", 0)
+        pushed = 1 if item is not None else 0
     except Exception:  # noqa: BLE001
-        # Best effort, and deliberately swallowed. A push provider having a
-        # bad afternoon must never be the reason a volunteer does not get the
-        # email telling them they are on the plan on Sunday.
-        current_app.logger.exception("push failed for person %s", getattr(person, "id", None))
+        # Best effort, and deliberately swallowed. The push machinery having
+        # a bad afternoon must never be the reason a volunteer does not get
+        # the email telling them they are on the plan on Sunday.
+        current_app.logger.exception(
+            "push could not be queued for person %s", getattr(person, "id", None)
+        )
 
     return Delivered(emailed=emailed, pushed=pushed, suppressed=suppressed)

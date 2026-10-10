@@ -3163,6 +3163,19 @@ SETTINGS = {
     "guests_account_label": "Send account requests to",
     "guests_account_hint": "Empty sends them to {fallback}.",
 
+    "push_queue_heading": "Is anything sending",
+    "push_queue_clear": (
+        "Nothing waiting. Notifications normally leave within a few seconds "
+        "of whatever caused them."
+    ),
+    "push_queue_busy": "{count} waiting to go out. This clears in seconds.",
+    "push_queue_stuck": (
+        "{count} notifications have been waiting {minutes} minutes. Nothing "
+        "is sending them. The background worker on Render is the thing to "
+        "check: open its Logs and look for whether it is running. Email is "
+        "unaffected and so is everything else in the app."
+    ),
+
     "push_reach_heading": "Who can be reached",
     "push_reach_hint": (
         "Counted over people with an account, not the whole roster. iPhone "

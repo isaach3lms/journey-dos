@@ -1,9 +1,13 @@
 # Render Blueprint for journey-dos.
 #
-# Three resources, one file:
-#   1. journey-dos-demo   the static client demo, unchanged, still free
-#   2. journey-dos-app    the Flask application
-#   3. journey-dos-db     Postgres
+# Five resources, one file:
+#   1. journey-dos-demo    the static client demo, unchanged, still free
+#   2. journey-dos-app     the Flask application
+#   3. journey-dos-worker  the continuous sender, seconds
+#   4. journey-dos-outbox  the five minute cron, the safety net under it
+#   5. journey-dos-db      Postgres
+#
+# Two senders on purpose. See the comment above the worker.
 #
 # Render reads this on every push. Creating services by hand in the dashboard
 # instead means the configuration lives in a browser tab nobody else can see.
@@ -110,12 +114,81 @@ services:
         sync: false
 
   # ---------------------------------------------------------------------
-  # The outbox worker.
+  # The continuous sender.
   #
-  # A cron job on the same image, not a background thread in the web
-  # service. A thread dies with the process on every deploy and every
-  # restart, and takes whatever it had claimed with it. A separate
-  # invocation either runs or visibly does not.
+  # A notification has to arrive in seconds or it is not a notification.
+  # The cron job below runs every five minutes, which is right for email
+  # and useless for a phone buzzing about a message somebody has already
+  # read. Before this service existed, push was sent inside the web
+  # request to get that speed: one HTTPS call per device, per person in
+  # the room, with the author waiting through every one of them. The
+  # visible result was a church thread with the same message in it six
+  # times, because a send button that looks untouched gets pressed again.
+  #
+  # It drains both queues, not just push. Email arriving in two seconds
+  # instead of up to five minutes is free once something is already
+  # looking.
+  #
+  # Costs $7/month. The cron below stays anyway: see its comment.
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: journey-dos-worker
+    runtime: python
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    # Never exits. Render restarts it if it does.
+    startCommand: flask worker-loop
+    autoDeploy: true
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: journey-dos-app
+          envVarKey: SECRET_KEY
+      - key: DATABASE_URL
+        fromDatabase:
+          name: journey-dos-db
+          property: connectionString
+      - key: MAIL_TRANSPORT
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        value: The Journey Church <no-reply@thejourneychurchsemo.com>
+      # The same three as everywhere else, set in the dashboard. This
+      # service is the one that actually sends notifications now, so if
+      # these are missing here, nothing arrives on anybody's phone even
+      # though the app and the cron look healthy.
+      - key: PUSH_TRANSPORT
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+  # ---------------------------------------------------------------------
+  # The five minute cron, which is now the safety net rather than the
+  # only sender.
+  #
+  # Kept after the continuous worker arrived, deliberately. The worker is
+  # a single process: it can hang on a socket, die in a way Render is
+  # slow to notice, or be mid-build during a deploy. When that happens
+  # this still drains both queues within five minutes, which is the
+  # difference between a notification being late and a church finding out
+  # in March that nothing has sent since February. Claiming is atomic, so
+  # the two senders never take the same row.
+  #
+  # It also owns the work that belongs on a five minute timer either way:
+  # sequences, releasing abandoned claims, and the purges.
+  #
+  # Billed per second of runtime, which is cents a month.
   # ---------------------------------------------------------------------
   - type: cron
     name: journey-dos-outbox

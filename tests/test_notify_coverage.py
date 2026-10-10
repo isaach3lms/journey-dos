@@ -85,7 +85,17 @@ EMAIL_ONLY = {
 # else must go through `notify`, which is what keeps the opt-out check and the
 # email in one place.
 PUSH_DIRECT = {
-    "app/notify.py": "This is the function that wraps it.",
+    # `app/notify.py` used to be here, because it pushed inside the web
+    # request. It queues now and the worker sends, which is the whole point
+    # of app/push/queue.py: no third party is called while somebody is
+    # waiting for a page. If notify.py ever appears on this list again,
+    # somebody has put the ten second timeout back in the request and the
+    # duplicate messages will come with it.
+    "app/push/queue.py": (
+        "The worker. This is the one place a notification is actually sent, "
+        "and it re-runs the opt-out check immediately before sending, which "
+        "is the check that counts."
+    ),
     "app/push/send.py": "This is it.",
     "app/push/selftest.py": (
         "A self-test for one device, whose whole purpose is to prove the push "

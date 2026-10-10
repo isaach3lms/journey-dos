@@ -355,7 +355,10 @@ class TestItNeverTakesDownTheKiosk:
         def explode(*args, **kwargs):
             raise RuntimeError("the push provider is having an afternoon")
 
-        monkeypatch.setattr("app.notify.send_to_person", explode)
+        # Was `app.notify.send_to_person`, back when the kiosk sent the push
+        # itself and a hung provider held up the desk. It queues now, so the
+        # failure worth surviving here is the queuing.
+        monkeypatch.setattr("app.notify.enqueue", explode)
         ellie = child(family, "Ellie")
         _, rows = checked_in(db, journey, family, sunday, [ellie])
 

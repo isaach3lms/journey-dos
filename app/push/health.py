@@ -35,6 +35,7 @@ from sqlalchemy import func
 
 from app.extensions import db
 from app.models import PushSubscription, User
+from app.models.base import utcnow
 from app.models.push import MAX_FAILURES
 
 PROVIDERS = ("onesignal",)
@@ -155,6 +156,45 @@ def push_health(church_id: int) -> dict:
         "people": people,
         "failing": failing,
         "last_success": last_success,
+        **queue_health(church_id),
         **counts,
         **summary,
+    }
+
+
+# A queue this deep for this long means nobody is draining it. Two minutes,
+# because the worker's pass is two seconds: anything waiting sixty times
+# longer than that is not waiting, it is stuck.
+STUCK_MINUTES = 2
+
+
+def queue_health(church_id: int) -> dict:
+    """Is anything actually sending the notifications.
+
+    The whole reason this row exists: when push moved out of the web request
+    and into a worker, "notifications stopped arriving" became a thing that
+    can be true while the app itself is perfectly healthy. A worker that died
+    at two in the morning looks exactly like a quiet Tuesday unless somebody
+    is counting what is waiting.
+
+    Depth alone does not answer it. Ten waiting is healthy two seconds after
+    somebody posts and a dead worker ten minutes later. The age of the oldest
+    one is the number that tells you which.
+    """
+    from app.models import PushQueueItem
+
+    waiting = PushQueueItem.queued_count(church_id)
+    oldest = PushQueueItem.oldest_queued_at(church_id)
+
+    stuck = False
+    waiting_minutes = 0.0
+    if oldest is not None:
+        waiting_minutes = (utcnow() - oldest).total_seconds() / 60
+        stuck = waiting_minutes > STUCK_MINUTES
+
+    return {
+        "queue_waiting": waiting,
+        "queue_oldest": oldest,
+        "queue_minutes": round(waiting_minutes, 1),
+        "queue_stuck": stuck,
     }

@@ -193,16 +193,24 @@ class TestOneOptOutNotTwo:
 
 
 class TestEmailSurvivesPushFailing:
-    def test_a_broken_push_provider_does_not_stop_the_email(self, db, journey, monkeypatch):
+    def test_the_push_half_blowing_up_does_not_stop_the_email(self, db, journey,
+                                                              monkeypatch):
         """A push provider having a bad afternoon must never be the reason a
-        volunteer is not told they are on the plan."""
+        volunteer is not told they are on the plan.
+
+        This used to patch `send_to_person`, because `notify` called the
+        provider itself. It queues now, so the thing that can go wrong at
+        this point is the queuing, and that is what is broken here. The
+        provider failing is a worker problem, covered in
+        tests/test_push_queue.py.
+        """
         import app.notify as notify_module
 
         person = a_person(db, journey)
         with_a_device(db, journey, person)
         monkeypatch.setattr(
-            notify_module, "send_to_person",
-            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("push is down")),
+            notify_module, "enqueue",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("queue is down")),
         )
 
         result = notify(
@@ -225,28 +233,23 @@ class TestEmailSurvivesPushFailing:
 
 class TestWhatTheNotificationSays:
     def test_the_push_body_falls_back_to_the_first_real_line(self, db, journey):
-        from app.push.transport import PushMessage
+        """Read off the queued row now rather than captured in flight. The
+        person needs a device, because nothing is queued for somebody with
+        nowhere to send it."""
+        from app.models import PushQueueItem
 
-        seen = {}
+        person = a_person(db, journey)
+        with_a_device(db, journey, person)
 
-        def capture(person, message: PushMessage, category, transport=None):
-            seen["message"] = message
-            return {"sent": 0}
+        notify(
+            person=person, church_id=journey.id,
+            category="group", subject="Sunday",
+            body_text="\n\n   \nHello Kaela,\n\nYou are on the plan.",
+        )
+        db.session.commit()
 
-        import app.notify as notify_module
-
-        original = notify_module.send_to_person
-        notify_module.send_to_person = capture
-        try:
-            notify(
-                person=a_person(db, journey), church_id=journey.id,
-                category="group", subject="Sunday",
-                body_text="\n\n   \nHello Kaela,\n\nYou are on the plan.",
-            )
-        finally:
-            notify_module.send_to_person = original
-
-        assert seen["message"].body == "Hello Kaela,"
+        item = db.session.scalar(db.select(PushQueueItem))
+        assert item.body == "Hello Kaela,"
 
     def test_a_blank_body_does_not_crash(self, db, journey):
         result = notify(
@@ -332,12 +335,26 @@ class TestSendingInvites:
         assert assignment.invited_at is not None
 
     def test_it_pushes_too(self, db, journey, staff):
+        """Queued by the request, sent by the worker.
+
+        This used to assert the subscription had a success stamped on it
+        straight after the request, because the request did the sending.
+        That is the thing that made posting slow. The two halves are checked
+        separately now, and both still have to happen: a row goes in, and
+        draining it reaches the device.
+        """
+        from app.models import PushQueueItem
+        from app.push.queue import send_queued
+
         service = a_service(db, journey)
         person = a_person(db, journey)
         with_a_device(db, journey, person)
         put_on_plan(db, journey, service, person)
 
         staff.post(f"/services/{service.id}/invite/", headers=H)
+        assert db.session.scalar(db.select(PushQueueItem)) is not None
+
+        send_queued()
         sub = db.session.scalar(db.select(PushSubscription))
         assert sub.last_success_at is not None
 

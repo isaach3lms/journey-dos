@@ -329,7 +329,10 @@ class TestItNeverTakesDownTheForm:
         def explode(*args, **kwargs):
             raise RuntimeError("the push provider is having an afternoon")
 
-        monkeypatch.setattr("app.notify.send_to_person", explode)
+        # Was `app.notify.send_to_person`, back when the request sent the
+        # push itself. It queues now, so the failure worth surviving at this
+        # point is the queuing.
+        monkeypatch.setattr("app.notify.enqueue", explode)
 
         with app.test_request_context(headers={"Host": "journey.dos.test"}):
             told = send(journey, push_title="Support", push_body="Tap.")

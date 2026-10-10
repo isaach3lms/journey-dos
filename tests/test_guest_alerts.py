@@ -26,6 +26,7 @@ from app.models import Church, GuestCard, OutboxMessage, Person, User
 from app.models.base import utcnow
 from app.models.church import DEFAULT_ACCOUNT_REQUEST_EMAIL
 from app.models.guest import HEARD_FRIEND
+from app.push.queue import send_queued
 from tests.conftest import JOURNEY_HOST, PASSWORD
 
 H = {"Host": JOURNEY_HOST}
@@ -137,6 +138,9 @@ class TestTheChurchIsTold:
         db.session.commit()
 
         client.post("/welcome/", data=CARD, headers=H)
+        # Queued by the request, sent by the worker. The request doing it was
+        # what made posting slow enough to produce duplicate messages.
+        send_queued(transport=provider)
 
         assert provider.sent, "nothing was pushed"
         _, message = provider.sent[0]
@@ -163,6 +167,7 @@ class TestTheChurchIsTold:
         db.session.commit()
 
         client.post("/welcome/", data=CARD, headers=H)
+        send_queued(transport=provider)
 
         _, message = provider.sent[0]
         assert message.url == "/people/guests/"

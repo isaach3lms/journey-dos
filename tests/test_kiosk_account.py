@@ -122,24 +122,102 @@ class TestWhatTheTabletCannotReach:
     def test_a_new_screen_is_shut_by_default(self, app, tablet):
         """The direction of the allowlist, stated as a test.
 
-        A route nobody has thought about is unreachable from the lobby. If
-        this ever fails it means somebody switched to a denylist, and every
-        screen added after that is open.
+        A route nobody has thought about is unreachable from the lobby.
+
+        **This test used to assert nothing.** Its condition was
+        `endpoint not in KIOSK_ENDPOINTS and endpoint in KIOSK_ENDPOINTS`,
+        which is false for every endpoint there has ever been, so `not any`
+        was true no matter what the allowlist contained. It now takes the
+        kids endpoints that are not listed and checks the tablet is actually
+        turned away from each one, which is the thing the sentence above
+        claims.
         """
         from app.kiosk import KIOSK_ENDPOINTS
 
-        reachable = {
+        shut = sorted(
             rule.endpoint for rule in app.url_map.iter_rules()
-            if "GET" in (rule.methods or set())
-        }
-        # Nothing outside the allowlist is admitted by pattern.
-        assert not any(
-            endpoint.startswith("kids.") and endpoint not in KIOSK_ENDPOINTS
-            and endpoint in KIOSK_ENDPOINTS
-            for endpoint in reachable
+            if rule.endpoint.startswith("kids.")
+            and rule.endpoint not in KIOSK_ENDPOINTS
+            and "GET" in (rule.methods or set())
+            # Routes whose authorization is a signed token in the URL rather
+            # than the session. They 404 without one, which is their own
+            # test; they are not session-guarded and never were.
+            and not rule.endpoint.endswith(("_pdf", "tags_pdf"))
+            and not rule.arguments & {"token"}
         )
+        assert shut, "no unlisted kids screens, so this test proves nothing"
+
+        for endpoint in shut:
+            rule = next(r for r in app.url_map.iter_rules()
+                        if r.endpoint == endpoint)
+            path = rule.rule.replace("<int:session_id>", "1") \
+                           .replace("<int:household_id>", "1") \
+                           .replace("<int:checkin_id>", "1")
+            if "<" in path:
+                continue
+            response = tablet.get(path, headers=H)
+            assert response.status_code in (302, 403, 404), (
+                f"the lobby tablet reached {endpoint}"
+            )
+            if response.status_code == 302:
+                assert response.headers["Location"].endswith("/kids/kiosk/")
+
         assert "kids.index" not in KIOSK_ENDPOINTS
         assert "people.index" not in KIOSK_ENDPOINTS
+
+    def test_every_link_on_a_kiosk_screen_works_from_the_tablet(self, app, tablet):
+        """A link the tablet cannot follow is a dead end in a lobby.
+
+        This is the test that was missing. The first time check-in screen
+        shipped with a link on the kiosk and its endpoint left out of the
+        allowlist, so tapping it bounced straight back to the keypad with
+        "this tablet is set up for check-in only". Nothing failed: the route
+        had tests, the link had a test, and both signed in as staff, for
+        whom the guard does not apply.
+
+        So the templates the tablet actually renders are read, every
+        `url_for` in them is pulled out, and each one has to be something the
+        tablet is allowed to reach.
+
+        Done by rendering rather than by reading the templates, because a
+        template can show a link to staff and hide it from the tablet, which
+        the exit link in the kiosk shell does. What matters is what ends up
+        on the tablet's screen.
+        """
+        import re
+
+        from app.models import CheckinSession
+        from app.models.base import utcnow
+        from app.extensions import db as _db
+
+        with app.app_context():
+            journey = _db.session.scalar(
+                _db.select(Church).where(Church.slug == "journey"))
+            _db.session.add(CheckinSession(
+                church_id=journey.id, name="Sunday", starts_at=utcnow()))
+            _db.session.commit()
+
+        screens = ["/kids/kiosk/", "/kids/kiosk/first-time/",
+                   "/kids/kiosk/print-check/"]
+
+        dead = []
+        for screen in screens:
+            page = tablet.get(screen, headers=H)
+            assert page.status_code == 200, f"the tablet cannot open {screen}"
+
+            for href in re.findall(r'href="(/[^"#]*)"',
+                                   page.get_data(as_text=True)):
+                if href.startswith("/static/"):
+                    continue
+                followed = tablet.get(href, headers=H)
+                if (followed.status_code == 302
+                        and followed.headers["Location"].endswith("/kids/kiosk/")):
+                    dead.append(f"{screen} links to {href}")
+
+        assert not dead, (
+            "these links are on the tablet's own screen and bounce it "
+            f"straight back to the keypad: {dead}"
+        )
 
     def test_a_missing_page_is_still_a_missing_page(self, tablet):
         """A 404 that redirects to check-in would make every typo look like a
@@ -155,6 +233,39 @@ class TestWhatTheTabletCannotReach:
 class TestWhatTheTabletCanDo:
     def test_it_reaches_the_check_in_screen(self, tablet):
         assert tablet.get("/kids/kiosk/", headers=H).status_code == 200
+
+    def test_a_first_time_family_can_sign_themselves_in(self, db, journey, tablet):
+        """End to end as the tablet, which is the identity that was never
+        tested.
+
+        Every test of this feature signed in as staff, and the guard that
+        broke it only applies to the kiosk account. A family stood in front
+        of a tablet that bounced them back to a keypad they had no code for.
+        """
+        from app.models import CheckinSession, GuestCard, Person
+
+        db.session.add(CheckinSession(church_id=journey.id, name="Sunday",
+                                      starts_at=utcnow()))
+        db.session.commit()
+
+        opened = tablet.get("/kids/kiosk/first-time/", headers=H)
+        assert opened.status_code == 200, "the tablet cannot open the form"
+        assert "Mobile number" in opened.get_data(as_text=True)
+
+        done = tablet.post("/kids/kiosk/first-time/", headers=H, data={
+            "parent_first": "Megan",
+            "parent_last": "Slinkard",
+            "phone": "(573) 475-0235",
+            "child_first_0": "Tyler",
+        }, follow_redirects=True)
+
+        assert done.status_code == 200
+        assert "Tyler" in done.get_data(as_text=True)
+
+        assert db.session.scalar(db.select(Person).where(
+            Person.church_id == journey.id, Person.first_name == "Tyler"))
+        assert db.session.scalar(db.select(GuestCard).where(
+            GuestCard.church_id == journey.id)), "no card for the pastor"
 
     def test_it_can_check_a_family_in(self, db, journey, tablet):
         from app.models import CheckinSession

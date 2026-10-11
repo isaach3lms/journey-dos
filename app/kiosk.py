@@ -74,6 +74,14 @@ KIOSK_ENDPOINTS = frozenset({
     "kids.kiosk_family",
     "kids.kiosk_check_in",
     "kids.kiosk_forgot",
+    # A family nobody has met, checking a child in. This is the one screen
+    # on the tablet that writes new people onto the roster, which is exactly
+    # why it was missed when it was built: it reads like a staff screen. It
+    # is not. A first time visitor is standing at the tablet and there is
+    # nobody else for them to talk to, which is the whole reason the screen
+    # exists. See the template crawl in tests/test_kiosk_account.py, which
+    # now fails if a link on a kiosk screen is not listed here.
+    "kids.kiosk_first_time",
     # The tags. `kiosk_check_in` renders them itself on the way back, so the
     # only separate endpoint here is the printable file, which carries its own
     # signed authorization and does not consult the session at all.
@@ -116,6 +124,9 @@ IDLE_ENDPOINTS = frozenset({
     "kids.kiosk_family",
     "kids.kiosk_check_in",
     "kids.kiosk_forgot",
+    # Half a form with a family's name and phone number in it, abandoned on
+    # a tablet in a lobby, is the clearest case for the idle reset there is.
+    "kids.kiosk_first_time",
 })
 
 

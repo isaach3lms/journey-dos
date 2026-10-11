@@ -421,13 +421,31 @@ class TestClearingTheRubbish:
         assert card.is_discarded is True
 
     def test_a_discarded_card_leaves_the_list(self, db, journey, client, staff):
+        """This used to assert the name was nowhere on the page, and it
+        passed for the wrong reason.
+
+        Discarding raised a KeyError reaching for its confirmation message,
+        so no banner was ever rendered and the only place the name could
+        have appeared was the list. Fixing the message put "Marcus
+        Delgado's card is discarded" at the top of the next page and this
+        test failed, which is the test doing its job a year late.
+
+        What it means to check is that the card is off the list, so it
+        checks the list: the screen shows its empty state.
+        """
+        from app.content import PEOPLE
+
         client.post("/welcome/", data=GOOD, headers=H)
         card = cards(db, journey)[0]
         client.post(f"/people/guests/{card.id}/discard/", headers=H)
 
         page = client.get("/people/guests/", headers=H).get_data(as_text=True)
 
-        assert "Marcus Delgado" not in page
+        assert PEOPLE["guests_none"] in page, "the card is still on the list"
+        # And it is still findable, because discarding is not deleting.
+        shown = client.get("/people/guests/?discarded=1",
+                           headers=H).get_data(as_text=True)
+        assert "Marcus Delgado" in shown
 
     def test_discarding_a_card_does_not_touch_the_person(self, db, journey,
                                                          client, staff):

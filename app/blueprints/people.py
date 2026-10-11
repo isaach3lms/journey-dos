@@ -1358,15 +1358,22 @@ def discard_guest(card_id: int):
             carried[key] = value
     back = redirect(url_for("people.guests", **carried))
 
+    # `guests_`, not `guest_`. The copy has always been there under the
+    # plural prefix every other string on this screen uses; these two lines
+    # asked for a singular that does not exist, so discarding a card
+    # committed the change and then raised a KeyError on the way to the
+    # flash. The staff member saw "Something broke on our end" for an action
+    # that had in fact worked, which is the worst version of this: the next
+    # thing they do is try again.
     if request.form.get("restore"):
         if card.restore():
             db.session.commit()
-            flash(PEOPLE["guest_restored"].format(name=card.full_name), "notice")
+            flash(PEOPLE["guests_restored"].format(name=card.full_name), "notice")
         return back
 
     if card.discard(actor=current_user):
         db.session.commit()
-        flash(PEOPLE["guest_discarded"].format(name=card.full_name), "notice")
+        flash(PEOPLE["guests_discarded"].format(name=card.full_name), "notice")
     return back
 
 

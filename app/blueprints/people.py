@@ -990,6 +990,94 @@ def archived():
     )
 
 
+@bp.post("/archived/delete/")
+@login_required
+@min_role("staff")
+def confirm_delete():
+    """What deleting these people would destroy, before anybody confirms.
+
+    A screen of its own rather than a browser confirm box. "Are you sure?"
+    is not a decision; "this removes 14 timeline entries and 3 check-ins
+    and cannot be undone" is. Nothing is written here.
+
+    Staff only, where restoring is open to leaders. The asymmetry is the
+    point: putting somebody back is reversible and this is not.
+    """
+    from app.purge import inspect
+
+    ids = request.form.getlist("person_id", type=int)
+    people = Person.get_many_for_church(g.church.id, ids)
+    verdicts = [inspect(person) for person in people if person.is_archived]
+
+    if not verdicts:
+        flash(PEOPLE["bulk_none"], "error")
+        return redirect(url_for("people.archived"))
+
+    return render_template(
+        "people/confirm_delete.html",
+        church=g.church,
+        content=PEOPLE,
+        verdicts=verdicts,
+        going=[v for v in verdicts if v.allowed],
+        blocked=[v for v in verdicts if not v.allowed],
+        active="people",
+    )
+
+
+@bp.post("/archived/delete/confirm/")
+@login_required
+@min_role("staff")
+def bulk_delete():
+    """Remove them. There is no undo and nothing to restore afterwards.
+
+    The typed word is the guard. A church clearing forty test records does
+    it in one pass, and nobody does it by leaning on a tablet.
+    """
+    from app.audit import record
+    from app.models.audit import PERSON_DELETED
+    from app.purge import Blocked, delete, summarise
+
+    if (request.form.get("confirm") or "").strip().upper() != PEOPLE["purge_word"]:
+        flash(PEOPLE["purge_not_typed"], "error")
+        return redirect(url_for("people.archived"))
+
+    ids = request.form.getlist("person_id", type=int)
+    people = Person.get_many_for_church(g.church.id, ids)
+
+    gone, refused = [], []
+    for person in people:
+        try:
+            verdict = delete(person)
+        except Blocked as blocked:
+            refused.append(blocked.verdict)
+            continue
+        # Written before the commit, so the entry and the deletion are one
+        # transaction. An audit log that can disagree with what happened is
+        # worse than none.
+        record(
+            PERSON_DELETED,
+            PEOPLE["purge_audit"].format(name=verdict.name),
+            subject_type="person",
+            subject_id=verdict.person_id,
+            subject_label=verdict.name,
+            detail=summarise(verdict),
+        )
+        gone.append(verdict)
+
+    if gone:
+        db.session.commit()
+        flash(PEOPLE["purge_done"].format(count=len(gone)), "notice")
+    else:
+        db.session.rollback()
+        flash(PEOPLE["bulk_none"], "error")
+
+    if refused:
+        flash(PEOPLE["purge_skipped"].format(
+            names=", ".join(v.name for v in refused)), "error")
+
+    return redirect(url_for("people.archived"))
+
+
 @bp.post("/archived/restore/")
 @login_required
 @min_role("leader")

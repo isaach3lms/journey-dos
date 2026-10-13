@@ -848,6 +848,50 @@ PEOPLE = {
     "archived_count": "{count} archived",
     "archived_none": "Nobody is archived.",
     "archived_restore": "Put them back",
+    "archived_delete": "Delete for good",
+
+    # Deleting an archived person. The wording never says "remove" or
+    # "clear", which both sound reversible, and never says "permanently
+    # delete", which is the phrase every app uses for things it keeps in a
+    # bin for thirty days. There is no bin.
+    "purge_title": "Delete these people for good",
+    "purge_subtitle": "There is no undo and nothing to restore afterwards.",
+    "purge_warning": (
+        "This cannot be reversed. Their record and the history below are "
+        "removed from the database, not hidden."
+    ),
+    "purge_going_heading": "{count} to delete",
+    "purge_bit_events": "{count} timeline entries",
+    "purge_bit_checkins": "{count} check-ins",
+    "purge_bit_contacts": "{count} logged contacts",
+    "purge_bit_steps": "{count} next steps",
+    "purge_bit_groups": "{count} group memberships",
+    "purge_bit_sequences": "{count} sequence enrolments",
+    "purge_bit_nothing": "nothing recorded",
+    "purge_survives": (
+        "Anything the church keeps about itself stays: messages they wrote "
+        "in a room, connect cards, email already sent. Those lose the name "
+        "attached to them rather than disappearing."
+    ),
+    "purge_word": "DELETE",
+    "purge_type_label": "Type {word} to confirm",
+    "purge_not_typed": "Nothing was deleted. The box did not match.",
+    "purge_submit": "Delete {count} for good",
+    "purge_cancel": "Cancel",
+    "purge_done": "{count} deleted for good.",
+    "purge_skipped": "Not deleted: {names}.",
+    "purge_blocked_heading": "{count} cannot be deleted",
+    "purge_blocked_account": (
+        "They have a sign-in. Remove the account first, or the login is "
+        "left with nothing behind it."
+    ),
+    "purge_blocked_giving": (
+        "They have giving history. Deleting them would leave gifts with "
+        "nobody attached, which is a reconciliation problem nobody will "
+        "connect to today. Leave them archived."
+    ),
+    "purge_blocked_not_archived": "They are not archived. Archive them first.",
+    "purge_audit": "Deleted {name} from the roster for good",
     "archived_link": "Archived ({count})",
 
     "approve": "They are real",

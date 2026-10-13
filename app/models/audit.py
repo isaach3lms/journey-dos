@@ -60,6 +60,11 @@ CHECKIN_SESSION_DELETED = "checkin_session_deleted"
 # A church-wide email. Recorded because it is the one action here that reaches
 # people outside the app and cannot be taken back.
 CHURCH_EMAIL_SENT = "church_email_sent"
+# A person removed from the roster for good. This is the action with nothing
+# left to look at afterwards: no row, no timeline, no screen that says they
+# were ever here. The entry carries their name and what went with them,
+# because it is the only thing that survives them.
+PERSON_DELETED = "person_deleted"
 
 ACTIONS = (
     SIGN_IN,
@@ -82,6 +87,7 @@ ACTIONS = (
     TAG_REPRINTED,
     CHECKIN_SESSION_DELETED,
     CHURCH_EMAIL_SENT,
+    PERSON_DELETED,
 )
 
 ACTION_LABELS = {
@@ -101,6 +107,7 @@ ACTION_LABELS = {
     PIN_ROTATED: "Check-in code rotated",
     SEQUENCE_STOPPED: "Sequence stopped by staff",
     PERSON_ARCHIVED: "Person archived",
+    PERSON_DELETED: "Person deleted for good",
     SERVICE_DELETED: "Service deleted",
     TAG_REPRINTED: "Name tag reprinted",
     CHECKIN_SESSION_DELETED: "Kids session deleted",

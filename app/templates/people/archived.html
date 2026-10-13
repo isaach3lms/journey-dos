@@ -29,7 +29,21 @@
             </li>
           {% endfor %}
         </ul>
-        <button class="btn" type="submit">{{ content.archived_restore }}</button>
+        <div class="filters">
+          <button class="btn" type="submit">{{ content.archived_restore }}</button>
+          {# Same ticked rows, a different button, and only for staff.
+             Restoring is reversible and this is not, which is the whole
+             reason the two are not the same colour and not the same role.
+             `formaction` so one set of tick boxes serves both, and the
+             delete goes to a screen that says what it would destroy
+             before anything is written. #}
+          {% if current_user.is_staff %}
+            <button class="btn danger" type="submit"
+                    formaction="{{ url_for('people.confirm_delete') }}">
+              {{ content.archived_delete }}
+            </button>
+          {% endif %}
+        </div>
       </form>
     {% else %}
       <p class="muted small">{{ content.archived_none }}</p>

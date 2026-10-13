@@ -116,11 +116,21 @@
 {% endif %}
 
 {# A link, not a form. Asking for a pastor is a screen of its own, so the
-   emergency numbers sit above the box rather than beside it. #}
-<a class="mcard mlink asklink mwide" href="{{ url_for('member.support') }}">
-  <span class="mtitle">{{ content.support_button }}</span>
-  <span class="mnote">{{ content.support_who_sees }}</span>
-</a>
+   emergency numbers sit above the box rather than beside it.
+
+   The same row as the You screen rather than a card of its own wording, so
+   a member who has learned what a row with a chevron does on one screen
+   knows what this one does. #}
+<section class="mcard mrows mwide">
+  <a class="mrowlink" href="{{ url_for('member.support') }}">
+    <span class="mrowicon" aria-hidden="true">{{ icons.heart | safe }}</span>
+    <span class="fl">
+      <span class="pn">{{ content.support_button }}</span>
+      <span class="pe">{{ content.support_who_sees }}</span>
+    </span>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
+  </a>
+</section>
 {% endblock %}
 
 {% block extra_script %}

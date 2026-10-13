@@ -37,15 +37,21 @@
    list rather than a wall of forms, and a row opens in place when tapped.
    Groups and Serving have screens of their own, so those two go there
    instead of opening. A save comes back with ?open= so the row the member
-   was working in is still open when the page reloads. #}
+   was working in is still open when the page reloads.
+
+   Four short groups rather than one list of nine. A member opening this on
+   a Sunday is looking for one thing, and nine undifferentiated rows is a
+   wall they have to read rather than scan. #}
+<h2 class="msect">{{ content.you_sect_you }}</h2>
 <section class="mcard mrows">
   <details class="mrowbox" id="details"{% if request.args.get("open") == "details" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.person | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.details_heading }}</span>
         <span class="pe">{{ content.row_details_sub }}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   <form method="post" action="{{ url_for('member.save_details') }}">
@@ -105,11 +111,12 @@
   </details>
   <details class="mrowbox" id="family"{% if request.args.get("open") == "family" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.family | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.row_family }}</span>
         <span class="pe">{%- if household_members -%}{% for member in household_members %}{{ member.full_name }}{% if not loop.last %}, {% endif %}{% endfor %}{%- elif person.household -%}{{ content.household_alone }}{%- else -%}{{ content.row_family_none }}{%- endif -%}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   {# The family list, then one form to add a child. A parent doing this on
@@ -204,27 +211,38 @@
   {% endif %}
     </div>
   </details>
+</section>
+
+<h2 class="msect">{{ content.you_sect_engagement }}</h2>
+<section class="mcard mrows">
   <a class="mrowlink standalone" href="{{ url_for('member.groups') }}">
-    <span class="fl">
+    <span class="mrowicon" aria-hidden="true">{{ icons.groups | safe }}</span>
+      <span class="fl">
       <span class="pn">{{ content.row_groups }}</span>
       <span class="pe">{%- if group_names -%}{{ group_names | join(", ") }}{%- else -%}{{ content.row_groups_none }}{%- endif -%}</span>
     </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
   </a>
   <a class="mrowlink standalone" href="{{ url_for('member.serve') }}">
-    <span class="fl">
+    <span class="mrowicon" aria-hidden="true">{{ icons.serving | safe }}</span>
+      <span class="fl">
       <span class="pn">{{ content.row_serving }}</span>
       <span class="pe">{%- if serving_count -%}{{ content.row_serving_count.format(count=serving_count) }}{%- else -%}{{ content.row_serving_none }}{%- endif -%}</span>
     </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
   </a>
+</section>
+
+<h2 class="msect">{{ content.you_sect_notifications }}</h2>
+<section class="mcard mrows">
   <details class="mrowbox" id="notifications"{% if request.args.get("open") == "notifications" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.mail | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.prefs_label }}</span>
         <span class="pe">{{ content.row_email_sub }}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   <p class="mnote">{{ content.prefs_hint }}</p>
@@ -256,11 +274,12 @@
   </details>
   <details class="mrowbox" id="push"{% if request.args.get("open") == "push" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.bell | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.push_heading }}</span>
         <span class="pe">{%- if push_devices -%}{{ content.push_devices.format(count=push_devices) }}{%- else -%}{{ content.push_none }}{%- endif -%}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   <p class="mnote">{{ content.push_hint }}</p>
@@ -283,19 +302,25 @@
   {# Directly under the notification settings, because somebody only looks for
      this after turning notifications on and getting nothing. #}
   <a class="mrowlink standalone" href="{{ url_for('member.app_check') }}">
-    <span class="fl">
+    <span class="mrowicon" aria-hidden="true">{{ icons.check | safe }}</span>
+      <span class="fl">
       <span class="pn">{{ content.appcheck_title }}</span>
       <span class="pe">{{ content.appcheck_row_sub }}</span>
     </span>
-    <span class="chev" aria-hidden="true">&rsaquo;</span>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
   </a>
+</section>
+
+<h2 class="msect">{{ content.you_sect_account }}</h2>
+<section class="mcard mrows">
   <details class="mrowbox" id="blocked"{% if request.args.get("open") == "blocked" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.block | safe }}</span>
       <span class="fl">
         <span class="pn">{{ msg.blocks_heading }}</span>
         <span class="pe">{%- if blocks -%}{{ content.row_blocked_count.format(count=blocks|length) }}{%- else -%}{{ msg.blocks_none }}{%- endif -%}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   {% if blocks %}
@@ -316,11 +341,12 @@
   </details>
   <details class="mrowbox" id="account"{% if request.args.get("open") == "account" %} open{% endif %}>
     <summary class="mrowlink">
+      <span class="mrowicon" aria-hidden="true">{{ icons.lock | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.row_account }}</span>
         <span class="pe">{{ content.row_account_sub }}</span>
       </span>
-      <span class="chev" aria-hidden="true">&rsaquo;</span>
+      <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
     <div class="mrowbody">
   <div class="mlbl">{{ content.delete_heading }}</div>
@@ -341,9 +367,12 @@
   </details>
 </section>
 
-<form method="post" action="{{ url_for('auth.logout') }}">
+{# Last, on its own, and in the flag colour. It is the one control on this
+   screen that ends the session, and it should not look like the row above
+   it. #}
+<form class="msignout" method="post" action="{{ url_for('auth.logout') }}">
   {{ csrf_field() }}
-  <button class="btn ghostbtn wide" type="submit">{{ content.sign_out }}</button>
+  <button class="btn danger wide" type="submit">{{ content.sign_out }}</button>
 </form>
 {% endblock %}
 

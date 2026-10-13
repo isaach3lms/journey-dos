@@ -124,6 +124,50 @@ ICONS: dict[str, str] = {
     "settings": (
         '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1 2 2 0 11-4 0 1.6 1.6 0 00-2.7-1.1l-.1.1a2 2 0 11-2.8-2.8l.1-.1A1.6 1.6 0 003 15a2 2 0 010-4 1.6 1.6 0 001.1-2.7l-.1-.1a2 2 0 112.8-2.8l.1.1A1.6 1.6 0 009.6 4.4a2 2 0 014 0 1.6 1.6 0 002.7 1.1l.1-.1a2 2 0 112.8 2.8l-.1.1A1.6 1.6 0 0021 11a2 2 0 010 4z"/></svg>'
     ),
+
+    # The member app's rows. Same dictionary as the staff sidebar's, because
+    # two icon sets drift and a church ends up with one bell on one screen
+    # and a different bell on another.
+    #
+    # Drawn on the same 24 grid at the same stroke weight as everything
+    # above. A row's icon is the thing that makes a list scannable without
+    # reading it, which only works if they look like one family.
+    "person": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6"/></svg>'
+    ),
+    "family": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="2.8"/><circle cx="17" cy="9.5" r="2.2"/><path d="M2.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M16 14.5c2.8 0 5 1.8 5 4.5"/></svg>'
+    ),
+    "serving": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V5.5a1.5 1.5 0 013 0V11"/><path d="M12 11V4.5a1.5 1.5 0 013 0V11"/><path d="M15 11V6.5a1.5 1.5 0 013 0V13c0 4.4-2.6 7-6.5 7S5 17.4 5 13v-2a1.5 1.5 0 013 0v1"/></svg>'
+    ),
+    "mail": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3.5 7.5l8.5 6 8.5-6"/></svg>'
+    ),
+    "bell": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 9a6 6 0 10-12 0c0 5-2 6.5-2 6.5h16S18 14 18 9"/><path d="M13.7 19a2 2 0 01-3.4 0"/></svg>'
+    ),
+    "check": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.6-4.9"/></svg>'
+    ),
+    "block": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M6.2 6.2l11.6 11.6"/></svg>'
+    ),
+    "lock": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="9.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 018 0v3"/></svg>'
+    ),
+    "heart": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-7-9.2A4 4 0 0112 8.6 4 4 0 0119 10.8c0 4.8-7 9.2-7 9.2z"/></svg>'
+    ),
+    "book": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2 2 0 016 4h5v15H6a2 2 0 00-2 1.5z"/><path d="M20 5.5A2 2 0 0018 4h-5v15h5a2 2 0 012 1.5z"/></svg>'
+    ),
+    "chat": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12.5c0 3.6-3.6 6.5-8 6.5a9.6 9.6 0 01-2.8-.4L4.5 20l1.2-3.3A6.2 6.2 0 014 12.5C4 8.9 7.6 6 12 6s8 2.9 8 6.5z"/></svg>'
+    ),
+    "hand": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a6 6 0 006-6V9.5a1.5 1.5 0 00-3 0V8a1.5 1.5 0 00-3 0V7a1.5 1.5 0 00-3 0v5.5L9.2 11a1.6 1.6 0 00-2.4 2l2.1 2.6A6 6 0 0012 21z"/></svg>'
+    ),
 }
 
 # Increments that are actually built. The nav reads this to decide whether a
@@ -1190,6 +1234,15 @@ MEMBER = {
     ),
 
     # Profile header and the journey strip
+    # The four groups the You screen is split into. Named for what a member
+    # is looking for, not for how the app is built: "Notifications" rather
+    # than "Preferences", because somebody whose phone is silent searches
+    # for the word on the thing that is not working.
+    "you_sect_you": "You",
+    "you_sect_engagement": "Your church",
+    "you_sect_notifications": "Notifications",
+    "you_sect_account": "Account",
+
     "profile_member_for": "{stage} \u00b7 {days} days",
     "profile_member_new": "{stage} \u00b7 joined today",
     "journey_label": "Your journey",

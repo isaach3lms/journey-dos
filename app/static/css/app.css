@@ -1930,31 +1930,89 @@ ul.policy span{color:var(--muted)}
 .jstep.done{background:var(--accent)}
 .jstep.here{box-shadow:0 0 0 2px var(--paper),0 0 0 3px var(--accent)}
 .vis{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.mrows{padding-top:4px;padding-bottom:4px}
-.mrowlink{
-  display:flex;align-items:center;gap:12px;padding:13px 0;color:var(--ink);
-  border-top:1px solid var(--line-soft);text-decoration:none;
+/* ---------- Member rows ----------
+
+   One row component for the whole member app: an icon, a title, a line of
+   plain-English detail, and a chevron.
+
+   **The icon is the point, not decoration.** A list of nine rows of text is
+   read; the same list with icons is scanned, and a member opening this on a
+   Sunday is looking for one thing. Everything else here follows from making
+   the icon column work: the divider starts where the text starts rather
+   than at the card edge, so the icons read as a column instead of as nine
+   separate things.
+
+   Section headings sit outside the card, which is what turns one wall of
+   rows into three short lists somebody can take in at a glance. */
+
+.msect{
+  font-size:12.5px;font-weight:700;letter-spacing:.04em;color:var(--muted);
+  margin:22px 2px 8px;
 }
-.mrows .mrowlink:first-of-type{border-top:none}
+.mcard + .msect{margin-top:26px}
+
+.mrows{padding-top:2px;padding-bottom:2px}
+.mrowlink{
+  display:flex;align-items:center;gap:13px;padding:13px 0;color:var(--ink);
+  text-decoration:none;
+}
+.mrowicon{
+  flex:none;width:26px;height:26px;display:grid;place-items:center;
+  color:var(--accent);
+}
+.mrowicon .ic{width:21px;height:21px}
 .mrowlink .fl{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
-.mrowlink .pn{font-size:15px;font-weight:500}
+.mrowlink .pn{font-size:15.5px;font-weight:600;line-height:1.25}
 /* A narrow-screen rule hides .pe for the staff roster, so say display here. */
 .mrowlink .pe{display:block;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mrowlink .chev{color:var(--muted-2);font-size:20px;line-height:1}
+.mrowlink .chev{
+  flex:none;color:var(--muted-2);line-height:0;
+}
+.mrowlink .chev svg{width:17px;height:17px}
 .mrowlink:hover .pn{color:var(--accent)}
+/* A thumb does not land on a 1px line, so the whole row answers to a tap. */
+.mrowlink:active{background:var(--tile);margin:0 -16px;padding-left:16px;padding-right:16px}
 .field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
 /* Rows that open in place. A <details> so it works with no JavaScript, and
    the row itself is the summary, which is why the marker is turned off. */
-.mrowbox{border-top:1px solid var(--line-soft)}
+/* The divider is inset to where the text starts, past the icon column, so a
+   column of icons reads as one list rather than nine stacked boxes. 39px is
+   the icon's 26 plus the 13 gap. */
+.mrowbox,
+.mrowlink.standalone{
+  border-top:1px solid var(--line-soft);
+  background-clip:padding-box;
+}
+.mrowbox::before,
+.mrowlink.standalone::before{content:none}
 .mrows > :first-child{border-top:none}
+.mrows .mrowbox + .mrowbox,
+.mrows .mrowbox + .mrowlink.standalone,
+.mrows .mrowlink.standalone + .mrowbox,
+.mrows .mrowlink.standalone + .mrowlink.standalone{
+  border-top:none;
+  background-image:linear-gradient(var(--line-soft),var(--line-soft));
+  background-size:calc(100% - 39px) 1px;
+  background-position:39px 0;
+  background-repeat:no-repeat;
+}
 .mrowbox > summary{list-style:none;cursor:pointer}
 .mrowbox > summary::-webkit-details-marker{display:none}
-.mrowlink.standalone{border-top:1px solid var(--line-soft)}
 .mrowbox[open] > summary .pn{color:var(--accent)}
 .mrowbox > summary .chev{transition:transform .15s ease}
 .mrowbox[open] > summary .chev{transform:rotate(90deg)}
+@media (prefers-reduced-motion:reduce){
+  .mrowbox > summary .chev{transition:none}
+}
+/* The body lines up with the text above it rather than with the icon. */
+.mrowbox[open] .mrowbody{padding-left:39px}
+@media (max-width:360px){
+  .mrowbox[open] .mrowbody{padding-left:0}
+}
 .mrowbody{padding:2px 0 16px}
+/* Sign out, last and on its own. */
+.msignout{margin-top:26px}
 .mrowbody > :first-child{margin-top:0}
 .mrowbody .mlbl{margin-top:16px}
 .mrowbody .field:last-of-type{margin-bottom:12px}

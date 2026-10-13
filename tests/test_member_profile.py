@@ -83,12 +83,70 @@ class TestTheRows:
         assert b'href="/me/serve/"' in page
 
 
+class TestTheScreenReadsAsGroups:
+    """Nine rows in one block became four labelled groups with icons.
+
+    A list of nine rows of text is read; the same list with icons and
+    headings is scanned, and a member opening this on a Sunday is looking
+    for one thing. These hold the shape in place: it is the kind of change
+    that gets quietly undone by the next person editing this template.
+    """
+
+    def page(self, client):
+        return client.get("/me/you/", headers=H).data.decode()
+
+    def test_the_groups_are_labelled(self, db, client, alicia):
+        from app.content import MEMBER
+
+        page = self.page(client)
+        for key in ("you_sect_you", "you_sect_engagement",
+                    "you_sect_notifications", "you_sect_account"):
+            assert MEMBER[key] in page, f"{key} is not on the screen"
+
+    def test_they_are_separate_cards(self, db, client, alicia):
+        """A heading above one long card groups nothing."""
+        assert self.page(client).count('class="mcard mrows"') == 4
+
+    def test_every_row_has_an_icon(self, db, client, alicia):
+        """The icon is what makes the list scannable. A row without one is
+        the row somebody's eye skips."""
+        page = self.page(client)
+        rows = page.count('class="mrowlink"') + page.count('class="mrowlink standalone"')
+        icons = page.count('class="mrowicon"')
+        assert rows >= 9
+        assert icons == rows, f"{rows} rows but {icons} icons"
+
+    def test_the_icons_are_real_svg(self, db, client, alicia):
+        """Rendered from the shared icon set, not pasted per screen, so the
+        member app and the staff sidebar cannot drift into two bells."""
+        from app.content import ICONS
+
+        page = self.page(client)
+        for key in ("person", "family", "mail", "bell", "lock"):
+            assert ICONS[key] in page, f"the {key} icon is not the shared one"
+
+    def test_signing_out_does_not_look_like_a_setting(self, db, client, alicia):
+        """It is the one control here that ends the session."""
+        page = self.page(client)
+        assert 'class="btn danger wide"' in page
+
+
 class TestRowsOpenInPlace:
     """Everything on this screen is a closed row until it is tapped."""
 
     def rows(self, client):
+        """Everything from the first row card to the last.
+
+        This used to cut at the first `</section>`, which was the whole list
+        when the screen was one card of nine rows. It is four labelled
+        groups now, so cutting at the first close returned two rows and the
+        assertions below passed on a quarter of the screen. The end of the
+        last card is the honest boundary.
+        """
         page = client.get("/me/you/", headers=H).data.decode()
-        return page[page.index('class="mcard mrows"'):page.index("</section>", page.index('class="mcard mrows"'))]
+        start = page.index('class="mcard mrows"')
+        end = page.rindex("</section>") + len("</section>")
+        return page[start:end]
 
     def test_every_section_is_a_row(self, db, client, alicia):
         rows = self.rows(client)

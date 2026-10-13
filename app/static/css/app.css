@@ -662,11 +662,40 @@ form.inline .select{min-width:170px}
    the difference between the logo being readable and being under the clock.
    `env()` with a fallback, because a browser that does not know the function
    must still get the padding. */
+/* The header is now one control on the right and nothing else.
+
+   It was a green band with the church's logo in it, on every screen. That
+   is a lot of permanent furniture for something a member reads once, and
+   it pushed the actual page down by sixty pixels. What replaced it carries
+   the page's own background, so the first thing on screen is the heading
+   rather than a block of colour.
+
+   Still sticky, because the avatar is now the only route to the profile
+   and a control you have to scroll up to find is a control people stop
+   using. */
 .mhead{
-  background:var(--chrome);
-  padding:calc(16px + env(safe-area-inset-top, 0px)) 20px 16px;
+  /* The page's own background, not the page's own colour: on a phone the
+     screen is `--white` and the bone is only the frame around the preview.
+     A header that picked bone left a visible strip across the top, which is
+     the band this change set out to remove. */
+  background:var(--white);
+  padding:calc(10px + env(safe-area-inset-top, 0px)) 16px 6px;
   position:sticky;top:0;z-index:6;
+  display:flex;justify-content:flex-end;align-items:center;
 }
+
+.mavatar{
+  width:36px;height:36px;border-radius:50%;flex:none;
+  display:grid;place-items:center;text-decoration:none;
+  background:var(--accent);color:#fff;
+  font-family:var(--font-display);font-weight:700;font-size:13.5px;
+  letter-spacing:.02em;
+  -webkit-tap-highlight-color:transparent;
+}
+/* A ring rather than a colour change, so the avatar still reads as the
+   person when it is the current page. */
+.mavatar[aria-current]{box-shadow:0 0 0 2px var(--white),0 0 0 4px var(--accent)}
+.mavatar:active{transform:scale(.94)}
 
 /* Except in the staff preview, which keeps the phone frame on a computer.
    The frame is not a scroll container, so a sticky header inside it would
@@ -675,16 +704,6 @@ form.inline .select{min-width:170px}
 @media (min-width:701px){
   .memberbody:not(.memberfull) .mhead{position:static}
 }
-/* A fixed box, not height:auto. Until the file decodes, auto height is
-   zero, so the header grew a moment after every page load and the whole
-   screen jumped. object-fit keeps any church's logo undistorted. */
-.mhead .mark{width:124px;height:42px;object-fit:contain;object-position:left center;display:block}
-.mhead .crest{
-  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;
-  font-family:var(--font-display);font-weight:700;font-size:12px;
-  background:var(--accent);color:#fff;
-}
-
 .mbody{flex:1;padding:20px 18px 24px;display:grid;gap:14px;align-content:start}
 
 /* Anything the app can jump to has to clear the pinned header.
@@ -693,8 +712,11 @@ form.inline .select{min-width:170px}
    browser puts that row exactly where the header now is, so the person lands
    on a screen that looks like it did nothing. Written against every element
    with an id rather than a list of the three that exist today, because the
-   fourth one would be added without anybody remembering this rule. */
-.mbody [id]{scroll-margin-top:calc(82px + env(safe-area-inset-top, 0px))}
+   fourth one would be added without anybody remembering this rule.
+
+   52px of header now, not 82px: a 36px avatar with 10px above and 6px
+   below. The figure came down with the logo band. */
+.mbody [id]{scroll-margin-top:calc(64px + env(safe-area-inset-top, 0px))}
 
 .mgreet{font-size:25px;font-weight:var(--weight-hero,800);line-height:1.12}
 .msub{font-size:12.5px;color:var(--muted);margin:3px 0 4px}
@@ -823,7 +845,7 @@ form.inline .select{min-width:170px}
 }
 
 @media (min-width:900px){
-  /* Lines the logo and the last tab up with the edges of the content. */
+  /* Lines the first tab and the avatar up with the edges of the content. */
   /* The background is the page behind the app, which shows on an overscroll. */
   .memberfull{
     background:var(--white);
@@ -836,21 +858,32 @@ form.inline .select{min-width:170px}
     /* White, like the phone. The member app is one surface at every size. */
     background:var(--white);
     display:grid;
-    grid-template-columns:auto minmax(0,1fr);
+    grid-template-columns:minmax(0,1fr) auto;
     grid-template-rows:auto 1fr;
-    grid-template-areas:"head tabs" "body body";
+    /* Tabs first, avatar last, so the one row across the top reads left to
+       right the same way the phone does: navigation, then you. The logo
+       used to hold the left end; with it gone, an avatar stranded over
+       there would be the only thing on a wide green bar. */
+    grid-template-areas:"tabs head" "body body";
   }
   .memberfull .mhead{
     grid-area:head;position:sticky;top:0;z-index:5;
-    display:flex;align-items:center;
-    padding:16px 24px 16px var(--mgutter);
+    display:flex;align-items:center;justify-content:flex-end;
+    /* The same bar as the tabs beside it. Two backgrounds in one row reads
+       as a rendering fault. */
+    background:var(--chrome);
+    padding:12px var(--mgutter) 12px 16px;
   }
-  .memberfull .mhead .mark{width:132px;height:44px}
+  /* On the dark bar the accent circle disappears into it. */
+  .memberfull .mavatar{background:rgba(255,255,255,.16);color:#fff}
+  .memberfull .mavatar[aria-current]{
+    box-shadow:0 0 0 2px var(--chrome),0 0 0 4px var(--gold);
+  }
   .memberfull .mtabs{
     grid-area:tabs;position:sticky;top:0;z-index:5;
     background:var(--chrome);border-top:none;
-    justify-content:flex-end;align-items:stretch;gap:4px;
-    padding:0 calc(var(--mgutter) - 14px) 0 0;
+    justify-content:flex-start;align-items:stretch;gap:4px;
+    padding:0 0 0 calc(var(--mgutter) - 14px);
   }
   .memberfull .mtabs a{
     flex:none;display:flex;align-items:center;padding:0 14px;

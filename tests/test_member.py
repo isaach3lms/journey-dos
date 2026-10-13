@@ -325,10 +325,23 @@ class TestMemberApp:
         assert b"/people/" not in r.data
 
     def test_the_member_app_carries_the_church_brand(self, db, linked_member, member):
+        """Tokens, not a logo file.
+
+        This used to assert the church's reversed logo was on the page,
+        because the member header was that logo on a green band. The header
+        is now the member's own avatar and the logo is gone from the member
+        app entirely, so the brand reaches these screens the way it reaches
+        every other surface: through the tokens in app/brand.py. The accent
+        is what colours the avatar, the stage card and the icons.
+
+        Worth saying plainly, since it is the cost of the change: with no
+        logo anywhere in the member app, one church's member app looks like
+        another's apart from the accent colour.
+        """
         r = member.get("/me/", headers={"Host": JOURNEY_HOST})
         body = r.get_data(as_text=True)
         assert "--accent:#485B38;" in body
-        assert "journey-logo-white.png" in body
+        assert "journey-logo-white.png" not in body
 
     def test_a_signed_out_visitor_is_sent_to_login(self, client):
         r = client.get("/me/", headers={"Host": JOURNEY_HOST})

@@ -24,13 +24,23 @@
 
 <div class="phonewrap">
   <div class="phone">
+    {# Just the member, top right.
+
+       The logo and the green band are gone. What was a block of colour on
+       every screen is now a single control that does something, which is
+       the whole of the change: the page's own heading is the top of the
+       screen and the chrome gets out of its way.
+
+       It is also where the account now lives. There is no You tab any
+       more, so this is the one door to the profile, which is why it is a
+       real avatar with initials rather than an outline of a person: a
+       member has to recognise it as themselves. #}
     <header class="mhead">
-      {% if palette.logo_reversed %}
-        <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
-             alt="{{ church.name }}">
-      {% else %}
-        <div class="crest">{{ church.name[:2]|upper }}</div>
-      {% endif %}
+      <a class="mavatar" href="{{ url_for('member.you') }}"
+         {% if tab == 'you' %}aria-current="page"{% endif %}
+         aria-label="{{ content.tab_you }}">
+        <span aria-hidden="true">{{ person.initials if person else church.name[:1]|upper }}</span>
+      </a>
     </header>
 
     <main class="mbody tab-{{ tab|default('none') }}">
@@ -77,10 +87,9 @@
         <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H10l-5 4V6a1 1 0 0 1 1-1z"/></svg>
         <span>{{ content.tab_chat }}</span>
       </a>
-      <a href="{{ url_for('member.you') }}" {% if tab == 'you' %}aria-current="page"{% endif %}>
-        <svg class="mti" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20.5c0-3.9 3.1-6.3 7-6.3s7 2.4 7 6.3"/></svg>
-        <span>{{ content.tab_you }}</span>
-      </a>
+      {# You is not a tab any more. It is the avatar in the header, which is
+         one door to the profile rather than two, and it gives the four
+         remaining tabs room to breathe. #}
     </nav>
   </div>
 </div>

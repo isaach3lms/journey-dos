@@ -1,4 +1,10 @@
-"""Member tabs match the demo: Home, Give, Serve, Grow, Chat, You."""
+"""Member tabs: Home, Give, Serve, Grow, Chat.
+
+You was the sixth tab and is not one any more. The profile moved to the
+avatar in the header, which is one door to that screen rather than two and
+gives the rest of the bar room. The old demo had six; this file now pins
+five, with Give still conditional on the church setting a giving link.
+"""
 
 import re
 
@@ -33,13 +39,13 @@ def test_order_matches_the_demo_when_giving_is_set(member_in, db):
     church.giving_form_url = "https://tithe.ly/give?c=1"
     db.session.commit()
     html = member_in.get("/me/", headers=H).data.decode()
-    assert tab_labels(html) == ["Home", "Give", "Serve", "Grow", "Chat", "You"]
-    assert html.count('class="mti"') == 6
+    assert tab_labels(html) == ["Home", "Give", "Serve", "Grow", "Chat"]
+    assert html.count('class="mti"') == 5
 
 
 def test_give_hides_until_the_church_sets_a_giving_link(member_in):
     html = member_in.get("/me/", headers=H).data.decode()
-    assert tab_labels(html) == ["Home", "Serve", "Grow", "Chat", "You"]
+    assert tab_labels(html) == ["Home", "Serve", "Grow", "Chat"]
 
 
 @pytest.mark.parametrize("path", ["/me/read/", "/me/groups/"])

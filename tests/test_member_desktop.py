@@ -52,7 +52,7 @@ def test_every_member_page_names_its_tab(client, sign_in, db):
 
 
 def test_desktop_rules_are_scoped_to_members_only():
-    start = CSS.index("@media (min-width:900px){\n  /* Lines the logo")
+    start = CSS.index("@media (min-width:900px){\n  /* Lines the first tab")
     block = CSS[start:CSS.index("/* ---------- Reading ---------- */")]
     for line in block.splitlines():
         stripped = line.strip()
@@ -61,4 +61,12 @@ def test_desktop_rules_are_scoped_to_members_only():
 
 
 def test_tabs_move_to_the_top_on_desktop():
-    assert 'grid-template-areas:"head tabs" "body body"' in CSS
+    """Tabs first, then the header.
+
+    It read "head tabs" while the header was the church logo: the logo held
+    the left end of the bar and the tabs sat beside it. The logo is gone and
+    the header is now one avatar, so the order flipped. An avatar alone on
+    the left would be the only thing on a wide green bar, with the tabs
+    stranded in the middle.
+    """
+    assert 'grid-template-areas:"tabs head" "body body"' in CSS

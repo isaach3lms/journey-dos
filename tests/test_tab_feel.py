@@ -51,14 +51,24 @@ class TestNoFlashBetweenPages:
 
 
 class TestNoJumpWhileLoading:
-    def test_the_logo_has_a_reserved_box(self):
-        """height:auto is zero until the file decodes, which grew the header a
-        moment after every page load and pushed the whole screen down."""
-        rule = CSS[CSS.index(".mhead .mark{"):]
+    def test_the_header_has_no_image_left_to_wait_for(self):
+        """This used to pin `height:42px` on the header logo, because
+        `height:auto` is zero until a file decodes, so the header grew a
+        moment after every page load and pushed the whole screen down.
+
+        The logo is gone from the member header; the avatar in its place is
+        two letters in a fixed box, so there is nothing to decode and the
+        jump cannot come back by that route. What is worth guarding now is
+        that the box is fixed and that no image has crept back in."""
+        rule = CSS[CSS.index("\n.mavatar{"):]
         rule = rule[:rule.index("}")]
-        assert "height:42px" in rule
-        assert "object-fit:contain" in rule  # any church's logo, undistorted
+        assert "width:36px" in rule
+        assert "height:36px" in rule
         assert "height:auto" not in rule
+
+        header = CSS[CSS.index("\n.mhead{"):]
+        header = header[:header.index("}")]
+        assert "background-image" not in header
 
     def test_the_sign_in_logo_too(self):
         rule = CSS[CSS.index(".authbrand .mark{"):]

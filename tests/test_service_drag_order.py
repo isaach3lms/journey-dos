@@ -296,7 +296,27 @@ class TestTheScript:
         assert 'field.value = order().join(",")' in self.TEMPLATE
 
     def test_a_drag_that_moved_nothing_saves_nothing(self):
-        assert 'if (order().join(",") !== before) { save(); }' in self.TEMPLATE
+        """A click that moved nothing is not a change, and reloading the page
+        for it would look like a bug.
+
+        This was one line until the pre-service block arrived and a drop
+        gained a second way of being a no-op: dropping on the wrong side of
+        the service start, which is reverted rather than posted."""
+        assert 'if (order().join(",") === before) { return; }' in self.TEMPLATE
+
+    def test_a_drop_across_the_service_start_is_put_back(self):
+        """Setting up happens before the service, so those rows stay above it.
+        A drag that crossed would change what a line means by where it was
+        dropped, and the only visible effect would be its time jumping an
+        hour. The switch on the row is what moves a line between the two."""
+        assert "if (crossed()) { restore(); return; }" in self.TEMPLATE
+
+    def test_the_rule_marking_the_start_is_not_posted_as_a_row(self):
+        """It sits in the same list and has no item behind it. Including it
+        would post an order the server could not match to the plan, and the
+        drag would silently do nothing at all."""
+        assert "return !!row.dataset.itemId;" in self.TEMPLATE
+        assert "return rows().map(" in self.TEMPLATE
 
     def test_the_arrow_keys_do_what_dragging_does(self):
         assert '"ArrowUp"' in self.TEMPLATE and '"ArrowDown"' in self.TEMPLATE

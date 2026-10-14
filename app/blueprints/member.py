@@ -961,16 +961,103 @@ def serve():
     assignments = db.session.scalars(
         ServiceAssignment.upcoming_for_person(g.church.id, person.id)
     ).all()
-    from app.models import TeamFile
+    from app.models import ServingBlockout, TeamFile
+    from app.timeutil import now_local
 
     return render_template(
         "member/serve.html",
         assignments=assignments,
         team_files=db.session.scalars(TeamFile.for_person(g.church.id, person.id)).all(),
+        # Today in the church's own calendar, not the server's. A blockout
+        # that ends today is still on, and which day "today" is depends on
+        # where the church is.
+        blockouts=db.session.scalars(
+            ServingBlockout.for_person(
+                g.church.id, person.id, today=now_local(g.church).date()
+            )
+        ).all(),
+        today=now_local(g.church).date().isoformat(),
         svc=SERVICES,
         tab="serve",
         **_base_context(person),
     )
+
+
+@bp.post("/serve/away/")
+@login_required
+def add_blockout():
+    """Tell the church you are away.
+
+    A worship leader builds a plan on Thursday and asks six people, two of
+    whom are away that weekend. Before this the only way anybody found out was
+    those two answering no, days later, after the invitation had gone out.
+
+    One day or a range, and the range is inclusive: somebody who says they are
+    away until the 19th is away on the 19th.
+    """
+    from app.models import NOTE_MAX, ServingBlockout
+
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.serve"))
+    back = redirect(url_for("member.serve"))
+
+    start_raw = (request.form.get("starts_on") or "").strip()
+    end_raw = (request.form.get("ends_on") or "").strip()
+    if not start_raw:
+        flash(SERVICES["away_date_required"], "error")
+        return back
+    try:
+        starts_on = date.fromisoformat(start_raw)
+        # One day is a range of one. Leaving the second box empty is how
+        # somebody says "just that Sunday", which is most of these.
+        ends_on = date.fromisoformat(end_raw) if end_raw else starts_on
+    except ValueError:
+        flash(SERVICES["away_date_bad"], "error")
+        return back
+
+    if ends_on < starts_on:
+        flash(SERVICES["away_backwards"], "error")
+        return back
+
+    db.session.add(
+        ServingBlockout(
+            church_id=g.church.id,
+            person_id=person.id,
+            starts_on=starts_on,
+            ends_on=ends_on,
+            note=((request.form.get("note") or "").strip() or None),
+        )
+    )
+    db.session.commit()
+
+    flash(SERVICES["away_added"], "notice")
+    return back
+
+
+@bp.post("/serve/away/<int:blockout_id>/delete/")
+@login_required
+def remove_blockout(blockout_id: int):
+    """Plans change. Taking a blockout off is as easy as putting one on."""
+    from app.models import ServingBlockout
+
+    person = current_user.person
+    if person is None:
+        return redirect(url_for("member.serve"))
+
+    record = ServingBlockout.get_for_church(g.church.id, blockout_id)
+    if record is None:
+        abort(404)
+    # Removing somebody else's would put them back in the rota for a weekend
+    # they said they were away.
+    if record.person_id != person.id:
+        abort(403)
+
+    db.session.delete(record)
+    db.session.commit()
+
+    flash(SERVICES["away_removed"], "notice")
+    return redirect(url_for("member.serve"))
 
 
 @bp.get("/serve/files/<int:file_id>/")

@@ -2153,6 +2153,30 @@ SERVICES = {
     "item_added": "Added to the plan.",
     "item_removed": "Removed.",
     "item_title_required": "Every item needs a name.",
+
+    # Before the service.
+    #
+    # The service start time is the one the church publishes, so it stays
+    # where it is. Setting up is entered as its own block, which is clocked
+    # backwards from that start: the lines add up to the time the team is
+    # asked to be there.
+    "pre_heading": "Before the service",
+    "pre_sub": "Setting up, sound check, prayer. These run before the start "
+               "time and do not move it.",
+    "pre_add": "Add before the service",
+    "pre_placeholder": "Sound check",
+    "pre_label": "Before the service",
+    "pre_none": "Nothing before the service yet.",
+    # The rule across the plan where setting up ends. Its own words rather
+    # than the heading of the screen, which says what the page is, not what
+    # the line is.
+    "pre_divider": "Service starts",
+    "pre_call": "Team arrives {time}",
+    "pre_call_long": "Team arrives at {time}, {count} minutes before the start.",
+    "item_pre_on": "Moved to before the service.",
+    "item_pre_off": "Moved into the service.",
+    "item_pre_to": "Move before the service",
+    "item_pre_from": "Move into the service",
     "song_required": "Pick a song.",
     "key_label": "Key",
     "key_default": "Song default",
@@ -2353,12 +2377,16 @@ SERVICES = {
         "You are down to serve at {church}.\n\n"
         "  What: {service}\n"
         "  When: {date}\n"
+        "{arrive}"
         "  Doing: {position}\n\n"
         "Let us know either way:\n{link}\n\n"
         "It takes two taps and you do not need to sign in. If something "
         "changes later, open the same link and change your answer.\n\n"
         "{church}"
     ),
+    # Blank when the plan has no pre-service block, so the line simply is not
+    # there rather than saying "Arrive: the service time".
+    "invite_arrive": "  Arrive: {time}\n",
     "invite_push_title": "{church}",
     "invite_push_body": "Can you serve as {position} on {date}?",
 
@@ -2402,6 +2430,40 @@ SERVICES = {
     "member_declined": "Thanks for letting us know.",
     "member_change": "Change your answer",
     "member_plan": "The plan",
+
+    # Dates a volunteer is away.
+    #
+    # Worded as the volunteer saying something, not as the church recording
+    # something about them. "Dates you are away" rather than "Unavailability",
+    # and no field asks them to justify it.
+    "away_heading": "Dates you are away",
+    "away_sub": "Tell us when you cannot serve and we will not ask you for "
+                "those dates.",
+    "away_none": "You have not told us about any dates.",
+    "away_from": "From",
+    "away_to": "To",
+    "away_to_hint": "Leave blank for one day",
+    "away_note": "Anything we should know",
+    "away_note_placeholder": "Out of town",
+    "away_add": "Add these dates",
+    "away_remove": "Remove",
+    "away_added": "Thanks, we will not ask you for those dates.",
+    "away_removed": "Removed.",
+    "away_date_required": "Pick the first date you are away.",
+    "away_date_bad": "That date did not make sense. Try again.",
+    "away_backwards": "The last date is before the first one.",
+    "away_one_day": "{date}",
+    "away_range": "{start} to {end}",
+
+    # What a leader sees. The picker says it beside the name, so the usual
+    # case is nobody being asked in the first place.
+    "away_picker": "{name} (away)",
+    "away_warning": "{name} said they are away on {date}, so they have not "
+                    "been asked. Use {button} to ask anyway.",
+    # One word. The row already names the Sunday the plan is for, and a
+    # longer pill squeezed the name column hard enough that the
+    # browser started breaking names mid-word.
+    "away_on_plan": "Away",
 }
 
 

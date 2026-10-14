@@ -120,6 +120,7 @@ from app.models.service import (  # noqa: F401
 )
 from app.models.teamfile import TeamFile  # noqa: F401
 from app.models.songchart import SongChart, stored_bytes  # noqa: F401
+from app.models.blockout import NOTE_MAX, ServingBlockout  # noqa: F401
 from app.models.verse import WeeklyVerse, week_of  # noqa: F401
 from app.models.resource import (  # noqa: F401
     RESOURCE_KINDS,

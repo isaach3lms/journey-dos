@@ -402,6 +402,12 @@ a{color:inherit;text-decoration:none}
   background:var(--white);
   border:1px solid var(--line);border-radius:var(--r-sm);
   padding:10px 12px;
+  /* A form control's intrinsic minimum width is its content, not zero, and
+     `width:100%` does not override that. `type=date` is the one that bites:
+     the browser reserves room for mm/dd/yyyy and the picker icon, which is
+     wider than half a phone, so two of them in a `.field2` pushed the whole
+     page sideways rather than shrinking. */
+  min-width:0;
 }
 .input:focus{
   outline:none;border-color:var(--accent);
@@ -1165,6 +1171,29 @@ ul.policy span{color:var(--muted)}
   flex:1;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
   font-weight:600;color:var(--muted-2);
 }
+/* Before the service.
+
+   These lines are clocked backwards from the start time rather than forwards
+   from the top of the plan, so they need to read as a different thing from
+   the service itself. Muted rather than tinted: the plan is already carrying
+   a key colour on the songs, and a second one here would make setting up look
+   more important than what it is setting up for. */
+.rpre .rtitle,.rpre .rtime{color:var(--muted)}
+.rpre .rlabel{color:var(--muted-2)}
+
+/* Where setting up ends and the service begins. A rule across the page with
+   the published start time on it, so the one number the church tells people
+   is the one number that stands out in the plan. */
+.rstart{
+  display:flex;align-items:baseline;gap:14px;
+  padding:14px 0 7px;border-top:2px solid var(--accent);
+}
+.rstart .rtime{color:var(--accent);font-size:13.5px}
+.rstart .rlabel{
+  font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+  font-weight:700;color:var(--accent);
+}
+
 .ractions{display:flex;gap:5px;flex:none}
 .ractions form.inline{margin-top:0}
 .btn.tiny{padding:5px 10px;font-size:11px}
@@ -1261,6 +1290,8 @@ ul.policy span{color:var(--muted)}
 @media (hover:none){.sidelist form.inline{opacity:1}}
 .sidelist .sn{overflow-wrap:anywhere}
 .sidelist .ss{font-size:11.5px;color:var(--muted-2);display:block}
+/* The one word on that line that is a warning rather than a label. */
+.sidelist .awaynote{color:var(--flag);font-weight:600}
 .sidelist .fl{flex:1;min-width:0}
 
 .songrow{
@@ -2005,7 +2036,10 @@ ul.policy span{color:var(--muted)}
 .mrowlink:hover .pn{color:var(--accent)}
 /* A thumb does not land on a 1px line, so the whole row answers to a tap. */
 .mrowlink:active{background:var(--tile);margin:0 -16px;padding-left:16px;padding-right:16px}
-.field2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* `minmax(0,1fr)` rather than `1fr`: a grid track's default minimum is
+   `auto`, which is the widest thing in it, so a column holding a date
+   input refuses to go narrower than the date input wants to be. */
+.field2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 
 /* Rows that open in place. A <details> so it works with no JavaScript, and
    the row itself is the summary, which is why the marker is turned off. */

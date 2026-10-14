@@ -25,6 +25,16 @@
       <div class="mtitle">{{ assignment.role_name }}</div>
       <p class="mnote">{{ assignment.service.name }}</p>
 
+      {# When to be there, which is not when the service starts.
+         Read off the strand this person is serving on, so somebody in kids
+         gets the kids team's arrival time and not the band's. Nothing is
+         shown when the plan has no pre-service block, which is the case for
+         every Sunday built before there was one. #}
+      {% if assignment.track and assignment.track.call_at %}
+        <p class="mnote"><b>{{ svc.pre_call.format(
+             time=assignment.track.call_at|church_time("%-I:%M%p")) }}</b></p>
+      {% endif %}
+
       {% if not assignment.service.is_published %}
         <p class="mnote muted">{{ svc.member_plan_pending }}</p>
       {% elif assignment.service.items %}
@@ -66,4 +76,68 @@
     <p class="mnote">{{ svc.member_none_hint }}</p>
   </section>
 {% endif %}
+
+{# Dates this person is away.
+   Below what they are already on the hook for, because that is what they
+   opened the screen to check. This is the thing they come back for once. #}
+<section class="mcard">
+  <div class="mlbl">{{ svc.away_heading }}</div>
+  <p class="mnote">{{ svc.away_sub }}</p>
+
+  {% if blockouts %}
+    <ul class="famlist">
+      {% for away in blockouts %}
+        <li>
+          <span class="fl">
+            <span class="pn">
+              {% if away.is_one_day %}
+                {{ svc.away_one_day.format(date=away.starts_on.strftime("%-d %b %Y")) }}
+              {% else %}
+                {{ svc.away_range.format(
+                     start=away.starts_on.strftime("%-d %b"),
+                     end=away.ends_on.strftime("%-d %b %Y")) }}
+              {% endif %}
+            </span>
+            {% if away.note %}<span class="pe">{{ away.note }}</span>{% endif %}
+          </span>
+          <form method="post" action="{{ url_for('member.remove_blockout', blockout_id=away.id) }}">
+            {{ csrf_field() }}
+            <button class="btn ghostbtn tiny" type="submit">{{ svc.away_remove }}</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="mnote muted">{{ svc.away_none }}</p>
+  {% endif %}
+
+  {# Native date inputs. A phone gives a real date wheel for these and the
+     server parses the same ISO string either way, so there is nothing to load
+     and nothing to go wrong without JavaScript. `min` stops somebody blocking
+     out last March, which only ever happens by mistyping a year. #}
+  <form method="post" action="{{ url_for('member.add_blockout') }}">
+    {{ csrf_field() }}
+    <div class="field2">
+      <div class="field">
+        <label for="starts_on">{{ svc.away_from }}</label>
+        <input class="input" id="starts_on" name="starts_on" type="date"
+               min="{{ today }}" required>
+      </div>
+      <div class="field">
+        <label for="ends_on">{{ svc.away_to }}</label>
+        <input class="input" id="ends_on" name="ends_on" type="date"
+               min="{{ today }}" aria-describedby="awayhint">
+      </div>
+    </div>
+    {# Under both boxes rather than beside one. A date input is already most
+       of half a phone, so a hint in that column wraps onto two lines. #}
+    <p class="mnote" id="awayhint">{{ svc.away_to_hint }}</p>
+    <div class="field">
+      <label for="awaynote">{{ svc.away_note }}</label>
+      <input class="input" id="awaynote" name="note" type="text" maxlength="140"
+             placeholder="{{ svc.away_note_placeholder }}">
+    </div>
+    <button class="btn wide" type="submit">{{ svc.away_add }}</button>
+  </form>
+</section>
 {% endblock %}

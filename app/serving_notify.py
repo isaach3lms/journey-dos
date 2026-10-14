@@ -38,6 +38,26 @@ def _when(service, church) -> str:
     return format_local(service.starts_at, church, "%A %-d %B, %-I:%M%p")
 
 
+def _arrive_line(assignment, church) -> str:
+    """"Arrive: 8:00am", or nothing at all.
+
+    A volunteer needs the time they are expected, which is not the time the
+    service starts. It comes off the strand they are serving on, so the kids
+    team is told when kids opens rather than when the band sets up.
+
+    Empty when that strand has no pre-service block. A church that has not
+    entered one has not said anything about arriving, and guessing would mean
+    telling somebody to be there at a time nobody chose.
+    """
+    track = getattr(assignment, "track", None)
+    call_at = getattr(track, "call_at", None) if track is not None else None
+    if call_at is None:
+        return ""
+    return SERVICES["invite_arrive"].format(
+        time=format_local(call_at, church, "%-I:%M%p")
+    )
+
+
 def ask_to_serve(service, assignment, church) -> bool:
     """Ask one person whether they can serve. Returns whether anything went.
 
@@ -62,6 +82,11 @@ def ask_to_serve(service, assignment, church) -> bool:
         link = url_for("invite.respond", token=token, _external=True,
                        _scheme="https")
         when = _when(service, church)
+        # The strand this person is on, not the Sunday: somebody in kids
+        # arrives when the kids team arrives. An empty string rather than a
+        # placeholder, so a plan with no pre-service block sends the email it
+        # always sent.
+        arrive = _arrive_line(assignment, church)
 
         result = notify(
             person=person,
@@ -75,6 +100,7 @@ def ask_to_serve(service, assignment, church) -> bool:
                 service=service.name,
                 date=when,
                 position=assignment.role_name,
+                arrive=arrive,
                 link=link,
                 church=church.name,
             ),
@@ -104,16 +130,43 @@ def ask_everyone_waiting(service, church) -> int:
     """Ask every unanswered slot on this plan. Returns how many were asked.
 
     Used by publishing, which is the moment a plan built as a draft becomes
-    real, and by the "Ask the rest again" button. Only people who have not
-    answered are asked: re-running it after adding somebody chases the new
-    person and leaves the rest alone, which is the behaviour a leader wants on
-    a Thursday when half the team has replied.
+    real. Only people who have not answered are asked: re-running it after
+    adding somebody chases the new person and leaves the rest alone, which is
+    the behaviour a leader wants on a Thursday when half the team has replied.
+
+    **Nobody who said they are away is asked here.** This is the automatic
+    path: nothing on this plan was a decision to chase one particular person,
+    so somebody who already told the church they are gone that weekend would
+    be asked by a machine about the one thing they took the trouble to rule
+    out. The deliberate path, the "Send the invites" button, calls
+    `ask_to_serve` itself and is not filtered, so a leader who means to ask
+    anyway still can. That split is the whole of the rule: automatic sends
+    respect a blockout, a person overriding one does not have to.
     """
     if not service.is_published:
         return 0
+
+    away = _away_for(service, church)
     return sum(
         1 for assignment in service.assignments
-        if not assignment.has_answered and ask_to_serve(service, assignment, church)
+        if not assignment.has_answered
+        and assignment.person_id not in away
+        and ask_to_serve(service, assignment, church)
+    )
+
+
+def _away_for(service, church) -> dict:
+    """Who has blocked out the day this service falls on.
+
+    The church's own date, not the server's: a Sunday morning service in
+    Missouri is already Sunday in UTC, but a Saturday evening one is not, and
+    a blockout is about days in the church's calendar.
+    """
+    from app.models import ServingBlockout
+    from app.timeutil import to_local
+
+    return ServingBlockout.away_on(
+        church.id, to_local(service.starts_at, church).date()
     )
 
 

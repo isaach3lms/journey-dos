@@ -94,8 +94,26 @@
             <input type="hidden" name="order" data-order-field>
           </form>
 
+          {# What the pre-service block adds up to, said once at the top.
+             Derived from the lines below it, so it cannot disagree with them. #}
+          {% if track.call_at %}
+            <p class="muted small">
+              {{ content.pre_call_long.format(
+                   time=track.call_at|church_time("%-I:%M%p"),
+                   count=track.pre_minutes) }}
+            </p>
+          {% endif %}
+
           <ol class="runsheet" data-runsheet>
             {% for item, at in timed_items %}
+              {# The line where setting up ends and the service begins. Only
+                 drawn when there is a block above it to end. #}
+              {% if track.pre_minutes and not item.pre_service and loop.previtem[0].pre_service %}
+                <li class="rstart" aria-hidden="true">
+                  <span class="rtime mono">{{ service.starts_at|church_time("%-I:%M") }}</span>
+                  <span class="rlabel">{{ content.pre_divider }}</span>
+                </li>
+              {% endif %}
               {% set moveform %}
                 {# Kept in the markup, hidden by CSS once the drag script is
                    running. Without JavaScript these two buttons are the only
@@ -106,6 +124,15 @@
                     <button class="btn ghostbtn tiny" type="submit">{{ label }}</button>
                   </form>
                 {% endfor %}
+                {# Which end of the clock this line hangs off. The button says
+                   where it is going, not where it is, like every other verb
+                   on this screen. #}
+                <form method="post" class="inline" action="{{ url_for('services.toggle_pre_service', service_id=service.id, item_id=item.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">
+                    {% if item.pre_service %}{{ content.item_pre_from }}{% else %}{{ content.item_pre_to }}{% endif %}
+                  </button>
+                </form>
                 <form method="post" class="inline" action="{{ url_for('services.delete_item', service_id=service.id, item_id=item.id) }}">
                   {{ csrf_field() }}
                   <button class="btn ghostbtn tiny" type="submit">{{ content.item_delete }}</button>
@@ -121,13 +148,13 @@
               {% endset %}
 
               {% if item.kind == 'header' %}
-                <li class="rsection" data-item-id="{{ item.id }}">
+                <li class="rsection{% if item.pre_service %} rpre{% endif %}" data-item-id="{{ item.id }}"{% if item.pre_service %} data-pre="1"{% endif %}>
                   {{ handle }}
                   <span class="rlabel">{{ item.title }}</span>
                   <span class="ractions">{{ moveform }}</span>
                 </li>
               {% else %}
-                <li class="rrow" data-item-id="{{ item.id }}">
+                <li class="rrow{% if item.pre_service %} rpre{% endif %}" data-item-id="{{ item.id }}"{% if item.pre_service %} data-pre="1"{% endif %}>
                   {{ handle }}
                   <span class="rtime mono">{{ at|church_time("%-I:%M") }}</span>
                   <span class="rbody">
@@ -209,6 +236,23 @@
           <div class="filters">
             <input class="input" type="text" name="title" placeholder="{{ content.section_placeholder }}" aria-label="{{ content.section_add }}">
             <button class="btn ghostbtn" type="submit">{{ content.section_add }}</button>
+          </div>
+        </form>
+
+        {# A form of its own rather than a checkbox on the one above it.
+           Setting up is a different question from what happens in the
+           service, and a leader filling in the pre-service block is doing one
+           thing several times: arrive, set up, sound check, pray. #}
+        <h3 class="bandhead">{{ content.pre_heading }}</h3>
+        <p class="muted small">{{ content.pre_sub }}</p>
+        <form method="post" action="{{ url_for('services.add_item', service_id=service.id) }}">
+          {{ csrf_field() }}<input type="hidden" name="track" value="{{ track.id }}">
+          <input type="hidden" name="kind" value="element">
+          <input type="hidden" name="pre_service" value="1">
+          <div class="filters">
+            <input class="input" type="text" name="title" placeholder="{{ content.pre_placeholder }}" aria-label="{{ content.element_title }}">
+            <input class="input dateinput" type="number" name="minutes" min="1" max="240" placeholder="{{ content.minutes }}" aria-label="{{ content.minutes }}">
+            <button class="btn ghostbtn" type="submit">{{ content.pre_add }}</button>
           </div>
         </form>
       </div>
@@ -409,7 +453,23 @@
                 <span class="av">{{ assignment.person.initials }}</span>
                 <span class="fl">
                   <span class="sn">{{ assignment.person.full_name }}</span>
-                  <span class="ss">{{ assignment.role_name }}</span>
+                  {# Somebody on the plan who said they are away that date.
+                     Shown here as well as in the picker, because the usual
+                     way this happens is the blockout arriving after the plan
+                     was built.
+
+                     On the role line rather than as a pill of its own: this
+                     column is already narrow, and a third thing competing
+                     for it squeezed the name until the browser started
+                     breaking it mid-word. It also reads better here, since
+                     being away is a fact about the person on this date, not
+                     a second answer alongside their invitation status. #}
+                  <span class="ss">
+                    {{ assignment.role_name }}
+                    {%- if away.get(assignment.person_id) %}
+                      &middot; <b class="awaynote">{{ content.away_on_plan }}</b>
+                    {%- endif %}
+                  </span>
                 </span>
                 <span class="pill {% if assignment.status != 'accepted' %}pending{% endif %}">
                   {{ assignment.status_label }}
@@ -473,9 +533,13 @@
 
           <select class="input select" name="person_id" data-people
                   aria-label="{{ content.assign }}">
+            {# Said beside the name rather than by removing them from the
+               list. A leader can still ask somebody who is away, and taking
+               the name out would mean the only way to do it is to go and
+               delete what that person wrote about their own weekend. #}
             {% for person in people %}
               <option value="{{ person.id }}"
-                      data-teams="{{ person_teams.get(person.id, [])|join(' ') }}">{{ person.full_name }}</option>
+                      data-teams="{{ person_teams.get(person.id, [])|join(' ') }}">{% if away.get(person.id) %}{{ content.away_picker.format(name=person.full_name) }}{% else %}{{ person.full_name }}{% endif %}</option>
             {% endfor %}
           </select>
           <select class="input select" name="position_id" data-positions aria-label="Position">
@@ -521,9 +585,30 @@
   var hint = document.querySelector("[data-drag-hint]");
   if (hint) { hint.hidden = false; }
 
+  /* The rows, which is not the same as the list's children: the rule marking
+     the service start is in the list too and has no item behind it. Including
+     it would post an order the server could not match to the plan, and the
+     drag would silently do nothing. */
+  function rows() {
+    return Array.prototype.filter.call(list.children, function (row) {
+      return !!row.dataset.itemId;
+    });
+  }
+
   function order() {
-    return Array.prototype.map.call(list.children, function (row) {
-      return row.dataset.itemId;
+    return rows().map(function (row) { return row.dataset.itemId; });
+  }
+
+  /* Setting up happens before the service, so those rows stay above it. A
+     drag that crossed the line would change what a line means by where it
+     was dropped, and the only visible effect would be its time jumping an
+     hour. The switch on the row is what moves a line between the two. */
+  function crossed() {
+    var seenService = false;
+    return rows().some(function (row) {
+      if (row.dataset.pre) { return seenService; }
+      seenService = true;
+      return false;
     });
   }
 
@@ -539,7 +624,7 @@
      pointer is above every row, so the dragged row belongs at the top. */
   function passed(y) {
     var found = null;
-    Array.prototype.forEach.call(list.children, function (row) {
+    rows().forEach(function (row) {
       if (row === dragging) { return; }
       var box = row.getBoundingClientRect();
       if (y > box.top + box.height / 2) { found = row; }
@@ -573,8 +658,21 @@
     dragging = null;
     // A click that moved nothing is not a change, and reloading the page for
     // it would look like a bug.
-    if (order().join(",") !== before) { save(); }
+    if (order().join(",") === before) { return; }
+    // Dropped on the wrong side of the service start. Put it back where it
+    // came from rather than posting an order the page would rearrange again
+    // on the way back.
+    if (crossed()) { restore(); return; }
+    save();
   }
+
+  /* Back to the order the drag started from.
+
+     Reloading rather than putting the rows back by hand: the list also holds
+     the rule marking the service start, and reinserting rows around it by id
+     is three lines of DOM work to arrive at the page the server already has.
+     Nothing was saved, so there is nothing to lose. */
+  function restore() { window.location.reload(); }
 
   list.addEventListener("pointerup", drop);
   list.addEventListener("pointercancel", drop);
@@ -595,6 +693,7 @@
       event.preventDefault();
       list.insertBefore(row.nextElementSibling, row);
     }
+    if (crossed()) { restore(); return; }
     save();
   });
 })();

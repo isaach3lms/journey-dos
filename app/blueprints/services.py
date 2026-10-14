@@ -48,6 +48,7 @@ from app.models import (
     Service,
     ServiceAssignment,
     ServiceItem,
+    ServingBlockout,
     Song,
     Team,
     TeamMembership,
@@ -186,6 +187,10 @@ def plan(service_id: int):
         # person id -> the teams they are on, so the picker can be filtered
         # to one team without a round trip.
         person_teams=_person_teams(g.church.id),
+        # person id -> the blockout over this Sunday, so the picker can say
+        # who is away beside their name. One query, not one per row: this is
+        # the screen a leader opens most.
+        away=ServingBlockout.away_on(g.church.id, local.date()),
         # The teams actually represented on this plan, for the filter above
         # the list. Built from the plan, not from every team the church has,
         # so a chip never leads to an empty list.
@@ -588,6 +593,10 @@ def add_item(service_id: int):
     kind = (request.form.get("kind") or ITEM_ELEMENT).strip()
     song = None
     title = (request.form.get("title") or "").strip()
+    # Which block the line lands in. The three add forms each carry it, so a
+    # line is filed as "before the service" when it is written rather than
+    # added to the plan and moved afterwards.
+    pre_service = bool(request.form.get("pre_service"))
 
     if kind == ITEM_HEADER:
         if not title:
@@ -602,8 +611,12 @@ def add_item(service_id: int):
                 position=track.next_position(),
                 kind=ITEM_HEADER,
                 title=title[:200],
+                pre_service=pre_service,
             )
         )
+        db.session.flush()
+        if pre_service:
+            track.normalize_order()
         db.session.commit()
         flash(SERVICES["item_added"], "notice")
         return redirect(url_for("services.plan", service_id=service.id,
@@ -645,13 +658,55 @@ def add_item(service_id: int):
             key_override=key_override,
             minutes=request.form.get("minutes", type=int),
             notes=(request.form.get("notes") or "").strip() or None,
+            pre_service=pre_service,
         )
     )
+    db.session.flush()
+    # A new pre-service line arrives at the bottom of the plan by position and
+    # belongs at the bottom of the pre-service block. Renumbering here keeps
+    # the stored order and the read order the same thing.
+    if pre_service:
+        track.normalize_order()
     db.session.commit()
 
     flash(SERVICES["item_added"], "notice")
     return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
+
+
+@bp.post("/<int:service_id>/items/<int:item_id>/pre/")
+@login_required
+@min_role("leader")
+def toggle_pre_service(service_id: int, item_id: int):
+    """Move one line between the pre-service block and the service.
+
+    The whole point of the pre-service block is that the published start time
+    stops moving. A church that runs at 9:00 and sets up from 8:00 used to
+    have to enter the service as 8:00 to get the setup into the plan, which
+    then said 8:00 on the member app, in every invitation and on every report.
+
+    So this changes which end a line is clocked from, and nothing else. The
+    service still starts when it says it starts, and the team's arrival time
+    is whatever the lines before it add up to.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    item = ServiceItem.get_for_church(g.church.id, item_id)
+    if service is None or item is None or item.service_id != service.id:
+        abort(404)
+
+    # The strand the item is actually on, not the one the request names.
+    track = item.track
+    item.pre_service = not item.pre_service
+    db.session.flush()
+    track.normalize_order()
+    db.session.commit()
+
+    flash(
+        SERVICES["item_pre_on"] if item.pre_service else SERVICES["item_pre_off"],
+        "notice",
+    )
+    return redirect(url_for("services.plan", service_id=service.id,
+                    track=track.id, _anchor="strands"))
 
 
 @bp.post("/<int:service_id>/items/<int:item_id>/delete/")
@@ -734,22 +789,48 @@ def assign(service_id: int):
     db.session.add(assignment)
     db.session.flush()
 
+    # Somebody who told the church they are away is not asked automatically.
+    #
+    # They are still put on the plan: a leader may know perfectly well that
+    # this person said they were away and want to ask anyway, and refusing
+    # outright would mean the only way to do that is to go and delete what
+    # somebody else wrote about their own weekend. What is held back is the
+    # notification, because the whole point of a blockout is not to be chased
+    # on a weekend you already said you were gone.
+    #
+    # The ask is one button away: "Ask the team" sends to everybody on the
+    # plan who has not answered, this assignment included. So the leader keeps
+    # the decision and the volunteer does not get an automatic one.
+    away = ServingBlockout.covering(
+        g.church.id, person.id, to_local(service.starts_at, g.church).date()
+    )
+
     # Assigning is asking. This used to send nothing at all, so a leader added
     # somebody and the flash message said "asked to play drums" about a person
     # who had not been asked anything. A draft still sends nothing; publishing
     # is what releases the asks. See app/serving_notify.py.
     asked = (
         ask_to_serve(service, assignment, g.church)
-        if service.is_published else False
+        if service.is_published and away is None else False
     )
     db.session.commit()
 
-    flash(
-        (SERVICES["assigned_asked"] if asked else SERVICES["assigned"]).format(
-            name=person.full_name, position=position.name if position else "serve"
-        ),
-        "notice",
-    )
+    if away is not None:
+        flash(
+            SERVICES["away_warning"].format(
+                name=person.full_name,
+                date=format_local(service.starts_at, g.church, "%-d %B"),
+                button=SERVICES["invite_button"],
+            ),
+            "error",
+        )
+    else:
+        flash(
+            (SERVICES["assigned_asked"] if asked else SERVICES["assigned"]).format(
+                name=person.full_name, position=position.name if position else "serve"
+            ),
+            "notice",
+        )
     return redirect(url_for("services.plan", service_id=service.id,
                     track=track.id if track else None, _anchor="strands"))
 

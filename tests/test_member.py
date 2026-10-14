@@ -387,6 +387,14 @@ class TestNoWayToSeeSomeoneElse:
         # g.church.id and current_user.person, neither of which the URL
         # names. See test_next_steps.py for the 404.
         "code",
+        # Which of your own blockouts to remove. This one does name a row
+        # that belongs to a person, so it is allowed only because the route
+        # refuses it unless the row belongs to the person signed in: it
+        # 404s outside the church and 403s on somebody else's, so a guessed
+        # number cannot read or change anything. The route never renders the
+        # row either, so a 403 says only "not yours". See
+        # test_serving_blockouts.py::TestOnlyYourOwn.
+        "blockout_id",
     }
 
     def test_no_member_route_accepts_a_person_id(self, app):

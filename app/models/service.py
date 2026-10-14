@@ -37,6 +37,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
     func,
 )
 from sqlalchemy import event
@@ -158,6 +159,13 @@ class ServiceTemplateItem(TenantScoped, TimestampMixin, db.Model):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     minutes: Mapped[Optional[int]] = mapped_column(Integer)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Before the doors open. Same meaning as on ServiceItem: see the note
+    # there. A type carries it so "team arrives, sound check, prayer" is part
+    # of the template and does not get rebuilt by hand every week.
+    pre_service: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     # A template may pin a song, though most churches leave songs blank and
     # choose them each week.
@@ -519,7 +527,18 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
 
     @property
     def total_minutes(self) -> int:
-        return sum(item.minutes or 0 for item in self.items)
+        """How long the service runs, which does not include setting up.
+
+        Pre-service lines are counted by `pre_minutes` instead. Folding them
+        in here would say a Sunday that starts at 9:00 and ends at 10:10 runs
+        until 11:10 because the band arrived at eight.
+        """
+        return sum(item.minutes or 0 for item in self.items if not item.pre_service)
+
+    @property
+    def pre_minutes(self) -> int:
+        """How long before the start the first person is asked to be there."""
+        return sum(item.minutes or 0 for item in self.items if item.pre_service)
 
     def next_position(self) -> int:
         return max((item.position for item in self.items), default=0) + 1
@@ -530,19 +549,68 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
         return self.service.starts_at if self.service is not None else None
 
     @property
-    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
-        """Each item with the moment it starts, clocked from the Sunday."""
+    def call_at(self):
+        """When the team is asked to arrive, or None if nothing runs early.
+
+        Derived, never stored. The number a volunteer needs is "be here at
+        8:00", and deriving it means it cannot disagree with the plan that
+        produced it: adding a line to the pre-service block moves this, and
+        there is no second field to go stale.
+        """
         from datetime import timedelta
 
-        running = self.starts_at
-        out = []
-        for item in self.items:
+        if self.starts_at is None or not self.pre_minutes:
+            return None
+        return self.starts_at - timedelta(minutes=self.pre_minutes)
+
+    @property
+    def ordered_items(self) -> list["ServiceItem"]:
+        """The running order as it is read: everything before the service, then
+        the service.
+
+        `items` is ordered by position alone, and position is what a drag
+        writes. Somebody dragging a pre-service line into the middle of the
+        songs would otherwise produce a plan whose times ran 8:40, 9:00, 8:50
+        down the page. The two blocks are kept apart here so no reordering can
+        make the clock run backwards on screen, whatever the positions say.
+
+        Within each block the order is the leader's, untouched.
+        """
+        pre = [item for item in self.items if item.pre_service]
+        return pre + [item for item in self.items if not item.pre_service]
+
+    @property
+    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
+        """Each item with the moment it starts.
+
+        Two clocks, meeting at the service start. Pre-service lines run
+        backwards from it so the last one ends exactly as the service begins;
+        everything else runs forwards from it as before. See the note on
+        `ServiceItem.pre_service` for why it is laid out from that end.
+
+        Headers take no time and are skipped by both, so a section heading
+        inside the pre-service block does not shift the team's arrival.
+        """
+        from datetime import timedelta
+
+        out: list[tuple["ServiceItem", datetime | None]] = []
+        running = self.call_at if self.pre_minutes else self.starts_at
+        after_the_start = self.starts_at
+
+        for item in self.ordered_items:
             if item.kind == ITEM_HEADER:
                 out.append((item, None))
                 continue
-            out.append((item, running))
-            if running is not None:
-                running = running + timedelta(minutes=item.minutes or 0)
+            if item.pre_service:
+                out.append((item, running))
+                if running is not None:
+                    running = running + timedelta(minutes=item.minutes or 0)
+                continue
+            out.append((item, after_the_start))
+            if after_the_start is not None:
+                after_the_start = after_the_start + timedelta(
+                    minutes=item.minutes or 0
+                )
         return out
 
     @property
@@ -578,8 +646,16 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
         return self.unfilled_count == 0 and self.roles_total > 0
 
     def move_item(self, item, direction: int) -> bool:
-        """Swap an item with its neighbour. Caller commits."""
-        ordered = list(self.items)
+        """Swap an item with its neighbour. Caller commits.
+
+        Refuses at the boundary between the pre-service block and the service
+        itself. Up and down move a line within its own block; what moves a
+        line across is the before-the-service switch on the row, which is the
+        control that says what the line means. Letting the arrow do it would
+        change a line's meaning by nudging it, and the only visible effect
+        would be its time jumping an hour.
+        """
+        ordered = self.ordered_items
         index = next(
             (i for i, candidate in enumerate(ordered) if candidate.id == item.id), None
         )
@@ -591,6 +667,8 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
             return False
 
         other = ordered[target]
+        if bool(other.pre_service) != bool(item.pre_service):
+            return False
         parked = -abs(item.position) - 1
         item_position, other_position = item.position, other.position
 
@@ -620,6 +698,31 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
             items[item_id].position = index
         db.session.flush()
         return True
+
+    def normalize_order(self) -> None:
+        """Renumber so stored position matches the order the plan is read in:
+        the pre-service block first, then the service. Caller commits.
+
+        `ordered_items` already guarantees the screen is right whatever the
+        positions say. This makes the stored numbers agree with it, so the
+        up and down buttons, which work on position, move a line where the
+        person pressing them expects. Called whenever a line's block changes
+        or a new one lands in the pre-service block.
+        """
+        db.session.expire(self, ["items"])
+        pre = sorted(
+            (i for i in self.items if i.pre_service), key=lambda i: i.position
+        )
+        rest = sorted(
+            (i for i in self.items if not i.pre_service), key=lambda i: i.position
+        )
+
+        for offset, item in enumerate(pre + rest, start=1):
+            item.position = -offset
+        db.session.flush()
+        for offset, item in enumerate(pre + rest, start=1):
+            item.position = offset
+        db.session.flush()
 
     def renumber(self) -> None:
         """Close gaps left by deletions and swaps, so positions read 1..n."""
@@ -771,6 +874,18 @@ class Service(TenantScoped, TimestampMixin, db.Model):
         programme takes two hours and twenty minutes.
         """
         return max((track.total_minutes for track in self.tracks), default=0)
+
+    @property
+    def call_at(self):
+        """The earliest anybody is asked to arrive, across every strand.
+
+        Kids check-in often opens before the band finishes setting up, and
+        the Sunday's call time is whichever comes first. None when no strand
+        has a pre-service block, which is every Sunday built before this
+        existed.
+        """
+        times = [track.call_at for track in self.tracks if track.call_at is not None]
+        return min(times) if times else None
 
     @property
     def ends_at(self):
@@ -926,6 +1041,24 @@ class ServiceItem(TenantScoped, TimestampMixin, db.Model):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     minutes: Mapped[Optional[int]] = mapped_column(Integer)
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Before the doors open: team arrives, sound check, prayer.
+    #
+    # The church publishes a service at 9:00 and the team is there at 8:00.
+    # The only way to put that hour in the running order used to be to move
+    # the service itself to 8:00, which changed the time on the member app,
+    # in every notification and on every report, so the published start time
+    # was wrong in order to make the plan right.
+    #
+    # A flagged line is laid out BACKWARDS from the service start rather than
+    # forwards from the top of the plan, which is what makes the two agree.
+    # Add a ten minute item to the pre-service block and the team arrives ten
+    # minutes earlier; 9:00 is still 9:00. Clocking forwards from a call time
+    # would mean the service drifted off its own start whenever the pre-service
+    # minutes did not add up to exactly the right number.
+    pre_service: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
 
     song_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("song.id", ondelete="SET NULL")
@@ -1185,6 +1318,7 @@ def _fill_from_type(track, service_type) -> None:
                 minutes=template.minutes,
                 notes=template.notes,
                 song_id=template.song_id,
+                pre_service=template.pre_service,
             )
         )
 
@@ -1290,6 +1424,7 @@ def copy_plan(source: Service, target: Service) -> int:
                     notes=item.notes,
                     song_id=item.song_id,
                     key_override=item.key_override,
+                    pre_service=item.pre_service,
                 )
             )
             copied += 1

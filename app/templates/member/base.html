@@ -11,6 +11,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ church.name }}{% endblock %}</title>
+{# The member app is a white page from the top of the screen down, so the
+   status bar above it is white too. #}
+{% set theme_color = palette.surface %}
 {% include "partials/head_meta.html" %}
 </head>
 <body class="memberbody{% if not is_preview %} memberfull{% endif %}">

@@ -521,6 +521,33 @@ PEOPLE = {
     # Person detail
     "snapshot": "Snapshot",
 
+    # Signing in, on somebody's own profile.
+    #
+    # The controls themselves are the ones from Settings and carry the same
+    # labels, read from SETTINGS so there is one wording for each. What is
+    # new here is the framing: Settings asks "who has an account", a profile
+    # asks "can this person sign in", which is the question staff are holding
+    # when somebody is standing in front of them.
+    "account_heading": "Signing in",
+    "account_none": "No account yet, so they cannot sign in.",
+    "account_create": "Set up an account",
+    "account_create_hint": (
+        "We email them a link to pick their own password. You never type "
+        "one, so it is never a password two people know."
+    ),
+    "account_no_email": (
+        "Add an email address above before setting up an account. That "
+        "address is how they sign in and how the link reaches them."
+    ),
+    "account_already": "{name} already has an account.",
+    "account_role": "What they can do",
+    # The account's address, shown only when it differs from the roster
+    # record's. The same in both places is the normal case and saying so
+    # twice is noise; different is worth knowing, because the one they sign
+    # in with is the account's.
+    "account_signs_in_as": "Signs in as {email}",
+    "account_is_you": "This is your own account.",
+
     # Two things a human knows and the system cannot work out. Giving arrives
     # from an outside platform and misses anybody who gives by transfer or in
     # an envelope; a background check happens entirely outside this app.

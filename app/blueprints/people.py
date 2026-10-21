@@ -22,7 +22,7 @@ from datetime import date, datetime
 
 from flask_login import current_user, login_required
 
-from app.content import AUTOMATION, EMAIL, GIVING, PEOPLE, STUCK
+from app.content import AUTOMATION, EMAIL, GIVING, PEOPLE, SETTINGS, STUCK
 from app.extensions import db
 from app import households
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
@@ -53,6 +53,7 @@ from app.models import (
     Person,
     PersonEvent,
     SequenceEnrollment,
+    ROLES,
     User,
 )
 from app.models.base import utcnow
@@ -215,6 +216,15 @@ def detail(person_id: int):
         ).all(),
         stages=stages_for(g.church),
         next_stage=next_stage(person.stage),
+        # Can this person sign in, and may the person looking change that.
+        #
+        # The controls are staff-only while the profile itself is open to
+        # leaders, so the answer is decided here rather than left to the
+        # template to work out from a role string.
+        account=User.for_person(g.church.id, person.id),
+        is_staff=current_user.at_least("staff"),
+        roles=ROLES,
+        settings=SETTINGS,
         active="people",
     )
 

@@ -24,7 +24,7 @@ from flask_login import current_user, login_required
 from app.accounts import send_set_password
 from app.audit import record
 from app.brand import assert_accent_readable
-from app.content import SETTINGS
+from app.content import PEOPLE, SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
 from app.notify_catalogue import GROUPS as notify_groups
@@ -56,6 +56,31 @@ ROWS = (
 def _back(row: str):
     """Back to settings with one row open and scrolled to."""
     return redirect(url_for("settings.index", open=row, _anchor=row))
+
+
+def _back_from(row: str):
+    """Back to wherever the form was submitted from.
+
+    The account controls live in two places now: the settings row they were
+    built for, and the Snapshot card on somebody's profile, which is where
+    staff already are when that person asks why they cannot sign in. One set
+    of routes serves both. Two would be two places for the last-staff guard
+    and the audit entry to drift apart, and the one that drifted would be the
+    one nobody was looking at.
+
+    A person id, not a URL. A `next=` parameter on a form that switches
+    logins on and off is an open redirect with the worst possible blast
+    radius, and an id can only ever name a row in this church.
+    """
+    person_id = request.form.get("person", type=int)
+    if person_id:
+        from app.models import Person
+
+        person = Person.get_for_church(g.church.id, person_id)
+        if person is not None:
+            return redirect(url_for("people.detail", person_id=person.id,
+                                    _anchor="account"))
+    return _back(row)
 
 
 @bp.get("/")
@@ -669,19 +694,41 @@ def save_ccli():
 @login_required
 @min_role("staff")
 def create_account():
+    from app.models import Person
+
     name = (request.form.get("name") or "").strip()
     email = (request.form.get("email") or "").strip().lower()
     role = (request.form.get("role") or "member").strip()
 
+    # Posted from somebody's profile, where the name and the address are
+    # already on screen and the roster record is the whole point of pressing
+    # the button. Read here rather than trusted: the form says which record
+    # it came from, the server says whether that record is this church's.
+    person = None
+    person_id = request.form.get("person", type=int)
+    if person_id:
+        person = Person.get_for_church(g.church.id, person_id)
+        if person is None:
+            abort(404)
+
     if not name or not email:
         flash(SETTINGS["accounts_name_required"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
     if role not in ROLES:
         abort(400)
 
     if User.by_email(g.church.id, email) is not None:
         flash(SETTINGS["accounts_exists"].format(email=email), "error")
-        return _back("accounts")
+        return _back_from("accounts")
+
+    # A second login against one roster record. Nothing stops it at the
+    # database, because `person_id` was added to a table that already had
+    # rows in it, so the guard is here: two logins on one person is two
+    # inboxes for one member's notifications and no way to tell which is
+    # theirs.
+    if person is not None and User.for_person(g.church.id, person.id) is not None:
+        flash(PEOPLE["account_already"].format(name=person.full_name), "error")
+        return _back_from("accounts")
 
     user = User(
         church_id=g.church.id, email=email, name=name[:120], role=role
@@ -693,7 +740,14 @@ def create_account():
     db.session.add(user)
     db.session.flush()
 
-    user.link_person_by_email()
+    # Linked to the record staff were looking at, not re-matched by address.
+    # `link_person_by_email` refuses an address two people share, which is a
+    # household, so creating an account from a profile would silently leave
+    # it attached to nobody on the exact screen that named who it was for.
+    if person is not None:
+        user.person_id = person.id
+    else:
+        user.link_person_by_email()
     send_set_password(user, current_user)
 
     record(
@@ -705,7 +759,7 @@ def create_account():
     db.session.commit()
 
     flash(SETTINGS["accounts_created"].format(name=user.name), "notice")
-    return _back("accounts")
+    return _back_from("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/role/")
@@ -724,7 +778,7 @@ def change_role(user_id: int):
         # Changing your own access from this screen is how somebody demotes
         # themselves out of the screen they are standing on.
         flash(SETTINGS["account_self"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
 
     if (
         user.role == "staff"
@@ -732,7 +786,7 @@ def change_role(user_id: int):
         and User.active_staff_count(g.church.id, excluding=user.id) == 0
     ):
         flash(SETTINGS["account_last_staff"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
 
     previous, user.role = user.role, role
     record(
@@ -744,7 +798,7 @@ def change_role(user_id: int):
     db.session.commit()
 
     flash(SETTINGS["role_changed"].format(name=user.name, role=role), "notice")
-    return _back("accounts")
+    return _back_from("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/toggle/")
@@ -757,7 +811,7 @@ def toggle_account(user_id: int):
 
     if user.id == current_user.id:
         flash(SETTINGS["account_self"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
 
     if (
         user.is_active_account
@@ -765,7 +819,7 @@ def toggle_account(user_id: int):
         and User.active_staff_count(g.church.id, excluding=user.id) == 0
     ):
         flash(SETTINGS["account_last_staff"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
 
     user.is_active_account = not user.is_active_account
     if not user.is_active_account:
@@ -787,7 +841,7 @@ def toggle_account(user_id: int):
          else SETTINGS["account_deactivated"]).format(name=user.name),
         "notice",
     )
-    return _back("accounts")
+    return _back_from("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/resend/")
@@ -802,7 +856,7 @@ def resend_invite(user_id: int):
     db.session.commit()
 
     flash(SETTINGS["account_resent"].format(email=user.email), "notice")
-    return _back("accounts")
+    return _back_from("accounts")
 
 
 @bp.post("/accounts/<int:user_id>/temp-password/")
@@ -824,7 +878,7 @@ def temporary_password(user_id: int):
 
     if user.id == current_user.id:
         flash(SETTINGS["account_temp_self"], "error")
-        return _back("accounts")
+        return _back_from("accounts")
 
     raw = user.issue_temporary_password()
 
@@ -845,7 +899,7 @@ def temporary_password(user_id: int):
         SETTINGS["account_temp_made"].format(name=user.name, password=raw),
         "notice",
     )
-    return _back("accounts")
+    return _back_from("accounts")
 
 
 @bp.post("/email/test/")

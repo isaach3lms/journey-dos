@@ -34,7 +34,17 @@
   <link rel="icon" type="image/png" sizes="192x192"
         href="{{ url_for('static', filename=palette.icon_dir ~ '/favicon-192.png', v=asset_version) }}">
 {% endif %}
-<meta name="theme-color" content="{{ palette.deep }}">
+{# The colour iOS and Android paint their own chrome with: the status bar
+   in an installed app, and the area a rubber-band scroll pulls away from.
+
+   Per shell, not per church-and-nothing-else. The staff app and the kiosk
+   open onto dark chrome, so the green is right there. The member app opens
+   onto a white page, and the green band above it was left over from the
+   logo header that used to sit at the top of every member screen. A shell
+   sets `theme_color` before including this; anything that does not gets the
+   green it always had. Still a brand token either way: no hex code enters a
+   template. #}
+<meta name="theme-color" content="{{ theme_color | default(palette.deep, true) }}">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="{{ church.app_name or church.name }}">

@@ -370,6 +370,28 @@ class User(UserMixin, TenantScoped, TimestampMixin, db.Model):
         )
 
 
+    @classmethod
+    def for_person(cls, church_id: int, person_id: int) -> "User | None":
+        """The login attached to a roster record, or None.
+
+        The other direction from `person`, and the one a staff member is
+        asking about when they open somebody's profile and want to know
+        whether that person can sign in.
+
+        `person_id` carries no unique constraint, because the column was added
+        to a table that already existed and a half-linked account is a state
+        the system has to survive rather than refuse. So this takes the
+        earliest: if a record ever did end up with two logins pointing at it,
+        the oldest is the one that has been in use.
+        """
+        if not person_id:
+            return None
+        return db.session.scalar(
+            db.select(cls)
+            .where(cls.church_id == church_id, cls.person_id == person_id)
+            .order_by(cls.id)
+        )
+
     # -- the link to the pastoral record ------------------------------------
 
     @property

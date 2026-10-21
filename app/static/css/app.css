@@ -635,7 +635,12 @@ form.inline .select{min-width:170px}
    sees. Full-bleed below 700px, where a phone frame drawn on a
    phone would be absurd.
    ============================================================ */
+/* Bone is the desk the phone frame sits on, which only exists in the staff
+   preview. A member's app is white edge to edge at every width, so the page
+   behind it is white too: if anything ever does show through, at a rounded
+   corner or during a navigation, it is the same colour as the app. */
 .memberbody{background:var(--bone);min-height:100vh}
+.memberfull{background:var(--white)}
 
 .previewbar{
   background:var(--chrome);color:#fff;font-size:12.5px;
@@ -828,12 +833,67 @@ form.inline .select{min-width:170px}
   color:var(--ink);font-weight:600;box-shadow:inset 0 2px 0 var(--gold);
 }
 
+/* On a phone the app owns the screen, so the screen stops scrolling.
+
+   Both halves of the frame were pinned with `position:sticky`, which pins a
+   thing to an edge of the DOCUMENT. On iOS a flick past the end of a list
+   rubber-bands the document itself, and a sticky element travels with it: the
+   tab bar lifted off the bottom of the screen, and the gap it left showed
+   whatever was painted behind the page. Pinning harder was never going to fix
+   that, because the thing moving was not the tab bar.
+
+   So the document stops being the scroller. `.phone` is exactly the height of
+   the screen, the header and the tab bar are flex children that take their own
+   height, and `.mbody` takes the rest and scrolls inside it. The two of them
+   are then outside the scrolling box entirely: not pinned, not sticky, just
+   not in the part that moves.
+
+   `100dvh`, not `100vh`. In mobile Safari `vh` is the viewport with the
+   toolbars hidden, which is taller than what you can see, so the tab bar
+   would sit under the toolbar; `dvh` is what is actually on screen. The `vh`
+   line above it is for anything too old to know `dvh`, where the tab bar
+   being slightly low beats a zero-height app. */
 @media (max-width:700px){
   .phonewrap{padding:0}
   .phone{
     max-width:none;min-height:100vh;border:none;border-radius:0;box-shadow:none;
   }
   .mtabs{position:sticky;bottom:0}
+
+  /* The real member app, where the screen stops scrolling.
+     `.memberfull` only: the staff preview draws a phone frame under a bar
+     saying whose app it is, and locking the page to the viewport would push
+     that bar's height of app off the bottom with no way to reach it.
+
+     `100dvh`, not `100vh`. In mobile Safari `vh` is the viewport with the
+     toolbars hidden, which is taller than what you can see, so the tab bar
+     would sit under the toolbar. `dvh` is what is actually on screen. The
+     `vh` line before it is for anything too old to know `dvh`, where a tab
+     bar slightly low beats an app of zero height. */
+  body.memberfull{
+    height:100vh;height:100dvh;
+    overflow:hidden;
+    /* Nothing left to rubber-band, so nothing behind the page can show. */
+    overscroll-behavior:none;
+  }
+  .memberfull .phonewrap{height:100%}
+  .memberfull .phone{min-height:0;height:100%}
+  /* The only thing on the screen that scrolls.
+     `min-height:0` because a flex child will not shrink below its own content
+     without it, which would push the tab bar off the bottom of the screen
+     instead of scrolling the list. `contain` stops a flick at the end of the
+     list handing the leftover scroll to the page behind it. */
+  .memberfull .mbody{
+    flex:1;min-height:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+    overscroll-behavior:contain;
+  }
+  /* Was `position:sticky;bottom:0`, which pins a thing to the bottom of the
+     DOCUMENT. The document is what moved. This is the last child of a
+     full-height flex column now, so it is at the bottom of the screen by
+     construction rather than by being held there. */
+  .memberfull .mtabs{position:static}
 }
 
 /* ---------- The member app on a computer ----------
@@ -2249,6 +2309,14 @@ ul.policy span{color:var(--muted)}
 .flagbox .check{margin:0}
 .flagbox .fieldhint{margin:2px 0 14px 26px}
 .flagbox .btn{margin-top:2px}
+
+/* Whether this person can sign in. The third band of the snapshot card,
+   under the flags, separated the same way they are separated from the
+   snapshot above them. */
+.accountbox{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.accountbox .fieldlbl{margin-bottom:6px}
+.accountbox .filters{margin-top:10px}
+.accountbox .fieldhint{margin-top:8px}
 
 /* A heading over one age band on the check-in screen. Big, because the
    person reading it is standing at an iPad with a queue behind them. */

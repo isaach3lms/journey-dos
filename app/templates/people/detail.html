@@ -201,6 +201,98 @@
 
       <button class="btn ghostbtn tiny" type="submit">{{ content.flag_save }}</button>
     </form>
+
+    {# Whether this person can sign in, on the screen where somebody asks.
+
+       Staff only. A leader can read a profile and should not be able to
+       switch a login on and off, so the block is absent for them rather
+       than present and refused: a row of controls that 403 teaches people
+       to press things and see what happens.
+
+       The forms post to the Settings routes, which hold the last-staff
+       guard, the not-yourself guard and the audit entries. They carry a
+       hidden `person` so those routes come back here instead of to
+       Settings. See `_back_from` in app/blueprints/settings.py. #}
+    {% if is_staff %}
+      <div class="accountbox" id="account">
+        <div class="fieldlbl">{{ content.account_heading }}</div>
+
+        {% if account %}
+          <p class="muted small">
+            {% if not account.is_active_account %}{{ settings.account_off }}
+            {% elif not account.is_verified %}{{ settings.account_unverified }}
+            {% elif account.last_login_at %}{{ settings.account_last_seen.format(when=account.last_login_at|church_time("%b %-d")) }}
+            {% else %}{{ settings.account_never }}{% endif %}
+            {%- if account.email != person.email %}
+              &middot; {{ content.account_signs_in_as.format(email=account.email) }}
+            {%- endif %}
+          </p>
+
+          {% if account.id == current_user.id %}
+            {# Every one of these refuses on your own account anyway. Saying
+               so is better than three buttons that each flash an error. #}
+            <p class="muted small">{{ content.account_is_you }}</p>
+          {% else %}
+            <div class="filters">
+              <form method="post" class="inline" action="{{ url_for('settings.change_role', user_id=account.id) }}">
+                {{ csrf_field() }}<input type="hidden" name="person" value="{{ person.id }}">
+                <select class="input select" name="role" aria-label="{{ content.account_role }}" onchange="this.form.submit()">
+                  {% for role in roles %}
+                    <option value="{{ role }}" {% if account.role == role %}selected{% endif %}>{{ role|title }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
+                {{ csrf_field() }}<input type="hidden" name="person" value="{{ person.id }}">
+                <button class="btn ghostbtn tiny" type="submit">{{ settings.account_resend }}</button>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.temporary_password', user_id=account.id) }}">
+                {{ csrf_field() }}<input type="hidden" name="person" value="{{ person.id }}">
+                <button class="btn ghostbtn tiny" type="submit">{{ settings.account_temp }}</button>
+              </form>
+
+              <form method="post" class="inline" action="{{ url_for('settings.toggle_account', user_id=account.id) }}">
+                {{ csrf_field() }}<input type="hidden" name="person" value="{{ person.id }}">
+                <button class="btn ghostbtn tiny" type="submit">
+                  {% if account.is_active_account %}{{ settings.account_deactivate }}{% else %}{{ settings.account_reactivate }}{% endif %}
+                </button>
+              </form>
+            </div>
+            <p class="fieldhint">{{ settings.account_temp_hint }}</p>
+          {% endif %}
+
+        {% elif person.email %}
+          <p class="muted small">{{ content.account_none }}</p>
+          {# The name and the address are already on this screen, so neither
+             is asked for again. The only open question is what they can
+             see. #}
+          <form method="post" action="{{ url_for('settings.create_account') }}">
+            {{ csrf_field() }}
+            <input type="hidden" name="person" value="{{ person.id }}">
+            <input type="hidden" name="name" value="{{ person.full_name }}">
+            <input type="hidden" name="email" value="{{ person.email }}">
+            <div class="filters">
+              <select class="input select" name="role" aria-label="{{ content.account_role }}">
+                {% for role in roles %}
+                  <option value="{{ role }}">{{ settings['role_' + role] }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn ghostbtn tiny" type="submit">{{ content.account_create }}</button>
+            </div>
+          </form>
+          <p class="fieldhint">{{ content.account_create_hint }}</p>
+
+        {% else %}
+          {# No address, so there is nothing to sign in with and nowhere to
+             send the link. Says what to do rather than showing a button
+             that cannot work. #}
+          <p class="muted small">{{ content.account_none }}</p>
+          <p class="fieldhint">{{ content.account_no_email }}</p>
+        {% endif %}
+      </div>
+    {% endif %}
   </div>
 </section>
 

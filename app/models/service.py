@@ -556,12 +556,15 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
         8:00", and deriving it means it cannot disagree with the plan that
         produced it: adding a line to the pre-service block moves this, and
         there is no second field to go stale.
-        """
-        from datetime import timedelta
 
-        if self.starts_at is None or not self.pre_minutes:
-            return None
-        return self.starts_at - timedelta(minutes=self.pre_minutes)
+        Read off the placed lines rather than subtracted from the start,
+        because a pin in the pre-service block can put the first line
+        somewhere the minutes alone would not predict. Whatever the plan
+        shows as its earliest line is what the team is told.
+        """
+        times = [at for item, at in self.timed_items
+                 if item.pre_service and at is not None]
+        return min(times) if times else None
 
     @property
     def ordered_items(self) -> list["ServiceItem"]:
@@ -579,38 +582,107 @@ class ServiceTrack(TenantScoped, TimestampMixin, db.Model):
         pre = [item for item in self.items if item.pre_service]
         return pre + [item for item in self.items if not item.pre_service]
 
-    @property
-    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
-        """Each item with the moment it starts.
+    def _place(self, items, *, begin=None, end=None):
+        """When each line in one block starts.
 
-        Two clocks, meeting at the service start. Pre-service lines run
-        backwards from it so the last one ends exactly as the service begins;
-        everything else runs forwards from it as before. See the note on
-        `ServiceItem.pre_service` for why it is laid out from that end.
+        Three rules, applied in this order:
 
-        Headers take no time and are skipped by both, so a section heading
-        inside the pre-service block does not shift the team's arrival.
+        1. A pinned line starts exactly when it is pinned to. Nothing above
+           it can push it.
+        2. Any other line starts when the line above it ends.
+        3. A line with nothing above it to follow is measured BACKWARDS from
+           the first fixed point below it. That is what lays the pre-service
+           block out so it ends as the service begins.
+
+        Two passes, because rules 2 and 3 run in opposite directions and a
+        line cannot know which applies to it until the whole block is seen.
+        The forward pass places everything reachable from `begin` and from
+        each pin; the backward pass fills what is left, which can only be
+        lines sitting above the first fixed point.
+
+        Headers take no time and are skipped by both passes, so a section
+        heading inside the pre-service block does not move the team's
+        arrival.
         """
         from datetime import timedelta
 
-        out: list[tuple["ServiceItem", datetime | None]] = []
-        running = self.call_at if self.pre_minutes else self.starts_at
-        after_the_start = self.starts_at
+        times: list[datetime | None] = [None] * len(items)
+        start = self.starts_at
 
-        for item in self.ordered_items:
+        cursor = begin
+        for index, item in enumerate(items):
             if item.kind == ITEM_HEADER:
-                out.append((item, None))
                 continue
-            if item.pre_service:
-                out.append((item, running))
-                if running is not None:
-                    running = running + timedelta(minutes=item.minutes or 0)
+            if item.offset_minutes is not None and start is not None:
+                cursor = start + timedelta(minutes=item.offset_minutes)
+            if cursor is None:
                 continue
-            out.append((item, after_the_start))
-            if after_the_start is not None:
-                after_the_start = after_the_start + timedelta(
-                    minutes=item.minutes or 0
-                )
+            times[index] = cursor
+            cursor = cursor + timedelta(minutes=item.minutes or 0)
+
+        back = end
+        for index in range(len(items) - 1, -1, -1):
+            item = items[index]
+            if item.kind == ITEM_HEADER:
+                continue
+            if times[index] is not None:
+                back = times[index]
+                continue
+            if back is None:
+                continue
+            times[index] = back - timedelta(minutes=item.minutes or 0)
+            back = times[index]
+
+        return times
+
+    @property
+    def timed_items(self) -> list[tuple["ServiceItem", datetime | None]]:
+        """Each line with the moment it starts.
+
+        Two blocks, meeting at the service start. The service runs forwards
+        from it. The pre-service block runs backwards from it, so the last
+        line of setting up ends exactly as the service begins and the
+        published start time never moves. See the note on
+        `ServiceItem.pre_service` for why it is measured from that end.
+
+        A pin overrides either direction, for the line that carries it and
+        for everything that follows it. See `_place`.
+        """
+        pre = [item for item in self.ordered_items if item.pre_service]
+        main = [item for item in self.ordered_items if not item.pre_service]
+
+        placed = list(zip(pre, self._place(pre, end=self.starts_at)))
+        placed += list(zip(main, self._place(main, begin=self.starts_at)))
+        return placed
+
+    @property
+    def clashes(self) -> set[int]:
+        """Lines pinned to a time that has already gone.
+
+        A pin says "this starts at 9:45" and the lines above it say the plan
+        reaches 9:52. Both cannot be true, and nothing here can pick: the pin
+        may be a hard commitment, or the minutes above it may be optimistic.
+        So the collision is reported by id and left to the person who entered
+        them, rather than one of the two being honoured in silence.
+        """
+        from datetime import timedelta
+
+        at_of = {id(item): at for item, at in self.timed_items}
+        out: set[int] = set()
+
+        for block in (True, False):
+            previous_end = None
+            for item in self.ordered_items:
+                if bool(item.pre_service) is not block:
+                    continue
+                if item.kind == ITEM_HEADER:
+                    continue
+                at = at_of.get(id(item))
+                if at is None:
+                    continue
+                if previous_end is not None and at < previous_end:
+                    out.add(item.id)
+                previous_end = at + timedelta(minutes=item.minutes or 0)
         return out
 
     @property
@@ -1060,6 +1132,20 @@ class ServiceItem(TenantScoped, TimestampMixin, db.Model):
         Boolean, nullable=False, default=False, server_default=false()
     )
 
+    # A line pinned to the clock. Null, which is almost every line, means it
+    # starts when the line above it ends.
+    #
+    # Stored as minutes from the service start, not as a time of day, and
+    # the difference matters twice. Moving a Sunday from 9:00 to 9:30 moves
+    # a sermon pinned at 9:45 to 10:15, which is what somebody shifting the
+    # whole morning meant; a stored 9:45 would end up sitting before lines
+    # that now start after it. And minutes carry no timezone, so a pin
+    # entered in March cannot land an hour out on a Sunday in November.
+    #
+    # Negative in the pre-service block: a team arriving at 8:00 before a
+    # 9:00 service is -60.
+    offset_minutes: Mapped[Optional[int]] = mapped_column(Integer)
+
     song_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("song.id", ondelete="SET NULL")
     )
@@ -1425,6 +1511,9 @@ def copy_plan(source: Service, target: Service) -> int:
                     song_id=item.song_id,
                     key_override=item.key_override,
                     pre_service=item.pre_service,
+                    # Minutes from the start, so a pin copies onto another
+                    # Sunday meaning the same thing it meant on this one.
+                    offset_minutes=item.offset_minutes,
                 )
             )
             copied += 1

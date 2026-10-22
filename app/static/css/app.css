@@ -1213,19 +1213,23 @@ ul.policy span{color:var(--muted)}
    A plan reads down the page as a time column, a length, and what happens.
    Times are computed from the service start, never stored. */
 .runsheet{list-style:none;margin:0 0 16px;padding:0}
-.rrow{
-  display:grid;grid-template-columns:56px minmax(0,1fr) auto auto;
+.rrow,.rsection{border-top:1px solid var(--line-soft)}
+.rrow{display:flex;align-items:flex-start;gap:0}
+.rowbox{flex:1;min-width:0}
+/* The row itself, which is also the control that opens it. */
+.rline{
+  display:grid;grid-template-columns:70px minmax(0,1fr) auto auto;
   gap:14px;align-items:baseline;
-  padding:11px 0;border-top:1px solid var(--line-soft);
+  padding:11px 0;cursor:pointer;list-style:none;
 }
+.rline::-webkit-details-marker{display:none}
+.rline:hover{background:var(--surface-alt)}
+.rsection .rline{grid-template-columns:minmax(0,1fr) auto;padding:16px 0 7px}
 .rtime{font-size:12.5px;font-weight:600;color:var(--deep)}
 .rlen{font-size:11.5px;color:var(--muted-2);white-space:nowrap}
 .rtitle{display:block;font-size:14px;font-weight:500}
 .rmeta{display:block;font-size:11.5px;color:var(--muted-2);margin-top:2px}
-.rsection{
-  display:flex;align-items:center;gap:12px;
-  padding:16px 0 7px;border-top:1px solid var(--line);
-}
+.rsection{display:flex;align-items:flex-start;border-top:1px solid var(--line)}
 .rsection:first-child{border-top:none}
 .rlabel{
   flex:1;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
@@ -1257,10 +1261,48 @@ ul.policy span{color:var(--muted)}
 .ractions{display:flex;gap:5px;flex:none}
 .ractions form.inline{margin-top:0}
 .btn.tiny{padding:5px 10px;font-size:11px}
+
+/* The word that says a row opens. Quiet until the row is under the pointer,
+   but present in the markup and reachable by keyboard either way, which is
+   what the hover-only buttons it replaced were not. */
+.redit{
+  font-size:11.5px;font-weight:600;color:var(--accent);
+  opacity:0;transition:opacity .12s;flex:none;
+}
+.rline:hover .redit,.rowbox[open] .redit{opacity:1}
+.rowbox[open] .redit{color:var(--muted)}
+@media (hover:none){.redit{opacity:1}}
+
+/* What a row opens into. Indented under the time column so it reads as
+   belonging to the line above it rather than as a new section. */
+.rowpanel{padding:4px 0 18px 70px}
+/* Sized by its label, not stretched by the panel. */
+.rowpanel .btn{justify-self:start;width:auto}
+.rowpanel .field{margin-bottom:12px}
+.rowpanel .fieldhint{margin-top:4px}
+.rowverbs{
+  display:flex;flex-wrap:wrap;gap:6px;
+  margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft);
+}
+.rowverbs form.inline{margin-top:0}
+.btn.ghostbtn.danger{color:var(--flag);border-color:var(--flag-bg)}
+
+/* A line pinned to the clock, and a pin the lines above it have run past. */
+.pinmark{
+  display:block;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+  font-weight:700;color:var(--accent);
+}
+.clash{color:var(--flag);font-weight:600}
+
+/* The one line that names the pre-service block to a church not using it. */
+.preopen{margin:0 0 10px;font-size:12.5px}
+.preopen a{color:var(--accent);font-weight:600}
+
 @media (max-width:760px){
-  .rrow{grid-template-columns:52px minmax(0,1fr);row-gap:4px}
+  .rline{grid-template-columns:62px minmax(0,1fr);row-gap:4px}
   .rlen{grid-column:1}
-  .ractions{grid-column:1 / -1}
+  .redit{grid-column:1 / -1}
+  .rowpanel{padding-left:0}
 }
 
 /* Dragging the running order.
@@ -1273,21 +1315,23 @@ ul.policy span{color:var(--muted)}
 .grip{
   display:none;border:none;background:none;padding:0 2px;margin:0;
   color:var(--muted-2);font-size:15px;line-height:1;
-  cursor:grab;touch-action:none;align-self:center;
+  cursor:grab;touch-action:none;flex:none;align-self:flex-start;
 }
 .grip:hover{color:var(--deep)}
 .grip:active{cursor:grabbing}
-.runsheet.dragon .grip{display:block}
+/* The handle sits beside the row rather than inside its grid now, because
+   the row is a summary that opens a panel and a button nested in a summary
+   is a button that opens the panel when you try to drag it. */
+.runsheet.dragon .grip{display:block;padding-top:13px}
 .runsheet.dragon .nojsmove{display:none}
-.runsheet.dragon .rrow{grid-template-columns:20px 56px minmax(0,1fr) auto auto}
+.runsheet.dragon .rowpanel{padding-left:50px}
 .runsheet.dragon li.lifted{
   background:var(--surface-alt);border-radius:var(--r-sm);
   box-shadow:var(--shadow-md);
 }
 .draghint{margin:-10px 0 16px}
 @media (max-width:760px){
-  .runsheet.dragon .rrow{grid-template-columns:20px 52px minmax(0,1fr)}
-  .runsheet.dragon .rlen{grid-column:2}
+  .runsheet.dragon .rowpanel{padding-left:0}
 }
 
 /* ---------- The week strip ----------
@@ -1324,12 +1368,9 @@ ul.policy span{color:var(--muted)}
 /* Both columns stack their cards with the same gap the page uses. */
 .planwrap > div{display:grid;gap:18px;align-content:start;min-width:0}
 
-/* Rows stay quiet: the controls appear on hover on a pointer, and are always
-   visible on touch, where there is no hover to reveal them. */
-.rrow .ractions,.rsection .ractions{opacity:0;transition:opacity .12s}
-.rrow:hover .ractions,.rsection:hover .ractions,
-.rrow:focus-within .ractions,.rsection:focus-within .ractions{opacity:1}
-@media (hover:none){.rrow .ractions,.rsection .ractions{opacity:1}}
+/* The per-row verbs used to live here, hidden until hover. They are in the
+   panel a row opens now, which is why there is nothing left to reveal: a
+   control you have to know about to find is one most people never find. */
 
 .sidelist{list-style:none;margin:0;padding:0}
 .sidelist li{

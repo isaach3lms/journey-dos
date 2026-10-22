@@ -27,10 +27,12 @@ there is a test below that the fallback exists.
 
 import ast
 import pathlib
+import re
 
 import pytest
 
 import app.content as content
+import app.content as content_module
 
 APP = pathlib.Path("app")
 
@@ -167,3 +169,106 @@ class TestDiscardingACard:
         assert response.status_code in (302, 403, 404)
         db.session.refresh(card)
         assert not card.is_discarded
+
+
+# ---------------------------------------------------------------------------
+# The same question, asked of the templates
+# ---------------------------------------------------------------------------
+#
+# The AST walk above only sees Python. A template reaches its copy through an
+# attribute, `{{ content.item_save }}`, which Jinja resolves at render time
+# and turns into an empty string when it misses. Nothing raises, nothing logs,
+# and the screen simply has a blank where a label should be.
+#
+# That is not hypothetical. Adding the row editor to the plan screen, the save
+# button was written as `content.flag_save`, which exists in PEOPLE and not in
+# SERVICES, and shipped as a green button with no words on it. Running this
+# check for the first time also turned up `content.headcount_heading`, missing
+# since the attendance card was built, which had been rendering an empty <h2>
+# above the box ever since.
+#
+# Every blueprint passes exactly one dictionary as `content`, and every
+# template directory belongs to one blueprint, so the directory says which
+# dictionary its `content` is. Partials are left out on purpose: they are
+# included from several shells and their `content` is whichever one included
+# them.
+
+TEMPLATE_CONTENT = {
+    "services": "SERVICES",
+    "people": "PEOPLE",
+    "member": "MEMBER",
+    "settings": "SETTINGS",
+    "kids": "KIDS",
+    "giving": "GIVING",
+    "groups": "GROUPS",
+    "resources": "RESOURCES",
+    "auth": "AUTH",
+    "messages": "MESSAGES",
+    "pwa": "PWA",
+    "unsubscribe": "EMAIL",
+    # The volunteer's two-tap answer page. Served by its own blueprint, but
+    # the copy belongs to the plan that invited them.
+    "invite": "SERVICES",
+}
+
+# Directories whose `content` genuinely cannot be known from the directory,
+# with the reason. Anything not here and not above fails the check below, so
+# a new screen cannot quietly opt out.
+UNMAPPED = {
+    # Four shells share this directory: the welcome page, the privacy page,
+    # the community rules and the account-request form, each passing its own
+    # dictionary.
+    "public": "several blueprints, each with its own dictionary",
+    # The staff dashboard renders with PEOPLE, SHELL and STUCK depending on
+    # the panel.
+    "shell": "three dictionaries across one screen",
+    # Built by `flask build-error-pages` into static HTML with no context at
+    # all. The 500 page must not touch the database, which is why.
+    "errors": "rendered without a content dictionary",
+}
+
+USES_CONTENT = re.compile(r"\bcontent\.([a-z_][a-z0-9_]*)\b")
+
+
+@pytest.mark.parametrize("folder,dict_name", sorted(TEMPLATE_CONTENT.items()))
+def test_every_label_a_template_asks_for_exists(folder, dict_name):
+    """A missing key here is a blank space on a real screen.
+
+    Worth one assertion message per directory rather than one for the lot:
+    the failure names the template, the key and the dictionary it should have
+    been in, which is the whole of what somebody needs to fix it.
+    """
+    source = getattr(content_module, dict_name)
+    root = pathlib.Path(__file__).resolve().parents[1] / "app" / "templates" / folder
+
+    missing = []
+    for path in sorted(root.rglob("*.html")):
+        for name in sorted(set(USES_CONTENT.findall(path.read_text()))):
+            if name not in source:
+                missing.append(f"{path.name} asks for {dict_name}[{name!r}]")
+
+    assert not missing, (
+        "copy a template renders by name does not exist, so it renders as "
+        "nothing at all:\n  " + "\n  ".join(missing)
+    )
+
+
+def test_the_check_knows_about_every_template_directory():
+    """A new screen's directory must be added to the map above.
+
+    Without this, somebody adding `app/templates/events/` gets no check at
+    all on that screen's copy and does not find out, which is exactly the
+    silence this file exists to end.
+    """
+    root = pathlib.Path(__file__).resolve().parents[1] / "app" / "templates"
+    folders = {
+        path.name for path in root.iterdir()
+        if path.is_dir() and path.name != "partials"
+        and any(path.rglob("*.html"))
+    }
+    unchecked = folders - set(TEMPLATE_CONTENT) - set(UNMAPPED)
+    assert not unchecked, (
+        f"template directories with no content dictionary mapped: "
+        f"{sorted(unchecked)}. Add them to TEMPLATE_CONTENT, or to UNMAPPED "
+        f"with the reason their `content` cannot be known from the directory."
+    )

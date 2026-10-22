@@ -329,8 +329,13 @@ class TestTheStylesheet:
            / "app.css").read_text()
 
     def test_the_handle_is_hidden_until_the_script_runs(self):
+        """A handle that cannot be dragged is a handle that lies.
+
+        The declaration gained padding when the row became a panel that
+        opens and the handle moved outside it, so this matches the start of
+        the rule rather than the whole of it."""
         assert ".grip{" in self.CSS
-        assert ".runsheet.dragon .grip{display:block}" in self.CSS
+        assert ".runsheet.dragon .grip{display:block" in self.CSS
 
     def test_the_buttons_go_away_only_once_it_runs(self):
         assert ".runsheet.dragon .nojsmove{display:none}" in self.CSS

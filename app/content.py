@@ -2026,6 +2026,10 @@ SERVICES = {
     "cloned": "Copied {count} items onto {when}. It is a draft until you publish it.",
     "cloned_one": "Copied 1 item onto {when}. It is a draft until you publish it.",
     "clone_empty_hint": "There is nothing in the running order yet, so a copy would be empty too.",
+    # This card's heading was missing entirely, so it rendered as an empty
+    # <h2> above the box. Found by the template key check in
+    # tests/test_content_keys_exist.py, which did not used to read Jinja.
+    "headcount_heading": "Attendance",
     "headcount_placeholder": "How many were here",
     "headcount_save": "Save",
     "headcount_hint": "Everyone in the room, kids included. The dashboard's attendance number comes from here.",
@@ -2188,6 +2192,9 @@ SERVICES = {
     # backwards from that start: the lines add up to the time the team is
     # asked to be there.
     "pre_heading": "Before the service",
+    # The one line on the plan itself that names the feature, for a church
+    # that has not used it yet. It links to the form that fills it.
+    "pre_open": "Add what happens before the service",
     "pre_sub": "Setting up, sound check, prayer. These run before the start "
                "time and do not move it.",
     "pre_add": "Add before the service",
@@ -2200,6 +2207,32 @@ SERVICES = {
     "pre_divider": "Service starts",
     "pre_call": "Team arrives {time}",
     "pre_call_long": "Team arrives at {time}, {count} minutes before the start.",
+    # Editing a line that is already in the plan.
+    "item_edit": "Edit",
+    "item_save": "Save this line",
+    "item_edit_close": "Done",
+    "item_saved": "Saved.",
+    "item_title_label": "What happens",
+    "item_notes_label": "Notes",
+    "item_notes_hint": "Shown under the line on the plan and in the email.",
+
+    # Pinning a line to the clock.
+    #
+    # "Starts at" rather than "pinned" or "anchored": the words on the screen
+    # say what the setting does, not what the feature is called.
+    "pin_label": "Starts at",
+    "pin_hint": (
+        "Leave blank and this line starts when the one above it ends. Set a "
+        "time and it starts exactly then, whatever is above it."
+    ),
+    "pin_bad": "That is not a time. Try 9:45.",
+    "pin_dropped": (
+        "The fixed start time was removed, because it meant one thing before "
+        "the service and nothing after it. Set it again if you still need it."
+    ),
+    "pin_clash": "Set to start before the line above it finishes.",
+    "pin_mark": "Fixed",
+
     "item_pre_on": "Moved to before the service.",
     "item_pre_off": "Moved into the service.",
     "item_pre_to": "Move before the service",

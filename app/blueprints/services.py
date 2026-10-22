@@ -170,6 +170,9 @@ def plan(service_id: int):
         songs=db.session.scalars(Song.for_church(g.church.id)).all(),
         teams=db.session.scalars(Team.for_church(g.church.id)).all(),
         timed_items=track.timed_items if track else [],
+        # Lines pinned to a time the lines above them have already run past.
+        # Reported, never resolved: see `ServiceTrack.clashes`.
+        clashes=track.clashes if track else set(),
         earlier=db.session.scalars(
             db.select(Service)
             .where(
@@ -674,6 +677,101 @@ def add_item(service_id: int):
                     track=track.id if track else None, _anchor="strands"))
 
 
+@bp.post("/<int:service_id>/items/<int:item_id>/")
+@login_required
+@min_role("leader")
+def edit_item(service_id: int, item_id: int):
+    """Change a line that is already in the plan.
+
+    Until this existed the only way to turn a one minute greeting into a five
+    minute one was to delete the line and add it again, which lost its place
+    in the order and any notes on it. Everything a line holds is editable in
+    one form: what it is called, how long it takes, the note under it, the
+    key if it is a song, and whether it is pinned to the clock.
+
+    One route rather than one per field, because these are edited together.
+    A leader fixing a running order is adjusting a line, not performing five
+    separate operations on it.
+    """
+    service = Service.get_for_church(g.church.id, service_id)
+    item = ServiceItem.get_for_church(g.church.id, item_id)
+    if service is None or item is None or item.service_id != service.id:
+        abort(404)
+
+    track = item.track
+    back = redirect(url_for("services.plan", service_id=service.id,
+                            track=track.id, _anchor=f"item-{item.id}"))
+
+    # A song's title is the song's, not this line's. Renaming the line would
+    # make the plan disagree with the library it was chosen from.
+    if item.kind != ITEM_SONG:
+        title = (request.form.get("title") or "").strip()
+        if not title:
+            flash(SERVICES["item_title_required"], "error")
+            return back
+        item.title = title[:200]
+
+    minutes = request.form.get("minutes", type=int)
+    # Blank clears it. A line with no length is one nobody has estimated yet,
+    # which is a real state and reads better than a guessed zero.
+    item.minutes = minutes if minutes and minutes > 0 else None
+
+    item.notes = (request.form.get("notes") or "").strip() or None
+
+    if item.kind == ITEM_SONG:
+        try:
+            item.key_override = normalize_key(request.form.get("key_override"))
+        except UnknownKey:
+            flash(SERVICES["key_bad"].format(key=request.form.get("key_override")),
+                  "error")
+            return back
+
+    # The pin, entered as a clock time and stored as minutes from the start.
+    # See the note on `ServiceItem.offset_minutes`.
+    pinned = (request.form.get("pin_at") or "").strip()
+    if not pinned:
+        item.offset_minutes = None
+    else:
+        offset = _offset_for(service, pinned, pre_service=item.pre_service)
+        if offset is None:
+            flash(SERVICES["pin_bad"], "error")
+            return back
+        item.offset_minutes = offset
+
+    db.session.commit()
+    flash(SERVICES["item_saved"], "notice")
+    return back
+
+
+def _offset_for(service, clock: str, *, pre_service: bool) -> int | None:
+    """A typed clock time, as minutes from the service start.
+
+    The time is read on the service's own day, in the church's own zone, so
+    "9:45" means a quarter to ten that Sunday morning wherever the church is.
+
+    A pre-service line pinned to a time after the start is read as the day
+    before it rather than refused: on a 9:00 Sunday, somebody pinning the
+    team's arrival to 8:00 types 8:00, and somebody pinning it to 11:30pm
+    the night before means the night before. The alternative is an error
+    message about a time that is perfectly sensible to the person typing it.
+    """
+    try:
+        hour, minute = (int(part) for part in clock.split(":")[:2])
+    except (ValueError, TypeError):
+        return None
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        return None
+
+    local = to_local(service.starts_at, g.church)
+    pinned = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    offset = round((pinned - local).total_seconds() / 60)
+
+    # Setting up cannot start after the service it is setting up for.
+    if pre_service and offset > 0:
+        offset -= 24 * 60
+    return offset
+
+
 @bp.post("/<int:service_id>/items/<int:item_id>/pre/")
 @login_required
 @min_role("leader")
@@ -697,9 +795,21 @@ def toggle_pre_service(service_id: int, item_id: int):
     # The strand the item is actually on, not the one the request names.
     track = item.track
     item.pre_service = not item.pre_service
+
+    # A pin does not survive the move. "Starts at 9:45" means something on
+    # one side of the service start and nothing on the other, and there is no
+    # honest way to guess what it should become: keeping the clock time would
+    # put setting up after the service, and flipping the sign would silently
+    # invent a time nobody typed. So it is dropped, and said out loud.
+    unpinned = item.offset_minutes is not None
+    item.offset_minutes = None
+
     db.session.flush()
     track.normalize_order()
     db.session.commit()
+
+    if unpinned:
+        flash(SERVICES["pin_dropped"], "error")
 
     flash(
         SERVICES["item_pre_on"] if item.pre_service else SERVICES["item_pre_off"],

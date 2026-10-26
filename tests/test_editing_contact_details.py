@@ -55,17 +55,28 @@ def form(**over):
 
 
 class TestWhoCanCorrectThem:
-    def test_staff_get_the_form(self, db, journey, amy, staff):
+    def test_staff_get_the_button(self, db, journey, amy, staff):
         body = staff.get(f"/people/{amy.id}/", headers=H).get_data(as_text=True)
-        assert PEOPLE["contact_heading"] in body
         assert PEOPLE["contact_edit"] in body
+        assert PEOPLE["contact_email_hint"] in body
+
+    def test_it_sits_in_the_cards_heading(self, db, journey, amy, staff):
+        """Asked for as a button in the top right of the snapshot. It is a
+        <details> rather than a button and a script, so it opens with no
+        JavaScript, and its panel is taken out of the flow so that opening
+        it does not shove the snapshot somebody is reading down the page."""
+        body = staff.get(f"/people/{amy.id}/", headers=H).get_data(as_text=True)
+        head = body[body.index(PEOPLE["snapshot"]):body.index('class="bd"',
+                                                              body.index(PEOPLE["snapshot"]))]
+        assert 'class="hdmenu"' in head
+        assert PEOPLE["contact_edit"] in head
 
     def test_a_leader_does_not(self, db, journey, amy, leader):
         """Absent, not refused. A form that rejects you on submit teaches
         people to try things and see what happens."""
         page = leader.get(f"/people/{amy.id}/", headers=H)
         assert page.status_code == 200
-        assert PEOPLE["contact_heading"] not in page.get_data(as_text=True)
+        assert PEOPLE["contact_edit"] not in page.get_data(as_text=True)
 
     def test_a_leader_cannot_reach_the_route_either(self, db, journey, amy, leader):
         """The screen hiding a form is not what keeps it safe."""
@@ -140,6 +151,28 @@ class TestCorrectingThem:
                    data=form(first_name="   "))
         db.session.refresh(amy)
         assert amy.first_name == "Amy"
+
+    def test_a_refused_save_comes_back_with_the_panel_open(
+        self, db, journey, amy, staff
+    ):
+        """The panel is a popover, so a message about a form that is now
+        shut is a message about something nobody can see. An error reopens
+        it with the boxes still on screen."""
+        page = staff.post(f"/people/{amy.id}/details/", headers=H,
+                          data=form(email="not an address"))
+        assert page.status_code == 302
+        assert "edit=1" in page.headers["Location"]
+
+        opened = staff.get(f"/people/{amy.id}/?edit=1", headers=H)
+        body = opened.get_data(as_text=True)
+        panel = body[body.index('class="hdmenu"'):]
+        assert "open" in panel[:panel.index(">")]
+
+    def test_a_save_that_worked_leaves_it_shut(self, db, journey, amy, staff):
+        page = staff.post(f"/people/{amy.id}/details/", headers=H,
+                          data=form(phone="999"))
+        assert page.status_code == 302
+        assert "edit=1" not in page.headers["Location"]
 
 
 class TestTheTimelineSaysWhoChangedIt:

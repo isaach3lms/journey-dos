@@ -1581,17 +1581,22 @@ def save_contact(person_id: int):
 
     back = redirect(url_for("people.detail", person_id=person.id,
                             _anchor="details"))
+    # Something to fix, so the panel comes back open with the boxes still
+    # on screen. A validation message beside a closed panel is a message
+    # about a form nobody can see.
+    reopen = redirect(url_for("people.detail", person_id=person.id,
+                              edit=1, _anchor="details"))
 
     first = (request.form.get("first_name") or "").strip()
     last = (request.form.get("last_name") or "").strip()
     if not first:
         flash(PEOPLE["add_first_required"], "error")
-        return back
+        return reopen
 
     email = (request.form.get("email") or "").strip().lower() or None
     if email and not _looks_like_an_address(email):
         flash(PEOPLE["contact_email_bad"], "error")
-        return back
+        return reopen
 
     before = {
         "name": person.full_name,

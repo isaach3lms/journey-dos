@@ -2354,19 +2354,52 @@ ul.policy span{color:var(--muted)}
 /* Whether this person can sign in. The third band of the snapshot card,
    under the flags, separated the same way they are separated from the
    snapshot above them. */
-/* A band of the snapshot card that opens. Same separation as the two
-   fixed bands below it, so the card reads as one list of things you can
-   change rather than a mix of forms and foldaways. */
-.editband{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
-.editband > summary{
-  display:flex;align-items:baseline;gap:10px;cursor:pointer;list-style:none;
+/* A control in a card's heading that opens a panel under itself.
+
+   A <details>, like the menu on a chat bubble, so it opens with no
+   JavaScript. The panel is taken out of the flow rather than pushing the
+   card open, because the card under it is a snapshot somebody is reading
+   and a form that shoves it down the screen loses their place. */
+.hdmenu{position:relative;flex:none}
+.hdmenu > summary{list-style:none;cursor:pointer}
+.hdmenu > summary::-webkit-details-marker{display:none}
+
+/* The button itself: a quiet pill, which is what this card's own status
+   chips look like, so it reads as part of the heading rather than as an
+   action bolted onto it. */
+.pillbtn{
+  display:inline-block;padding:6px 14px;border-radius:999px;
+  background:var(--surface-alt);border:1px solid var(--line-soft);
+  font-size:12.5px;font-weight:600;color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
 }
-.editband > summary::-webkit-details-marker{display:none}
-.editband > summary .fieldlbl{margin:0}
-.editcue{font-size:11.5px;font-weight:600;color:var(--accent)}
-.editband[open] > summary{margin-bottom:12px}
-.editband[open] .editcue{color:var(--muted)}
-.editband form{margin-top:4px}
+.pillbtn:hover{background:var(--mist);border-color:var(--line)}
+.hdmenu[open] > .pillbtn{background:var(--mist);border-color:var(--line)}
+
+.hdpanel{
+  position:absolute;z-index:5;top:calc(100% + 8px);right:0;
+  width:min(440px, calc(100vw - 48px));padding:16px 18px 18px;
+  background:var(--white);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:var(--shadow-md);
+  text-align:left;
+}
+.hdpanel .field:last-of-type{margin-bottom:14px}
+@media (max-width:760px){
+  /* No room beside the heading to hang a panel from, so it becomes a block
+     under it rather than a box half off the side of the screen.
+
+     The heading has to be allowed to wrap for that: the control is a flex
+     item, and a panel that goes back into the flow inside it makes that
+     item as wide as the form, which pushed the whole page sideways. It
+     takes a row of its own instead, with the pill still on the right of
+     it. */
+  .card .hd{flex-wrap:wrap}
+  .hdmenu{width:100%;text-align:right}
+  .hdpanel{
+    position:static;width:auto;margin-top:12px;
+    box-shadow:none;border-color:var(--line-soft);
+  }
+}
 
 .accountbox{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
 .accountbox .fieldlbl{margin-bottom:6px}

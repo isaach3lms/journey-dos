@@ -526,8 +526,7 @@ PEOPLE = {
     # Worded as a correction, not as data entry. Staff open this because an
     # email bounced or a card was misread, so the hints say what each field
     # is for rather than what it is called.
-    "contact_heading": "Name and contact",
-    "contact_edit": "Correct these",
+    "contact_edit": "Edit information",
     "contact_first": "First name",
     "contact_last": "Last name",
     "contact_email": "Email",

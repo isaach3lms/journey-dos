@@ -29,7 +29,59 @@
 {% endif %}
 
 <section class="card">
-  <div class="hd"><h2>{{ content.snapshot }}</h2></div>
+  <div class="hd">
+    <h2>{{ content.snapshot }}</h2>
+    <div class="spacer"></div>
+
+    {# Correcting somebody's details, for staff.
+
+       A member can fix their own name and phone in the app and deliberately
+       cannot touch their own email, because it is what they sign in with.
+       That left the office, which is the one told to make the change, with
+       no way to make it.
+
+       A <details> rather than a button and a script: the panel opens with
+       no JavaScript, which is the same way the message menu on a chat
+       bubble works. It stays shut unless the form came back with something
+       to fix, because a validation error that closes the panel hides both
+       the message and the box it is about. #}
+    {% if is_staff %}
+      <details class="hdmenu" id="details"
+               {% if request.args.get('edit') %}open{% endif %}>
+        <summary class="pillbtn">{{ content.contact_edit }}</summary>
+        <div class="hdpanel">
+          <form method="post" action="{{ url_for('people.save_contact', person_id=person.id) }}">
+            {{ csrf_field() }}
+            <div class="field2">
+              <div class="field">
+                <label for="first_name">{{ content.contact_first }}</label>
+                <input class="input" id="first_name" type="text" name="first_name"
+                       value="{{ person.first_name }}" maxlength="80" required>
+              </div>
+              <div class="field">
+                <label for="last_name">{{ content.contact_last }}</label>
+                <input class="input" id="last_name" type="text" name="last_name"
+                       value="{{ person.last_name or '' }}" maxlength="80">
+              </div>
+            </div>
+            <div class="field">
+              <label for="contact_email">{{ content.contact_email }}</label>
+              <input class="input" id="contact_email" type="email" name="email"
+                     value="{{ person.email or '' }}" maxlength="255"
+                     autocomplete="off" spellcheck="false">
+              <p class="fieldhint">{{ content.contact_email_hint }}</p>
+            </div>
+            <div class="field">
+              <label for="contact_phone">{{ content.contact_phone }}</label>
+              <input class="input" id="contact_phone" type="tel" name="phone"
+                     value="{{ person.phone or '' }}" maxlength="40">
+            </div>
+            <button class="btn" type="submit">{{ content.contact_save }}</button>
+          </form>
+        </div>
+      </details>
+    {% endif %}
+  </div>
   <div class="bd">
     <dl class="snap">
       <div><dt>{{ content.contact }}</dt>
@@ -143,57 +195,6 @@
       <div><dt>{{ stuck.owner_heading }}</dt>
         <dd>{{ person.owner_name or stuck.owner_none }}</dd></div>
     </dl>
-
-    {# Correcting somebody's details, for staff.
-
-       A member can fix their own name and phone in the app and deliberately
-       cannot touch their own email, because it is what they sign in with.
-       That left the office, which is the one told to make the change, with
-       no way to make it.
-
-       A band of its own rather than a form inside the contact cell above:
-       that cell is one column of a four column grid, so the fields came out
-       a third the width of the card with the hint text wrapping every four
-       words. The card reads as a snapshot and then the things you can
-       change about it, which is what the two bands below it already do. #}
-    {% if is_staff %}
-      <details class="editband" id="details">
-        <summary>
-          <span class="fieldlbl">{{ content.contact_heading }}</span>
-          <span class="editcue">{{ content.contact_edit }}</span>
-        </summary>
-        <form method="post" action="{{ url_for('people.save_contact', person_id=person.id) }}">
-          {{ csrf_field() }}
-          <div class="field2">
-            <div class="field">
-              <label for="first_name">{{ content.contact_first }}</label>
-              <input class="input" id="first_name" type="text" name="first_name"
-                     value="{{ person.first_name }}" maxlength="80" required>
-            </div>
-            <div class="field">
-              <label for="last_name">{{ content.contact_last }}</label>
-              <input class="input" id="last_name" type="text" name="last_name"
-                     value="{{ person.last_name or '' }}" maxlength="80">
-            </div>
-          </div>
-          <div class="field2">
-            <div class="field">
-              <label for="contact_email">{{ content.contact_email }}</label>
-              <input class="input" id="contact_email" type="email" name="email"
-                     value="{{ person.email or '' }}" maxlength="255"
-                     autocomplete="off" spellcheck="false">
-              <p class="fieldhint">{{ content.contact_email_hint }}</p>
-            </div>
-            <div class="field">
-              <label for="contact_phone">{{ content.contact_phone }}</label>
-              <input class="input" id="contact_phone" type="tel" name="phone"
-                     value="{{ person.phone or '' }}" maxlength="40">
-            </div>
-          </div>
-          <button class="btn" type="submit">{{ content.contact_save }}</button>
-        </form>
-      </details>
-    {% endif %}
 
     {# Two things a human knows and the system cannot.
 

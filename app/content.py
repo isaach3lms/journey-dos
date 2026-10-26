@@ -521,6 +521,41 @@ PEOPLE = {
     # Person detail
     "snapshot": "Snapshot",
 
+    # The office correcting somebody's details.
+    #
+    # Worded as a correction, not as data entry. Staff open this because an
+    # email bounced or a card was misread, so the hints say what each field
+    # is for rather than what it is called.
+    "contact_heading": "Name and contact",
+    "contact_edit": "Correct these",
+    "contact_first": "First name",
+    "contact_last": "Last name",
+    "contact_email": "Email",
+    "contact_email_hint": (
+        "Where the church writes to them. Not what they sign in with: that "
+        "is on the account below and changing one does not change the other."
+    ),
+    "contact_phone": "Phone",
+    "contact_save": "Save",
+    "contact_saved": "Saved.",
+    "contact_unchanged": "Nothing changed.",
+    "contact_email_bad": "That does not look like an email address.",
+    "contact_field_name": "name",
+    "contact_field_email": "email",
+    "contact_field_phone": "phone",
+    "contact_event": "Details corrected",
+    "contact_event_detail": "{fields} changed by staff.",
+    # Said after the save, never instead of it. A household genuinely shares
+    # one address, so this is worth knowing and not worth refusing.
+    "contact_shared": (
+        "{name} has this address too. A login can only be matched to one "
+        "person by email, so neither will match automatically."
+    ),
+    "contact_login_differs": (
+        "They still sign in as {email}. Changing that is on the account "
+        "below."
+    ),
+
     # Signing in, on somebody's own profile.
     #
     # The controls themselves are the ones from Settings and carry the same

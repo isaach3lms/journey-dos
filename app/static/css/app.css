@@ -2354,6 +2354,20 @@ ul.policy span{color:var(--muted)}
 /* Whether this person can sign in. The third band of the snapshot card,
    under the flags, separated the same way they are separated from the
    snapshot above them. */
+/* A band of the snapshot card that opens. Same separation as the two
+   fixed bands below it, so the card reads as one list of things you can
+   change rather than a mix of forms and foldaways. */
+.editband{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
+.editband > summary{
+  display:flex;align-items:baseline;gap:10px;cursor:pointer;list-style:none;
+}
+.editband > summary::-webkit-details-marker{display:none}
+.editband > summary .fieldlbl{margin:0}
+.editcue{font-size:11.5px;font-weight:600;color:var(--accent)}
+.editband[open] > summary{margin-bottom:12px}
+.editband[open] .editcue{color:var(--muted)}
+.editband form{margin-top:4px}
+
 .accountbox{margin-top:18px;padding-top:16px;border-top:1px solid var(--line-soft)}
 .accountbox .fieldlbl{margin-bottom:6px}
 .accountbox .filters{margin-top:10px}

@@ -1552,6 +1552,132 @@ def resolve_request(request_id: int):
     return back
 
 
+@bp.post("/<int:person_id>/details/")
+@login_required
+@min_role("staff")
+def save_contact(person_id: int):
+    """The office correcting somebody's name, email or phone.
+
+    A member can fix their own name and phone from the app, and deliberately
+    cannot touch their own email: it is what they sign in with, and letting
+    somebody retype it on a profile screen is how an account locks itself
+    out. That route's own note says "the church office changes that" and the
+    office had no way to, so a wrong address on the roster could only be
+    fixed from a terminal.
+
+    **The roster record is not the login.** Changing an email here changes
+    where the church writes to, not what anybody signs in with. Those are
+    separate fields on purpose and the screen says so when they differ,
+    because the alternative is staff "fixing" an address and wondering for a
+    week why the person still cannot get in.
+
+    Staff only, while the profile itself is open to leaders. A leader adding
+    people to the roster is one level of trust; rewriting the address the
+    church uses to reach somebody is another.
+    """
+    person = Person.get_for_church(g.church.id, person_id)
+    if person is None:
+        abort(404)
+
+    back = redirect(url_for("people.detail", person_id=person.id,
+                            _anchor="details"))
+
+    first = (request.form.get("first_name") or "").strip()
+    last = (request.form.get("last_name") or "").strip()
+    if not first:
+        flash(PEOPLE["add_first_required"], "error")
+        return back
+
+    email = (request.form.get("email") or "").strip().lower() or None
+    if email and not _looks_like_an_address(email):
+        flash(PEOPLE["contact_email_bad"], "error")
+        return back
+
+    before = {
+        "name": person.full_name,
+        "email": person.email,
+        "phone": person.phone,
+    }
+
+    person.first_name = first[:80]
+    person.last_name = last[:80]
+    person.email = email[:255] if email else None
+    person.phone = (request.form.get("phone") or "").strip()[:40] or None
+
+    changed = [
+        label for key, label in (
+            ("name", PEOPLE["contact_field_name"]),
+            ("email", PEOPLE["contact_field_email"]),
+            ("phone", PEOPLE["contact_field_phone"]),
+        )
+        if before[key] != getattr(person, "full_name" if key == "name" else key)
+    ]
+
+    if not changed:
+        flash(PEOPLE["contact_unchanged"], "notice")
+        return back
+
+    # On the timeline, with a name against it. "Who changed this address, and
+    # when" is the question asked after an email stops arriving, and a column
+    # holding only the current value answers nothing.
+    PersonEvent.record(
+        person, KIND_NOTE, PEOPLE["contact_event"],
+        actor=current_user,
+        detail=PEOPLE["contact_event_detail"].format(fields=", ".join(changed)),
+    )
+    db.session.commit()
+
+    flash(PEOPLE["contact_saved"], "notice")
+
+    # Two things worth saying out loud, after the save rather than instead of
+    # it. Neither is a reason to refuse: a household genuinely shares one
+    # address, and an email that differs from the login is a real state the
+    # profile already shows.
+    if person.email and before["email"] != person.email:
+        twin = db.session.scalar(
+            db.select(Person).where(
+                Person.church_id == g.church.id,
+                Person.id != person.id,
+                Person.email == person.email,
+                Person.is_archived.is_(False),
+            )
+        )
+        if twin is not None:
+            flash(PEOPLE["contact_shared"].format(name=twin.full_name), "error")
+
+        account = User.for_person(g.church.id, person.id)
+        if account is not None and account.email != person.email:
+            flash(
+                PEOPLE["contact_login_differs"].format(email=account.email),
+                "error",
+            )
+    return back
+
+
+def _looks_like_an_address(email: str) -> bool:
+    """Syntax only, and deliberately lenient.
+
+    The same validator the sign-up form uses, so one screen cannot accept an
+    address another rejects. Deliverability is not checked: staff are usually
+    reading an address off a connection card in somebody's handwriting, and a
+    strict rule here refuses real addresses on a screen whose whole job is
+    correcting one.
+    """
+    from wtforms import Form, StringField
+    from wtforms.validators import ValidationError
+
+    from app.forms import EMAIL_SYNTAX_ONLY
+
+    field = StringField()
+    field.data = email
+    field.errors = []
+    try:
+        EMAIL_SYNTAX_ONLY(Form(), field)
+    except ValidationError:
+        return False
+    return True
+
+
 @bp.post("/<int:person_id>/flags/")
 @login_required
 @min_role("leader")

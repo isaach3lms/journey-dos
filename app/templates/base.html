@@ -38,7 +38,19 @@
   }
 })();
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+{# `viewport-fit=cover` so the page owns the whole screen, including the
+   strip behind the status bar. The member shell and the kiosk have always
+   had it; this shell did not, because until the app bar and the drawer
+   arrived it had nothing pinned to the top to go wrong.
+
+   What went wrong: with `black-translucent` above and no `cover` here, iOS
+   laid the document out full-bleed but resolved `position:fixed; top:0` to
+   the bottom of the status bar. The bar and the drawer sat about sixty
+   pixels down with the page scrolling through the gap above them.
+
+   Taking the whole screen means the inset is now this stylesheet's job.
+   Every edge that matters pads itself with `env(safe-area-inset-*)`. #}
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>{% block title %}{{ church.name }}{% endblock %}</title>
 {% include "partials/head_meta.html" %}

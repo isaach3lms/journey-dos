@@ -167,6 +167,70 @@ class TestItStartsNarrow:
         assert 'aria-expanded="false"' in tag
 
 
+class TestTheNotch:
+    """iOS hands a phone's screen over whole and expects the page to keep
+    its own content out of the status bar and the home indicator.
+
+    This shell did not ask for the whole screen, and had never needed to:
+    nothing was pinned to the top of it. The app bar and the drawer are,
+    and the result on an iPhone was both of them sitting about sixty
+    pixels down with the page scrolling through the gap above.
+    """
+
+    VIEWPORT = re.compile(r'name="viewport" content="([^"]+)"')
+
+    def _viewport(self, name):
+        return self.VIEWPORT.search((TEMPLATES / name).read_text()).group(1)
+
+    def test_the_staff_shell_takes_the_whole_screen(self):
+        assert "viewport-fit=cover" in self._viewport("base.html")
+
+    def test_so_does_the_member_shell(self):
+        """It always did. This is the pair that made the difference
+        visible: one shell had it and the other did not."""
+        assert "viewport-fit=cover" in self._viewport("member/base.html")
+
+    def test_the_app_bar_covers_the_status_bar_strip(self):
+        """Its height grows by the inset and its contents are pushed below
+        it, so the clock sits on the church's colour rather than on a band
+        of page scrolling underneath."""
+        start = CSS.index("  .js .appbar{")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "height:calc(56px + env(safe-area-inset-top" in rule
+        assert "padding:env(safe-area-inset-top" in rule
+
+    def test_the_page_starts_below_all_of_it(self):
+        start = CSS.index("  .js .main{")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "56px + env(safe-area-inset-top" in rule
+
+    def test_the_drawer_clears_both_ends(self):
+        """The top for the status bar, the bottom for the home indicator,
+        which is where Sign out sits."""
+        start = CSS.index("  .js .sidebar{")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "env(safe-area-inset-top" in rule
+        assert "env(safe-area-inset-bottom" in rule
+
+    def test_the_no_script_header_clears_it_too(self):
+        """Taking the whole screen applies whether the script runs or not,
+        so the tab-strip header needs the inset as much as the drawer."""
+        start = CSS.index("  .sidebar{\n    width:100%")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "env(safe-area-inset-top" in rule
+
+    def test_the_last_card_clears_the_home_indicator(self):
+        start = CSS.index("  .content{padding:16px 16px")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "env(safe-area-inset-bottom" in rule
+
+    def test_every_inset_has_a_fallback(self):
+        """A browser that does not know `env()` drops the whole
+        declaration, which on the app bar's height would collapse it."""
+        bare = re.findall(r"env\(safe-area-inset-(?:top|bottom|left|right)\)", CSS)
+        assert not bare, f"{len(bare)} env() calls with no fallback value"
+
+
 class TestTheHeaderLinesUp:
     def test_the_button_is_centred_on_the_logo(self):
         """The header aligns its rows to the top, so the button needs to
@@ -207,7 +271,8 @@ class TestTheDrawer:
         assert ".sidefoot{display:block}" in CSS.replace("\n  ", "")
 
     def test_the_page_starts_below_the_app_bar(self):
-        assert ".js .main{padding-top:56px}" in CSS
+        start = CSS.index("  .js .main{")
+        assert "56px" in CSS[start:CSS.index("}", start)]
         assert ".js .appbar{" in CSS
 
 

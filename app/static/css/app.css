@@ -134,12 +134,12 @@ a{color:inherit;text-decoration:none}
    no button at all. */
 .navtoggle{
   flex:none;margin-left:auto;
-  width:30px;height:30px;padding:0;border:none;cursor:pointer;
-  border-radius:9px;background:transparent;color:rgba(255,255,255,.62);
+  width:38px;height:38px;padding:0;border:none;cursor:pointer;
+  border-radius:11px;background:transparent;color:rgba(255,255,255,.62);
   display:grid;place-items:center;
 }
 .navtoggle:hover{background:rgba(255,255,255,.08);color:#fff}
-.navtoggle svg{width:17px;height:17px;display:block}
+.navtoggle svg{width:23px;height:23px;display:block}
 .navtoggle[hidden]{display:none}
 
 /* The scrim only exists on a phone. See the drawer block below. */
@@ -466,17 +466,21 @@ a{color:inherit;text-decoration:none}
   .js .appbarcity{
     margin-left:auto;font-size:11.5px;color:rgba(255,255,255,.45);
   }
+  /* 44px square. Below that a thumb misses it, which is the one control
+     on the screen that must not be missed: it is the way to everything
+     else. */
   .appbarbtn{
-    flex:none;width:36px;height:36px;padding:0;border:none;cursor:pointer;
-    border-radius:10px;background:rgba(255,255,255,.10);color:#fff;
+    flex:none;width:44px;height:44px;padding:0;border:none;cursor:pointer;
+    border-radius:12px;background:rgba(255,255,255,.10);color:#fff;
     display:grid;place-items:center;
   }
-  .appbarbtn svg{width:19px;height:19px;display:block}
+  .appbarbtn svg{width:26px;height:26px;display:block}
 
   /* The page starts under the bar, and the sidebar's own copy of the
      header is the drawer's, where the button becomes the close. */
   .js .main{padding-top:56px}
-  .js .navtoggle:not([hidden]){display:grid}
+  .js .navtoggle:not([hidden]){display:grid;width:44px;height:44px}
+  .js .navtoggle svg{width:26px;height:26px}
 
   .js .navscrim{
     display:block;position:fixed;inset:0;z-index:50;

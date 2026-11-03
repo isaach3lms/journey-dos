@@ -20,7 +20,7 @@ from markupsafe import Markup
 
 from app.brand import brand_css_vars, palette_for
 from app.config import resolve_config
-from app.content import AUTH, ICONS, NAV_ENDPOINTS, NAV_GROUPS, nav_for
+from app.content import AUTH, ICONS, NAV_ENDPOINTS, NAV_GROUPS, NAV_UI, nav_for
 from app.errors import register_error_handlers
 from app.extensions import csrf, db, migrate
 from app.security import register_security
@@ -152,6 +152,7 @@ def create_app(config_name: str | None = None) -> Flask:
             "visible_nav": nav_for(current_user),
             "nav_groups": NAV_GROUPS,
             "icons": ICONS,
+            "nav_ui": NAV_UI,
             "nav_url": lambda item: url_for(
                 NAV_ENDPOINTS.get(item.key, "shell.placeholder"),
                 **({} if item.key in NAV_ENDPOINTS else {"key": item.key}),

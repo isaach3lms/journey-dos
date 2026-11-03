@@ -122,6 +122,72 @@ a{color:inherit;text-decoration:none}
 
 .navstrip{display:contents}
 
+/* The phone app bar. Hidden everywhere else: on a wide screen the sidebar
+   is the header, and with no script the sidebar is still the header. */
+.appbar{display:none}
+
+/* ---------- The menu button, and the narrowed rail ----------
+
+   The button sits with the logo. On a wide screen it narrows the sidebar to
+   its icons; on a phone it pulls the whole thing over the page. Hidden
+   until the script runs, because a button that does nothing is worse than
+   no button at all. */
+.navtoggle{
+  flex:none;margin-left:auto;
+  width:30px;height:30px;padding:0;border:none;cursor:pointer;
+  border-radius:9px;background:transparent;color:rgba(255,255,255,.62);
+  display:grid;place-items:center;
+}
+.navtoggle:hover{background:rgba(255,255,255,.08);color:#fff}
+.navtoggle svg{width:17px;height:17px;display:block}
+.navtoggle[hidden]{display:none}
+
+/* The scrim only exists on a phone. See the drawer block below. */
+.navscrim{display:none}
+
+@media (min-width:821px){
+  /* The logo row becomes logo, city, button. The city drops out when there
+     is no room for it, which is at the same moment the labels do. */
+  .church{display:grid;grid-template-columns:minmax(0,1fr) auto;
+          align-items:start;gap:8px;column-gap:10px}
+  .church .mark,.church .crest{grid-column:1}
+  .church .city{grid-column:1}
+  .navtoggle{grid-column:2;grid-row:1;margin-left:0}
+
+  .nav-collapsed .sidebar{width:68px;padding-left:10px;padding-right:10px}
+  .nav-collapsed .church{grid-template-columns:minmax(0,1fr);justify-items:center}
+  .nav-collapsed .church .mark{display:none}
+  .nav-collapsed .church .city{display:none}
+  .nav-collapsed .navtoggle{grid-column:1;margin:0 auto}
+  .nav-collapsed .navlbl{display:none}
+  .nav-collapsed .nav{justify-content:center;padding:10px 0}
+  .nav-collapsed .nav .inc,
+  .nav-collapsed .nav .navext{display:none}
+  /* Clipped, not removed. A screen reader still reads "People" on the row
+     a sighted person sees only a figure on. */
+  .nav-collapsed .nav .lbl{
+    position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+    overflow:hidden;clip-path:inset(50%);white-space:nowrap;
+  }
+  .nav-collapsed .nav[aria-current="page"]::before{left:-10px}
+  .nav-collapsed .sidefoot .who,
+  .nav-collapsed .sidefoot form{display:none}
+  .nav-collapsed .sidefoot{padding:14px 0 0;text-align:center}
+
+  /* The label, on hover, where the rail is too narrow to show it. Pointer
+     events off so it never sits between the cursor and the link. */
+  .nav-collapsed .nav::after{
+    content:attr(data-label);
+    position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);
+    background:var(--chrome);color:#fff;
+    font-size:12px;line-height:1;white-space:nowrap;
+    padding:7px 9px;border-radius:8px;box-shadow:var(--shadow-md);
+    opacity:0;pointer-events:none;transition:opacity .12s;z-index:40;
+  }
+  .nav-collapsed .nav:hover::after,
+  .nav-collapsed .nav:focus-visible::after{opacity:1}
+}
+
 .sidefoot{
   margin-top:auto;padding:14px 10px 0;
   border-top:1px solid rgba(255,255,255,.09);
@@ -341,6 +407,83 @@ a{color:inherit;text-decoration:none}
     left:11px;right:11px;top:auto;bottom:0;width:auto;height:2px;border-radius:2px 2px 0 0;
   }
   .nav .inc{display:none}
+
+  /* ---------- The drawer ----------
+
+     Everything above is the no-JavaScript shape: a header and a row of
+     tabs that scrolls sideways. It stays, because a menu that needs a
+     script is a menu that can fail to exist.
+
+     With the script, the same nav becomes a panel off the left edge. The
+     row of tabs was always a compromise: nine destinations in a strip
+     that has room for four, with the rest discoverable only by swiping a
+     thing that does not look swipeable. Settings was the one nobody
+     found. */
+  .js .sidebar{
+    position:fixed;top:0;left:0;bottom:0;z-index:60;
+    width:252px;max-width:84vw;
+    padding:18px 14px;overflow-y:auto;
+    transform:translateX(-100%);
+    transition:transform .22s ease;
+    box-shadow:none;
+  }
+  .js.nav-open .sidebar{transform:translateX(0);box-shadow:var(--shadow-lg)}
+
+  /* Inside the drawer the nav is a column again, labels and all, which is
+     the whole point of it. */
+  .js .sidebar .navstrip{
+    display:block;overflow:visible;padding:0;max-width:none;
+  }
+  .js .sidebar .navlbl,
+  .js .sidebar .sidefoot{display:block}
+  .js .sidebar .nav{
+    display:flex;width:100%;padding:10px;font-size:14px;white-space:normal;
+  }
+  .js .sidebar .nav[aria-current="page"]::before{
+    left:0;right:auto;top:7px;bottom:7px;width:3px;height:auto;
+    border-radius:0 2px 2px 0;
+  }
+  /* The drawer's own header: the church, and the way out. The city is
+     not repeated here, because the bar behind the drawer is still
+     showing it and the two of them wrap into each other at 390px. */
+  .js .church{padding:0 4px 16px;gap:8px}
+  .js .church .city{display:none}
+  .js .navtoggle{margin-left:auto}
+  .js .church .mark{width:128px}
+
+  /* The bar the drawer leaves behind: the menu button, the church, and
+     the city. It is what the sidebar's header row used to be, and it
+     shares the same logo partial so the two cannot drift. */
+  .js .appbar{
+    display:flex;align-items:center;gap:12px;
+    position:fixed;top:0;left:0;right:0;z-index:55;
+    height:56px;padding:0 12px;
+    background:var(--chrome);color:#fff;
+  }
+  .js .appbarmark{flex:none;display:flex;align-items:center}
+  .js .appbarmark .mark{width:112px;height:auto;display:block}
+  .js .appbarmark .crest{width:30px;height:30px;border-radius:9px;margin:0}
+  .js .appbarcity{
+    margin-left:auto;font-size:11.5px;color:rgba(255,255,255,.45);
+  }
+  .appbarbtn{
+    flex:none;width:36px;height:36px;padding:0;border:none;cursor:pointer;
+    border-radius:10px;background:rgba(255,255,255,.10);color:#fff;
+    display:grid;place-items:center;
+  }
+  .appbarbtn svg{width:19px;height:19px;display:block}
+
+  /* The page starts under the bar, and the sidebar's own copy of the
+     header is the drawer's, where the button becomes the close. */
+  .js .main{padding-top:56px}
+  .js .navtoggle:not([hidden]){display:grid}
+
+  .js .navscrim{
+    display:block;position:fixed;inset:0;z-index:50;
+    border:none;padding:0;cursor:pointer;
+    background:rgba(0,0,0,.42);
+  }
+  .js .navscrim[hidden]{display:none}
   .topline{padding:18px 16px 0}
   .content{padding:16px 16px 40px}
   .topline h1{font-size:21px}

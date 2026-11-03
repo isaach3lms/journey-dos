@@ -38,6 +38,18 @@ EVERYONE = frozenset(ROLES)
 # Groups render in this order.
 NAV_GROUPS = ["Lead", "Run", "Manage"]
 
+# The menu button, which does two jobs at two widths. On a wide screen it
+# narrows the sidebar to its icons and widens it again; on a phone it slides
+# the whole thing in over the page. One button because it is one idea to the
+# person pressing it: show me the menu, get it out of the way.
+NAV_UI = {
+    "menu": "Menu",
+    "open_menu": "Open the menu",
+    "close_menu": "Close the menu",
+    "collapse": "Narrow the menu",
+    "expand": "Widen the menu",
+}
+
 NAV_ITEMS: list[NavItem] = [
     NavItem("dashboard", "Dashboard", "Lead", 3, "dash", EVERYONE, ready=True),
     NavItem("people", "People", "Lead", 2, "people", STAFF_AND_LEADERS, ready=True),

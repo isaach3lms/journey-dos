@@ -1,0 +1,10 @@
+{# The church's logo, or its initials when it has no mark of its own.
+
+   One copy, used by the sidebar and by the phone app bar. Two copies drifted
+   the moment one of them learned about `logo_reversed`. #}
+{% if palette.logo_reversed %}
+  <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+       alt="{{ church.name }}">
+{% else %}
+  <div class="crest">{{ church.name[:2]|upper }}</div>
+{% endif %}

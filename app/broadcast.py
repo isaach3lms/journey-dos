@@ -121,6 +121,25 @@ def resolve(church_id: int, value: str) -> tuple:
     if kind == "stage":
         return _dedupe(person for person in eligible if person.stage == raw_id)
 
+    if kind == "person":
+        # One named person, and the bulk filters do not apply to them.
+        #
+        # `_eligible` exists to keep a mass send sane: children are skipped
+        # because their row usually carries a parent's address, and people
+        # waiting on approval are skipped because nobody has confirmed they
+        # are real. Neither reason survives a staff member picking somebody
+        # by name off a list. What does survive is consent and an address,
+        # so those two are still checked here, and the opt-out is checked
+        # again by `notify` on the way out.
+        person = Person.get_for_church(church_id, _as_int(raw_id))
+        if person is None or person.is_archived:
+            return ()
+        if not (person.email or "").strip():
+            return ()
+        if not person.allows(CATEGORY):
+            return ()
+        return (person,)
+
     by_id = {person.id: person for person in eligible}
 
     if kind == "group":
@@ -188,6 +207,15 @@ def audiences(church_id: int) -> list[Audience]:
 
 
 def audience_label(church_id: int, value: str) -> str:
+    # One person is not in the audience list and never will be: a dropdown
+    # with every name at the church in it is a worse way to pick a person
+    # than a field for picking a person. Named here so the flash message and
+    # the audit entry say who it went to rather than "nobody".
+    kind, _, raw_id = (value or "").partition(":")
+    if kind == "person":
+        person = Person.get_for_church(church_id, _as_int(raw_id))
+        return person.full_name if person is not None else "nobody"
+
     for audience in audiences(church_id):
         if audience.value == value:
             return audience.label

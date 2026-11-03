@@ -1,20 +1,27 @@
 {% extends "base.html" %}
-{% block title %}{{ conversation.title }} | {{ church.name }}{% endblock %}
-{% block heading %}{{ conversation.title }}{% endblock %}
+{% set shown_title = conversation.title_for(my_person_id) %}
+{% block title %}{{ shown_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ shown_title }}{% endblock %}
 {% block subheading %}{{ conversation.kind_label }}{% if conversation.topic %} &middot; {{ conversation.topic }}{% endif %}{% endblock %}
 
 {% block content %}
 <a class="ghost back" href="{{ url_for('messages.index') }}">{{ content.title }}</a>
 
-
 {% if conversation.is_archived %}
   <div class="alert error">{{ content.archived_note }}</div>
 {% endif %}
 
+<div class="chatwrap">
+  <div>
+    {% include "messages/_sidebar.html" %}
+  </div>
+
+  <div>
 <section class="card">
   <div class="bd">
     <p class="muted small">
       {% if conversation.is_announcement %}{{ content.announcement_note.format(church=church.name) }}
+      {% elif conversation.is_direct %}{{ content.direct_note }}
       {% else %}{{ content.room_note }}{% endif %}
     </p>
 
@@ -70,8 +77,41 @@
     {% elif not can_post %}
       <p class="muted small">{{ content.staff_readonly }}</p>
     {% else %}
+      {% if conversation.is_direct and templates %}
+        {# A link with `?template=`, not a script: it works with no
+           JavaScript, and the script below only saves the second click. #}
+        <div class="tpl">
+          <label class="fieldlbl" for="tplpick">{{ content.templates_label }}</label>
+          <div class="filters">
+            <select class="input select" id="tplpick" data-template-pick>
+              <option value="">{{ content.templates_none }}</option>
+              {% for saved in templates %}
+                <option value="{{ url_for('messages.thread', conversation_id=conversation.id, template=saved.id) }}"
+                        {% if prefill.get('id') == saved.id %}selected{% endif %}>{{ saved.name }}</option>
+              {% endfor %}
+            </select>
+            <a class="btn ghostbtn" data-template-go
+               href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">{{ content.templates_use }}</a>
+          </div>
+          {% if prefill %}
+            <p class="fieldhint">
+              {{ content.templates_using.format(name=prefill.name) }}
+              <a href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">{{ content.templates_clear }}</a>
+            </p>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_template', conversation_id=conversation.id, template_id=prefill.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">{{ content.template_remove }}</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+
       <form method="post" class="composer staffcomposer" action="{{ url_for('messages.post', conversation_id=conversation.id) }}">
         {{ csrf_field() }}
+        {% if prefill %}
+          <input type="hidden" name="from_template" value="{{ prefill.id }}">
+        {% endif %}
         {% if conversation.is_announcement %}
           <label class="check emailit">
             <input type="checkbox" name="also_email">
@@ -79,18 +119,31 @@
           </label>
         {% endif %}
         <div class="composerrow">
-          <textarea class="composerinput" name="body" rows="1" required
-                    placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}"></textarea>
+          <textarea class="composerinput" name="body" rows="{{ 5 if prefill else 1 }}" required
+                    placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}">{{ prefill.get('body', '') }}</textarea>
           <button class="composersend" type="submit" aria-label="{{ content.post }}">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
           </button>
         </div>
+
+        {% if conversation.is_direct and writing_to %}
+          {# Naming it is what saves it, so there is no checkbox to forget to
+             tick and no second screen to go to afterwards. #}
+          <div class="field">
+            <label for="template_name">{{ content.template_name_label }}</label>
+            <input class="input" id="template_name" type="text" name="template_name"
+                   maxlength="120" autocomplete="off"
+                   value="{{ prefill.get('name', '') }}"
+                   placeholder="{{ content.template_name_placeholder }}">
+            <p class="fieldhint">{{ content.template_name_hint }}</p>
+          </div>
+        {% endif %}
       </form>
     {% endif %}
   </div>
 </section>
 
-{% if not conversation.is_announcement %}
+{% if not conversation.is_announcement and not conversation.is_direct %}
 <section class="card">
   <div class="hd"><h2>{{ content.members.format(count=conversation.member_count) }}</h2></div>
   <div class="bd">
@@ -141,6 +194,24 @@
     {% endif %}
   </div>
 </section>
+  </div>
+</div>
 {% endblock %}
 
-{% block extra_script %}{% include "_composer.html" %}{% endblock %}
+{% block extra_script %}{% include "_composer.html" %}
+<script>
+/* The picker is a link with the template on it, so this only saves the
+   second click: choose one and the page goes there. Without the script the
+   "Use it" button next to it does the same thing. */
+(function () {
+  var pick = document.querySelector("[data-template-pick]");
+  var go = document.querySelector("[data-template-go]");
+  if (!pick || !go) { return; }
+
+  var blank = go.getAttribute("href");
+  function aim() { go.setAttribute("href", pick.value || blank); }
+  pick.addEventListener("change", function () { aim(); go.click(); });
+  aim();
+})();
+</script>
+{% endblock %}

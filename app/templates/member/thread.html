@@ -1,8 +1,11 @@
 {% extends "member/base.html" %}
-{% block title %}{{ conversation.title }} | {{ church.name }}{% endblock %}
+{# A direct thread is titled with both names in the row. On the member's own
+   screen it is just whoever is writing to them. #}
+{% set shown_title = conversation.title_for(person.id) %}
+{% block title %}{{ shown_title }} | {{ church.name }}{% endblock %}
 {% block content %}
 <a class="mback" href="{{ url_for('member.chat') }}">{{ msg.member_back }}</a>
-<h1 class="mgreet">{{ conversation.title }}</h1>
+<h1 class="mgreet">{{ shown_title }}</h1>
 <p class="msub">{{ conversation.kind_label }}</p>
 
 {# iMessage-style: your messages on the right in the church colour, everyone

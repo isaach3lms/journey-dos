@@ -2410,3 +2410,68 @@ ul.policy span{color:var(--muted)}
    person reading it is standing at an iPad with a queue behind them. */
 .bandhead{font-size:15px;margin:20px 0 10px}
 .bandhead:first-of-type{margin-top:4px}
+
+/* ---------------------------------------------------------------------------
+   Messaging: a list of conversations beside the one being read.
+
+   Same two-column idiom as `.planwrap`, mirrored: the sidebar is on the left
+   and narrower, because it is a list of names rather than a panel of
+   controls. It collapses to one column at the same width, where the sidebar
+   becomes a list above the thread rather than a column beside it, which is
+   how a phone reads a chat app anyway.
+   --------------------------------------------------------------------------- */
+.chatwrap{display:grid;grid-template-columns:272px minmax(0,1fr);gap:18px;align-items:start}
+@media (max-width:1100px){.chatwrap{grid-template-columns:minmax(0,1fr)}}
+.chatwrap > div{display:grid;gap:18px;align-content:start;min-width:0}
+
+.chatside{
+  background:var(--white);border:1px solid var(--line-soft);
+  border-radius:var(--r);box-shadow:var(--shadow-sm);
+  padding:6px 0 10px;align-self:start;
+}
+.chatsec{padding:10px 14px 4px}
+.chatsec + .chatsec{border-top:1px solid var(--line-soft);margin-top:4px}
+.chatlbl{
+  font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:var(--weight-display,700);margin:0 0 6px;
+}
+.chatlist{list-style:none;margin:0;padding:0}
+.chatrow{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;margin:0 -10px;border-radius:var(--r-sm);
+  font-size:13px;color:var(--ink);
+}
+.chatrow:hover{background:var(--surface-alt)}
+/* The selected one. A tint of the church's own accent rather than a colour
+   of its own, so this screen reskins with everything else. */
+.chatrow.on{background:var(--mist);font-weight:500}
+.chatrow.on .chatname{color:var(--accent)}
+.chatmark{color:var(--muted-2);flex:none;width:15px;height:15px;display:flex;align-items:center;justify-content:center}
+.chatmark .ic{width:14px;height:14px}
+.chatname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chatbadge{
+  flex:none;min-width:19px;height:19px;padding:0 6px;border-radius:10px;
+  background:var(--accent);color:var(--white);
+  font-size:11px;font-weight:600;line-height:19px;text-align:center;
+}
+.chatnew{margin-top:10px}
+.chatnew > summary{
+  font-size:12.5px;color:var(--accent);cursor:pointer;padding:6px 0;
+  font-weight:500;
+}
+.chatnew .input{margin:8px 0}
+.chatnew .btn{width:100%}
+
+/* The empty right-hand pane, before anything is picked. */
+.chatpick{padding:48px 18px;text-align:center}
+.chatpick .t{font-weight:var(--weight-display,700);margin-bottom:5px}
+.chatpick .d{font-size:13px;color:var(--muted);max-width:40ch;margin:0 auto}
+
+/* A section label on the member chat list, over "Group chats" and "Direct
+   messages". Quieter than .mgreet, which is the one heading on the screen. */
+.mband{
+  font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted-2);font-weight:var(--weight-display,700);
+  margin:20px 0 8px;
+}
+.mband:first-of-type{margin-top:14px}

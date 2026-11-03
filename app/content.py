@@ -97,6 +97,25 @@ INCREMENT_NAMES = {
 # and the demo are visually identical. Stroke color is inherited, so these
 # carry no brand information and do not violate the token rule.
 ICONS: dict[str, str] = {
+    # Markers beside a conversation in the messaging sidebar. SVG rather
+    # than a glyph: a numeric HTML entity reads as a hex colour to the brand
+    # guard in `test_brand.py`, and that guard is worth more than the two
+    # characters it costs here.
+    "chat_everyone": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.7" stroke-linecap="round"><path d="M4 9h16M4 15h16'
+        'M10 3L8 21M16 3l-2 18"/></svg>'
+    ),
+    "chat_room": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.7"><rect x="4" y="10" width="16" height="10" rx="2"/>'
+        '<path d="M8 10V7a4 4 0 018 0v3"/></svg>'
+    ),
+    "chat_direct": (
+        '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="1.7"><circle cx="12" cy="8" r="3.4"/>'
+        '<path d="M5 20c0-3.6 3.1-6 7-6s7 2.4 7 6"/></svg>'
+    ),
     "dashboard": (
         '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg>'
     ),
@@ -2953,6 +2972,15 @@ MESSAGES = {
         "You get one of these at most every half hour per room. To stop them, "
         "open the app, go to You, and turn off Chat messages."
     ),
+    "direct_email_subject": "{name} sent you a message",
+    "direct_email_body": (
+        "Hello {first_name},\n\n"
+        "{name} wrote to you:\n\n"
+        "  {excerpt}\n\n"
+        "Open the app to read the rest and reply:\n{link}\n\n"
+        "You get one of these at most every half hour per conversation. To "
+        "stop them, open the app, go to You, and turn off Chat messages."
+    ),
     "message_options": "Message options",
     "member_compose_placeholder": "Message",
     "title": "Messages",
@@ -3141,6 +3169,27 @@ MESSAGES = {
     "email_needs_both": "It needs a subject and something to say.",
     "email_nobody": "Nobody in that audience has an address we can email.",
     "email_sent": "Sent to {count} people in {audience}.",
+
+    # One person rather than an audience
+    "email_mode": "Who it goes to",
+    "email_mode_audience": "A group of people",
+    "email_mode_person": "One person",
+    "email_person": "Which person",
+    "email_person_hint": (
+        "Everyone on the roster is here, children included: picking somebody "
+        "by name is a decision, not a mass send. They still need an address "
+        "on file, and anyone who turned off church announcements is still "
+        "left alone."
+    ),
+    "email_person_nobody": (
+        "That person has no email address on file, or they have turned off "
+        "church announcements."
+    ),
+    "email_one_sent": "Sent to {name}.",
+    "email_confirm_one": (
+        "Send this to {name}? An email cannot be edited or taken back once "
+        "it has left."
+    ),
     "email_already_sent": (
         "That exact email already went out a moment ago, so nothing was sent "
         "again. Change the subject to send a second copy."
@@ -3157,6 +3206,64 @@ MESSAGES = {
     "direct_start": "Message someone",
     "direct_started": "Talking to {name}.",
     "direct_self": "You cannot start a conversation with yourself.",
+
+    # The sidebar, and starting a one-to-one thread
+    "group_chats": "Group chats",
+    "direct_messages": "Direct messages",
+    "sidebar_note": (
+        "Everyone sees the church-wide chat. Rooms are invite only. Staff and "
+        "leaders can start a direct message with anyone, and the person they "
+        "write to can reply."
+    ),
+    "member_sidebar_note": (
+        "Everyone sees the church-wide chat. Rooms are invite only. If "
+        "somebody on staff starts a direct message with you, it shows up "
+        "here and you can reply to it."
+    ),
+    "new_direct": "New direct message",
+    "direct_pick": "Who do you want to write to",
+    "direct_go": "Start it",
+    "direct_none": "No direct messages yet.",
+    "direct_none_hint": (
+        "Start one with anybody on the roster. They can reply, and nobody "
+        "else can read it."
+    ),
+    "direct_nobody": "Pick somebody to write to.",
+    "direct_needs_person": (
+        "Your login is not attached to a person in the directory, so there "
+        "is nobody for the other side of the conversation to be talking to. "
+        "Ask another staff member to link your account from your profile."
+    ),
+    "direct_note": (
+        "Just the two of you. Nobody else at the church can read this, and "
+        "it cannot be turned into a room."
+    ),
+    # Saved messages, on a direct thread. The email wording lives in EMAIL;
+    # this is the same idea said for a chat, where there is no subject line
+    # and nothing is queued for later.
+    "templates_label": "Start from a saved message",
+    # The blank option in the picker, which only ever renders when there is
+    # at least one saved message. "No saved messages yet" sat there as the
+    # selected option next to a list of saved messages.
+    "templates_none": "Start blank",
+    "templates_use": "Use it",
+    "templates_using": "Started from {name}. Edit it, then send it.",
+    "templates_clear": "Start blank instead",
+    "template_name_label": "Save this as",
+    "template_name_placeholder": "First visit follow up",
+    "template_name_hint": (
+        "Leave it blank to just send it. Give it a name and it joins the "
+        "list above, with their first name put back to {first_name} so the "
+        "next person is not called by this one's name. Saving under a name "
+        "you already use replaces it."
+    ),
+    "template_saved": "Saved as {name}.",
+    "template_remove": "Remove",
+    "template_removed": "{name} is off the list.",
+
+    "groups_none": "No group chats yet.",
+    "pick_one": "Pick a conversation",
+    "pick_one_hint": "Choose one on the left, or start a new direct message.",
 }
 
 

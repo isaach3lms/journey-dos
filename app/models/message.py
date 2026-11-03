@@ -100,6 +100,54 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         return self.kind == KIND_ANNOUNCEMENT
 
     @property
+    def is_direct(self) -> bool:
+        return self.kind == KIND_DIRECT
+
+    def other_member(self, person_id: int) -> "ConversationMember | None":
+        """The person on the other side of a direct message.
+
+        A direct conversation has exactly two members, so "the other one" is
+        well defined. Returns None on anything else, and on a direct thread
+        being read by somebody who is not in it, which is a caller that
+        should have checked `can_read` first.
+        """
+        if not self.is_direct:
+            return None
+        for member in self.members:
+            if member.person_id != person_id:
+                return member
+        return None
+
+    def title_for(self, person_id: int) -> str:
+        """What to call this conversation on this person's screen.
+
+        A direct thread is stored with both names in the title, because the
+        row has to read sensibly in an audit log and in the staff list. On a
+        screen it is shown as the other person's name: nobody thinks of a
+        conversation with Dana as "Pastor Reed and Dana Webb".
+        """
+        other = self.other_member(person_id)
+        if other is not None and other.person is not None:
+            return other.person.full_name
+        return self.title
+
+    @staticmethod
+    def may_start_direct(is_staff: bool = False, is_leader: bool = False) -> bool:
+        """Who may open a direct conversation that does not exist yet.
+
+        Staff and leaders only. A member can reply in a thread somebody on
+        staff opened with them, and that asymmetry is the whole policy: the
+        church decides when a private one-to-one channel exists, and every
+        direct thread therefore has somebody accountable on one side of it.
+
+        Deliberately not "anyone can message anyone". A church directory with
+        open one-to-one messaging is a directory where any member can write
+        privately to any other member, including to the sixteen year olds in
+        it, with nobody able to see that it happened.
+        """
+        return bool(is_staff or is_leader)
+
+    @property
     def visible_messages(self) -> list["Message"]:
         return [m for m in self.messages if not m.is_deleted]
 
@@ -153,9 +201,17 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         answer a question asked in his own group chat is the bug this rule
         exists to prevent. It also covers a staff login with no roster record,
         which can never be a room member.
+
+        Direct threads are the exception to all of that: membership, and
+        nothing else. A staff account is not a party to a conversation
+        between a leader and a member, and being able to read a church's
+        group chats is not the same as being able to write into somebody's
+        private thread under their own name.
         """
         if self.is_archived:
             return False
+        if self.is_direct:
+            return self.can_read(person)
         if self.is_announcement:
             if is_staff:
                 return True
@@ -226,6 +282,52 @@ class Conversation(TenantScoped, TimestampMixin, db.Model):
         if not include_archived:
             query = query.where(cls.is_archived.is_(False))
         return query.order_by(cls.last_message_at.desc().nullslast(), cls.id.desc())
+
+    @classmethod
+    def groups_for_church(cls, church_id: int):
+        """Announcements and rooms, newest conversation first.
+
+        The group half of the sidebar. Direct threads are left out because
+        they are not the church's conversations, they are two people's, and
+        listing every one of them to every leader would be a staff screen
+        that quietly reads as surveillance.
+        """
+        return (
+            db.select(cls)
+            .where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.kind.in_((KIND_ANNOUNCEMENT, KIND_ROOM)),
+            )
+            .order_by(cls.last_message_at.desc().nullslast(), cls.id.desc())
+        )
+
+    @classmethod
+    def directs_for(cls, church_id: int, person_id: int | None):
+        """The direct threads this person is in, newest first.
+
+        Scoped to them, never to the church. Somebody with no roster record
+        is in none of them, which is the honest answer rather than an empty
+        list that happens to look the same: a staff login nobody linked to a
+        person cannot be a party to a private conversation.
+        """
+        if not person_id:
+            return db.select(cls).where(db.false())
+
+        member_ids = db.select(ConversationMember.conversation_id).where(
+            ConversationMember.church_id == church_id,
+            ConversationMember.person_id == person_id,
+        )
+        return (
+            db.select(cls)
+            .where(
+                cls.church_id == church_id,
+                cls.is_archived.is_(False),
+                cls.kind == KIND_DIRECT,
+                cls.id.in_(member_ids),
+            )
+            .order_by(cls.last_message_at.desc().nullslast(), cls.id.desc())
+        )
 
     @classmethod
     def visible_to(cls, church_id: int, person):

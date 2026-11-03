@@ -35,6 +35,18 @@ from app.models.base import TenantScoped, TimestampMixin, UTCDateTime, utcnow
 NAME_MAX = 120
 SUBJECT_MAX = 200
 
+# What a saved template is for. The same row shape serves both, because the
+# thing being saved is the same thing: words somebody writes often enough to
+# be tired of writing. An email has a subject and a notification category; a
+# chat message has neither, and carries empty strings in those columns.
+#
+# The table is still called `email_template`, which is where it started. A
+# table rename on a live church to make a name read better is not a trade
+# worth making, so the name is historical and this comment is the signpost.
+TEMPLATE_EMAIL = "email"
+TEMPLATE_MESSAGE = "message"
+TEMPLATE_KINDS = (TEMPLATE_EMAIL, TEMPLATE_MESSAGE)
+
 # What a template may say, and nothing else. A short list on purpose: every
 # token here is one more thing that has to be true of every person a template
 # is ever used on, and "{spouse_name}" that is blank half the time produces
@@ -76,11 +88,18 @@ class EmailTemplate(TenantScoped, TimestampMixin, db.Model):
     __tablename__ = "email_template"
     __table_args__ = (
         Index("ix_template_church_name", "church_id", "name"),
+        Index("ix_template_church_kind", "church_id", "kind"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
     name: Mapped[str] = mapped_column(String(NAME_MAX), nullable=False)
+
+    # An email or a chat message. Defaults to email, which is what every row
+    # written before this column existed is.
+    kind: Mapped[str] = mapped_column(
+        String(20), nullable=False, default=TEMPLATE_EMAIL, server_default=TEMPLATE_EMAIL
+    )
     # Which notification category it sends under, so picking a template sets
     # the whole send and not most of it. Plain text, not a foreign key: the
     # categories are a Python structure, like the stages and the sequences.
@@ -131,32 +150,53 @@ class EmailTemplate(TenantScoped, TimestampMixin, db.Model):
     # -- reading ------------------------------------------------------------
 
     @classmethod
-    def for_church(cls, church_id: int, include_archived: bool = False):
+    def for_church(
+        cls,
+        church_id: int,
+        include_archived: bool = False,
+        kind: str = TEMPLATE_EMAIL,
+    ):
         """Most used first, then alphabetical.
 
         Use before name, because the two a church sends every week are what
         somebody is reaching for, and alphabetical order puts them wherever
         their first letter happens to fall.
+
+        Always filtered by kind. An email picker that offered chat messages
+        would offer templates with no subject line, and a chat picker that
+        offered emails would quietly drop the subject somebody wrote.
         """
-        query = db.select(cls).where(cls.church_id == church_id)
+        query = db.select(cls).where(cls.church_id == church_id, cls.kind == kind)
         if not include_archived:
             query = query.where(cls.is_archived.is_(False))
         return query.order_by(cls.used_count.desc(), cls.name)
 
     @classmethod
-    def get_for_church(cls, church_id: int, template_id: int) -> "EmailTemplate | None":
-        return db.session.scalar(
-            db.select(cls).where(cls.id == template_id, cls.church_id == church_id)
+    def get_for_church(
+        cls, church_id: int, template_id: int, kind: str | None = None
+    ) -> "EmailTemplate | None":
+        query = db.select(cls).where(
+            cls.id == template_id, cls.church_id == church_id
         )
+        if kind is not None:
+            query = query.where(cls.kind == kind)
+        return db.session.scalar(query)
 
     @classmethod
-    def named(cls, church_id: int, name: str) -> "EmailTemplate | None":
+    def named(
+        cls, church_id: int, name: str, kind: str = TEMPLATE_EMAIL
+    ) -> "EmailTemplate | None":
         """An existing template with this name, archived ones included.
 
         Saving over a name is how somebody edits a template: they open the
         one they use, change a line, and save it under the same name. A
         second row with the same name would leave them picking between two
         entries they cannot tell apart.
+
+        Scoped to the kind, so a church may have an email and a chat message
+        both called "First visit". They are two different things that happen
+        to be about the same moment, and saving one must not overwrite the
+        other.
         """
         cleaned = (name or "").strip()
         if not cleaned:
@@ -164,6 +204,7 @@ class EmailTemplate(TenantScoped, TimestampMixin, db.Model):
         return db.session.scalar(
             db.select(cls).where(
                 cls.church_id == church_id,
+                cls.kind == kind,
                 db.func.lower(cls.name) == cleaned.lower(),
             )
         )

@@ -62,6 +62,11 @@ from app.audit import record as audit_record
 from app.automation import enroll_for_stage, on_contact_logged, on_stage_changed
 from app.models.audit import SEQUENCE_STOPPED
 from app.mail import NotQueued, opt_in, opt_out, queue
+from app.saved_templates import (
+    count_use as count_template_use,
+    prefill as prefill_from_template,
+    save_from_form as save_template,
+)
 from app.security import min_role
 from app.ages import KID as AGE_KID, YOUTH as AGE_YOUTH, YOUTH_FROM_AGE
 from app.stages import (
@@ -197,7 +202,7 @@ def detail(person_id: int):
         templates=db.session.scalars(
             EmailTemplate.for_church(g.church.id)
         ).all(),
-        prefill=_prefill_from_template(person),
+        prefill=prefill_from_template(person),
         giving=GIVING,
         gifts=db.session.scalars(
             ExternalGift.for_person(g.church.id, person.id)
@@ -237,34 +242,6 @@ def detail(person_id: int):
         settings=SETTINGS,
         active="people",
     )
-
-
-def _prefill_from_template(person):
-    """The email form's starting contents, when a template was picked.
-
-    A dictionary rather than a model, because the subject and body have
-    already had this person put into them and are no longer the template's
-    own words. Empty when nothing was picked, which is the normal case.
-
-    Reached by a link with `?template=`, so it works with no JavaScript and
-    so a leader can send somebody a link to the form already filled in.
-    """
-    template_id = request.args.get("template", type=int)
-    if not template_id:
-        return {}
-
-    template = EmailTemplate.get_for_church(g.church.id, template_id)
-    if template is None:
-        return {}
-
-    subject, body = template.rendered(person, g.church)
-    return {
-        "id": template.id,
-        "name": template.name,
-        "category": template.category,
-        "subject": subject,
-        "body": body,
-    }
 
 
 def _assignable_users():
@@ -834,8 +811,8 @@ def send_email(person_id: int):
     # because the email somebody just finished writing to a real person is
     # the one that reads well. A template written in the abstract is the one
     # that sounds like a form letter.
-    saved = _save_as_template(person, category, subject, body)
-    _count_template_use()
+    saved = save_template(person, body, category=category, subject=subject)
+    count_template_use()
 
     if message is None:
         flash(EMAIL["duplicate"], "notice")
@@ -851,75 +828,6 @@ def send_email(person_id: int):
         flash(EMAIL["template_saved"].format(name=saved.name), "notice")
 
     return redirect(url_for("people.detail", person_id=person.id))
-
-
-def _count_template_use() -> None:
-    """Note that an email actually went out from a saved one. Caller commits.
-
-    Counted on the send rather than on the click that loaded it, because a
-    template somebody opened, read, and decided against is not one the church
-    uses, and the picker's order is meant to answer "what do we send" rather
-    than "what have we looked at".
-    """
-    from app.models import EmailTemplate
-
-    template_id = request.form.get("from_template", type=int)
-    if not template_id:
-        return
-    template = EmailTemplate.get_for_church(g.church.id, template_id)
-    if template is None:
-        return
-    template.used()
-    db.session.commit()
-
-
-def _save_as_template(person, category: str, subject: str, body: str):
-    """Keep this email for next time, if staff named it. Caller commits.
-
-    Returns the template, or None when the box was left empty, which is
-    most sends.
-
-    The person's own details come back out on the way in. Somebody writes
-    "Hello Amy" to Amy and saves it; what is stored says "Hello
-    {first_name}", so the next person it is used on is not called Amy.
-
-    The subject as well as the body, because "Glad you were with us, Amy" is
-    exactly the kind of line people put a name in, and a template whose
-    subject greets the wrong person is worse than one that greets nobody.
-
-    Only the first name. Swapping the church's name out would rewrite
-    sentences that meant to say it, and a short name is left alone: a church
-    with an Al or a Jo would otherwise find the letters cut out of the
-    middle of other words.
-    """
-    from app.models import EmailTemplate
-
-    name = (request.form.get("template_name") or "").strip()
-    if not name:
-        return None
-
-    def generalise(text: str) -> str:
-        first = person.first_name or ""
-        if len(first) <= 2:
-            return text
-        return text.replace(first, "{first_name}")
-
-    # Saving over a name is how somebody edits a template: they open the one
-    # they use, change a line, and save it again. A second row with the same
-    # name leaves them choosing between two entries they cannot tell apart.
-    template = EmailTemplate.named(g.church.id, name)
-    if template is None:
-        template = EmailTemplate(church_id=g.church.id, name=name[:120])
-        db.session.add(template)
-
-    template.category = category
-    template.subject = generalise(subject)[:200]
-    template.body = generalise(body)
-    template.is_archived = False
-    if template.created_by_id is None:
-        template.created_by_id = current_user.id
-    db.session.commit()
-    return template
 
 
 @bp.post("/<int:person_id>/templates/<int:template_id>/delete/")

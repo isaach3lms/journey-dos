@@ -119,7 +119,7 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
     Returns how many were queued. Never raises: a chat post must not fail
     because a notification could not be built.
     """
-    from app.models.message import KIND_ANNOUNCEMENT
+    from app.models.message import KIND_ANNOUNCEMENT, KIND_DIRECT
     from app.models.moderation import PersonBlock
 
     if conversation.kind == KIND_ANNOUNCEMENT or conversation.is_archived:
@@ -161,19 +161,40 @@ def notify_new_message(conversation, message, author_person=None, author_name=No
             # Both channels, through one call. This used to be `queue` alone,
             # which is why somebody who turned app notifications on for chat
             # never got one.
-            result = notify(
-                person=person,
-                church_id=conversation.church_id,
-                category="chat",
-                subject=MESSAGES["chat_email_subject"].format(name=name, room=conversation.title),
-                body_text=MESSAGES["chat_email_body"].format(
+            # A direct thread is not a room, and the row's title is both
+            # names. "Pastor Reed posted in Pastor Reed and Amy Davis" is
+            # what that reads as in an inbox, so one-to-one gets its own
+            # wording: somebody wrote to you, not posted somewhere.
+            direct = conversation.kind == KIND_DIRECT
+            if direct:
+                subject = MESSAGES["direct_email_subject"].format(name=name)
+                body_text = MESSAGES["direct_email_body"].format(
+                    first_name=person.first_name,
+                    name=name,
+                    excerpt=excerpt,
+                    link=link,
+                )
+                push_title = name
+            else:
+                subject = MESSAGES["chat_email_subject"].format(
+                    name=name, room=conversation.title
+                )
+                body_text = MESSAGES["chat_email_body"].format(
                     first_name=person.first_name,
                     name=name,
                     room=conversation.title,
                     excerpt=excerpt,
                     link=link,
-                ),
-                push_title=f"{name} in {conversation.title}",
+                )
+                push_title = f"{name} in {conversation.title}"
+
+            result = notify(
+                person=person,
+                church_id=conversation.church_id,
+                category="chat",
+                subject=subject,
+                body_text=body_text,
+                push_title=push_title,
                 push_body=excerpt[:140],
                 url=path,
                 # One room replaces its own notification rather than stacking.

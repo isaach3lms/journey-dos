@@ -569,7 +569,7 @@
   </div>
 </section>
 
-<section class="card">
+<section class="card" id="email">
   <div class="hd">
     <h2>{{ email.heading }}</h2>
     <div class="spacer"></div>
@@ -580,23 +580,81 @@
   <div class="bd">
     {% if person.email %}
       <p>{{ email.hint }}</p>
+
+      {# Starting from one somebody already wrote.
+
+         A link with `?template=`, not a script: it works with no
+         JavaScript, the back button undoes it, and the page it lands on
+         already has this person's name in the words rather than braces. The
+         <select> is only a way of choosing which link to follow, so the
+         button beside it is what actually goes. #}
+      {% if templates %}
+        <div class="tpl">
+          <label class="fieldlbl" for="tplpick">{{ email.templates_label }}</label>
+          <div class="filters">
+            <select class="input select" id="tplpick" data-template-pick>
+              <option value="">{{ email.templates_none if not templates else email.templates_label }}</option>
+              {% for saved in templates %}
+                <option value="{{ url_for('people.detail', person_id=person.id, template=saved.id, _anchor='email') }}"
+                        {% if prefill.get('id') == saved.id %}selected{% endif %}>{{ saved.name }}</option>
+              {% endfor %}
+            </select>
+            <a class="btn ghostbtn" data-template-go
+               href="{{ url_for('people.detail', person_id=person.id, _anchor='email') }}">{{ email.templates_use }}</a>
+          </div>
+          {% if prefill %}
+            <p class="fieldhint">
+              {{ email.templates_using.format(name=prefill.name) }}
+              <a href="{{ url_for('people.detail', person_id=person.id, _anchor='email') }}">{{ email.templates_clear }}</a>
+              &middot;
+            </p>
+            <form method="post" class="inline"
+                  action="{{ url_for('people.delete_template', person_id=person.id, template_id=prefill.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">{{ email.template_remove }}</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+
       <form method="post" action="{{ url_for('people.send_email', person_id=person.id) }}">
         {{ csrf_field() }}
+        {# Which saved email this one started from, so the picker can put the
+           ones a church actually sends at the top of the list. Carried on the
+           form rather than read from the URL, because the send is a POST to a
+           different address and the query string is gone by then. #}
+        {% if prefill %}
+          <input type="hidden" name="from_template" value="{{ prefill.id }}">
+        {% endif %}
         <div class="filters">
           <select class="input select" name="category" aria-label="{{ email.category }}">
             {% for category in categories %}
-              <option value="{{ category.code }}">
+              <option value="{{ category.code }}"
+                      {% if prefill.get('category') == category.code %}selected{% endif %}>
                 {{ category.label }}{% if category.is_transactional %} ({{ email.prefs_always|lower }}){% endif %}
               </option>
             {% endfor %}
           </select>
           <input class="input" type="text" name="subject"
+                 value="{{ prefill.get('subject', '') }}"
                  placeholder="{{ email.subject_placeholder }}"
                  aria-label="{{ email.subject }}">
         </div>
-        <textarea class="input" name="message_body" rows="3"
+        <textarea class="input" name="message_body" rows="{{ 8 if prefill else 3 }}"
                   placeholder="{{ email.body_placeholder }}"
-                  aria-label="{{ email.body }}"></textarea>
+                  aria-label="{{ email.body }}">{{ prefill.get('body', '') }}</textarea>
+
+        {# Naming it is what saves it, so there is no checkbox to forget to
+           tick and no second screen to go to afterwards. #}
+        <div class="field">
+          <label for="template_name">{{ email.template_name_label }}</label>
+          <input class="input" id="template_name" type="text" name="template_name"
+                 maxlength="120" autocomplete="off"
+                 value="{{ prefill.get('name', '') }}"
+                 placeholder="{{ email.template_name_placeholder }}">
+          <p class="fieldhint">{{ email.template_name_hint }}</p>
+        </div>
+
         <button class="btn" type="submit">{{ email.send }}</button>
       </form>
     {% else %}
@@ -709,7 +767,11 @@
             <span class="fl">
               <span class="pn">{{ enrollment.sequence_name }}</span>
               <span class="pe">
-                {% if enrollment.is_active %}
+                {% if enrollment.is_active and not church.automations_on %}
+                  {{ automation.person_paused.format(
+                       step=enrollment.step_index + 1,
+                       total=enrollment.sequence.steps|length if enrollment.sequence else 0) }}
+                {% elif enrollment.is_active %}
                   {{ automation.person_running.format(
                        step=enrollment.step_index + 1,
                        total=enrollment.sequence.steps|length if enrollment.sequence else 0,
@@ -737,5 +799,32 @@
     {% endif %}
   </div>
 </section>
+
+<script>
+/* The saved-email picker.
+
+   The button is a link to the page with `?template=` on it, so without this
+   it still works: choose, press, the page comes back filled in. All this
+   does is point the link at whatever is currently chosen, and follow it the
+   moment a choice is made, which saves the second press. */
+(function () {
+  var pick = document.querySelector("[data-template-pick]");
+  var go = document.querySelector("[data-template-go]");
+  if (!pick || !go) { return; }
+
+  var blank = go.getAttribute("href");
+
+  function aim() {
+    go.setAttribute("href", pick.value || blank);
+  }
+  pick.addEventListener("change", function () {
+    aim();
+    /* Nothing chosen is "start blank", which is where the link already
+       points, so following it is right either way. */
+    window.location.href = go.getAttribute("href");
+  });
+  aim();
+})();
+</script>
 
 {% endblock %}

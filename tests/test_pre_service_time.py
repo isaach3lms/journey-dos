@@ -54,10 +54,23 @@ def staff(client, sign_in):
 
 
 def a_sunday(db, journey, at=None, name="Sunday"):
-    """A service at a known local time, so the assertions can name a clock."""
-    from datetime import datetime
+    """A service at a known local time, so the assertions can name a clock.
 
-    local = at or datetime(2026, 11, 1, 9, 0)
+    The next Sunday rather than a fixed date. A hard-coded one worked until
+    that Sunday went past, and then the screens that only list what is still
+    ahead had nothing to show: `test_the_serve_screen_shows_it` started
+    failing on the Monday, with nothing in the application changed.
+
+    The clock is what the assertions name, and 9:00 local is 9:00 local on
+    any Sunday, so pinning the time and floating the date keeps both honest.
+    """
+    from datetime import date, datetime, time, timedelta
+
+    today = date.today()
+    # weekday(): Monday is 0, Sunday is 6. Always a Sunday still to come, so
+    # a test run during a service does not race the clock.
+    next_sunday = today + timedelta(days=(6 - today.weekday()) % 7 or 7)
+    local = at or datetime.combine(next_sunday, time(9, 0))
     service = Service(church_id=journey.id, name=name,
                       starts_at=from_local(local, journey))
     db.session.add(service)

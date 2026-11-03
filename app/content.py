@@ -1110,6 +1110,31 @@ EMAIL = {
     "body": "Message",
     "body_placeholder": "Write it the way you would say it.",
     "send": "Queue it",
+
+    # Saved emails.
+    #
+    # Called templates on the screen because that is what staff call them,
+    # but the copy is careful never to suggest one sends itself. The whole
+    # point of turning the welcome series off is that a person reads each
+    # one before it goes.
+    "templates_label": "Start from a saved email",
+    "templates_none": "Nothing saved yet",
+    "templates_use": "Use it",
+    "templates_using": "Started from {name}. Edit it the way you want it, "
+                       "then queue it.",
+    "templates_clear": "Start blank instead",
+    "template_name_label": "Save this as",
+    "template_name_placeholder": "Name it to save it, for example First visit",
+    "template_name_hint": (
+        "Leave blank to just send it. Give it a name and it joins the list "
+        "above, with their first name put back to {first_name} so the next "
+        "person is not called by this one's name. Saving under a name you "
+        "already use replaces it."
+    ),
+    "template_saved": "Saved as {name}.",
+    "template_remove": "Remove",
+    "template_removed": "{name} is off the list. Emails already sent from it "
+                        "are untouched.",
     "queued": "Queued for {name}. It sends on the next run of the worker.",
     "duplicate": "That message is already queued.",
     "cannot": "Not queued. {reason}",
@@ -3153,6 +3178,11 @@ AUTOMATION = {
     "person_heading": "Automatic follow up",
     "person_none": "Nothing running for this person.",
     "person_running": "Step {step} of {total}, next on {date}",
+    # Shown instead of the next date when the church has automatic emails
+    # switched off. The row stays, because the person really is part-way
+    # through and really will resume, but promising an email on a date
+    # nothing is going to send on is worse than saying nothing.
+    "person_paused": "Step {step} of {total}, paused while automatic emails are off",
     "person_ended": "{reason}",
     "stop_it": "Stop it",
     "stopped": "Stopped.",
@@ -3259,6 +3289,39 @@ SETTINGS = {
         "person's record: an account only connects to somebody on your roster "
         "when the email address matches exactly one person and they have "
         "confirmed it from that inbox."
+    ),
+
+    # Whether the system writes to people on its own.
+    #
+    # Worded so that off is a choice rather than a failure. A church that
+    # sends its own notes is not missing a feature, and the copy should not
+    # make it feel like it is.
+    "automations_heading": "Automatic follow-up emails",
+    "automations_sub_on": "The welcome series sends on its own",
+    "automations_sub_off": "Paused, you write to new people yourself",
+    "automations_on": "On",
+    "automations_off": "Paused",
+    "automations_hint": (
+        "A short series that goes out after somebody's first Sunday, and "
+        "stops the moment anyone actually talks to them. Turn it off and "
+        "nothing sends on its own: new people wait for you to write to them "
+        "from their profile."
+    ),
+    "automations_warning": (
+        "Pausing does not cancel anybody. Everybody part-way through stays "
+        "where they are, and turning it back on picks each person up where "
+        "they stopped rather than starting them again. Nothing that fell due "
+        "while it was off is sent late."
+    ),
+    "automations_toggle_on": "Turn it back on",
+    "automations_toggle_off": "Pause it",
+    "automations_changed_on": (
+        "Automatic follow-up is on. Anybody part-way through a series "
+        "carries on from where they stopped."
+    ),
+    "automations_changed_off": (
+        "Paused. Nothing sends on its own now, and nobody has lost their "
+        "place."
     ),
 
     # Kids codes. This copy is doing real work: it is the only place a staff

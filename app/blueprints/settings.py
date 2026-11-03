@@ -47,7 +47,7 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 # place, so these are not addresses; they are what ?open= accepts and what a
 # redirect passes back so staff land on the row they just used.
 ROWS = (
-    "brand", "accounts", "signup", "giving", "ccli",
+    "brand", "accounts", "automations", "signup", "giving", "ccli",
     "announcements", "pastoral", "guests", "kiosk", "email", "push", "sends",
     "audit", "support",
 )
@@ -458,6 +458,42 @@ def toggle_signup():
         "notice",
     )
     return _back("signup")
+
+
+@bp.post("/automations/")
+@login_required
+@min_role("staff")
+def toggle_automations():
+    """Whether the system writes to people on its own.
+
+    Off is a real choice, not a lesser one: a church that would rather send
+    a note somebody actually typed is making a decision about how it wants
+    to sound, and the welcome series is what it is switching off to do that.
+
+    Pauses rather than cancels. Everybody part-way through a series stays
+    where they are, so this is reversible and nobody has to be certain
+    before pressing it. See `Church.automations_on`.
+    """
+    church = g.church
+    church.automations_on = not church.automations_on
+
+    record(
+        BRAND_CHANGED,
+        "Automatic follow-up emails turned "
+        + ("on" if church.automations_on else "off"),
+        actor=current_user,
+        subject_type="church",
+        subject_id=church.id,
+        subject_label=church.name,
+    )
+    db.session.commit()
+
+    flash(
+        SETTINGS["automations_changed_on"] if church.automations_on
+        else SETTINGS["automations_changed_off"],
+        "notice",
+    )
+    return _back("automations")
 
 
 @bp.post("/pastoral/")

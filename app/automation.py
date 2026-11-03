@@ -50,6 +50,13 @@ def enroll_for_stage(person, actor=None) -> list[SequenceEnrollment]:
     if person.is_child:
         return []
 
+    # A church that writes to new people itself. Checked here rather than at
+    # each of the five places that call this, because one of them forgetting
+    # is a stranger getting an automatic email from a church that switched
+    # automatic emails off, and nobody would see it until they replied.
+    if not person.church.automations_on:
+        return []
+
     started = []
 
     for sequence in triggered_by(person.stage):
@@ -192,11 +199,24 @@ def _still_running(enrollment) -> str | None:
 
 def run_due(church_id: int | None = None, limit: int = 200) -> dict:
     """Send every step that has fallen due. Returns a count per outcome."""
-    counts = {"sent": 0, "stopped": 0, "skipped": 0, "completed": 0}
+    counts = {"sent": 0, "stopped": 0, "skipped": 0, "completed": 0, "paused": 0}
 
     for enrollment in list(db.session.scalars(
         SequenceEnrollment.due(church_id=church_id, limit=limit)
     )):
+        # Paused, not cancelled. The row is left exactly as it is, so
+        # switching automations back on resumes each person where they
+        # stopped rather than starting the lot again from the top.
+        #
+        # Nothing catches up either: a step that fell due during the pause
+        # is already past the overdue guard below by the time anybody turns
+        # it back on, so a church that paused for a month does not empty a
+        # month of welcome emails into somebody's inbox on the day it
+        # changes its mind.
+        if not enrollment.church.automations_on:
+            counts["paused"] = counts.get("paused", 0) + 1
+            continue
+
         reason = _still_running(enrollment)
         if reason is not None:
             if reason in (REASON_FINISHED, REASON_TARGET_STAGE):

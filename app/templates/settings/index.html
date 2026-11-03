@@ -149,6 +149,31 @@
     </div>
   </details>
 
+  <details class="setrow" id="automations" {% if open_row == 'automations' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ content.automations_heading }}</span>
+        <span class="pe">
+          {% if church.automations_on %}{{ content.automations_sub_on }}{% else %}{{ content.automations_sub_off }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.automations_on %}pending{% endif %}">
+        {% if church.automations_on %}{{ content.automations_on }}{% else %}{{ content.automations_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <p>{{ content.automations_hint }}</p>
+      <p class="muted small">{{ content.automations_warning }}</p>
+      <form method="post" action="{{ url_for('settings.toggle_automations') }}">
+        {{ csrf_field() }}
+        <button class="btn {% if church.automations_on %}ghostbtn{% endif %}" type="submit">
+          {% if church.automations_on %}{{ content.automations_toggle_off }}{% else %}{{ content.automations_toggle_on }}{% endif %}
+        </button>
+      </form>
+    </div>
+  </details>
+
   <details class="setrow" id="signup" {% if open_row == 'signup' %}open{% endif %}>
     <summary>
       <span class="fl">

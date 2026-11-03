@@ -119,6 +119,26 @@ class Church(TimestampMixin, db.Model):
         Boolean, nullable=False, default=True, server_default=true()
     )
 
+    # Whether the system emails anybody on its own.
+    #
+    # On by default, because a church that set up a welcome series wants the
+    # welcome series. Off is for a church that would rather write to new
+    # people itself, which is a real choice and not a lesser one: a note
+    # somebody actually typed lands differently from the third automatic
+    # email that week.
+    #
+    # Switching it off pauses rather than cancels. Everybody part-way
+    # through a series stays where they are, so turning it back on resumes
+    # instead of starting everyone again from the top, and switching off is
+    # not a decision anybody has to be sure about before making it.
+    #
+    # It governs the sequence engine only. Replies, password links, invites
+    # and receipts are answers to something a person just did, and are not
+    # what anybody means by turning automations off.
+    automations_on: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=true()
+    )
+
     # The church's CCLI Church Copyright License number. Shown on the songs
     # page and the plan so whoever builds the slides has it for the lyric
     # footer. Stored as text: it is an identifier, not a quantity.

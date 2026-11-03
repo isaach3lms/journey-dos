@@ -126,6 +126,64 @@ class TestTheNarrowedRail:
         assert ".nav-collapsed .navlbl{display:none}" in CSS
 
 
+class TestItStartsNarrow:
+    """Narrow is the default, and widening it is the thing that is
+    remembered. The rail was 236px of mostly empty green beside every
+    screen; the icons are legible once you have used them twice.
+    """
+
+    def test_a_browser_that_has_never_been_told_gets_the_icons(self):
+        """The test that matters: no stored answer means narrow. Written
+        against the condition rather than the class name, because
+        `=== "1"` and `!== "0"` both mention `nav-collapsed` and only one
+        of them starts narrow."""
+        base = (TEMPLATES / "base.html").read_text()
+        head = base[:base.index("</head>")]
+        assert 'localStorage.getItem("nav-collapsed") !== "0"' in head
+
+    def test_widening_it_is_what_gets_remembered(self):
+        """`"0"` is the stored answer for wide, so somebody who widened it
+        before this change keeps it wide rather than being reset."""
+        script = (TEMPLATES / "partials" / "shell_nav.html").read_text()
+        assert 'now ? "1" : "0"' in script
+
+    def test_storage_being_blocked_still_gives_the_default(self):
+        """A private window throws rather than returning nothing, and the
+        catch has to land on narrow too. Falling through to wide would
+        make the one setting behave backwards in exactly the window
+        somebody is least likely to report."""
+        base = (TEMPLATES / "base.html").read_text()
+        head = base[:base.index("</head>")]
+        catch = head[head.index("catch"):]
+        assert "nav-collapsed" in catch[:160]
+
+    def test_the_button_starts_in_the_matching_state(self, db, staff):
+        """Rendered before the script runs. A button saying "Narrow the
+        menu" above an already narrow menu is a wrong label for one
+        frame, and a wrong label for a screen reader that read it first."""
+        markup = page(staff)
+        start = markup.index('<button class="navtoggle"')
+        tag = markup[start:markup.index(">", start)]
+        assert 'aria-expanded="false"' in tag
+
+
+class TestTheHeaderLinesUp:
+    def test_the_button_is_centred_on_the_logo(self):
+        """The header aligns its rows to the top, so the button needs to
+        opt out of that or it sits above the middle of the mark."""
+        start = CSS.index("  .navtoggle{grid-column:2")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "align-self:center" in rule
+
+    def test_the_gap_under_the_logo_belongs_to_the_grid(self):
+        """A bottom margin on the mark is part of its grid row, so
+        centring the button in that row put it half the margin too low.
+        The row gap does the same spacing without joining the row."""
+        start = CSS.index("  .church .mark,.church .crest{")
+        rule = CSS[start:CSS.index("}", start)]
+        assert "margin-bottom:0" in rule
+
+
 class TestTheDrawer:
     def test_it_sits_off_the_left_edge_until_opened(self):
         rule = CSS[CSS.index(".js .sidebar{"):]
@@ -204,10 +262,13 @@ class TestTheWordsExist:
         assert all(value.strip() for value in NAV_UI.values())
 
     def test_the_button_says_what_it_will_do(self, db, staff):
-        """Not what state it is in. "Narrow the menu" on a wide menu, not
-        "The menu is wide"."""
+        """Not what state it is in. "Widen the menu" on a narrow menu, not
+        "The menu is narrow".
+
+        The markup is written for the default, which is narrow, and the
+        script relabels it the moment somebody widens it."""
         markup = page(staff)
-        assert NAV_UI["collapse"] in markup
+        assert NAV_UI["expand"] in markup
         assert NAV_UI["open_menu"] in markup
 
 

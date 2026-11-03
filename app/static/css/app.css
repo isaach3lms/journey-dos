@@ -148,11 +148,17 @@ a{color:inherit;text-decoration:none}
 @media (min-width:821px){
   /* The logo row becomes logo, city, button. The city drops out when there
      is no room for it, which is at the same moment the labels do. */
+  /* The gap between the logo and the city is the grid's, not a margin on
+     the logo. A margin is part of the row, so centring the button in that
+     row put it below the middle of the mark by half the margin. */
   .church{display:grid;grid-template-columns:minmax(0,1fr) auto;
-          align-items:start;gap:8px;column-gap:10px}
-  .church .mark,.church .crest{grid-column:1}
+          align-items:start;row-gap:9px;column-gap:10px}
+  .church .mark,.church .crest{grid-column:1;margin-bottom:0}
   .church .city{grid-column:1}
-  .navtoggle{grid-column:2;grid-row:1;margin-left:0}
+  /* Centred on the logo, not aligned to the top of it. The row is as tall
+     as the mark and the button is 38px, so `align-items:start` on the
+     header left it sitting six pixels high. */
+  .navtoggle{grid-column:2;grid-row:1;margin-left:0;align-self:center}
 
   .nav-collapsed .sidebar{width:68px;padding-left:10px;padding-right:10px}
   .nav-collapsed .church{grid-template-columns:minmax(0,1fr);justify-items:center}

@@ -21,11 +21,21 @@
 (function () {
   var root = document.documentElement;
   root.classList.add("js");
+  /* Narrow unless this browser has been told otherwise.
+
+     The default is the icons, because the rail was 236px of mostly empty
+     green beside every screen and the nine destinations are legible as
+     icons once you have used them twice. Somebody who widens it has said
+     so, and `"0"` is that answer: only an explicit no keeps it wide, so a
+     browser with storage blocked gets the default rather than the
+     opposite of it. */
   try {
-    if (localStorage.getItem("nav-collapsed") === "1") {
+    if (localStorage.getItem("nav-collapsed") !== "0") {
       root.classList.add("nav-collapsed");
     }
-  } catch (e) { /* Private mode, or storage blocked. Open is the default. */ }
+  } catch (e) {
+    root.classList.add("nav-collapsed");
+  }
 })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1">

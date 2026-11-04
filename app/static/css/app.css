@@ -875,7 +875,13 @@ form.inline .select{min-width:170px}
 @media (min-width:701px){
   .memberbody:not(.memberfull) .mhead{position:static}
 }
-.mbody{flex:1;padding:20px 18px 24px;display:grid;gap:14px;align-content:start}
+/* The bottom padding is a variable because the composer has to cancel it
+   out to reach the bottom of the scrollport. See `.memberfull .composer`. */
+.mbody{
+  --mbody-pad-b:24px;
+  flex:1;padding:20px 18px var(--mbody-pad-b);
+  display:grid;gap:14px;align-content:start;
+}
 
 /* Anything the app can jump to has to clear the pinned header.
 
@@ -1054,6 +1060,29 @@ form.inline .select{min-width:170px}
      full-height flex column now, so it is at the bottom of the screen by
      construction rather than by being held there. */
   .memberfull .mtabs{position:static}
+
+  /* The composer sticks to the bottom of the list, not 66px up from it.
+     That 66px was the height of the tab bar, and it was right when the
+     document was the scroller and the tab bar was pinned over the bottom
+     of it. `.mbody` is the scroller now and the tab bar sits outside it,
+     so the offset is measured against a bottom edge that already has the
+     tabs below it: the box floated a tab bar's height up the screen with
+     the conversation running on underneath it.
+
+     Nothing for the home indicator either. `.mtabs` already carries
+     `padding-bottom: env(safe-area-inset-bottom)`, and it is between the
+     composer and the bottom of the screen. */
+  .memberfull .composer{bottom:0}
+
+  /* A sticky box cannot leave its containing block, and `.mbody` ends 24px
+     above its own scrollport because of its own bottom padding, so the
+     composer parks on that line with messages scrolling through the strip
+     underneath it. A negative margin does not help: the clamp is on the
+     content box, not the margin box. So the padding goes away on the one
+     kind of screen that has a composer, and the composer's own padding is
+     the spacing instead. Every other tab keeps its breathing room. */
+  .memberfull .mbody:has(.composer){--mbody-pad-b:0px}
+  .memberfull .mbody:has(.composer) .composer{padding-bottom:10px}
 }
 
 /* ---------- The member app on a computer ----------

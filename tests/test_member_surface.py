@@ -103,7 +103,10 @@ class TestOneWhiteSurface:
         assert "var(--bone)" not in self.desktop()
 
     def test_the_chat_composer_matches_the_page(self):
-        rule = CSS[CSS.index(".memberfull .composer{"):]
+        """The desktop rule specifically. `.memberfull .composer` now also
+        appears earlier in the file, where the phone layout pins it to the
+        bottom of the list, and a bare `index` finds that one instead."""
+        rule = CSS[CSS.index("@media (min-width:900px){.memberfull .composer{"):]
         assert "background:var(--white)" in rule[:rule.index("}")]
 
     def test_cards_keep_an_edge_against_it(self):

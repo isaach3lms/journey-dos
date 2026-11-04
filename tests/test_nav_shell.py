@@ -226,8 +226,14 @@ class TestTheNotch:
 
     def test_every_inset_has_a_fallback(self):
         """A browser that does not know `env()` drops the whole
-        declaration, which on the app bar's height would collapse it."""
-        bare = re.findall(r"env\(safe-area-inset-(?:top|bottom|left|right)\)", CSS)
+        declaration, which on the app bar's height would collapse it.
+
+        Comments are stripped first. A comment that quotes a declaration
+        while explaining it is prose, not CSS, and failing on it trains
+        people to stop writing the explanation.
+        """
+        rules = re.sub(r"/\*.*?\*/", "", CSS, flags=re.S)
+        bare = re.findall(r"env\(safe-area-inset-(?:top|bottom|left|right)\)", rules)
         assert not bare, f"{len(bare)} env() calls with no fallback value"
 
 

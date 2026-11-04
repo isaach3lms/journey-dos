@@ -111,3 +111,49 @@ class TestInstantFeedback:
         assert marked.count('aria-current="page"') == 1
         serve = marked[marked.index("/me/serve/"):]
         assert 'aria-current="page"' in serve[:120]
+
+
+class TestTheComposerSitsOnTheTabBar:
+    """Where the message box is on a phone.
+
+    It was floating in the middle of the thread with the conversation
+    running on underneath it. The cause was an offset left behind by an
+    earlier fix: when the DOCUMENT was the scroller, the tab bar was
+    pinned over the bottom of it and the composer had to clear the tab
+    bar's height to stay visible. The member app stopped scrolling the
+    document, `.mbody` became the scroller and the tab bar moved outside
+    it, and that 66px then measured from a bottom edge that already had
+    the tabs below it. The composer floated a tab bar's height up the
+    screen.
+    """
+
+    def _rule(self, selector):
+        start = CSS.index(selector)
+        return CSS[start:CSS.index("}", start)]
+
+    def test_in_the_real_app_it_sits_at_the_bottom_of_the_list(self):
+        assert ".memberfull .composer{bottom:0}" in CSS
+
+    def test_the_staff_preview_still_clears_the_pinned_tab_bar(self):
+        """The preview is not `.memberfull`. There the document still
+        scrolls and the tab bar is still pinned over it, so the offset
+        that was wrong in the app is right here."""
+        rule = self._rule(".composer{bottom:calc(66px")
+        assert "66px" in rule
+        assert "env(safe-area-inset-bottom" in rule
+
+    def test_the_list_gives_up_its_bottom_padding_for_a_composer(self):
+        """A sticky box cannot leave its containing block, so the padding
+        under the list would park the composer 24px up with messages
+        scrolling through the gap."""
+        assert ".memberfull .mbody:has(.composer){--mbody-pad-b:0px}" in CSS
+
+    def test_and_keeps_it_everywhere_else(self):
+        """Home, Serve and Grow have no composer and still need room at
+        the bottom. Scoping it with `:has` is what keeps them."""
+        rule = self._rule(".mbody{")
+        assert "--mbody-pad-b:24px" in rule
+        assert "var(--mbody-pad-b)" in rule
+
+    def test_the_composer_pads_itself_instead(self):
+        assert ".memberfull .mbody:has(.composer) .composer{padding-bottom:10px}" in CSS

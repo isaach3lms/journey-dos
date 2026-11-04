@@ -483,3 +483,87 @@ class TestPrivateFromTheOtherStaff:
 
             thread = _db.session.get(Conversation, ids["thread"])
             assert thread.unread_for(ids["dana"]) == 0
+
+
+class TestTheMonitoringFeedLeavesThemAlone:
+    """"Latest messages everywhere" prints the body of each message on the
+    screen every leader opens most. It was doing that for direct threads
+    too, which handed every leader the text of every private conversation
+    at the church. A prayer request about somebody's grandson was the one
+    that showed it.
+    """
+
+    def test_a_direct_message_is_not_in_the_feed(self, db, journey, dana,
+                                                 alicia, leader):
+        leader.post("/messages/direct/", data={"person_id": alicia.id},
+                    headers=H, follow_redirects=True)
+        thread = directs(db, journey)[0]
+        leader.post(f"/messages/{thread.id}/post/",
+                    data={"body": "About your grandson on Thursday."},
+                    headers=H, follow_redirects=True)
+
+        recent = db.session.scalars(Message.recent_for_church(journey.id)).all()
+        assert [m.body for m in recent] == []
+
+    def test_and_its_words_are_not_on_the_page(self, db, journey, dana,
+                                               alicia, leader):
+        """The query is one half. This is the half somebody reads."""
+        leader.post("/messages/direct/", data={"person_id": alicia.id},
+                    headers=H, follow_redirects=True)
+        thread = directs(db, journey)[0]
+        leader.post(f"/messages/{thread.id}/post/",
+                    data={"body": "About your grandson on Thursday."},
+                    headers=H, follow_redirects=True)
+
+        body = leader.get("/messages/", headers=H).data.decode()
+        assert "your grandson" not in body
+
+    def test_a_room_message_still_is(self, db, journey, dana, leader):
+        """The feed is not empty, it is scoped. A guard that hid
+        everything would pass the test above and break the screen."""
+        room = Conversation(church_id=journey.id, kind="room",
+                            title="Worship Team")
+        db.session.add(room)
+        db.session.flush()
+        db.session.add(ConversationMember(
+            church_id=journey.id, conversation_id=room.id, person_id=dana.id,
+        ))
+        db.session.commit()
+
+        leader.post(f"/messages/{room.id}/post/",
+                    data={"body": "Practice at eight."},
+                    headers=H, follow_redirects=True)
+
+        recent = db.session.scalars(Message.recent_for_church(journey.id)).all()
+        assert [m.body for m in recent] == ["Practice at eight."]
+
+    def test_an_announcement_still_is(self, db, journey, dana, leader):
+        announcement = Conversation(church_id=journey.id, kind="announcement",
+                                    title="All Members")
+        db.session.add(announcement)
+        db.session.commit()
+
+        leader.post(f"/messages/{announcement.id}/post/",
+                    data={"body": "Doors open at 8:30."},
+                    headers=H, follow_redirects=True)
+
+        recent = db.session.scalars(Message.recent_for_church(journey.id)).all()
+        assert [m.body for m in recent] == ["Doors open at 8:30."]
+
+    def test_the_other_church_is_still_out_of_it(self, db, journey, dana):
+        """The tenancy filter was already there. Adding a join is exactly
+        the kind of change that drops one."""
+        riverbend = db.session.scalar(
+            db.select(Church).where(Church.slug == "riverbend")
+        )
+        room = Conversation(church_id=riverbend.id, kind="room", title="Theirs")
+        db.session.add(room)
+        db.session.flush()
+        db.session.add(Message(
+            church_id=riverbend.id, conversation_id=room.id,
+            author_name="Someone", body="Their words.",
+        ))
+        db.session.commit()
+
+        recent = db.session.scalars(Message.recent_for_church(journey.id)).all()
+        assert [m.body for m in recent] == []

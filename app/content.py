@@ -3118,8 +3118,20 @@ MESSAGES = {
     "delete_chat_confirm": "Delete {title}? Every message in it is cleared and it disappears for everyone. This cannot be undone.",
     "delete_chat_hint": "Archive hides a chat and keeps its messages. Delete clears every message too. Both are recorded in Settings under What happened here.",
     "chat_deleted": "{title} deleted. {count} messages cleared.",
-    "recent_heading": "Latest messages everywhere",
-    "recent_hint": "Every chat and announcement in one list, newest first, so you can keep an eye on things without opening each room.",
+    # Not "everywhere" any more. It never was, once direct messages were
+    # taken out of it, and a heading that overclaims on exactly the
+    # boundary that matters is the wrong one to leave standing.
+    "recent_heading": "Latest in every group chat",
+    # The line under the heading on the closed row. The number is the
+    # whole reason to open it, so it is what the row says.
+    "recent_sub": "{count} in the group chats",
+    "recent_hint": (
+        "Every group chat and announcement in one list, newest first, so "
+        "you can keep an eye on things without opening each room. Direct "
+        "messages are not here: a thread between two people is theirs, and "
+        "the way one reaches this screen is somebody in it reporting a "
+        "message."
+    ),
     "recent_empty": "Nobody has posted yet.",
     "announce_limit": "You have posted {count} church-wide announcements today. Try again tomorrow, or ask the church office to share it.",
     "announce_member_note": "This goes to everyone at {church}. Staff can remove anything posted here.",

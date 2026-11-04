@@ -56,9 +56,19 @@
       </div>
     </section>
 
+    {# Closed by default. Forty messages with their bodies is most of the
+       screen, and this is a thing staff glance at rather than read: the
+       count in the closed row is the part they are actually checking. #}
     <section class="card" id="recent">
-      <div class="hd"><h2>{{ content.recent_heading }}</h2></div>
-      <div class="bd">
+      <details class="setrow">
+        <summary>
+          <span class="fl">
+            <span class="pn">{{ content.recent_heading }}</span>
+            <span class="pe">{{ content.recent_sub.format(count=recent|length) }}</span>
+          </span>
+          <span class="chev" aria-hidden="true">&rsaquo;</span>
+        </summary>
+        <div class="setbd">
         <p class="muted small">{{ content.recent_hint }}</p>
         {% if recent %}
           <ul class="flaglist">
@@ -83,7 +93,8 @@
         {% else %}
           <p class="muted small">{{ content.recent_empty }}</p>
         {% endif %}
-      </div>
+        </div>
+      </details>
     </section>
 
     <p class="muted small"><a href="{{ url_for('messages.reports') }}">{{ content.reports_title }}</a></p>

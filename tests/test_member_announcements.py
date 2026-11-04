@@ -19,6 +19,7 @@ from app.models import (
     Person,
     User,
 )
+from app.content import MESSAGES
 from app.models.base import utcnow
 from tests.conftest import JOURNEY_HOST
 
@@ -175,7 +176,9 @@ class TestLatestMessagesList:
         db.session.commit()
         sign_in("pastor@journeychurchsemo.com")
         page = client.get("/messages/", headers=H)
-        assert b"Latest messages everywhere" in page.data
+        # Read from the dictionary rather than retyped here, so a copy
+        # edit is a copy edit and not a failing test in another file.
+        assert MESSAGES["recent_heading"].encode() in page.data
         assert b"In the room" in page.data and b"To everyone" in page.data
 
     def test_delete_from_the_list_returns_to_the_list(self, client, sign_in, db):
@@ -290,7 +293,7 @@ class TestMessagesPageLayout:
         db.session.commit()
         sign_in("pastor@journeychurchsemo.com")
         page = client.get("/messages/", headers=H).data.decode()
-        assert page.count("Latest messages everywhere") == 1
+        assert page.count(MESSAGES["recent_heading"]) == 1
         assert page.count("Only once please") == 1
         title = page[page.index("<title>"):page.index("</title>")]
         assert "Latest" not in title and "<section" not in title

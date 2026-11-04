@@ -499,3 +499,54 @@ class TestEmailingAnAnnouncement:
         # turn a room into an announcement.
         sent = db.session.scalars(db.select(OutboxMessage)).all()
         assert [m.category for m in sent if m.category != "chat"] == []
+
+
+class TestTheRecentFeedIsARow:
+    """Forty messages with their bodies was most of the Messages screen,
+    open whether or not anybody was reading it. It is a thing staff glance
+    at, so it is a row that opens.
+    """
+
+    def test_it_is_a_closed_row(self, db, staff):
+        """The opening tag, parsed. `open` is a bare attribute and can sit
+        anywhere in it, so searching for the string "<details open" passes
+        on `<details class="setrow" open>`, which is the exact thing this
+        test exists to catch."""
+        import re
+
+        body = staff.get("/messages/", headers={"Host": JOURNEY_HOST}).data.decode()
+        card = body[body.index('id="recent"'):]
+        card = card[:card.index("</section>")]
+
+        tag = re.search(r"<details[^>]*>", card)
+        assert tag, "the feed should be a row that opens"
+        assert not re.search(r"\bopen\b", tag.group(0)), tag.group(0)
+
+    def test_the_heading_is_still_the_heading(self, db, staff):
+        from app.content import MESSAGES
+
+        body = staff.get("/messages/", headers={"Host": JOURNEY_HOST}).data.decode()
+        assert MESSAGES["recent_heading"] in body
+
+    def test_the_closed_row_says_how_many(self, db, staff):
+        """The number is the reason to open it, so it is readable without
+        opening it."""
+        body = staff.get("/messages/", headers={"Host": JOURNEY_HOST}).data.decode()
+        assert "in the group chats" in body
+
+    def test_the_messages_are_still_on_the_page(self, db, staff, journey):
+        """Closed is not absent. The browser already has the markup, so
+        opening the row is instant and needs no request."""
+        from app.models import Conversation, Message
+
+        room = Conversation(church_id=journey.id, kind="room", title="Worship Team")
+        db.session.add(room)
+        db.session.flush()
+        db.session.add(Message(
+            church_id=journey.id, conversation_id=room.id,
+            author_name="Dana Webb", body="Practice at eight.",
+        ))
+        db.session.commit()
+
+        body = staff.get("/messages/", headers={"Host": JOURNEY_HOST}).data.decode()
+        assert "Practice at eight." in body

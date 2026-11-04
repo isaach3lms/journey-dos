@@ -553,14 +553,32 @@ class Message(TenantScoped, TimestampMixin, db.Model):
 
     @classmethod
     def recent_for_church(cls, church_id: int, limit: int = 40):
-        """The newest messages across every chat, for staff to watch.
+        """The newest messages across the church's chats, for staff to watch.
 
         One list rather than one room at a time, because monitoring that
         requires opening twelve rooms is monitoring that does not happen.
+
+        **Group chats only.** Direct messages are left out, and the word
+        "every" that used to be in this docstring was the bug: this feed
+        prints the body of each message, so a two-person thread appearing
+        here handed every leader the text of every private conversation at
+        the church, on the screen they open most. A prayer request about
+        somebody's grandson is exactly the kind of thing that ended up in
+        it.
+
+        Moderation is the route for a direct thread somebody needs looked
+        at: the person in it reports the message, and it lands on the
+        reports page with a reason attached. That is a different thing
+        from an open feed, and it leaves a trace.
         """
         return (
             db.select(cls)
-            .where(cls.church_id == church_id, cls.is_deleted.is_(False))
+            .join(Conversation, Conversation.id == cls.conversation_id)
+            .where(
+                cls.church_id == church_id,
+                cls.is_deleted.is_(False),
+                Conversation.kind != KIND_DIRECT,
+            )
             .order_by(cls.sent_at.desc(), cls.id.desc())
             .limit(limit)
         )

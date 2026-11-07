@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from flask import (
     Blueprint,
+    Response,
     abort,
     flash,
     g,
@@ -148,6 +149,66 @@ def index():
             .order_by(Household.name)
         ).all(),
         active="people",
+    )
+
+
+@bp.get("/report.pdf")
+@login_required
+@min_role("leader")
+def report():
+    """The roster as a printed sheet, for a staff meeting.
+
+    The same filter vocabulary as the list screen, so the sheet matches
+    whatever somebody was looking at when they pressed the button. With no
+    filter it is everybody, grouped by stage, which is the form the request
+    asked for: one section per stage of the cycle.
+    """
+    from app.reports import sections_for
+    from app.roster_pdf import render_roster
+    from app.timeutil import format_local
+
+    stage = (request.args.get("stage") or "").strip() or None
+    if stage and stage not in STAGE_BY_CODE and stage not in AGE_FILTERS:
+        abort(404)
+
+    # Kids and youth are filters rather than stages, exactly as on the list.
+    children, group, label = None, None, None
+    if stage == KIDS:
+        group, stage, label = AGE_KID, None, PEOPLE["report_kids"]
+    elif stage == YOUTH:
+        group, stage, label = AGE_YOUTH, None, PEOPLE["report_youth"]
+    elif stage:
+        children = False
+
+    sections = sections_for(
+        g.church, stage=stage, children=children, group=group,
+        group_label=label,
+    )
+
+    pdf = render_roster(
+        sections=sections,
+        church=g.church,
+        fmt=lambda value: format_local(value, g.church, "%b %-d, %Y"),
+        subtitle=(
+            PEOPLE["report_one"].format(label=sections[0].label)
+            if (stage or group) and sections
+            else PEOPLE["report_all"]
+        ),
+    )
+
+    name = "".join(
+        c for c in f"{g.church.name} roster" if c.isalnum() or c in " -_"
+    ).strip() or "roster"
+    return Response(
+        pdf,
+        mimetype="application/pdf",
+        headers={
+            # inline: it is read on screen as often as it is printed, and a
+            # file that lands in Downloads unopened is a file nobody reads.
+            "Content-Disposition": f'inline; filename="{name}.pdf"',
+            # Names, households and when each family was last seen.
+            "Cache-Control": "no-store, private",
+        },
     )
 
 

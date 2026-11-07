@@ -25,6 +25,15 @@
   <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">
     {{ content.signups_view }}{% if signup_count %} &middot; {{ signup_count }}{% endif %}
   </a>
+  {# The report follows the filter that is on, so the button asks for what
+     the person is already looking at rather than always for everyone.
+     `target=_blank` because it is a PDF: opening it over the roster means
+     coming back to page one of a list somebody was part way through. #}
+  <a class="btn ghostbtn" target="_blank" rel="noopener"
+     href="{{ url_for('people.report', stage=active_stage) }}"
+     title="{{ content.report_hint }}">
+    {{ content.report }}{% if active_stage %} &middot; {{ active_stage|capitalize }}{% endif %}
+  </a>
 </div>
 
 <details class="addbox">

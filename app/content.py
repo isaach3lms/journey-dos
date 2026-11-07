@@ -511,6 +511,19 @@ PEOPLE = {
     "title": "People",
     "subtitle": "Every person, and the step they are on.",
 
+    # The printed roster report
+    "report": "Download report",
+    "report_hint": (
+        "A printed sheet of everyone with their household, when a child of "
+        "theirs was last in kids, when they last served and when somebody "
+        "last wrote anything down. Grouped by stage. Follows whichever "
+        "filter is on."
+    ),
+    "report_all": "Everyone, by stage",
+    "report_one": "{label} only",
+    "report_kids": "Kids",
+    "report_youth": "Youth",
+
     "rail_heading": "The Journey",
     "rail_intro": (
         "Where all {total} people at {church} are right now. "

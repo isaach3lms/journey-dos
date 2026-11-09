@@ -1,0 +1,111 @@
+{# The week's prayer check-ins.
+
+   Worked down rather than read across. The ones nobody has prayed for are
+   first and the whole body is on the row: unlike a pastoral request, where
+   the list shows a first line and the words live on the person's own page,
+   this one exists to be prayed through, and sending somebody to seven
+   separate pages to do that is how it stops happening.
+
+   Which is also why the words are on a screen behind a login and nowhere
+   else. See app/models/prayer.py. #}
+{% extends "base.html" %}
+{% block title %}{{ content.prayer_list_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.prayer_list_title }}{% endblock %}
+{% block subheading %}{{ content.prayer_list_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('shell.index') }}">{{ content.title }}</a>
+
+<section class="card">
+  <div class="hd">
+    <h2>
+      {% if is_this_week %}{{ content.prayer_this_week }}
+      {% else %}{{ content.prayer_week_of.format(when=week.strftime("%B %-d, %Y")) }}{% endif %}
+    </h2>
+    <div class="spacer"></div>
+    {% if checkins %}
+      <span class="pill plain">
+        {{ content.prayer_count.format(done=done, total=checkins|length) }}
+      </span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% if checkins %}
+      <p class="muted small">{{ content.prayer_private }}</p>
+      <ul class="flaglist asks">
+        {% for checkin in checkins %}
+          <li class="prayrow{% if checkin.is_prayed_for %} done{% endif %}">
+            <div class="prayhd">
+              <a class="pn" href="{{ url_for('people.detail', person_id=checkin.person_id) }}">
+                {{ checkin.person.full_name }}
+              </a>
+              {% if checkin.wants_contact %}
+                {# Said on the row, because somebody praying through the
+                   week should know this one has also gone to a pastor. #}
+                <span class="pill pending">{{ content.prayer_wants_contact }}</span>
+              {% endif %}
+              <span class="spacer"></span>
+              <span class="pe">{{ checkin.created_at|church_time("%a %-d") }}</span>
+            </div>
+
+            {# The whole thing, not a first line. It is what the screen is
+               for. `pre-wrap` so the paragraphs somebody typed survive. #}
+            <p class="praybody">{{ checkin.body }}</p>
+
+            <form method="post" class="prayact"
+                  action="{{ url_for('people.mark_prayed', checkin_id=checkin.id)
+                             if not checkin.is_prayed_for
+                             else url_for('people.unmark_prayed', checkin_id=checkin.id) }}">
+              {{ csrf_field() }}
+              <input type="hidden" name="back"
+                     value="{{ url_for('people.prayer_list', week=week.isoformat()) }}">
+              {% if checkin.is_prayed_for %}
+                <span class="pe">
+                  {% if checkin.prayed_by_name %}
+                    {{ content.prayer_marked_by.format(
+                         name=checkin.prayed_by_name,
+                         when=checkin.prayed_at|church_time("%B %-d")) }}
+                  {% else %}
+                    {{ content.prayer_marked_anon.format(
+                         when=checkin.prayed_at|church_time("%B %-d")) }}
+                  {% endif %}
+                </span>
+                <button class="btn ghostbtn small" type="submit">
+                  {{ content.prayer_unmark }}
+                </button>
+              {% else %}
+                <button class="btn small" type="submit">{{ content.prayer_mark }}</button>
+              {% endif %}
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% elif weeks %}
+      <p>{{ content.prayer_list_empty }}</p>
+    {% else %}
+      <p>{{ content.prayer_list_none_ever }}</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if weeks %}
+  <section class="card">
+    <div class="hd"><h2>{{ content.prayer_other_weeks }}</h2></div>
+    <div class="bd">
+      <ul class="flaglist">
+        {% for other in weeks %}
+          <li>
+            <a href="{{ url_for('people.prayer_list', week=other.isoformat()) }}">
+              <span class="fl">
+                <span class="pn">
+                  {{ content.prayer_week_of.format(when=other.strftime("%B %-d, %Y")) }}
+                </span>
+              </span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

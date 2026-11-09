@@ -86,28 +86,32 @@
    that populates itself stops being read.
 
    The tiles come from app/next_steps.py. Adding Child Dedication is four
-   lines in that file and nothing here changes. #}
-{% if offers %}
+   lines in that file and nothing here changes.
+
+   One loop with no branch in it. Where a tile goes is `tile_url`, what its
+   second line says is `subtitles`, and both are worked out in Python, so a
+   copy edit or a new tile never touches this markup. #}
+{% if tiles %}
   <section class="mwide nextsteps">
     <h2 class="nstitle">{{ content.offers_heading }}</h2>
     <p class="nssub">{{ content.offers_sub }}</p>
     <div class="nsgrid">
-      {% for offer in offers %}
-        <a class="nstile" href="{{ url_for('member.next_step', code=offer.code) }}">
+      {% for tile in tiles %}
+        <a class="nstile{% if tile.wide %} wide{% endif %}"
+           href="{{ tile_url(tile) }}">
           {# `currentColor` on the stroke, tint set on the wrapper, so one
              path works on any background and a theme change never has to
              touch an icon. #}
-          <span class="nsicon" style="color: {{ offer.tint }}">
+          <span class="nsicon" style="color: {{ tile.tint }}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round"
                  stroke-linejoin="round" aria-hidden="true">
-              <path d="{{ icon_path(offer.icon) }}"></path>
+              <path d="{{ icon_path(tile.icon) }}"></path>
             </svg>
           </span>
-          <span class="nsname">{{ offer.title }}</span>
-          <span class="nsnote">
-            {% if offer.code in asked %}{{ content.offers_asked }}
-            {% else %}{{ offer.subtitle }}{% endif %}
+          <span class="nstext">
+            <span class="nsname">{{ tile.title }}</span>
+            <span class="nsnote">{{ subtitles.get(tile.code, tile.subtitle) }}</span>
           </span>
         </a>
       {% endfor %}

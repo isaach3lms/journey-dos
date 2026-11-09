@@ -88,6 +88,90 @@ BY_CODE: dict[str, Offer] = {offer.code: offer for offer in OFFERS}
 CODES: tuple[str, ...] = tuple(offer.code for offer in OFFERS)
 
 
+# ---------------------------------------------------------------------------
+# The grid on the home screen.
+#
+# Not everything in that grid is an `Offer`. An offer is a one-time ask with a
+# form, a sign-up row and a staff notification behind it; the weekly prayer
+# check-in is none of those. It is the same kind of thing to a member looking
+# at the screen, which is why it sits in the same grid, and a different thing
+# to the code, which is why it is not an Offer with five fields left empty.
+#
+# `Tile` is only what the grid needs. Offers become tiles; the check-in is a
+# tile of its own, and anything later that is a door rather than a form joins
+# it here rather than being bolted onto Offer.
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Tile:
+    code: str
+    title: str
+    subtitle: str
+    icon: str
+    tint: str
+    # The view this tile opens.
+    endpoint: str
+    # Whether its URL carries the code, which is also whether "You have
+    # asked" is a thing that can be true of it. An offer is asked for once;
+    # the check-in is answered again every week.
+    one_time: bool = True
+    # Spans the whole row rather than one column. Three tiles in a
+    # two-column grid leaves the third one alone beside half a row of
+    # nothing, which looks like a tile failed to load.
+    wide: bool = False
+
+
+PRAYER_CODE = "prayer_checkin"
+
+PRAYER_TILE = Tile(
+    code=PRAYER_CODE,
+    title="Weekly Prayer Check In",
+    subtitle="Tell us how to pray this week",
+    icon="candle",
+    # A violet, because the other two tiles are blue and orange and the point
+    # of the colour is telling three tiles apart at arm's length. 6.5:1 on the
+    # tile grey; see the test that holds every tint to that floor.
+    tint="#5B3FA8",
+    endpoint="member.prayer",
+    one_time=False,
+    wide=True,
+)
+
+
+def tiles_for(church=None) -> tuple[Tile, ...]:
+    """Everything in the home-screen grid, in the order it is drawn.
+
+    The offers first, because they are what a church invites somebody to do,
+    and the check-in last, because it is the one that comes round again.
+    """
+    offers = tuple(
+        Tile(
+            code=offer.code,
+            title=offer.title,
+            subtitle=offer.subtitle,
+            icon=offer.icon,
+            tint=offer.tint,
+            endpoint="member.next_step",
+        )
+        for offer in offers_for(church)
+    )
+    return offers + (PRAYER_TILE,)
+
+
+def url_for_tile(tile: Tile) -> str:
+    """Where a tile goes.
+
+    Here rather than in the template so the grid stays one loop with no
+    branch in it, and so the difference between the two kinds of tile is
+    stated once, in Python, where it can be tested.
+    """
+    from flask import url_for
+
+    if tile.one_time:
+        return url_for(tile.endpoint, code=tile.code)
+    return url_for(tile.endpoint)
+
+
 def offers_for(church=None) -> tuple[Offer, ...]:
     """Every read goes through here.
 
@@ -136,6 +220,18 @@ ICONS: dict[str, str] = {
         "M12 11V4.5a1.5 1.5 0 0 1 3 0V11"
         "M15 11.5V7a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1.5a6 6 0 0 1-5-2.7"
         "L3.5 14a1.6 1.6 0 0 1 2.6-1.8L9 15.5"
+    ),
+    # A candle, for the weekly prayer check-in. Drawn and looked at next to
+    # the other two at 22px before it was chosen: praying hands, which is the
+    # obvious glyph, collapses into an arch at this size and stroke weight
+    # and reads as a doorway. A speech bubble and a bare heart were both out
+    # for a different reason, which is that the member tab bar already uses
+    # them for Chat and Give.
+    "candle": (
+        "M12 2.2c2.2 2.5 3.3 4.1 3.3 5.6a3.3 3.3 0 0 1-6.6 0"
+        "c0-1.5 1.1-3.1 3.3-5.6z"
+        "M6.2 21v-8.1a2.2 2.2 0 0 1 2.2-2.2h7.2a2.2 2.2 0 0 1 2.2 2.2V21"
+        "M3.4 21h17.2"
     ),
 }
 

@@ -92,6 +92,10 @@ PAGE_SIZE = 25
 @login_required
 @min_role("leader")
 def index():
+    from app.models import PrayerCheckin
+    from app.models.verse import week_of
+    from app.timeutil import now_local
+
     term = (request.args.get("q") or "").strip()
     stage = (request.args.get("stage") or "").strip() or None
     page = max(1, request.args.get("page", type=int) or 1)
@@ -141,6 +145,9 @@ def index():
         guest_cards=GuestCard.waiting_count(g.church.id),
         account_requests=AccountRequest.open_count(g.church.id),
         signup_count=NextStepSignup.open_count(g.church.id),
+        prayer_count=PrayerCheckin.unprayed_count(
+            g.church.id, week_of(now_local(g.church).date())
+        ),
         # For the child form's family picker. Children are the only thing
         # added from this page that must belong to one.
         households=db.session.scalars(
@@ -216,6 +223,8 @@ def report():
 @login_required
 @min_role("leader")
 def detail(person_id: int):
+    from app.models import PrayerCheckin
+
     person = Person.get_for_church(g.church.id, person_id)
     if person is None:
         # 404, not 403. Telling one church that a person id exists somewhere
@@ -284,6 +293,9 @@ def detail(person_id: int):
         household_members=household_members,
         support_requests=db.session.scalars(
             SupportRequest.for_person(g.church.id, person.id)
+        ).all(),
+        prayer_checkins=db.session.scalars(
+            PrayerCheckin.recent_for_person(g.church.id, person.id)
         ).all(),
         households=db.session.scalars(
             db.select(Household)
@@ -483,6 +495,113 @@ def reopen_support(request_id: int):
     db.session.commit()
     flash(PEOPLE["support_reopened"], "notice")
     return redirect(url_for("people.detail", person_id=ask.person_id, _anchor="support"))
+
+
+# ---------------------------------------------------------------------------
+# The weekly prayer list
+#
+# A working screen, not a dashboard. Somebody opens it on a Tuesday morning,
+# prays through the week, and marks each one as they go, which is why the
+# ones nobody has prayed for sort to the top and stay where they are as the
+# list is worked down.
+#
+# Deliberately not the pastoral queue. See app/models/prayer.py for why those
+# two are kept apart, and for the one tick that moves a check-in across.
+# ---------------------------------------------------------------------------
+
+@bp.get("/prayer/")
+@login_required
+@min_role("leader")
+def prayer_list():
+    from app.models import PrayerCheckin
+    from app.models.verse import week_of
+    from app.timeutil import now_local
+
+    this_week = week_of(now_local(g.church).date())
+
+    # A week off the URL, so "other weeks" is a link rather than a control
+    # with state, and a leader can send another leader the week they are
+    # looking at. Snapped to the Sunday that starts whatever week they named
+    # rather than rejected: a mid-week date in a URL means that week.
+    asked = (request.args.get("week") or "").strip()
+    week = this_week
+    if asked:
+        try:
+            week = week_of(date.fromisoformat(asked))
+        except ValueError:
+            abort(404)
+
+    checkins = db.session.scalars(
+        PrayerCheckin.for_week(g.church.id, week)
+    ).all()
+
+    return render_template(
+        "people/prayer.html",
+        church=g.church,
+        content=PEOPLE,
+        checkins=checkins,
+        week=week,
+        is_this_week=(week == this_week),
+        done=sum(1 for c in checkins if c.is_prayed_for),
+        weeks=[
+            row for row in db.session.scalars(
+                PrayerCheckin.weeks_with_any(g.church.id)
+            ).all()
+            if row != week
+        ],
+        active="people",
+    )
+
+
+@bp.post("/prayer/<int:checkin_id>/prayed/")
+@login_required
+@min_role("leader")
+def mark_prayed(checkin_id: int):
+    """Somebody prayed for it, and their name goes on that.
+
+    Not deleted and not hidden. Next week is a different list; this one
+    stays, with who worked it, which is the only way a church can answer
+    "did anyone pray for what I sent in" with something other than a guess.
+    """
+    from app.models import PrayerCheckin
+
+    checkin = PrayerCheckin.get_for_church(g.church.id, checkin_id)
+    if checkin is None:
+        abort(404)
+
+    back = redirect(request.form.get("back") or url_for("people.prayer_list"))
+    if not checkin.mark_prayed(current_user):
+        flash(
+            PEOPLE["prayer_already_marked"].format(
+                name=checkin.prayed_by_name or "Somebody"
+            ),
+            "notice",
+        )
+        return back
+
+    db.session.commit()
+    flash(
+        PEOPLE["prayer_marked_flash"].format(name=checkin.person.first_name),
+        "notice",
+    )
+    return back
+
+
+@bp.post("/prayer/<int:checkin_id>/undo/")
+@login_required
+@min_role("leader")
+def unmark_prayed(checkin_id: int):
+    """Marked by mistake. It happens, and it should not need a database."""
+    from app.models import PrayerCheckin
+
+    checkin = PrayerCheckin.get_for_church(g.church.id, checkin_id)
+    if checkin is None:
+        abort(404)
+
+    checkin.unmark_prayed()
+    db.session.commit()
+    flash(PEOPLE["prayer_unmarked_flash"], "notice")
+    return redirect(request.form.get("back") or url_for("people.prayer_list"))
 
 
 @bp.post("/<int:person_id>/household/code/")

@@ -695,6 +695,47 @@ PEOPLE = {
         "screen only. It is never emailed and never posted."
     ),
 
+    # ---------------------------------------------------------------------
+    # The weekly prayer list.
+    #
+    # A working screen rather than a dashboard. It is read on a Tuesday
+    # morning by whoever prays through the week's check-ins, so it is
+    # ordered to be worked down and it keeps a name against each one that
+    # has been prayed for. Deliberately separate from pastoral requests:
+    # mixing sixty routine check-ins into the queue that holds "something
+    # urgent" is how the urgent one gets missed.
+    # ---------------------------------------------------------------------
+    "prayer_list_title": "Prayer check-ins",
+    "prayer_list_subtitle": (
+        "What people asked prayer for this week. Read here, never emailed."
+    ),
+    "prayer_week_of": "Week of {when}",
+    "prayer_this_week": "This week",
+    "prayer_list_empty": "Nobody has checked in this week yet.",
+    "prayer_list_none_ever": (
+        "No prayer check-ins yet. They appear here as people send them from "
+        "the app."
+    ),
+    "prayer_count": "{done} of {total} prayed for",
+    "prayer_mark": "Mark prayed for",
+    "prayer_unmark": "Undo",
+    "prayer_marked_by": "{name} prayed for this on {when}",
+    "prayer_marked_anon": "Marked prayed for on {when}",
+    "prayer_already_marked": "{name} already marked this one.",
+    "prayer_marked_flash": "Marked. {name}'s check-in is done for this week.",
+    "prayer_unmarked_flash": "Put back on the list.",
+    "prayer_wants_contact": "Asked for somebody to reach out",
+    "prayer_other_weeks": "Other weeks",
+    "prayer_private": (
+        "A prayer check-in is read by staff and leaders on this screen "
+        "only. It is never emailed, never pushed to a phone, and never "
+        "posted to a group."
+    ),
+    # On the person's own page. No empty state: like the pastoral section
+    # above it, the card is simply not on the screen when there is nothing
+    # in it, rather than taking up room to say so.
+    "prayer_person_heading": "Prayer check-ins",
+
     "household": "Household",
     "no_household": "Not linked to a household",
     "household_alone": "The only person in this household",
@@ -1339,6 +1380,59 @@ MEMBER = {
         "still have it."
     ),
     "signup_event": "Asked about {offer}",
+
+    # ---------------------------------------------------------------------
+    # The weekly prayer check-in.
+    #
+    # Written to be read by somebody having a hard week, which rules out
+    # cheerfulness. It does not say "share your praises", it does not promise
+    # that anything will be fixed, and it does not ask how they are on a
+    # scale. It asks one question and gets out of the way.
+    #
+    # The two sentences that matter most are the ones about who reads it and
+    # about the week ending. A person deciding whether to write something
+    # honest is deciding on those two facts, so neither is in small print.
+    # ---------------------------------------------------------------------
+    "prayer_tile_done": "Done this week",
+    "prayer_heading": "Weekly prayer check in",
+    "prayer_blurb": (
+        "Tell us what to pray for this week. The prayer team reads these "
+        "and prays through them. Nothing you write here is emailed or sent "
+        "to a phone."
+    ),
+    "prayer_prompt": "How can we pray for you this week?",
+    "prayer_placeholder": "Whatever is on your mind. As much or as little as you want.",
+    "prayer_contact_label": "I would also like somebody to reach out to me",
+    "prayer_contact_hint": (
+        "Tick this and a pastor is told you asked, so this does not sit on a "
+        "list waiting to be read. They are not told what you wrote."
+    ),
+    "prayer_contact_done": (
+        "You asked to hear from somebody, and a pastor has been told. It is "
+        "on their list until one of them has dealt with it."
+    ),
+    "prayer_submit": "Send to the prayer team",
+    "prayer_update": "Update what I wrote",
+    "prayer_who_sees": "Seen by: the prayer team and church staff.",
+    "prayer_resets": (
+        "This covers the week of {week}. It starts again on Sunday, and what "
+        "you write stays on your record."
+    ),
+    "prayer_already_note": (
+        "You checked in this week. You can change what you wrote until "
+        "Sunday."
+    ),
+    "prayer_thanks": "Thank you. The prayer team has it.",
+    "prayer_thanks_contact": (
+        "Thank you. The prayer team has it, and a pastor has been told you "
+        "asked to hear from somebody."
+    ),
+    "prayer_empty": "Say anything at all, and we will pray through it.",
+    "prayer_back": "Back",
+    "prayer_last_week_label": "Last week you asked for prayer about",
+    # On their own timeline. That they checked in, never what they wrote:
+    # the timeline is read by more people than the prayer list is.
+    "prayer_event": "Sent a weekly prayer check in",
 
     "stage_label": "Where you are",
     "stage_meaning": "{meaning}",

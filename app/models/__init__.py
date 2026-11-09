@@ -159,6 +159,10 @@ from app.models.guest import (
     GuestCard,
 )
 from app.models.signup import NextStepSignup  # noqa: F401
+from app.models.prayer import (  # noqa: F401
+    MAX_BODY_LENGTH as PRAYER_MAX_LENGTH,
+    PrayerCheckin,
+)
 from app.models.person_event import (  # noqa: F401
     EVENT_KINDS,
     KIND_CONTACT,

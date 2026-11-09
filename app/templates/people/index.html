@@ -25,6 +25,13 @@
   <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">
     {{ content.signups_view }}{% if signup_count %} &middot; {{ signup_count }}{% endif %}
   </a>
+  {# Same reasoning as the sign-ups button: the count is what makes somebody
+     open it on a Monday rather than on a Wednesday. It counts this week's
+     check-ins nobody has prayed for yet, so it empties as the list is
+     worked and fills again on Sunday. #}
+  <a class="btn ghostbtn" href="{{ url_for('people.prayer_list') }}">
+    {{ content.prayer_list_title }}{% if prayer_count %} &middot; {{ prayer_count }}{% endif %}
+  </a>
   {# The report follows the filter that is on, so the button asks for what
      the person is already looking at rather than always for everyone.
      `target=_blank` because it is a PDF: opening it over the roster means

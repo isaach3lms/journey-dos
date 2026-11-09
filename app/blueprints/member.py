@@ -18,7 +18,7 @@ private view with no audit trail, and nothing in this increment needs it.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from flask import (
     Blueprint,
@@ -106,8 +106,9 @@ def home():
     if person.first_seen_on:
         days = (today - person.first_seen_on).days + 1
 
-    from app.models import NextStepSignup
-    from app.next_steps import icon_path, offers_for
+    from app.models import NextStepSignup, PrayerCheckin
+    from app.models.verse import week_of
+    from app.next_steps import PRAYER_CODE, icon_path, tiles_for, url_for_tile
 
     # Which tiles this person has already tapped and nobody has dealt with
     # yet. Shown as "Asked" rather than hidden: a tile that disappears looks
@@ -122,6 +123,16 @@ def home():
         )
     }
 
+    # The tile subtitles, worked out here rather than branched in the
+    # template: the grid stays one loop, and every word on it stays in
+    # Python where a copy edit does not touch markup.
+    subtitles = {code: MEMBER["offers_asked"] for code in asked}
+    if PrayerCheckin.for_person_week(g.church.id, person.id, week_of(today)):
+        # The whole point of a weekly check-in: this goes back to the
+        # tile's own subtitle on Sunday, because the week is the key and
+        # next week has no row.
+        subtitles[PRAYER_CODE] = MEMBER["prayer_tile_done"]
+
     return render_template(
         "member/home.html",
         verse=WeeklyVerse.current(g.church.id, today),
@@ -131,9 +142,10 @@ def home():
         open_steps=open_steps,
         stage=STAGE_BY_CODE.get(person.stage),
         stages=stages_for(g.church),
-        offers=offers_for(g.church),
+        tiles=tiles_for(g.church),
+        tile_url=url_for_tile,
         icon_path=icon_path,
-        asked=asked,
+        subtitles=subtitles,
         tab="home",
         **_base_context(person),
     )
@@ -205,6 +217,152 @@ def next_step(code: str):
         tab="home",
         **_base_context(person),
     )
+
+
+# ---------------------------------------------------------------------------
+# The weekly prayer check-in
+#
+# One screen, one question, and a week that ends. See app/models/prayer.py for
+# why it is not a pastoral request and why the week is the key rather than a
+# timer.
+#
+# No staff notification on an ordinary check-in, on purpose. Sixty members
+# checking in on a Sunday is sixty notifications, and a channel that fires
+# that often is a channel a pastor turns off, taking the urgent ones with it.
+# Staff read the week on the list. The one case that does reach somebody is a
+# member asking to be contacted, which goes through the existing pastoral
+# request so it cannot sit unread.
+# ---------------------------------------------------------------------------
+
+@bp.route("/prayer/", methods=["GET", "POST"])
+@login_required
+def prayer():
+    from app.models import PrayerCheckin
+    from app.models.prayer import MAX_BODY_LENGTH
+    from app.models.verse import week_of
+    from app.next_steps import PRAYER_TILE, icon_path
+    from app.timeutil import now_local
+
+    person = current_user.person
+    if person is None:
+        flash(MEMBER["support_no_person"], "error")
+        return redirect(url_for("member.home"))
+
+    # The church's own date. In UTC, Sunday starts at 6pm on Saturday for
+    # anybody in Missouri, which would put a Saturday-evening check-in into
+    # next week and leave this week's tile saying "Done" a day early.
+    this_week = week_of(now_local(g.church).date())
+    existing = PrayerCheckin.for_person_week(g.church.id, person.id, this_week)
+
+    if request.method == "POST":
+        body = (request.form.get("body") or "").strip()[:MAX_BODY_LENGTH]
+        wants_contact = bool(request.form.get("wants_contact"))
+
+        if not body:
+            # A check-in with nothing in it is not a check-in. Said on the
+            # form rather than saved as an empty row that the prayer team
+            # then has to read and wonder about.
+            flash(MEMBER["prayer_empty"], "error")
+            return redirect(url_for("member.prayer"))
+
+        if existing is None:
+            existing = PrayerCheckin(
+                church_id=g.church.id,
+                person_id=person.id,
+                week_of=this_week,
+                body=body,
+                wants_contact=wants_contact,
+            )
+            db.session.add(existing)
+            PersonEvent.record(
+                person,
+                KIND_NOTE,
+                MEMBER["prayer_event"],
+                # Not on the timeline. The timeline is read by more people
+                # than the prayer list is, and one copy of what somebody
+                # wrote about their own week is enough.
+                detail=None,
+                actor=None,
+            )
+        else:
+            existing.body = body
+            # Only ever tightened upward within a week. Somebody who asked
+            # on Sunday to be contacted and edits their wording on Tuesday
+            # has not withdrawn the ask, and a pastor has already been told
+            # about it: silently clearing the flag would leave the request
+            # live in one place and gone in another.
+            wants_contact = wants_contact or existing.wants_contact
+            existing.wants_contact = wants_contact
+
+        asked_for_contact = wants_contact and _escalate_prayer(existing, person)
+        db.session.commit()
+
+        flash(
+            MEMBER["prayer_thanks_contact"] if asked_for_contact
+            else MEMBER["prayer_thanks"],
+            "notice",
+        )
+        return redirect(url_for("member.home"))
+
+    last_week = PrayerCheckin.for_person_week(
+        g.church.id, person.id, this_week - timedelta(days=7)
+    )
+
+    return render_template(
+        "member/prayer.html",
+        tile=PRAYER_TILE,
+        icon_path=icon_path,
+        existing=existing,
+        last_week=last_week,
+        week_label=this_week.strftime("%B %-d"),
+        max_length=MAX_BODY_LENGTH,
+        tab="home",
+        **_base_context(person),
+    )
+
+
+def _escalate_prayer(checkin, person) -> bool:
+    """They asked for somebody to reach out. Returns whether one was raised.
+
+    The one bridge from the prayer list into the care queue, and it is the
+    member's own tick rather than a staff member's reading of what they
+    wrote. A pastoral request is the right shape for it: it stays open until
+    a named human closes it, which a prayer check-in deliberately does not.
+
+    **Not raised twice.** Somebody who ticks the box on Sunday and comes back
+    on Tuesday to add a sentence has asked once. A second request would put
+    them on the pastoral list twice and turn "people waiting on a pastor"
+    into "times a form was saved".
+
+    Never raises. A notification that cannot be built must not turn a
+    recorded check-in into an error page; the row is already saved and the
+    request is already on the list.
+    """
+    from app.models import SupportRequest
+    from app.models.support import CONTACT_EITHER, KIND_PRAYER
+
+    if SupportRequest.open_for_person(g.church.id, person.id) is not None:
+        # Already waiting on a pastor. Adding a second open request tells
+        # staff nothing they do not already have on their screen.
+        return False
+
+    ask = SupportRequest(
+        church_id=g.church.id,
+        person_id=person.id,
+        kind=KIND_PRAYER,
+        message=checkin.body,
+        contact_pref=CONTACT_EITHER,
+    )
+    db.session.add(ask)
+    db.session.flush()
+
+    try:
+        _alert_pastors(ask, person)
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception(
+            "Prayer check-in escalation alert failed for person %s", person.id
+        )
+    return True
 
 
 @bp.get("/support/")

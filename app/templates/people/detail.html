@@ -430,6 +430,48 @@
 </section>
 {% endif %}
 
+{# What they have asked prayer for, most recent first.
+
+   Here because this is the page somebody opens before a visit or a phone
+   call, and four weeks of a person's own words about their own weeks is the
+   context that call needs. Read-only: a check-in is marked prayed for on the
+   week's list, where somebody is praying through them, not one at a time
+   from a profile. #}
+{% if prayer_checkins %}
+<section class="card" id="prayer">
+  <div class="hd"><h2>{{ content.prayer_person_heading }}</h2></div>
+  <div class="bd">
+    <p class="muted small">{{ content.prayer_private }}</p>
+    {% for checkin in prayer_checkins %}
+      <article class="askrow {% if checkin.is_prayed_for %}done{% endif %}">
+        <div class="askmeta">
+          <span class="tag">
+            {{ content.prayer_week_of.format(
+                 when=checkin.week_of.strftime("%B %-d")) }}
+          </span>
+          {% if checkin.wants_contact %}
+            <span class="muted small">{{ content.prayer_wants_contact }}</span>
+          {% endif %}
+        </div>
+        <p class="askbody">{{ checkin.body }}</p>
+        {% if checkin.is_prayed_for %}
+          <p class="muted small">
+            {% if checkin.prayed_by_name %}
+              {{ content.prayer_marked_by.format(
+                   name=checkin.prayed_by_name,
+                   when=checkin.prayed_at|church_time("%B %-d")) }}
+            {% else %}
+              {{ content.prayer_marked_anon.format(
+                   when=checkin.prayed_at|church_time("%B %-d")) }}
+            {% endif %}
+          </p>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
 <section class="card">
   <div class="hd"><h2>{{ content.move_heading }}</h2></div>
   <div class="bd">

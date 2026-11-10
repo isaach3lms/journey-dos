@@ -1,0 +1,41 @@
+{% extends "public.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}  <p class="footnote">
+    <a href="{{ url_for('public.support') }}">Help</a>
+    &middot;
+    <a href="{{ url_for('auth.login') }}">Back to sign in</a>
+  </p>
+{% endblock %}
+{% block inner %}
+  <h1>{{ content.title }}</h1>
+  <p class="lede">{{ content.updated.format(date=updated) }}</p>
+  <p>{{ content.intro.format(church=church.name) }}</p>
+
+  <h2 class="policyh">{{ content.collect_heading }}</h2>
+  <ul class="policy">
+    {% for item in content.collect %}
+      <li><b>{{ item.name }}</b><span>{{ item.why }}</span></li>
+    {% endfor %}
+  </ul>
+
+  <h2 class="policyh">{{ content.not_heading }}</h2>
+  <ul class="policy">
+    {% for line in content.not_collected %}<li><span>{{ line }}</span></li>{% endfor %}
+  </ul>
+
+  <h2 class="policyh">{{ content.share_heading }}</h2>
+  <p>{{ content.share }}</p>
+
+  <h2 class="policyh">{{ content.rights_heading }}</h2>
+  <p>{{ content.rights }}</p>
+
+  <h2 class="policyh">{{ content.children_heading }}</h2>
+  <p>{{ content.children }}</p>
+
+  <h2 class="policyh">{{ content.contact_heading }}</h2>
+  <p>{{ content.contact.format(church=church.name) }}</p>
+  <p class="footnote">
+    <a href="{{ url_for('public.support') }}">Help</a>
+    &middot;
+    <a href="{{ url_for('auth.login') }}">Back to sign in</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "public.html" %}
+{% block title %}{{ content.reset_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.reset_title }}</h1>
+  <p class="lede">{{ content.reset_subtitle }}</p>
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.password.label }}
+      {{ form.password(class="input") }}
+      {% for error in form.password.errors %}<div class="fielderr">{{ error }}</div>{% endfor %}
+    </div>
+    <div class="field">
+      {{ form.confirm.label }}
+      {{ form.confirm(class="input") }}
+      {% for error in form.confirm.errors %}<div class="fielderr">{{ error }}</div>{% endfor %}
+    </div>
+    {{ form.submit(class="btn wide") }}
+  </form>
+{% endblock %}

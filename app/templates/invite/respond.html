@@ -1,0 +1,31 @@
+{% extends "public.html" %}
+{% block title %}{{ content.invite_page_heading }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.invite_page_heading }}</h1>
+  <p>{{ content.invite_asked_by.format(church=church.name) }}</p>
+
+  <dl class="invitefacts">
+    <dt>{{ content.invite_what }}</dt>
+    <dd>{{ service.name }}</dd>
+    <dt>{{ content.invite_when }}</dt>
+    <dd>{{ service.starts_at|church_time("%A %-d %B, %-I:%M%p") }}</dd>
+    <dt>{{ content.invite_doing }}</dt>
+    <dd>{{ assignment.role_name }}</dd>
+  </dl>
+
+  {% if assignment.has_answered %}
+    <p class="muted small">{{ content.invite_already }}</p>
+  {% endif %}
+
+  {# Two buttons, one form. The answer is a POST because mail clients and
+     corporate scanners fetch every link in a message before a human sees it,
+     and a GET that accepted would sign volunteers up for Sunday. #}
+  <form method="post">
+    {{ csrf_field() }}
+    <button class="btn wide {% if leaning == 'decline' %}ghostbtn{% endif %}"
+            type="submit" name="answer" value="accept">{{ content.invite_accept }}</button>
+    <button class="btn wide ghostbtn" type="submit" name="answer" value="decline">
+      {{ content.invite_decline }}
+    </button>
+  </form>
+{% endblock %}

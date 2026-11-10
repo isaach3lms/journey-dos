@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% set shown_title = conversation.title_for(my_person_id) %}
+{% block title %}{{ shown_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ shown_title }}{% endblock %}
+{% block subheading %}{{ conversation.kind_label }}{% if conversation.topic %} &middot; {{ conversation.topic }}{% endif %}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('messages.index') }}">{{ content.title }}</a>
+
+{% if conversation.is_archived %}
+  <div class="alert error">{{ content.archived_note }}</div>
+{% endif %}
+
+<div class="chatwrap">
+  <div>
+    {% include "messages/_sidebar.html" %}
+  </div>
+
+  <div>
+<section class="card">
+  <div class="bd">
+    <p class="muted small">
+      {% if conversation.is_announcement %}{{ content.announcement_note.format(church=church.name) }}
+      {% elif conversation.is_direct %}{{ content.direct_note }}
+      {% else %}{{ content.room_note }}{% endif %}
+    </p>
+
+    {% if conversation.messages %}
+      {# Same bubbles as the member side, so staff read a thread the way the
+         church does. Your messages sit right in the church colour, everyone
+         else left in grey. Delete sits behind the small menu on each bubble,
+         and a removed message keeps its place so the thread still reads. #}
+      <div class="bubblewrap staffbubbles">
+        <ol class="bubbles">
+          {% for message in conversation.messages %}
+            {% set is_mine = message.id in mine %}
+            {% set prev = conversation.messages[loop.index0 - 1] if not loop.first else none %}
+            {% set nxt = conversation.messages[loop.index0 + 1] if not loop.last else none %}
+            {% set new_sender = loop.first or prev.author_person_id != message.author_person_id or prev.author_name != message.author_name %}
+            {% set gap = loop.first or (message.sent_at - prev.sent_at).total_seconds() > 900 %}
+            {% set last_in_run = loop.last or nxt.author_person_id != message.author_person_id or nxt.author_name != message.author_name or (nxt.sent_at - message.sent_at).total_seconds() > 900 %}
+            {% if gap %}
+              <li class="bstamp">{{ message.sent_at|church_time("%a %b %-d, %-I:%M%p") }}</li>
+            {% endif %}
+            <li class="bmsg {% if is_mine %}mine{% else %}theirs{% endif %} {% if last_in_run %}tail{% endif %}" id="m{{ message.id }}">
+              {% if not is_mine and (new_sender or gap) %}
+                <div class="bname">{{ message.author_name or "Someone" }}</div>
+              {% endif %}
+              <div class="brow">
+                {% if message.is_deleted %}
+                  <div class="bubble gone">{{ content.deleted_placeholder }}</div>
+                {% else %}
+                  <div class="bubble" title="{{ message.sent_at|church_time('%-I:%M%p') }}">{{ message.rendered }}</div>
+                  <details class="bmenu">
+                    <summary aria-label="{{ content.message_options }}">&middot;&middot;&middot;</summary>
+                    <div class="bmenupanel">
+                      <form method="post"
+                            action="{{ url_for('messages.delete_message', conversation_id=conversation.id, message_id=message.id) }}">
+                        {{ csrf_field() }}
+                        <button class="link danger" type="submit">{{ content.delete }}</button>
+                      </form>
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      </div>
+      <p class="muted small">{{ content.delete_note }}</p>
+    {% else %}
+      <p class="muted small bempty">{{ content.no_messages }}</p>
+    {% endif %}
+
+    {% if conversation.is_archived %}
+      <p class="muted small">{{ content.archived_note }}</p>
+    {% elif not can_post %}
+      <p class="muted small">{{ content.staff_readonly }}</p>
+    {% else %}
+      {% if conversation.is_direct and templates %}
+        {# A link with `?template=`, not a script: it works with no
+           JavaScript, and the script below only saves the second click. #}
+        <div class="tpl">
+          <label class="fieldlbl" for="tplpick">{{ content.templates_label }}</label>
+          <div class="filters">
+            <select class="input select" id="tplpick" data-template-pick>
+              <option value="">{{ content.templates_none }}</option>
+              {% for saved in templates %}
+                <option value="{{ url_for('messages.thread', conversation_id=conversation.id, template=saved.id) }}"
+                        {% if prefill.get('id') == saved.id %}selected{% endif %}>{{ saved.name }}</option>
+              {% endfor %}
+            </select>
+            <a class="btn ghostbtn" data-template-go
+               href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">{{ content.templates_use }}</a>
+          </div>
+          {% if prefill %}
+            <p class="fieldhint">
+              {{ content.templates_using.format(name=prefill.name) }}
+              <a href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">{{ content.templates_clear }}</a>
+            </p>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.delete_template', conversation_id=conversation.id, template_id=prefill.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn tiny" type="submit">{{ content.template_remove }}</button>
+            </form>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <form method="post" class="composer staffcomposer" action="{{ url_for('messages.post', conversation_id=conversation.id) }}">
+        {{ csrf_field() }}
+        {% if prefill %}
+          <input type="hidden" name="from_template" value="{{ prefill.id }}">
+        {% endif %}
+        {% if conversation.is_announcement %}
+          <label class="check emailit">
+            <input type="checkbox" name="also_email">
+            <span>{{ content.email_it }} &middot; <span class="muted">{{ content.email_hint }}</span></span>
+          </label>
+        {% endif %}
+        <div class="composerrow">
+          <textarea class="composerinput" name="body" rows="{{ 5 if prefill else 1 }}" required
+                    placeholder="{{ content.post_placeholder }}" aria-label="{{ content.post }}">{{ prefill.get('body', '') }}</textarea>
+          <button class="composersend" type="submit" aria-label="{{ content.post }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+          </button>
+        </div>
+
+        {% if conversation.is_direct and writing_to %}
+          {# Naming it is what saves it, so there is no checkbox to forget to
+             tick and no second screen to go to afterwards. #}
+          <div class="field">
+            <label for="template_name">{{ content.template_name_label }}</label>
+            <input class="input" id="template_name" type="text" name="template_name"
+                   maxlength="120" autocomplete="off"
+                   value="{{ prefill.get('name', '') }}"
+                   placeholder="{{ content.template_name_placeholder }}">
+            <p class="fieldhint">{{ content.template_name_hint }}</p>
+          </div>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if not conversation.is_announcement and not conversation.is_direct %}
+<section class="card">
+  <div class="hd"><h2>{{ content.members.format(count=conversation.member_count) }}</h2></div>
+  <div class="bd">
+    {% if conversation.members %}
+      <ul class="flaglist">
+        {% for membership in conversation.members %}
+          <li>
+            <span class="av">{{ membership.person.initials }}</span>
+            <span class="fl"><span class="pn">{{ membership.person.full_name }}</span></span>
+            <form method="post" class="inline"
+                  action="{{ url_for('messages.remove_member', conversation_id=conversation.id, member_id=membership.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.member_remove }}</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.members_empty }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('messages.add_member', conversation_id=conversation.id) }}">
+      {{ csrf_field() }}
+      <div class="filters">
+        <select class="input select" name="person_id" aria-label="{{ content.member_add }}">
+          {% for person in candidates %}<option value="{{ person.id }}">{{ person.full_name }}</option>{% endfor %}
+        </select>
+        <button class="btn ghostbtn" type="submit">{{ content.member_add }}</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endif %}
+
+<section class="card">
+  <div class="bd">
+    <form method="post" action="{{ url_for('messages.archive', conversation_id=conversation.id) }}" class="inline">
+      {{ csrf_field() }}
+      <button class="btn ghostbtn" type="submit">{{ content.archive }}</button>
+    </form>
+    {% if current_user.is_staff %}
+      <form method="post" action="{{ url_for('messages.delete_chat', conversation_id=conversation.id) }}" class="inline"
+            onsubmit='return confirm({{ content.delete_chat_confirm.format(title=conversation.title) | tojson }})'>
+        {{ csrf_field() }}
+        <button class="btn ghostbtn" type="submit">{{ content.delete_chat }}</button>
+      </form>
+      <p class="muted small">{{ content.delete_chat_hint }}</p>
+    {% endif %}
+  </div>
+</section>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}{% include "_composer.html" %}
+<script>
+/* The picker is a link with the template on it, so this only saves the
+   second click: choose one and the page goes there. Without the script the
+   "Use it" button next to it does the same thing. */
+(function () {
+  var pick = document.querySelector("[data-template-pick]");
+  var go = document.querySelector("[data-template-go]");
+  if (!pick || !go) { return; }
+
+  var blank = go.getAttribute("href");
+  function aim() { go.setAttribute("href", pick.value || blank); }
+  pick.addEventListener("change", function () { aim(); go.click(); });
+  aim();
+})();
+</script>
+{% endblock %}

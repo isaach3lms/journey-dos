@@ -1,0 +1,48 @@
+{# One next step, and the one question worth asking about it.
+
+   Short because the person is signed in. The app already has their name,
+   email and phone, and a form that asks for them again is a form people
+   abandon on a phone in a car park. The only field is the offer's own
+   question, and it is optional: the ask itself is the message, and anything
+   they add is a bonus rather than a toll. #}
+{% extends "member/base.html" %}
+{% block title %}{{ offer.heading }} | {{ church.name }}{% endblock %}
+
+{% block content %}
+<a class="mback" href="{{ url_for('member.home') }}">{{ content.offers_back }}</a>
+
+<section class="mcard mwide">
+  <span class="nsicon big" style="color: {{ offer.tint }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+         aria-hidden="true">
+      <path d="{{ icon_path(offer.icon) }}"></path>
+    </svg>
+  </span>
+  <h1 class="nsheading">{{ offer.heading }}</h1>
+  <p class="mnote">{{ offer.blurb }}</p>
+
+  {% if already %}
+    {# Said plainly rather than hiding the form. Somebody who asked three
+       weeks ago and heard nothing needs to know the church has it, and
+       needs to be able to add something rather than being told to go away. #}
+    <div class="alert notice">
+      <p>{{ content.offers_already_note.format(
+            when=already.created_at|church_time("%B %-d")) }}</p>
+    </div>
+  {% endif %}
+
+  <form method="post">
+    {{ csrf_field() }}
+    <label class="mlbl" for="note">{{ offer.prompt }}</label>
+    <textarea class="input" id="note" name="note" rows="4"
+              maxlength="2000"
+              placeholder="{{ offer.placeholder }}">{{ already.note if already and already.note else "" }}</textarea>
+    <button class="btn wide" type="submit">
+      {% if already %}{{ content.offers_update }}{% else %}{{ content.offers_submit }}{% endif %}
+    </button>
+  </form>
+
+  <p class="mnote small">{{ content.offers_who_sees }}</p>
+</section>
+{% endblock %}

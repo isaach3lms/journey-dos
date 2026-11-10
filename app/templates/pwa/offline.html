@@ -1,0 +1,9 @@
+{% extends "public.html" %}
+{% block title %}{{ content.offline_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  {# Says nothing about the person. It renders from a cache on a device that
+     may have been handed to somebody else. #}
+  <h1>{{ content.offline_title }}</h1>
+  <p>{{ content.offline_body }}</p>
+  <p class="footnote">{{ content.offline_hint }}</p>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% from "resources/_glyph.html" import glyph %}
+{% from "resources/_cover.html" import cover %}
+{% block title %}{{ resource.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ resource.title }}{% endblock %}
+{% block subheading %}{{ resource.kind_label }} &middot; {{ resource.status_label }}{% endblock %}
+
+{% block actions %}
+  {% if resource.is_published %}
+    <a class="btn ghostbtn" href="{{ url_for('member.read_resource', resource_id=resource.id) }}">{{ content.open_member }}</a>
+  {% endif %}
+  {% if resource.status != "archived" %}
+  <form method="post" action="{{ url_for('resources.publish', resource_id=resource.id) }}" class="inline">
+    {{ csrf_field() }}
+    <button class="btn {% if resource.is_published %}ghostbtn{% endif %}" type="submit">
+      {% if resource.is_published %}{{ content.unpublish }}{% else %}{{ content.publish }}{% endif %}
+    </button>
+  </form>
+  {% endif %}
+{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('resources.index') }}">{{ content.title }}</a>
+
+<div class="livebar {% if resource.is_published %}live{% endif %}">
+  {% if resource.is_published %}{{ content.live_banner }}{% else %}{{ content.draft_banner }}{% endif %}
+</div>
+
+<div class="resedit">
+  <section class="card">
+    {{ cover(resource, "planbanner small") }}
+    <div class="hd"><h2>{{ content.details_heading }}</h2></div>
+    <div class="bd">
+      <form method="post" action="{{ url_for('resources.save_details', resource_id=resource.id) }}">
+        {{ csrf_field() }}
+        {% include "resources/_cover_picker.html" %}
+        <label class="flabel" for="r-title">{{ content.field_title }}</label>
+        <input class="input" id="r-title" type="text" name="title" required value="{{ resource.title }}">
+        <label class="flabel" for="r-kind">{{ content.field_kind }}</label>
+        <select class="input select" id="r-kind" name="kind">
+          {% for kind in kinds %}
+            <option value="{{ kind }}" {% if kind == resource.kind %}selected{% endif %}>{{ kind_labels[kind] }}</option>
+          {% endfor %}
+        </select>
+        <label class="flabel" for="r-summary">{{ content.field_summary }}</label>
+        <textarea class="input" id="r-summary" name="summary" rows="3"
+                  placeholder="{{ content.field_summary_placeholder }}">{{ resource.summary or "" }}</textarea>
+        <button class="btn" type="submit">{{ content.save_details }}</button>
+      </form>
+      <p class="muted small">
+        {% if started == 1 %}{{ content.started_people_one }}
+        {% elif started %}{{ content.started_people.format(count=started) }}
+        {% else %}{{ content.started_people_none }}{% endif %}
+      </p>
+      {% if resource.status != "archived" %}
+        <form method="post" action="{{ url_for('resources.archive', resource_id=resource.id) }}" class="inline">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn tiny" type="submit">{{ content.archive }}</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('resources.restore', resource_id=resource.id) }}" class="inline">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn tiny" type="submit">{{ content.restore }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </section>
+
+  {# Artwork and filters: two small cards under the details, before the
+     sessions, because both are set once and then left alone. #}
+  <section class="card" id="art">
+    <div class="hd"><h2>{{ content.art_heading }}</h2></div>
+    <div class="bd">
+      <p>{{ content.art_intro }}</p>
+      {% if resource.has_thumb %}
+        <div class="thumbnow">
+          <img class="thumbprev"
+               src="{{ url_for('resources.thumbnail', resource_id=resource.id, v=resource.thumb_version) }}"
+               alt="{{ content.thumb_current }}">
+          <form method="post" action="{{ url_for('resources.remove_thumbnail', resource_id=resource.id) }}">
+            {{ csrf_field() }}
+            <button class="btn ghostbtn tiny" type="submit">{{ content.thumb_remove }}</button>
+          </form>
+        </div>
+      {% endif %}
+      <form method="post" enctype="multipart/form-data"
+            action="{{ url_for('resources.save_thumbnail', resource_id=resource.id) }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="r-thumb">{{ content.thumb_field }}</label>
+        <input class="input" id="r-thumb" type="file" name="thumbnail"
+               accept="image/png,image/jpeg" required>
+        <button class="btn" type="submit">{{ content.thumb_upload }}</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card" id="tags">
+    <div class="hd"><h2>{{ content.tags_heading }}</h2></div>
+    <div class="bd">
+      <p>{{ content.tags_intro }}</p>
+      <form method="post" action="{{ url_for('resources.save_tags', resource_id=resource.id) }}">
+        {{ csrf_field() }}
+        <span class="flabel">{{ content.tags_stages }}</span>
+        <div class="stagepick">
+          {% for stage in stages %}
+            <label class="stagechip">
+              <input type="checkbox" name="stages" value="{{ stage.code }}"
+                     {% if stage.code in resource.stage_codes %}checked{% endif %}>
+              <span>{{ stage.label }}</span>
+            </label>
+          {% endfor %}
+        </div>
+        <label class="flabel" for="r-themes">{{ content.tags_themes }}</label>
+        <input class="input" id="r-themes" type="text" name="themes"
+               value="{{ resource.themes|join(', ') }}"
+               placeholder="{{ content.tags_themes_placeholder }}" autocomplete="off">
+        <div class="fieldhelp">{{ content.tags_themes_hint }}</div>
+        {% if themes %}
+          <div class="themelist">
+            <span class="muted small">{{ content.tags_existing }}</span>
+            {% for theme in themes %}<span class="kindchip">{{ theme }}</span>{% endfor %}
+          </div>
+        {% endif %}
+        <button class="btn" type="submit">{{ content.tags_save }}</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="hd">
+      <h2>{{ content.session_heading }}</h2>
+      <div class="spacer"></div>
+      <span class="muted small">{{ content.sessions_total.format(count=resource.session_count, minutes=resource.total_minutes) }}</span>
+    </div>
+    <div class="bd">
+      {% if resource.sessions %}
+        <ol class="sesslist">
+          {% for session in resource.sessions %}
+            <li id="s{{ session.id }}">
+              <details {% if open_session == session.id %}open{% endif %}>
+                <summary class="sessrow">
+                  <span class="dn">{{ session.position }}</span>
+                  <span class="dtext">
+                    <span class="dt">{{ session.title }}</span>
+                    <span class="ds">{{ session.passage_ref or content.no_passage }}{% if session.minutes %} &middot; {{ content.minutes.format(count=session.minutes) }}{% endif %}</span>
+                  </span>
+                  <span class="dpill">{{ content.session_edit }}</span>
+                </summary>
+                <form method="post" class="sessform"
+                      action="{{ url_for('resources.save_session', resource_id=resource.id, session_id=session.id) }}">
+                  {{ csrf_field() }}
+                  <div class="filters">
+                    <input class="input" type="text" name="title" required value="{{ session.title }}"
+                           aria-label="{{ content.session_title }}">
+                    <input class="input dateinput" type="text" name="passage_ref" value="{{ session.passage_ref or '' }}"
+                           placeholder="{{ content.session_passage_placeholder }}" aria-label="{{ content.session_passage }}">
+                    <input class="input mininput" type="number" min="1" max="240" name="minutes" value="{{ session.minutes or '' }}"
+                           placeholder="{{ content.session_minutes }}" aria-label="{{ content.session_minutes }}">
+                  </div>
+                  <textarea class="input" name="body" rows="8" aria-label="{{ content.session_body }}"
+                            placeholder="{{ content.session_body_placeholder }}">{{ session.body or "" }}</textarea>
+                  <input class="input" type="text" name="question" value="{{ session.question or '' }}"
+                         placeholder="{{ content.session_question_placeholder }}" aria-label="{{ content.session_question }}">
+                  <p class="muted small">{{ content.format_help }}</p>
+                  <div class="sessactions">
+                    <button class="btn" type="submit">{{ content.session_save_changes }}</button>
+                  </div>
+                </form>
+                <div class="sessactions">
+                  <form method="post" class="inline" action="{{ url_for('resources.move_session', resource_id=resource.id, session_id=session.id) }}">
+                    {{ csrf_field() }}<input type="hidden" name="direction" value="up">
+                    <button class="btn ghostbtn tiny" type="submit" {% if loop.first %}disabled{% endif %}>{{ content.move_up }}</button>
+                  </form>
+                  <form method="post" class="inline" action="{{ url_for('resources.move_session', resource_id=resource.id, session_id=session.id) }}">
+                    {{ csrf_field() }}<input type="hidden" name="direction" value="down">
+                    <button class="btn ghostbtn tiny" type="submit" {% if loop.last %}disabled{% endif %}>{{ content.move_down }}</button>
+                  </form>
+                  <div class="spacer"></div>
+                  <form method="post" class="inline"
+                        action="{{ url_for('resources.delete_session', resource_id=resource.id, session_id=session.id) }}"
+                        onsubmit='return confirm({{ content.session_delete_confirm | tojson }})'>
+                    {{ csrf_field() }}
+                    <button class="btn ghostbtn tiny danger" type="submit">{{ content.session_delete }}</button>
+                  </form>
+                </div>
+              </details>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="muted small">{{ content.session_none }}</p>
+      {% endif %}
+
+      <details class="addsession" {% if not resource.sessions %}open{% endif %}>
+        <summary class="btn ghostbtn tiny">{{ content.session_add }}</summary>
+        <form method="post" class="sessform" action="{{ url_for('resources.add_session', resource_id=resource.id) }}">
+          {{ csrf_field() }}
+          <div class="filters">
+            <input class="input" type="text" name="title" required
+                   placeholder="{{ content.session_title_placeholder }}" aria-label="{{ content.session_title }}">
+            <input class="input dateinput" type="text" name="passage_ref"
+                   placeholder="{{ content.session_passage_placeholder }}" aria-label="{{ content.session_passage }}">
+            <input class="input mininput" type="number" min="1" max="240" name="minutes"
+                   placeholder="{{ content.session_minutes }}" aria-label="{{ content.session_minutes }}">
+          </div>
+          <textarea class="input" name="body" rows="6"
+                    placeholder="{{ content.session_body_placeholder }}" aria-label="{{ content.session_body }}"></textarea>
+          <input class="input" type="text" name="question"
+                 placeholder="{{ content.session_question_placeholder }}" aria-label="{{ content.session_question }}">
+          <p class="muted small">{{ content.format_help }}</p>
+          <button class="btn" type="submit">{{ content.session_save }}</button>
+        </form>
+      </details>
+    </div>
+  </section>
+</div>
+{% endblock %}

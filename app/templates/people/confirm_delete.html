@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ content.purge_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.purge_title }}{% endblock %}
+{% block subheading %}{{ content.purge_subtitle }}{% endblock %}
+
+{% block content %}
+<a class="ghost back" href="{{ url_for('people.archived') }}">{{ content.archived_title }}</a>
+
+{# Named one by one with what each takes with them.
+
+   A list of names and a yes/no button is a confirmation nobody reads. The
+   counts are here because they are the actual decision: somebody with a
+   blank timeline is a test record, and somebody with fourteen entries and
+   three check-ins is a person who was here. #}
+{% if going %}
+  <section class="card">
+    <div class="hd">
+      <h2>{{ content.purge_going_heading.format(count=going|length) }}</h2>
+    </div>
+    <div class="bd">
+      <p class="alert error">{{ content.purge_warning }}</p>
+
+      <ul class="flaglist">
+        {% for verdict in going %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ verdict.name }}</span>
+              <span class="pe">
+                {% if verdict.takes_anything %}
+                  {% if verdict.counts.events %}{{ content.purge_bit_events.format(count=verdict.counts.events) }}{% endif %}
+                  {% if verdict.counts.checkins %} &middot; {{ content.purge_bit_checkins.format(count=verdict.counts.checkins) }}{% endif %}
+                  {% if verdict.counts.contacts %} &middot; {{ content.purge_bit_contacts.format(count=verdict.counts.contacts) }}{% endif %}
+                  {% if verdict.counts.steps %} &middot; {{ content.purge_bit_steps.format(count=verdict.counts.steps) }}{% endif %}
+                  {% if verdict.counts.groups %} &middot; {{ content.purge_bit_groups.format(count=verdict.counts.groups) }}{% endif %}
+                  {% if verdict.counts.sequences %} &middot; {{ content.purge_bit_sequences.format(count=verdict.counts.sequences) }}{% endif %}
+                {% else %}
+                  {{ content.purge_bit_nothing }}
+                {% endif %}
+              </span>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+
+      <p class="muted small">{{ content.purge_survives }}</p>
+
+      <form method="post" action="{{ url_for('people.bulk_delete') }}">
+        {{ csrf_field() }}
+        {% for verdict in going %}
+          <input type="hidden" name="person_id" value="{{ verdict.person_id }}">
+        {% endfor %}
+
+        <label class="mlbl" for="confirm">
+          {{ content.purge_type_label.format(word=content.purge_word) }}
+        </label>
+        <input class="input" id="confirm" name="confirm" type="text"
+               autocomplete="off" autocapitalize="characters" required
+               placeholder="{{ content.purge_word }}">
+
+        <div class="filters">
+          <button class="btn danger" type="submit">
+            {{ content.purge_submit.format(count=going|length) }}
+          </button>
+          <a class="btn ghostbtn" href="{{ url_for('people.archived') }}">
+            {{ content.purge_cancel }}
+          </a>
+        </div>
+      </form>
+    </div>
+  </section>
+{% endif %}
+
+{# Refused, with the reason and what to do instead. Listed rather than
+   silently dropped: somebody who ticked eight names and deleted six needs
+   to know which two are still there and why. #}
+{% if blocked %}
+  <section class="card">
+    <div class="hd">
+      <h2>{{ content.purge_blocked_heading.format(count=blocked|length) }}</h2>
+    </div>
+    <div class="bd">
+      <ul class="flaglist">
+        {% for verdict in blocked %}
+          <li>
+            <span class="fl">
+              <span class="pn">{{ verdict.name }}</span>
+              <span class="pe">{{ content['purge_blocked_' ~ verdict.blocked_by] }}</span>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

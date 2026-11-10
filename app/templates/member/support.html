@@ -1,0 +1,66 @@
+{% extends "member/base.html" %}
+{% block title %}{{ content.support_heading }} | {{ church.name }}{% endblock %}
+{% block content %}
+
+<a class="mback" href="{{ url_for('member.home') }}">{{ content.support_cancel }}</a>
+<h1 class="mgreet">{{ content.support_heading }}</h1>
+<p class="msub">{{ content.support_intro.format(church=church.name) }}</p>
+
+{# Above the box, not beside it. Somebody in real trouble should see these
+   numbers before they start typing, not after they send and wait. #}
+<section class="mcard crisis">
+  <p class="mnote">{{ content.support_emergency }}</p>
+</section>
+
+{% if existing %}
+  <section class="mcard">
+    <div class="mlbl">{{ content.support_open_heading }}</div>
+    <p class="mnote">
+      {{ content.support_open_body.format(
+           when=existing.created_at|church_time("%B %-d")) }}
+    </p>
+  </section>
+{% endif %}
+
+<section class="mcard">
+  <form method="post" action="{{ url_for('member.send_support') }}">
+    {{ csrf_field() }}
+
+    {% if not existing %}
+      <div class="mlbl">{{ content.support_kind }}</div>
+      <div class="pickrow">
+        {% for code, label in kinds %}
+          <label class="pickchip">
+            <input type="radio" name="kind" value="{{ code }}"
+                   {% if loop.index0 == 2 %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="mlbl">
+      {% if existing %}{{ content.support_add }}{% else %}{{ content.support_message }}{% endif %}
+    </div>
+    <textarea class="input" name="message" rows="6" required
+              maxlength="4000" autofocus
+              placeholder="{{ content.support_message_placeholder }}"></textarea>
+
+    {% if not existing %}
+      <div class="mlbl">{{ content.support_contact }}</div>
+      <div class="pickrow">
+        {% for code, label in contacts %}
+          <label class="pickchip">
+            <input type="radio" name="contact_pref" value="{{ code }}"
+                   {% if loop.first %}checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <button class="btn wide" type="submit">{{ content.support_send }}</button>
+    <p class="mmeta">{{ content.support_who_sees }}</p>
+  </form>
+</section>
+{% endblock %}

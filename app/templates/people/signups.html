@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ content.signups_heading }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.signups_heading }}{% endblock %}
+{% block subheading %}{{ content.signups_intro }}{% endblock %}
+
+{# Who is waiting to hear back.
+
+   Open ones only by default, because that is the question this screen
+   exists to answer. The done ones are a click away rather than mixed in:
+   a list where half the rows need no action is a list staff stop reading,
+   and the whole point of the row is that somebody is waiting at the other
+   end of it. #}
+
+{% block content %}
+<div class="filters">
+  {% if show_done %}
+    <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">{{ content.signups_show_open }}</a>
+  {% else %}
+    <a class="btn ghostbtn" href="{{ url_for('people.signups', done=1) }}">{{ content.signups_show_all }}</a>
+  {% endif %}
+  <a class="btn ghostbtn" href="{{ url_for('people.index') }}">{{ content.guests_back }}</a>
+</div>
+
+{% if signups %}
+  <section class="card">
+    <div class="hd">
+      <h2>{{ content.signups_open_count.format(count=open_count) }}</h2>
+    </div>
+    <ul class="cardlist">
+      {% for signup in signups %}
+        <li>
+          <div class="fl">
+            <span class="pn">
+              <a href="{{ url_for('people.detail', person_id=signup.person_id) }}">
+                {{ signup.person.full_name }}
+              </a>
+            </span>
+            <span class="pe">
+              {{ signup.offer_label }} &middot;
+              {{ content.signups_asked.format(
+                   when=signup.created_at|church_time("%b %-d, %-I:%M%p")) }}
+            </span>
+            {# What they wrote, in full. It is the part staff actually read,
+               and a table cell is where a note goes to die. #}
+            {% if signup.note %}
+              <span class="pe note">{{ signup.note }}</span>
+            {% endif %}
+          </div>
+          {% if signup.is_handled %}
+            <span class="pill quiet">
+              {% if signup.handled_by_name %}
+                {{ content.signups_done_by.format(name=signup.handled_by_name) }}
+              {% else %}{{ content.signups_done }}{% endif %}
+            </span>
+          {% else %}
+            <form method="post"
+                  action="{{ url_for('people.mark_signup_done', signup_id=signup.id) }}">
+              {{ csrf_field() }}
+              <button class="btn ghostbtn" type="submit">{{ content.signups_done }}</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% else %}
+  <section class="card">
+    <div class="bd">
+      <p class="muted">
+        {% if show_done %}{{ content.signups_empty }}
+        {% else %}{{ content.signups_none_open }}{% endif %}
+      </p>
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

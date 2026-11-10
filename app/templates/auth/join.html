@@ -1,0 +1,26 @@
+{% extends "public.html" %}
+{% block title %}{{ content.join_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.join_title }}</h1>
+  <p class="lede">{{ content.join_subtitle }}</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert {{ category }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    {% for field in [form.name, form.email, form.password] %}
+      <div class="field">
+        {{ field.label }}
+        {{ field(class="input") }}
+        {% for error in field.errors %}<div class="fielderr">{{ error }}</div>{% endfor %}
+      </div>
+    {% endfor %}
+    {{ form.submit(class="btn wide") }}
+  </form>
+
+  <p class="footnote"><a href="{{ url_for('auth.login') }}">{{ content.join_back }}</a></p>
+{% endblock %}

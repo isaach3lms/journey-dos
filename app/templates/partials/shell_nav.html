@@ -1,0 +1,103 @@
+{# The menu button.
+
+   One button doing two jobs, chosen by width:
+
+   - Wide: narrow the sidebar to its icons, and remember that. The choice is
+     kept in localStorage rather than on the server, because it is about
+     this screen rather than about this person: the same pastor wants the
+     labels on a laptop and the icons on a 13 inch screen beside a plan.
+   - Phone: slide the sidebar in over the page, with a scrim behind it.
+
+   The drawer closes on the scrim, on Escape, and on following a link. It
+   does not close on a resize into desktop width: the class it sets is
+   scoped to the phone breakpoint in CSS, so a stale one is invisible.
+#}
+<script>
+(function () {
+  var root = document.documentElement;
+  /* Two of them: the one in the sidebar, which collapses the rail on a
+     wide screen and closes the drawer on a phone, and the one in the app
+     bar, which only ever opens the drawer. Both do the same thing, so
+     both are wired the same way. */
+  var buttons = Array.prototype.slice.call(
+    document.querySelectorAll("[data-nav-toggle]")
+  );
+  var button = buttons[0];
+  var scrim = document.querySelector("[data-nav-close]");
+  var sidebar = document.getElementById("sidebar");
+  if (!button || !sidebar) { return; }
+
+  /* The same number as the CSS breakpoint. Two places, deliberately: a
+     media query cannot be read from a stylesheet reliably, and a wrong
+     guess here shows a drawer button on a desktop. */
+  var PHONE = window.matchMedia("(max-width: 820px)");
+
+  var SAYS = {
+    collapse: {{ nav_ui.collapse | tojson }},
+    expand: {{ nav_ui.expand | tojson }},
+    open: {{ nav_ui.open_menu | tojson }},
+    close: {{ nav_ui.close_menu | tojson }}
+  };
+
+  buttons.forEach(function (b) { b.hidden = false; });
+
+  function openDrawer() { return root.classList.contains("nav-open"); }
+  function collapsed() { return root.classList.contains("nav-collapsed"); }
+
+  function label() {
+    var text = PHONE.matches
+      ? (openDrawer() ? SAYS.close : SAYS.open)
+      : (collapsed() ? SAYS.expand : SAYS.collapse);
+    var expanded = PHONE.matches ? String(openDrawer()) : String(!collapsed());
+    buttons.forEach(function (b) {
+      /* The app bar's button only ever opens, so it keeps its own words
+         rather than being relabelled "Narrow the menu" on a phone. */
+      var says = b.classList.contains("appbarbtn")
+        ? (openDrawer() ? SAYS.close : SAYS.open)
+        : text;
+      b.setAttribute("aria-label", says);
+      b.setAttribute("title", says);
+      b.setAttribute("aria-expanded", expanded);
+    });
+    if (scrim) { scrim.hidden = !(PHONE.matches && openDrawer()); }
+  }
+
+  function shut() {
+    root.classList.remove("nav-open");
+    label();
+  }
+
+  buttons.forEach(function (b) { b.addEventListener("click", function () {
+    if (PHONE.matches) {
+      root.classList.toggle("nav-open");
+    } else {
+      var now = !collapsed();
+      root.classList.toggle("nav-collapsed", now);
+      try {
+        localStorage.setItem("nav-collapsed", now ? "1" : "0");
+      } catch (e) { /* Nothing to remember it with. It still toggles. */ }
+    }
+    label();
+  }); });
+
+  if (scrim) { scrim.addEventListener("click", shut); }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && openDrawer()) { shut(); }
+  });
+
+  /* Following a link navigates anyway, but a slow page would otherwise sit
+     there with the drawer still over it. */
+  sidebar.addEventListener("click", function (e) {
+    if (e.target.closest("a") && PHONE.matches) { shut(); }
+  });
+
+  /* Rotating a phone into landscape can cross the breakpoint, and the
+     button means something else on the other side of it. */
+  if (PHONE.addEventListener) {
+    PHONE.addEventListener("change", function () { shut(); });
+  }
+
+  label();
+})();
+</script>

@@ -1,0 +1,17 @@
+{# One line-icon per kind, the same set the approved demo uses. Stroke is
+   currentColor so the cover decides whether it is white or brand green. #}
+{% macro glyph(kind, cls="glyph") -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+{%- if kind == "course" -%}
+  <path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10.5V16c0 1.7 2.2 3 5 3s5-1.3 5-3v-5.5"/>
+{%- elif kind == "study" -%}
+  <path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M12 8v6M9.5 11h5"/>
+{%- elif kind == "training" -%}
+  <circle cx="12" cy="8" r="3.3"/><path d="M5 20c0-3.5 3.1-5.8 7-5.8s7 2.3 7 5.8"/>
+{%- elif kind == "next_steps" -%}
+  <path d="M4 18h5v-5h5V8h6"/><path d="M17 5l3 3-3 3"/>
+{%- else -%}
+  <path d="M4 5.5A2 2 0 016 4h5v16H6a2 2 0 01-2-2z"/><path d="M20 5.5A2 2 0 0018 4h-5v16h5a2 2 0 002-2z"/>
+{%- endif -%}
+</svg>
+{%- endmacro %}

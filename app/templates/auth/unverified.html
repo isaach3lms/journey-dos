@@ -1,0 +1,11 @@
+{% extends "public.html" %}
+{% block title %}{{ content.unverified_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.unverified_title }}</h1>
+  <p>{{ content.unverified }}</p>
+  <form method="post" action="{{ url_for('auth.resend_verification') }}">
+    {{ csrf_field() }}
+    <input type="hidden" name="email" value="{{ email }}">
+    <button class="btn wide" type="submit">{{ content.unverified_resend }}</button>
+  </form>
+{% endblock %}

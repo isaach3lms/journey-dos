@@ -1,0 +1,44 @@
+{# Setting a tablet up.
+
+   Its own page rather than part of the kiosk shell, because nobody is signed
+   in yet and the shell assumes somebody is.
+
+   The button is what signs the tablet in, not the link. A link in a group
+   chat is fetched by every preview bot that sees it, and a one-time link that
+   burned on a GET would be dead before a volunteer touched it. #}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>{{ content.kiosk_setup_title }} | {{ church.name }}</title>
+{% include "partials/head_meta.html" %}
+</head>
+<body class="kioskbody">
+{# The logo is the reversed, white version, so it goes on the dark background
+   above the card rather than inside it. In the card it is white on white. #}
+<header class="kioskhead">
+  {% if palette.logo_reversed %}
+    <img class="mark" src="{{ url_for('static', filename=palette.logo_reversed) }}"
+         alt="{{ church.name }}">
+  {% else %}
+    <div class="crest">{{ church.name[:2]|upper }}</div>
+  {% endif %}
+</header>
+
+<main class="kioskwrap">
+  <div class="kioskcard">
+    <h1>{{ content.kiosk_setup_title }}</h1>
+    {% if label %}
+      <p class="mlbl">{{ content.kiosk_setup_named.format(label=label) }}</p>
+    {% endif %}
+    <p class="lede">{{ content.kiosk_setup_body }}</p>
+
+    <form method="post">
+      {{ csrf_field() }}
+      <button class="btn wide center" type="submit">{{ content.kiosk_setup_go }}</button>
+    </form>
+  </div>
+</main>
+</body>
+</html>

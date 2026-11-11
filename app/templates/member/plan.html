@@ -1,0 +1,20 @@
+{% extends "member/base.html" %}
+{% block title %}{{ resource.title }} | {{ church.name }}{% endblock %}
+{% block content %}
+<a class="mback" href="{{ url_for('member.reading') }}">{{ res.member_heading }}</a>
+<h1 class="mgreet">{{ resource.title }}</h1>
+{% if resource.summary %}<p class="msub">{{ resource.summary }}</p>{% endif %}
+
+{% if done|length >= resource.session_count and resource.session_count %}
+  <div class="alert notice">{{ res.member_complete }}</div>
+{% endif %}
+
+{% for session in resource.sessions %}
+  <a class="mcard mlink {% if session.id in done %}mdone{% endif %}"
+     href="{{ url_for('member.read_session', resource_id=resource.id, session_id=session.id) }}">
+    <div class="mlbl">{{ session.position }}{% if session.passage_ref %} &middot; {{ session.passage_ref }}{% endif %}</div>
+    <div class="mtitle">{{ session.title }}</div>
+    {% if session.id in done %}<div class="mmeta">{{ res.member_done }}</div>{% endif %}
+  </a>
+{% endfor %}
+{% endblock %}

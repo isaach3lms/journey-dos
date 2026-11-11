@@ -1,0 +1,45 @@
+{# People who stopped moving and nobody has spoken to. #}
+<section class="card">
+  <div class="hd">
+    <h2>{{ stuck_content.card_heading }}</h2>
+    <div class="spacer"></div>
+    {% if stuck_count %}
+      <span class="pill pending">{{ stuck_count }} {{ stuck_content.flag|lower }}</span>
+    {% endif %}
+  </div>
+  <div class="bd">
+    {% if flagged %}
+      <p>{{ stuck_content.card_intro }}</p>
+      <ul class="flaglist">
+        {% for person in flagged %}
+          <li>
+            <a href="{{ url_for('people.detail', person_id=person.id) }}">
+              <span class="av">{{ person.initials }}</span>
+              <span class="fl">
+                <span class="pn">{{ person.full_name }}</span>
+                <span class="pe">{{ person.stuck_reason }}</span>
+              </span>
+              <span class="pill pending">{{ stuck_content.flag }}</span>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+      {% if stuck_count > flagged|length %}
+        <a class="ghost" href="{{ url_for('people.stuck_list') }}">{{ stuck_content.see_all }} ({{ stuck_count }})</a>
+      {% endif %}
+    {% else %}
+      <p>{{ stuck_content.card_empty }}</p>
+      <p class="muted small">{{ stuck_content.card_empty_hint.format(window=contact_window) }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="bd">
+    <div class="metrics">
+      <div><span class="mono mv">{{ stuck_count }}</span> {{ stuck_content.metric_stuck }}</div>
+      <div><span class="mono mv">{{ contacted_count }}</span> {{ stuck_content.metric_contacted }}</div>
+      <div><span class="mono mv">{{ unowned_count }}</span> {{ stuck_content.metric_unowned }}</div>
+    </div>
+  </div>
+</section>

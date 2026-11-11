@@ -1,0 +1,72 @@
+{# The left column of the messaging screen.
+
+   Shared by the index and a thread so the two cannot disagree about what
+   exists or what is unread. `selected_id` is the conversation being read,
+   or nothing on the index.
+
+   Group chats are the church's: announcements and rooms. Direct messages
+   are this person's own, and no leader sees anybody else's. #}
+
+<aside class="chatside">
+  <div class="chatsec">
+    <h3 class="chatlbl">{{ content.group_chats }}</h3>
+    {% if groups %}
+      <ul class="chatlist">
+        {% for conversation in groups %}
+          <li>
+            <a class="chatrow {% if selected_id == conversation.id %}on{% endif %}"
+               href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">
+              <span class="chatmark" aria-hidden="true">{{ (icons.chat_everyone if conversation.is_announcement else icons.chat_room)|safe }}</span>
+              <span class="chatname">{{ conversation.title }}</span>
+              {% if unread.get(conversation.id) %}
+                <span class="chatbadge">{{ unread[conversation.id] }}</span>
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.groups_none }}</p>
+    {% endif %}
+  </div>
+
+  <div class="chatsec">
+    <h3 class="chatlbl">{{ content.direct_messages }}</h3>
+    {% if directs %}
+      <ul class="chatlist">
+        {% for conversation in directs %}
+          <li>
+            <a class="chatrow {% if selected_id == conversation.id %}on{% endif %}"
+               href="{{ url_for('messages.thread', conversation_id=conversation.id) }}">
+              <span class="chatmark" aria-hidden="true">{{ icons.chat_direct|safe }}</span>
+              <span class="chatname">{{ conversation.title_for(my_person_id) }}</span>
+              {% if unread.get(conversation.id) %}
+                <span class="chatbadge">{{ unread[conversation.id] }}</span>
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted small">{{ content.direct_none }}</p>
+    {% endif %}
+
+    {% if may_start_direct %}
+      {# A details element, so the picker is markup the browser already has
+         and opening it needs no request. Same idiom as the settings rows. #}
+      <details class="chatnew">
+        <summary>{{ content.direct_start }}</summary>
+        <form method="post" action="{{ url_for('messages.start_direct') }}">
+          {{ csrf_field() }}
+          <label class="fieldlbl" for="direct_person">{{ content.direct_pick }}</label>
+          <select class="input select" id="direct_person" name="person_id">
+            {% for person in direct_candidates %}
+              <option value="{{ person.id }}">{{ person.full_name }}</option>
+            {% endfor %}
+          </select>
+          <button class="btn" type="submit">{{ content.direct_go }}</button>
+        </form>
+      </details>
+    {% endif %}
+  </div>
+</aside>

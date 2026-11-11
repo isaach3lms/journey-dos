@@ -1,0 +1,12 @@
+{# Expects `covers` and optionally `resource`. Radio buttons, so it works
+   with no JavaScript and posts a plain number. #}
+<span class="flabel">{{ content.field_cover }}</span>
+<div class="coverpick" role="radiogroup" aria-label="{{ content.field_cover }}">
+  {% for i in covers %}
+    <label class="coverchip cover-{{ i }}">
+      <input type="radio" name="cover" value="{{ i }}"
+             {% if (resource is defined and resource and resource.cover == i) or ((resource is not defined or not resource) and i == 0) %}checked{% endif %}>
+      <span class="sr">{{ content.field_cover }} {{ i + 1 }}</span>
+    </label>
+  {% endfor %}
+</div>

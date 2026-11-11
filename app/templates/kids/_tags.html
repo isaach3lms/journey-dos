@@ -1,0 +1,46 @@
+{# The tags themselves, shared by the check-in screen and the reprint page.
+
+   One tag per child, then one pickup tag for the adult. The adult's tag is
+   the point of the whole thing: it is the half that leaves the room, and the
+   code on it is what the desk asks for at collection.
+
+   Deliberately absent: anything from a person's notes. A tag is left on a
+   table and handed to whoever is at the desk. Pastoral context does not go on
+   something that gets dropped in a hallway. #}
+{% if checkins %}
+<div class="tagsheet" data-tagsheet>
+  {% for checkin in checkins %}
+    <div class="nametag">
+      <div class="tagtop">
+        <span class="tagchurch">{{ church.name }}</span>
+        <span class="tagwhen">{{ checkin_session.starts_at|church_time("%b %-d") }}</span>
+      </div>
+      <div class="tagname">{{ checkin.person.first_name }}</div>
+      <div class="taglast">{{ checkin.person.last_name }}</div>
+      <div class="tagfoot">
+        <span class="tagroom">
+          {% if checkin.room %}{{ content.tags_room }}: {{ checkin.room }}
+          {% else %}{{ checkin_session.name }}{% endif %}
+        </span>
+        <span class="tagcode mono">{{ checkin.pickup_code }}</span>
+      </div>
+    </div>
+  {% endfor %}
+
+  {# One pickup tag however many children there are: the code is the
+     household's, and handing a parent three identical stubs is how one gets
+     lost and the other two get handed to somebody else. #}
+  <div class="nametag pickuptag">
+    <div class="tagtop">
+      <span class="tagchurch">{{ content.tags_pickup_title }}</span>
+      <span class="tagwhen">{{ checkin_session.starts_at|church_time("%b %-d") }}</span>
+    </div>
+    <div class="taglabel">{{ content.tags_code_label }}</div>
+    <div class="tagbigcode mono">{{ checkins[0].pickup_code }}</div>
+    <div class="tagfoot">
+      <span class="tagroom">{{ checkins|map(attribute='person.first_name')|join(', ') }}</span>
+      <span class="tagwho">{{ content.tags_pickup_for }}</span>
+    </div>
+  </div>
+</div>
+{% endif %}

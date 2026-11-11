@@ -1,0 +1,24 @@
+{% extends "public.html" %}
+{% block title %}{{ content.forgot_title }} | {{ church.name }}{% endblock %}
+{% block inner %}
+  <h1>{{ content.forgot_title }}</h1>
+  <p class="lede">{{ content.forgot_subtitle }}</p>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert {{ category }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.email.label }}
+      {{ form.email(class="input") }}
+      {% for error in form.email.errors %}<div class="fielderr">{{ error }}</div>{% endfor %}
+    </div>
+    {{ form.submit(class="btn wide") }}
+  </form>
+
+  <p class="footnote"><a href="{{ url_for('auth.login') }}">{{ content.forgot_back }}</a></p>
+{% endblock %}

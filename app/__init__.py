@@ -20,7 +20,9 @@ from markupsafe import Markup
 
 from app.brand import brand_css_vars, palette_for
 from app.config import resolve_config
-from app.content import AUTH, ICONS, NAV_ENDPOINTS, NAV_GROUPS, NAV_UI, nav_for
+from app.content import (
+    AUTH, FORMAT, ICONS, NAV_ENDPOINTS, NAV_GROUPS, NAV_UI, nav_for,
+)
 from app.errors import register_error_handlers
 from app.extensions import csrf, db, migrate
 from app.security import register_security
@@ -168,6 +170,9 @@ def create_app(config_name: str | None = None) -> Flask:
                 else None
             ),
             "auth": AUTH,
+            # The formatting toolbar, which appears on screens belonging to
+            # different areas of the app, each passing its own `content`.
+            "fmt": FORMAT,
             "csrf_field": lambda: Markup(
                 f'<input type="hidden" name="csrf_token" value="{generate_csrf()}">'
             ),

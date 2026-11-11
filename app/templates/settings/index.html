@@ -363,6 +363,20 @@
         <button class="btn" type="submit">{{ content.email_test_button }}</button>
         <p class="muted small">{{ content.email_test_hint.format(email=current_user.email) }}</p>
       </form>
+
+      {# What formatting staff can use, and what it turns into.
+
+         Rendered through the same function the emails go through rather than
+         written out as markup, so this cannot drift into showing something
+         the renderer does not actually do. The left column is what somebody
+         types; the right is what arrives. #}
+      <h3>{{ content.format_heading }}</h3>
+      <p class="muted small">{{ content.format_intro }}</p>
+      <div class="fmtdemo">
+        <pre class="fmtsrc mono">{{ format_sample }}</pre>
+        <div class="fmtout">{{ format_rendered }}</div>
+      </div>
+      <p class="muted small">{{ content.format_outro }}</p>
     </div>
   </details>
 

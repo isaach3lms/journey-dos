@@ -16,6 +16,14 @@ supports link targets that can carry `javascript:`, and brings a dependency
 whose CVEs become this application's problem. Churches writing devotionals need
 paragraphs, headings, bold, italics, lists, and blockquotes for scripture. That
 is the whole grammar.
+
+**Three kinds of list, because churches asked for three.** A bulleted list, a
+numbered list for steps that happen in order, and a dashed list for the times
+somebody wants a list that does not look like a list of instructions. They are
+three markers rather than one marker and a style setting, because what you type
+is then what you get, and because a style setting would have to be stored
+somewhere and carried through saved templates and email rendering, which is a
+lot of machinery to choose a character.
 """
 
 from __future__ import annotations
@@ -28,6 +36,19 @@ from markupsafe import Markup, escape
 # author typed. It cannot match generated markup, because none exists yet.
 _BOLD = re.compile(r"\*\*(.+?)\*\*", re.S)
 _ITALIC = re.compile(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", re.S)
+
+# "1. ", "2) ", "12. ". Capped at three digits so a line that opens with a
+# year, "2026 was the year we", is a sentence and not item two thousand.
+_ORDERED = re.compile(r"^(\d{1,3})[.)] +(.*)$")
+
+BULLET = "- "
+DASH = "-- "
+
+# What a dashed list actually prints. An en dash, as a literal character
+# inside the list item, rather than a CSS marker: `list-style-type` with a
+# custom string is ignored by most email clients, and a church's email is the
+# main place these lists are read.
+DASH_MARK = "– "
 
 MAX_LENGTH = 20_000
 
@@ -45,8 +66,16 @@ def render(source: str | None) -> Markup:
       # heading
       > blockquote, used for scripture
       - list item
+      -- dashed list item
+      1. numbered list item
       blank line separates paragraphs
       **bold** and *italic* inline
+
+    A list is a whole block: every line between two blank lines has to carry
+    the same marker. One line in five starting with a dash inside a paragraph
+    is somebody writing a sentence with a dash in it, and turning that into a
+    one-item list in the middle of their paragraph is the kind of helpfulness
+    that makes people stop using the formatting.
     """
     if not source:
         return Markup("")
@@ -55,44 +84,56 @@ def render(source: str | None) -> Markup:
     safe = str(escape(source[:MAX_LENGTH])).replace("\r\n", "\n").replace("\r", "\n")
 
     out: list[str] = []
-    open_list = False
-
-    def close_list() -> None:
-        nonlocal open_list
-        if open_list:
-            out.append("</ul>")
-            open_list = False
 
     for block in safe.split("\n\n"):
         lines = [line.strip() for line in block.split("\n") if line.strip()]
         if not lines:
             continue
 
-        # A block of list items becomes one list.
-        if all(line.startswith("- ") for line in lines):
-            close_list()
-            out.append("<ul>")
-            for line in lines:
-                out.append(f"<li>{_inline(line[2:].strip())}</li>")
-            out.append("</ul>")
+        # Dashed before bulleted. "-- a" does not start with "- ", so the
+        # order is not load-bearing, but reading it in the other order is a
+        # moment of doubt every time somebody comes back to this function.
+        if all(line.startswith(DASH) for line in lines):
+            items = "".join(
+                f"<li>{DASH_MARK}{_inline(line[len(DASH):].strip())}</li>"
+                for line in lines
+            )
+            out.append(f'<ul class="dashed">{items}</ul>')
+            continue
+
+        if all(line.startswith(BULLET) for line in lines):
+            items = "".join(
+                f"<li>{_inline(line[len(BULLET):].strip())}</li>" for line in lines
+            )
+            out.append(f"<ul>{items}</ul>")
+            continue
+
+        ordered = [_ORDERED.match(line) for line in lines]
+        if all(ordered):
+            # Numbered from whatever the author started at. Somebody
+            # continuing a list after a paragraph writes "4." and means
+            # four, and renumbering them to one is the renderer telling the
+            # author they were wrong about their own document.
+            first = int(ordered[0].group(1))
+            start = f' start="{first}"' if first != 1 else ""
+            items = "".join(
+                f"<li>{_inline(match.group(2).strip())}</li>" for match in ordered
+            )
+            out.append(f"<ol{start}>{items}</ol>")
             continue
 
         if all(line.startswith("&gt; ") for line in lines):
-            close_list()
             joined = "<br>".join(_inline(line[5:].strip()) for line in lines)
             out.append(f"<blockquote>{joined}</blockquote>")
             continue
 
         if len(lines) == 1 and lines[0].startswith("# "):
-            close_list()
             out.append(f"<h3>{_inline(lines[0][2:].strip())}</h3>")
             continue
 
-        close_list()
         joined = "<br>".join(_inline(line) for line in lines)
         out.append(f"<p>{joined}</p>")
 
-    close_list()
     return Markup("".join(out))
 
 

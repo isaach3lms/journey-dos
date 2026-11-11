@@ -682,7 +682,11 @@
                  placeholder="{{ email.subject_placeholder }}"
                  aria-label="{{ email.subject }}">
         </div>
-        <textarea class="input" name="message_body" rows="{{ 8 if prefill else 3 }}"
+        {% with target = "person_email_body" %}
+          {% include "partials/_formatbar.html" %}
+        {% endwith %}
+        <textarea class="input" id="person_email_body" name="message_body"
+                  rows="{{ 8 if prefill else 3 }}"
                   placeholder="{{ email.body_placeholder }}"
                   aria-label="{{ email.body }}">{{ prefill.get('body', '') }}</textarea>
 

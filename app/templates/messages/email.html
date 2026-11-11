@@ -137,6 +137,11 @@
 
       <div class="field">
         <label for="body">{{ content.email_body_label }}</label>
+        {# The bar writes into the box below it by id, so a screen with two
+           composers on it could never have one writing into the other. #}
+        {% with target = "body" %}
+          {% include "partials/_formatbar.html" %}
+        {% endwith %}
         <textarea class="input" id="body" name="body" rows="12"
                   placeholder="{{ content.email_body_placeholder }}"></textarea>
       </div>

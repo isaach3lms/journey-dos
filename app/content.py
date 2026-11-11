@@ -302,6 +302,38 @@ DASHBOARD = {
 }
 
 
+# ---------------------------------------------------------------------------
+# The email formatting toolbar.
+#
+# Its own dictionary, handed to every template as `fmt`, because the toolbar
+# appears on screens that belong to different areas of the app and each of
+# those passes its own `content`. Copying seven labels into three dictionaries
+# is three places for the word on a button to stop matching the character it
+# inserts.
+#
+# The button labels are the names people already use for these things. Not
+# "unordered list", which is a word from a specification, and not an icon,
+# because the icon for a dashed list does not exist.
+# ---------------------------------------------------------------------------
+FORMAT = {
+    "aria": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "heading": "Heading",
+    "bullets": "Bullets",
+    "numbers": "Numbers",
+    "dashes": "Dashes",
+    "quote": "Quote",
+    # Says what the buttons do rather than only naming them, because the
+    # markers are the real feature: somebody who knows them can write a
+    # formatted email on a phone, where the toolbar is a cramped row.
+    "hint": (
+        "Or type it: - bullets, 1. numbers, -- dashes, # heading, "
+        "> quote, **bold**, *italic*."
+    ),
+}
+
+
 AUTH = {
     "title": "Sign in",
     "subtitle": "Use the address your church has on file.",
@@ -3948,12 +3980,55 @@ SETTINGS = {
     "email_test_button": "Send a test email to me",
     "email_test_hint": "Goes to {email} immediately and shows you exactly what the provider said.",
     "email_test_subject": "Test email from {church}",
+    # The test email is also the formatting preview, which is why it now uses
+    # one of each. A sample on a settings screen shows how this application
+    # renders; the only thing that shows how somebody's own mail client
+    # renders is an email in their own inbox, and this button already sends
+    # one. Two purposes, one email, and nobody has to remember to look.
     "email_test_body": (
         "Hello {name},\n\n"
         "This is a test from the email settings at {church}. If you are "
         "reading it, confirmation links and password resets are reaching "
         "people.\n\n"
+        "# Formatting looks like this\n\n"
+        "Anything staff write in an email can be formatted. These are the "
+        "**six** things you can use:\n\n"
+        "- A bulleted list\n"
+        "- For things in no particular order\n\n"
+        "1. A numbered list\n"
+        "2. For steps that happen in order\n\n"
+        "-- A dashed list\n"
+        "-- For a list that should not look like instructions\n\n"
+        "> A quote, which churches mostly use for scripture.\n\n"
+        "And **bold** or *italic* anywhere in a sentence.\n\n"
+        "If any of that arrived as plain characters rather than as "
+        "formatting, your mail app is showing the plain text version, which "
+        "is normal and still readable.\n\n"
         "{church}"
+    ),
+    # The formatting guide on the email settings row.
+    "format_heading": "Formatting an email",
+    "format_intro": (
+        "Anywhere staff write an email, these turn into formatting. The "
+        "buttons above the box type them for you."
+    ),
+    "format_outro": (
+        "Every email carries both versions. A mail app that cannot show "
+        "formatting falls back to the plain text, which is exactly what it "
+        "has always sent."
+    ),
+    # Typed rather than clicked, because the markers are what actually gets
+    # stored, and because the toolbar is a cramped row on a phone.
+    "format_sample": (
+        "# A heading\n\n"
+        "Plain writing, with **bold** and *italic*.\n\n"
+        "- A bulleted list\n"
+        "- One line each\n\n"
+        "1. A numbered list\n"
+        "2. For steps in order\n\n"
+        "-- A dashed list\n"
+        "-- For everything else\n\n"
+        "> A quote, usually scripture."
     ),
     "email_test_sent": "Sent. Check {email}, including spam. If it is not there in two minutes, the address is being filtered on the receiving end.",
     "email_test_console": "Written to the server log, not sent. This server is not set up to send real email.",

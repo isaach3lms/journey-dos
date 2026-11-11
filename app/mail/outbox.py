@@ -37,6 +37,39 @@ class NotQueued(Exception):
 SEND_NOW_CATEGORIES = frozenset({"account"})
 
 
+def _html_for(church_id: int, body_text: str) -> str | None:
+    """The HTML half of the message, built from the text the caller has.
+
+    Here, in the one function every email in this application goes through,
+    rather than at each send site. There are fifteen of those and two of them
+    are screens where somebody writes an email; the other thirteen are a
+    password reset, a pickup code, a pastoral alert. An argument on this
+    function would be thirteen chances to forget, and the forgotten one would
+    be the message a church most needs to look like it came from them.
+
+    A caller that passes its own `body_html` keeps it. Nothing does today.
+
+    **Never raises.** A branding value that will not parse, or a body that
+    trips something in the renderer, must not turn a password reset into a
+    500. The message still goes as plain text, which is what every email in
+    this system was until this function existed, and the failure goes to the
+    log rather than to the person waiting on a sign-in link.
+    """
+    try:
+        from app.email_html import render_body
+        from app.models import Church
+
+        church = db.session.get(Church, church_id)
+        if church is None:
+            return None
+        return render_body(body_text, church)
+    except Exception:  # noqa: BLE001
+        current_app.logger.exception(
+            "Could not build the HTML body for a church %s email", church_id
+        )
+        return None
+
+
 def queue(
     *,
     church_id: int,
@@ -92,7 +125,7 @@ def queue(
         category=category,
         subject=subject.strip()[:255],
         body_text=body_text,
-        body_html=body_html,
+        body_html=body_html or _html_for(church_id, body_text),
         dedupe_key=dedupe_key,
         status=STATUS_QUEUED,
         queued_at=utcnow(),

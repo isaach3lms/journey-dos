@@ -755,6 +755,69 @@ form.inline .select{min-width:170px}
 .fl{flex:1;min-width:0}
 .small{font-size:12px}
 
+/* ---------- The email formatting toolbar ----------
+   Sits directly on top of the textarea it belongs to, square along that
+   edge, so the two read as one control rather than a row of buttons that
+   happens to be above a box.
+
+   Hidden without JavaScript, because every button would do nothing. The
+   hint underneath stays either way: it is how somebody learns that they can
+   just type the markers, which is the only thing the buttons do. */
+.fmtwrap{margin:0}
+/* The panel only exists when the buttons do. Without JavaScript this is an
+   ordinary field hint above an ordinary box, with no empty chrome around it.
+
+   A panel of its own above the box rather than one fused onto its top edge.
+   Fusing needs the two borders to meet exactly, and the textarea here is a
+   shared `.input` whose padding and radius belong to every form in the app;
+   a seam that depends on those staying still is a seam that opens the next
+   time somebody adjusts a text box. */
+.js .fmtwrap{
+  background:var(--surface-alt);
+  border:1px solid var(--line-soft);
+  border-radius:var(--r-sm);padding:5px 7px 0;margin-bottom:7px;
+}
+.fmtbar{display:none;flex-wrap:wrap;align-items:center;gap:4px}
+.js .fmtbar{display:flex}
+.fmtbtn{
+  appearance:none;border:1px solid transparent;background:transparent;
+  color:var(--ink);font:500 12px/1 inherit;font-family:inherit;
+  padding:6px 9px;border-radius:7px;cursor:pointer;
+}
+.fmtbtn:hover{background:var(--mist)}
+.fmtbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.fmtbtn strong{font-weight:800}
+.fmtsep{width:1px;height:18px;background:var(--line);margin:0 3px}
+.fmthint{margin:5px 2px 7px;font-size:11.5px}
+
+/* What you type, next to what arrives. Side by side on a wide screen and
+   stacked on a narrow one, because the comparison is the whole point and a
+   two-column layout at phone width would put three words on each line. */
+.fmtdemo{
+  display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;
+  margin:10px 0 12px;
+}
+@media (max-width:640px){.fmtdemo{grid-template-columns:1fr}}
+.fmtsrc,.fmtout{
+  margin:0;padding:12px 14px;background:var(--surface-alt);
+  border:1px solid var(--line-soft);border-radius:var(--r-sm);
+}
+.fmtsrc{
+  font-size:12px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;
+  color:var(--muted);
+}
+.fmtout{font-size:13px;line-height:1.55}
+.fmtout>:first-child{margin-top:0}
+.fmtout>:last-child{margin-bottom:0}
+.fmtout h3{font-size:15px;margin:14px 0 6px}
+.fmtout ul,.fmtout ol{margin:0 0 10px;padding-left:20px}
+.fmtout ul.dashed{list-style:none}
+.fmtout li{margin:0 0 4px}
+.fmtout blockquote{
+  margin:0;padding:2px 0 2px 12px;border-left:3px solid var(--accent);
+  color:var(--muted);
+}
+
 /* ---------- The weekly prayer list ----------
    A row here is not a link to somewhere the words are. The words are here,
    whole, because the screen exists to be prayed through and sending

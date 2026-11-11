@@ -1,0 +1,144 @@
+{# The formatting toolbar for an email body.
+
+   One partial, used by every screen that composes an email, so the buttons
+   and the markers they insert cannot drift apart between the church-wide
+   composer and the one on a person's page.
+
+   Call it with the id of the textarea it belongs to:
+     {% with target = "body" %}{% include "partials/_formatbar.html" %}{% endwith %}
+
+   **The buttons type for you, they are not a different editor.** Pressing
+   "Bulleted" puts "- " at the start of the line, which is exactly what
+   somebody who knows the grammar would type. That keeps one source of truth
+   for what an email contains: the characters in the box. A contenteditable
+   field would instead mean the browser handing us HTML, and the whole reason
+   app/markup.py exists is that HTML from a browser is HTML from whoever got
+   into a leader's account.
+
+   **The hint stays when the toolbar goes.** Without JavaScript the buttons
+   would do nothing, so they are not rendered at all, and the line underneath
+   still says what to type. That line is not a fallback nobody sees: it is how
+   anybody learns the markers in the first place. #}
+<div class="fmtwrap">
+  <div class="fmtbar" data-formatbar="{{ target }}" role="group"
+       aria-label="{{ fmt.aria }}">
+    <button type="button" class="fmtbtn" data-wrap="**"
+            title="{{ fmt.bold }}"><strong>B</strong></button>
+    <button type="button" class="fmtbtn" data-wrap="*"
+            title="{{ fmt.italic }}"><em>I</em></button>
+    <span class="fmtsep" aria-hidden="true"></span>
+    <button type="button" class="fmtbtn" data-prefix="# "
+            title="{{ fmt.heading }}">{{ fmt.heading }}</button>
+    <button type="button" class="fmtbtn" data-prefix="- "
+            title="{{ fmt.bullets }}">{{ fmt.bullets }}</button>
+    <button type="button" class="fmtbtn" data-prefix="1. " data-number="yes"
+            title="{{ fmt.numbers }}">{{ fmt.numbers }}</button>
+    <button type="button" class="fmtbtn" data-prefix="-- "
+            title="{{ fmt.dashes }}">{{ fmt.dashes }}</button>
+    <button type="button" class="fmtbtn" data-prefix="&gt; "
+            title="{{ fmt.quote }}">{{ fmt.quote }}</button>
+  </div>
+  <p class="fieldhint fmthint">{{ fmt.hint }}</p>
+</div>
+
+<script>
+/* Typing on somebody's behalf, nothing more.
+
+   Every button writes the same characters a person could type, into the same
+   textarea the form already posts. There is no second representation of the
+   message anywhere, which is what keeps the box and the email in step.
+
+   Bound once per page even if a screen includes this partial twice, and it
+   finds its textarea by id so two composers on one page cannot write into
+   each other. */
+(function () {
+  if (window.__formatbarReady) { return; }
+  window.__formatbarReady = true;
+
+  function lineRange(value, start, end) {
+    /* Grow the selection out to whole lines. Prefixing half a line puts a
+       bullet in the middle of a sentence. */
+    var from = value.lastIndexOf("\n", start - 1) + 1;
+    var to = value.indexOf("\n", end);
+    return [from, to === -1 ? value.length : to];
+  }
+
+  function applyPrefix(box, prefix, numbered) {
+    var value = box.value;
+    var bounds = lineRange(value, box.selectionStart, box.selectionEnd);
+    var block = value.slice(bounds[0], bounds[1]);
+    var lines = block.split("\n");
+
+    /* Already a list of this kind? Then the button takes it off again.
+       A formatting button that only ever adds is a button people press once
+       by accident and then edit by hand. */
+    var marker = numbered ? /^\d{1,3}[.)] +/ : null;
+    var on = lines.every(function (line) {
+      if (!line.trim()) { return true; }
+      return marker ? marker.test(line) : line.indexOf(prefix) === 0;
+    });
+
+    var count = 0;
+    var out = lines.map(function (line) {
+      if (!line.trim()) { return line; }
+      if (on) {
+        return marker ? line.replace(marker, "") : line.slice(prefix.length);
+      }
+      count += 1;
+      /* Strip whichever marker is already there before adding a new one, so
+         switching a bulleted list to a numbered one does not produce
+         "1. - Coffee". */
+      var bare = line.replace(/^(--? |# |> )/, "").replace(/^\d{1,3}[.)] +/, "");
+      return (numbered ? count + ". " : prefix) + bare;
+    }).join("\n");
+
+    box.setRangeText(out, bounds[0], bounds[1], "end");
+  }
+
+  function applyWrap(box, pair) {
+    var start = box.selectionStart;
+    var end = box.selectionEnd;
+    var chosen = box.value.slice(start, end);
+    if (chosen) {
+      box.setRangeText(pair + chosen + pair, start, end, "end");
+    } else {
+      /* Nothing selected: leave the cursor between the markers so the next
+         keystroke lands inside them. */
+      box.setRangeText(pair + pair, start, end, "end");
+      box.selectionStart = box.selectionEnd = start + pair.length;
+    }
+  }
+
+  function start() {
+  var bars = document.querySelectorAll("[data-formatbar]");
+  for (var i = 0; i < bars.length; i++) {
+    (function (bar) {
+      /* The bar is rendered above its box, so this has to wait for the
+         document: running at parse time finds nothing and hides every
+         toolbar on the page. */
+      var box = document.getElementById(bar.dataset.formatbar);
+      if (!box) { bar.hidden = true; return; }
+      bar.addEventListener("click", function (event) {
+        var button = event.target.closest(".fmtbtn");
+        if (!button) { return; }
+        event.preventDefault();
+        if (button.dataset.wrap) {
+          applyWrap(box, button.dataset.wrap);
+        } else if (button.dataset.prefix) {
+          applyPrefix(box, button.dataset.prefix, button.dataset.number === "yes");
+        }
+        /* Back to the box. A toolbar that steals the caret makes somebody
+           click into the text again after every button. */
+        box.focus();
+      });
+    })(bars[i]);
+  }
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
+</script>

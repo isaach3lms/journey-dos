@@ -57,6 +57,10 @@ class SentMessage:
     body_text: str
     category: str
     provider_message_id: str
+    # The HTML half. Recorded so a test can assert on it: until it was here
+    # the only transport the tests can see threw the formatted body away,
+    # which meant nothing could prove it ever reached a transport at all.
+    body_html: str | None = None
 
 
 class Transport:
@@ -153,6 +157,7 @@ class MemoryTransport(Transport):
                 to_email=to_email,
                 subject=subject,
                 body_text=body_text,
+                body_html=body_html,
                 category="",
                 provider_message_id=f"mem-{len(self.sent) + 1}",
             )

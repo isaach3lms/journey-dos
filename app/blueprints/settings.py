@@ -37,6 +37,7 @@ from app.models.user import ROLES
 from app.models.audit import ACTIONS, BRAND_CHANGED, RETENTION_DAYS
 from app.labels import SIZES as LABEL_SIZES
 from app.labeltoken import sign_sample
+from app.markup import render as render_markup
 from app.security import min_role
 from app.timeutil import COMMON_TIMEZONES, is_valid_timezone, zone_for
 
@@ -122,6 +123,12 @@ def index():
         roles=ROLES,
         email=email_health(g.church.id),
         push=push_health(g.church.id),
+        # The formatting guide, rendered through the function the emails
+        # themselves go through. A hand-written sample on a settings screen
+        # is a sample that drifts the first time the grammar changes, and
+        # the drift is invisible until a church is reading the wrong thing.
+        format_sample=SETTINGS["format_sample"],
+        format_rendered=render_markup(SETTINGS["format_sample"]),
         # What is supposed to send, so a gap can be reported as a specific
         # row on a screen rather than "notifications are flaky".
         sends=notify_groups,

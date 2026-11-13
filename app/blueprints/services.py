@@ -86,6 +86,77 @@ def index():
     )
 
 
+# ---------------------------------------------------------------------------
+# Attendance: the history screen and the report
+#
+# Both read `app/attendance.py`, which is also where the one judgement call
+# lives: who counts as having volunteered on a Sunday that has happened.
+#
+# The screen is reached from the dashboard's attendance tile, which until now
+# was a number with nowhere to go. A church looking at "118 last Sunday" is
+# always about to ask whether that is up or down, and the answer was three
+# clicks into the service plans and a piece of mental arithmetic.
+# ---------------------------------------------------------------------------
+
+@bp.get("/attendance/")
+@login_required
+@min_role("leader")
+def attendance():
+    from app.attendance import DEFAULT_WEEKS, summary, trend, weeks_for
+
+    weeks = request.args.get("weeks", type=int) or DEFAULT_WEEKS
+    # Bounded rather than trusted. A year is the window churches compare
+    # against; the cap is what stops a hand-edited URL asking for every
+    # Sunday since the church was planted on one page.
+    weeks = max(4, min(weeks, 260))
+
+    points = trend(weeks_for(g.church.id, limit=weeks))
+
+    return render_template(
+        "services/attendance.html",
+        church=g.church,
+        content=SERVICES,
+        # Newest first on screen. The trend had to be computed forwards; a
+        # person opening this page wants last Sunday at the top.
+        points=list(reversed(points)),
+        chart=points,
+        totals=summary(points),
+        weeks=weeks,
+        active="services",
+    )
+
+
+@bp.get("/attendance/report.pdf")
+@login_required
+@min_role("leader")
+def attendance_report():
+    """Who served and how many came, as a sheet for a staff meeting."""
+    from flask import Response
+
+    from app.attendance import DEFAULT_WEEKS, trend, weeks_for
+    from app.service_pdf import render_services
+    from app.timeutil import format_local
+
+    weeks = request.args.get("weeks", type=int) or 8
+    weeks = max(1, min(weeks, 260))
+
+    points = trend(weeks_for(g.church.id, limit=weeks))
+    pdf = render_services(
+        points=points,
+        church=g.church,
+        fmt=lambda value: format_local(value, g.church, "%b %-d, %Y"),
+        subtitle=SERVICES["report_subtitle"].format(weeks=len(points)),
+    )
+
+    name = f"{g.church.slug}-services"
+    return Response(pdf, mimetype="application/pdf", headers={
+        "Content-Disposition": f'inline; filename="{name}.pdf"',
+        # Names of volunteers and attendance numbers. Not something to leave
+        # in a shared browser's cache.
+        "Cache-Control": "no-store, private",
+    })
+
+
 @bp.post("/")
 @login_required
 @min_role("leader")

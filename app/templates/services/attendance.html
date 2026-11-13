@@ -1,0 +1,155 @@
+{# Attendance over time.
+
+   Reached from the dashboard tile, which until now was a number with nowhere
+   to go. A church reading "118 last Sunday" is always about to ask whether
+   that is up or down.
+
+   Four numbers, a chart, then every week. The numbers answer the question in
+   one glance, the chart shows the shape, and the table is where somebody
+   checks a particular Sunday they remember being quiet. #}
+{% extends "base.html" %}
+{% block title %}{{ content.attendance_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.attendance_title }}{% endblock %}
+{% block subheading %}{{ content.attendance_subtitle }}{% endblock %}
+
+{% block content %}
+<div class="filters">
+  <a class="ghost back" href="{{ url_for('services.index') }}">{{ content.attendance_back }}</a>
+  <span class="spacer"></span>
+  <a class="btn ghostbtn" target="_blank" rel="noopener"
+     href="{{ url_for('services.attendance_report', weeks=weeks) }}"
+     title="{{ content.attendance_report_hint }}">{{ content.attendance_report }}</a>
+</div>
+
+{% if not points %}
+  <section class="card"><div class="bd">
+    <p>{{ content.attendance_empty }}</p>
+  </div></section>
+{% else %}
+
+<div class="tiles">
+  <section class="card tile">
+    <div class="tlabel">{{ content.attendance_stat_latest }}</div>
+    <div class="tvalue">{{ totals.latest if totals.latest is not none else "&ndash;"|safe }}</div>
+  </section>
+  <section class="card tile">
+    <div class="tlabel">{{ content.attendance_stat_average }}</div>
+    <div class="tvalue">
+      {% if totals.average is not none %}{{ totals.average|round|int }}{% else %}&ndash;{% endif %}
+    </div>
+    <div class="ttrend">{{ content.attendance_counted_of.format(
+        counted=totals.counted, weeks=totals.weeks) }}</div>
+  </section>
+  <section class="card tile">
+    <div class="tlabel">{{ content.attendance_stat_best }}</div>
+    <div class="tvalue">
+      {% if totals.best %}{{ totals.best.week.headcount }}{% else %}&ndash;{% endif %}
+    </div>
+    {% if totals.best %}
+      <div class="ttrend">{{ totals.best.week.starts_at|church_time("%b %-d, %Y") }}</div>
+    {% endif %}
+  </section>
+  <section class="card tile">
+    <div class="tlabel">{{ content.attendance_stat_trend }}</div>
+    {# The one number on this row that can be bad news, so it is the one
+       that gets a colour. Up and down read differently at a glance, which
+       is the whole reason somebody opened this page. #}
+    {% if totals.change is none %}
+      <div class="tvalue muted">&ndash;</div>
+      <div class="ttrend">{{ content.attendance_trend_short }}</div>
+    {% elif totals.change|round(1) == 0 %}
+      <div class="tvalue">{{ content.attendance_trend_flat }}</div>
+    {% else %}
+      {# One decimal, and the same rounding the "no change" test above uses.
+         This is an average of four weeks against an average of four weeks,
+         so it is genuinely fractional: rounded to a whole number it printed
+         "+0" next to "+0.6%", which reads as a page contradicting itself. #}
+      <div class="tvalue {{ 'up' if totals.change > 0 else 'down' }}">
+        {{ "+" if totals.change > 0 }}{{ totals.change|round(1) }}
+      </div>
+      <div class="ttrend">{{ "+" if totals.percent > 0 }}{{ totals.percent|round(1) }}%</div>
+    {% endif %}
+  </section>
+</div>
+
+{# The shape of it. Bars rather than a line, drawn with divs rather than a
+   chart library: it is one series of positive whole numbers, and a
+   dependency that has to be loaded, versioned and kept off the critical
+   path is a lot of machinery for fifty-two rectangles.
+
+   Weeks with no head count leave a gap rather than a bar on the floor,
+   because a bar at zero is a claim that nobody came. #}
+{% if totals.counted %}
+  <section class="card">
+    <div class="bd">
+      <div class="bars" role="img"
+           aria-label="{{ content.attendance_title }}: {{ totals.counted }} weeks">
+        {% for point in chart %}
+          {% if point.week.headcount is not none %}
+            <div class="bar" style="height: {{ (point.week.headcount / totals.best.week.headcount * 100)|round(1) }}%"
+                 title="{{ point.week.starts_at|church_time('%b %-d, %Y') }}: {{ point.week.headcount }}"></div>
+          {% else %}
+            <div class="bar none" title="{{ point.week.starts_at|church_time('%b %-d, %Y') }}: {{ content.attendance_no_count }}"></div>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<section class="card">
+  <div class="bd">
+    {% if not totals.counted %}
+      <p class="muted">{{ content.attendance_none_counted }}</p>
+    {% endif %}
+    <div class="tablewrap">
+      <table class="roster attend">
+        <thead>
+          <tr>
+            <th>{{ content.attendance_col_week }}</th>
+            <th class="ta-r">{{ content.attendance_col_count }}</th>
+            <th class="ta-r">{{ content.attendance_col_change }}</th>
+            <th class="ta-r">{{ content.attendance_col_average }}</th>
+            <th class="ta-r">{{ content.attendance_col_served }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for point in points %}
+            <tr>
+              <td>
+                <a class="link" href="{{ url_for('services.plan', service_id=point.week.service_id) }}">
+                  {{ point.week.starts_at|church_time("%b %-d, %Y") }}
+                </a>
+                <span class="mmeta block">{{ point.week.name }}</span>
+              </td>
+              <td class="ta-r">
+                {% if point.week.headcount is none %}
+                  <span class="muted">{{ content.attendance_no_count }}</span>
+                {% else %}{{ point.week.headcount }}{% endif %}
+              </td>
+              <td class="ta-r">
+                {% if point.change is none %}
+                  <span class="muted">&ndash;</span>
+                {% elif point.change == 0 %}
+                  <span class="muted">0</span>
+                {% else %}
+                  <span class="{{ 'up' if point.change > 0 else 'down' }}">
+                    {{ "+" if point.change > 0 }}{{ point.change }}
+                  </span>
+                {% endif %}
+              </td>
+              <td class="ta-r">
+                {% if point.average is none %}
+                  <span class="muted">&ndash;</span>
+                {% else %}{{ point.average|round|int }}{% endif %}
+              </td>
+              <td class="ta-r">{{ point.week.served_count }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

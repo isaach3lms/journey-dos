@@ -275,6 +275,10 @@ DASHBOARD = {
     "trend_giving_down": "Down {n}% vs last month",
     "trend_giving_flat": "Level with last month",
     "empty_attendance": "Add last Sunday's headcount",
+    # Shown under the attendance number when there is no trend line yet,
+    # because the number is a link now and a link with nothing under it
+    # looks like a tile that failed to finish loading.
+    "attendance_history": "See every week",
     "empty_giving": "Connect giving to see this",
 
     "health_heading": "Church health",
@@ -661,12 +665,32 @@ PEOPLE = {
     # Two things a human knows and the system cannot work out. Giving arrives
     # from an outside platform and misses anybody who gives by transfer or in
     # an envelope; a background check happens entirely outside this app.
+    # Where this person goes next, on the snapshot. The label is "Next step"
+    # rather than "Next stage" because that is the question a pastor is
+    # actually asking when they open somebody's profile.
+    "next_step_heading": "Next step",
+    "next_step_end": "At the end of the rail",
+
     "flags_heading": "Marked by staff",
     "flag_giver": "Regular tither",
     "flag_giver_hint": (
         "What you know, not what the gift list adds up to. Somebody giving "
         "by bank transfer or in an envelope does not show up there."
     ),
+    "flag_volunteer": "Regular volunteer",
+    "flag_volunteer_hint": (
+        "Serving most weeks, whether or not they are on the schedule. The "
+        "man who runs sound every Sunday and has never been asked counts."
+    ),
+    # Said on the form, before the box is ticked. This is the only control on
+    # a profile that changes the record it is not sitting on, and a warning
+    # that appears in the flash afterwards is read by somebody who has
+    # already done it.
+    "flag_rule_hint": (
+        "Ticking both of the above moves this person to Disciple. Unticking "
+        "one later does not move them back."
+    ),
+    "flag_stage_flash": "Saved. {name} moved from {frm} to {to}.",
     "flag_check": "Background check ordered",
     "flag_check_hint": "Tick this the day it goes in, so the wait is visible.",
     "flag_check_on_date": "Ordered {date}",
@@ -678,6 +702,8 @@ PEOPLE = {
     "flag_event": "Staff marking changed",
     "flag_giver_on": "Marked as a regular tither",
     "flag_giver_off": "No longer marked as a regular tither",
+    "flag_volunteer_on": "Marked as a regular volunteer",
+    "flag_volunteer_off": "No longer marked as a regular volunteer",
     "flag_check_on": "Background check marked as ordered",
     "flag_check_off": "Background check no longer marked as ordered",
     "flag_group_changed": "Moved from {before} to {after}",
@@ -1131,6 +1157,12 @@ PEOPLE = {
 
     "stage_moved": "Moved from {frm} to {to}",
     "stage_moved_detail": "Direction: {direction}",
+    # Why, not just what. A stage change nobody can account for six months
+    # later is the one that makes staff distrust the whole record.
+    "stage_rule_detail": (
+        "Moved automatically: marked as both a regular volunteer and a "
+        "regular tither"
+    ),
     "stage_flash": "{name} is now at {stage}.",
 
     "note_heading": "Add a note",
@@ -2262,6 +2294,48 @@ SERVICES = {
     "headcount_placeholder": "How many were here",
     "headcount_save": "Save",
     "headcount_hint": "Everyone in the room, kids included. The dashboard's attendance number comes from here.",
+    # ---------------------------------------------------------------------
+    # Attendance history and the services report.
+    #
+    # The wording avoids "growth" as a headline. A church reading a bad month
+    # does not need the screen to be cheerful about it, and a page that only
+    # knows how to celebrate is a page nobody opens in January.
+    # ---------------------------------------------------------------------
+    "attendance_title": "Attendance",
+    "attendance_subtitle": "Every Sunday that has happened, and what changed.",
+    "attendance_back": "Services",
+    "attendance_report": "Download report",
+    "attendance_report_hint": "Who served and the head count, as a PDF.",
+    "attendance_empty": (
+        "No services have happened yet. Numbers appear here as head counts "
+        "are entered on each service plan."
+    ),
+    "attendance_none_counted": (
+        "No head counts have been entered yet. Add one on any past service "
+        "plan and this fills in."
+    ),
+    "attendance_col_week": "Sunday",
+    "attendance_col_count": "In the room",
+    "attendance_col_change": "On the week before",
+    "attendance_col_average": "4 week average",
+    "attendance_col_served": "Volunteers",
+    "attendance_no_count": "Not counted",
+    "attendance_first": "First week shown",
+
+    "attendance_stat_average": "Average",
+    "attendance_stat_latest": "Last Sunday",
+    "attendance_stat_best": "Best Sunday",
+    "attendance_stat_trend": "Last 4 weeks vs the 4 before",
+    "attendance_counted_of": "{counted} of {weeks} Sundays counted",
+    "attendance_trend_flat": "No change",
+    "attendance_trend_short": "Not enough counted Sundays yet",
+    "attendance_window": "Last {weeks} Sundays",
+    "attendance_window_year": "Last year",
+    "attendance_window_quarter": "Last 13 weeks",
+    "attendance_window_two": "Last 2 years",
+
+    "report_subtitle": "The last {weeks} Sundays",
+
     "headcount_saved": "Headcount saved.",
     "headcount_bad": "That is not a headcount. Use a whole number.",
     "title": "Services",

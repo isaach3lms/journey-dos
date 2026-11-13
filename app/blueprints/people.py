@@ -25,7 +25,7 @@ from flask_login import current_user, login_required
 
 from app.content import AUTOMATION, EMAIL, GIVING, PEOPLE, SETTINGS, STUCK
 from app.extensions import db
-from app import households
+from app import households, stage_rules
 from app.categories import CATEGORIES, OPTIONAL_CATEGORIES
 from app.models import (
     ACCOUNT_DECLINED,
@@ -80,6 +80,7 @@ from app.stages import (
     KIDS,
     recommended_next_step,
     stage_label,
+    stage_order,
     stages_for,
 )
 
@@ -304,6 +305,14 @@ def detail(person_id: int):
         ).all(),
         stages=stages_for(g.church),
         next_stage=next_stage(person.stage),
+        next_action=recommended_next_step(person.stage),
+        # Worked out here rather than branched in the template: the condition
+        # is "the rule would fire if the other box were ticked", which is one
+        # idea and belongs in one place next to the rule itself.
+        show_stage_rule_hint=(
+            stage_order(person.stage) < stage_order(stage_rules.DISCIPLE)
+            and not (person.is_regular_giver and person.is_regular_volunteer)
+        ),
         # Can this person sign in, and may the person looking change that.
         #
         # The controls are staff-only while the profile itself is open to
@@ -1934,6 +1943,7 @@ def set_flags(person_id: int):
     back = redirect(url_for("people.detail", person_id=person.id))
 
     giver = bool(request.form.get("is_regular_giver"))
+    volunteer = bool(request.form.get("is_regular_volunteer"))
     ordered = bool(request.form.get("background_check_ordered"))
 
     changes = []
@@ -1942,6 +1952,11 @@ def set_flags(person_id: int):
         person.is_regular_giver = giver
         changes.append(PEOPLE["flag_giver_on"] if giver
                        else PEOPLE["flag_giver_off"])
+
+    if volunteer != person.is_regular_volunteer:
+        person.is_regular_volunteer = volunteer
+        changes.append(PEOPLE["flag_volunteer_on"] if volunteer
+                       else PEOPLE["flag_volunteer_off"])
 
     if ordered != person.background_check_ordered:
         # Unticking clears the date rather than keeping it, because a date
@@ -1973,8 +1988,26 @@ def set_flags(person_id: int):
         person, KIND_NOTE, PEOPLE["flag_event"],
         detail=". ".join(changes), actor=current_user,
     )
+
+    # Both flags together say Disciple. Run after the flag event is recorded
+    # so the timeline reads in the order it happened: the tick, then the move
+    # it caused. See app/stage_rules.py for why this moves rather than asks,
+    # and for why unticking never moves anybody back.
+    moved_from = stage_rules.apply(person, actor=current_user)
+
     db.session.commit()
-    flash(PEOPLE["flag_saved"].format(name=person.first_name), "notice")
+
+    if moved_from is not None:
+        flash(
+            PEOPLE["flag_stage_flash"].format(
+                name=person.first_name,
+                frm=stage_label(moved_from),
+                to=stage_label(person.stage),
+            ),
+            "notice",
+        )
+    else:
+        flash(PEOPLE["flag_saved"].format(name=person.first_name), "notice")
     return back
 
 

@@ -62,7 +62,15 @@
 
 {% if past %}
 <section class="card">
-  <div class="hd"><h2>{{ content.past }}</h2></div>
+  <div class="hd">
+    <h2>{{ content.past }}</h2>
+    <div class="spacer"></div>
+    {# The second way in, for somebody who came to the services page rather
+       than the dashboard. Same screen either way. #}
+    <a class="btn ghostbtn small" href="{{ url_for('services.attendance') }}">
+      {{ content.attendance_title }}
+    </a>
+  </div>
   <div class="bd">
     <ul class="flaglist">
       {% for service in past %}

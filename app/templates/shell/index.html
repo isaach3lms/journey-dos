@@ -102,6 +102,19 @@
         {# The one number on this row somebody can act on. Everything behind
            it is a person who filled in a card, so the number opens them. #}
         <a class="tvalue link" href="{{ url_for('people.guests') }}">{{ tile.value }}</a>
+      {% elif tile.key == "attendance" %}
+        {# The number opens the history. A church reading "118 last Sunday"
+           is always about to ask whether that is up or down, and until this
+           link existed the answer was three clicks into the service plans
+           and a piece of mental arithmetic. #}
+        <a class="tvalue link" href="{{ url_for('services.attendance') }}">{{ tile.value }}</a>
+        {% if tile.trend %}
+          <a class="ttrend link {{ tile.direction }}" href="{{ url_for('services.attendance') }}">
+            {{ dash['trend_attendance_' ~ tile.trend[0]].format(n=tile.trend[1]) }}
+          </a>
+        {% else %}
+          <a class="ttrend link" href="{{ url_for('services.attendance') }}">{{ dash.attendance_history }}</a>
+        {% endif %}
       {% else %}
         <div class="tvalue">{{ tile.value }}</div>
         {% if tile.trend %}

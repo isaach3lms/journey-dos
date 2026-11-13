@@ -310,14 +310,29 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     # decided to engage.
     approved_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
 
-    # Two flags a human sets, both about things the system cannot work out
-    # for itself.
+    # Flags a human sets, all about things the system cannot work out for
+    # itself.
     #
     # Giving is mirrored from an outside platform and arrives incomplete: a
     # family who gives by bank transfer, or in an envelope, looks like
     # somebody who gives nothing. So this is what staff know rather than what
     # the gift rows add up to, and nothing derives it.
     is_regular_giver: Mapped[bool] = mapped_column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+
+    # Serving regularly, which is also not the same as the schedule.
+    #
+    # The schedule knows who was asked and who accepted. It does not know the
+    # man who runs the sound desk every week and has never been in the roster
+    # because nobody has ever needed to ask him. Counting assignments would
+    # miss him and would also count somebody who filled in twice in March, so
+    # like the giving flag this is what staff know, set by hand, derived from
+    # nothing.
+    #
+    # Beside the giving flag rather than anywhere else because the two of
+    # them together are what `app/stage_rules.py` reads.
+    is_regular_volunteer: Mapped[bool] = mapped_column(
         db.Boolean, nullable=False, default=False, server_default=db.false()
     )
 

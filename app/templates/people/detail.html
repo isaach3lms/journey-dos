@@ -185,6 +185,26 @@
         <dd>{{ person.first_seen_on.strftime("%B %-d, %Y") if person.first_seen_on else content.never_seen }}</dd></div>
       <div><dt>{{ content.col_stage }}</dt>
         <dd><span class="tag">{{ person.stage_label }}</span></dd></div>
+
+      {# Where this person is going next, on the snapshot where somebody
+         actually looks, rather than only on the Move stage card at the foot
+         of the page. A profile that says "Visitor" and nothing else leaves
+         the reader to remember the rail; this says the one word they need.
+
+         The action underneath is the recommended first step toward it, not
+         an instruction: staff assign whatever fits. #}
+      <div><dt>{{ content.next_step_heading }}</dt>
+        <dd>
+          {% if next_stage %}
+            <a class="link" href="#move">{{ next_stage.label }}</a>
+            {% if next_action %}
+              <span class="mmeta block">{{ next_action }}</span>
+            {% endif %}
+          {% else %}
+            {{ content.next_step_end }}
+          {% endif %}
+        </dd></div>
+
       <div><dt>{{ stuck.last_contact }}</dt>
         <dd>
           {% if person.days_since_contact is none %}{{ stuck.contact_never }}
@@ -213,6 +233,23 @@
         <span>{{ content.flag_giver }}</span>
       </label>
       <p class="fieldhint">{{ content.flag_giver_hint }}</p>
+
+      <label class="check">
+        <input type="checkbox" name="is_regular_volunteer" value="1"
+               {% if person.is_regular_volunteer %}checked{% endif %}>
+        <span>{{ content.flag_volunteer }}</span>
+      </label>
+      <p class="fieldhint">{{ content.flag_volunteer_hint }}</p>
+
+      {# Said before it happens, not after.
+
+         This form moves somebody's stage, which is the only control on this
+         page that changes a record other than the one it is sitting on. A
+         line that appears only in the flash afterwards is a line read by
+         somebody who has already done the thing. #}
+      {% if show_stage_rule_hint %}
+        <p class="fieldhint">{{ content.flag_rule_hint }}</p>
+      {% endif %}
 
       {# Only for a child, because the kids/youth line does not apply to
          anybody else, and a three-way box on an adult's record is a question
@@ -472,7 +509,7 @@
 </section>
 {% endif %}
 
-<section class="card">
+<section class="card" id="move">
   <div class="hd"><h2>{{ content.move_heading }}</h2></div>
   <div class="bd">
     <p>{{ content.move_hint }}</p>

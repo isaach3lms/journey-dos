@@ -102,6 +102,24 @@
         {# The one number on this row somebody can act on. Everything behind
            it is a person who filled in a card, so the number opens them. #}
         <a class="tvalue link" href="{{ url_for('people.guests') }}">{{ tile.value }}</a>
+      {% elif tile.key == "next_steps" and show_rail %}
+        {# Every one of these is a move along the rail or a card somebody
+           filled in, so the number opens the page that lists them. Gated on
+           `show_rail` because the metrics page is leader and above, and a
+           link to a page you cannot open is worse than no link.
+
+           The trend line is repeated here rather than left to the `else`
+           below, because this branch no longer reaches it. Dropping it was
+           the first version of this change and it cost the tile the one
+           number that says whether 14 is good. #}
+        <a class="tvalue link" href="{{ url_for('shell.metrics') }}">{{ tile.value }}</a>
+        {% if tile.trend %}
+          <a class="ttrend link {{ tile.direction }}" href="{{ url_for('shell.metrics') }}">
+            {{ dash['trend_week_' ~ tile.trend[0]].format(n=tile.trend[1]) }}
+          </a>
+        {% else %}
+          <div class="ttrend">&nbsp;</div>
+        {% endif %}
       {% elif tile.key == "attendance" %}
         {# The number opens the history. A church reading "118 last Sunday"
            is always about to ask whether that is up or down, and until this

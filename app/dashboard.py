@@ -175,18 +175,65 @@ def guests_tile(church_id: int, starts: list[date]) -> Tile:
     return tile
 
 
-def next_steps_tile(church_id: int, starts: list[date]) -> Tile:
-    from app.models.contact import STATUS_DONE, NextStep
+def next_steps_tile(church, starts: list[date]) -> Tile:
+    """What the congregation did, not what the staff ticked off.
 
-    since = datetime.combine(starts[0], datetime.min.time())
-    rows = db.session.scalars(
-        db.select(NextStep.completed_at).where(
-            NextStep.church_id == church_id,
-            NextStep.status == STATUS_DONE,
-            NextStep.completed_at >= since,
+    Two things count as a next step somebody took:
+
+      - a move along the rail, read from the stage columns on the event row
+      - a baptism or volunteer card, read from the signup it wrote
+
+    It used to count `NextStep` rows a staff member marked done. That is a
+    measure of staff throughput wearing a label that says the congregation is
+    moving, and on a quiet week it would read high because somebody spent an
+    afternoon closing out tasks. Staff follow-ups still have their own line
+    under the rail, now labelled as what they are.
+
+    **Events, not people, and deliberately so.** Asking to be baptised and
+    then moving from Member to Disciple are two steps, and somebody who does
+    both in one week has done two things. Nothing in the system turns one
+    into the other: the only automatic move is the regular volunteer plus
+    regular giver rule, which reads two flags on a profile and knows nothing
+    about these cards. So there is no path by which one action is counted
+    twice.
+
+    **Every offer, rather than the two named.** Baptism and volunteer are the
+    offers that exist today. Naming them here would mean the next offer a
+    church adds is a next step the dashboard does not count, and nobody would
+    notice for a month.
+    """
+    from app.models.person_event import KIND_STAGE_CHANGE, PersonEvent
+    from app.models.signup import NextStepSignup
+    from app.timeutil import to_local
+
+    # A day of slack on each side, like the attendance tile, because the cut
+    # is made in UTC and the buckets are the church's own days. Without it a
+    # Sunday evening card in Missouri falls outside a window that starts at
+    # midnight UTC and the first bar is short.
+    since = datetime.combine(starts[0], datetime.min.time()) - timedelta(days=1)
+
+    moves = db.session.scalars(
+        db.select(PersonEvent.occurred_at).where(
+            PersonEvent.church_id == church.id,
+            PersonEvent.kind == KIND_STAGE_CHANGE,
+            # The column, never the sentence in `summary`. See app/metrics.py.
+            PersonEvent.to_stage.is_not(None),
+            PersonEvent.occurred_at >= since,
         )
     ).all()
-    bars = _bucket([(when.date(), 1) for when in rows if when], starts)
+    cards = db.session.scalars(
+        db.select(NextStepSignup.created_at).where(
+            NextStepSignup.church_id == church.id,
+            NextStepSignup.created_at >= since,
+        )
+    ).all()
+
+    moments = [
+        (to_local(moment, church).date(), 1)
+        for moment in [*moves, *cards]
+        if moment is not None
+    ]
+    bars = _bucket(moments, starts)
     change, direction = _week_delta(bars)
     tile = Tile("next_steps", f"{bars[-1]:,}", bars=bars, direction=direction)
     tile.trend = (direction, abs(change))
@@ -443,7 +490,7 @@ def build(church) -> dict:
         "tiles": [
             attendance_tile(church, starts),
             guests_tile(church.id, starts),
-            next_steps_tile(church.id, starts),
+            next_steps_tile(church, starts),
             giving_tile(church.id, today, starts),
         ],
         "health": lines,

@@ -2263,6 +2263,20 @@ ul.policy span{color:var(--muted)}
 .tile{padding:16px 18px;display:flex;flex-direction:column;margin:0}
 .tlabel{font-size:12.5px;color:var(--muted)}
 .tvalue{font-family:var(--font-display);font-size:30px;font-weight:600;margin-top:10px;line-height:1.1}
+/* The third place a bare `class="link"` styled nothing. There is no general
+   `.link` class in this stylesheet, so the tile numbers that open a page
+   rendered identically to the ones that do not, and nobody could tell which
+   headline number was worth clicking. Same treatment as `a.metnum`: the
+   number keeps its weight, a muted rule underneath says it is a link. */
+a.tvalue.link{
+  color:var(--ink);
+  display:inline-block;
+  text-decoration:underline;
+  text-decoration-color:var(--muted-2);
+  text-decoration-thickness:1.5px;
+  text-underline-offset:4px;
+}
+a.tvalue.link:hover{color:var(--accent);text-decoration-color:var(--accent)}
 .ttrend{font-size:12.5px;font-weight:500;margin-top:8px;color:var(--muted)}
 .ttrend.up{color:var(--good)}
 .ttrend.down{color:var(--muted)}

@@ -257,7 +257,11 @@ DASHBOARD = {
     "support_previous": "Previous requests",
 
     "footer_stuck": "people flagged as stuck too long",
-    "footer_steps": "next steps taken in the last 7 days",
+    # Staff follow-ups, said as staff follow-ups. This line and the tile above
+    # it both read "next steps taken" and counted different things: this one
+    # counts tasks a staff member ticked off, the tile counts what the
+    # congregation did. Two numbers under the same words on one screen.
+    "footer_steps": "staff follow-ups completed in the last 7 days",
     "footer_unowned": "people with no owner",
 
     "tile_attendance": "Attendance last Sunday",

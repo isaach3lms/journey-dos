@@ -76,6 +76,20 @@ CATEGORIES: tuple[Category, ...] = (
         is_transactional=True,
     ),
     Category(
+        "metrics",
+        "Metrics digest",
+        "The weekly and monthly numbers, sent to the addresses in Settings. "
+        "These always send.",
+        # Transactional, and for the same reason as the staff alerts above.
+        # This is an operational report to an address a church typed into
+        # Settings, not something a congregation is subscribed to. Opting out
+        # is done by removing the address, which is where somebody looking for
+        # the off switch will go. Making it opt-out-able would also put a
+        # "Metrics digest" toggle on every member's preferences screen for a
+        # report no member will ever be sent.
+        is_transactional=True,
+    ),
+    Category(
         "giving_receipt",
         "Giving receipts",
         "Receipts and year-end statements. These always send.",

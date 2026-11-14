@@ -570,6 +570,21 @@ class TestTheHeadlineNumbers:
 
 
 class TestTheAttendanceScreen:
+    def test_the_date_looks_like_the_link_it_is(self):
+        """It opens that Sunday's plan.
+
+        It carried a bare `class="link"`, and there is no general `.link`
+        class in this stylesheet, so it rendered as plain black text in a
+        table of plain black text. Found later by measuring the computed
+        colour in a browser, which is the only way a silent one shows up.
+        Pinned structurally because a stylesheet has no behaviour a request
+        can assert.
+        """
+        css = open("app/static/css/app.css").read()
+        start = css.index(".attend tbody a{")
+        assert "color:var(--accent)" in css[start:start + 200]
+        assert "text-decoration:underline" in css[start:start + 200]
+
     def test_a_leader_can_open_it(self, db, journey, client, sign_in):
         a_service(db, journey, days_ago=7, headcount=118)
         sign_in("leader@journeychurchsemo.com")

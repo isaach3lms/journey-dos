@@ -136,6 +136,18 @@
   {% endfor %}
 </div>
 
+{# Where the four tiles go when somebody wants the rest of the picture. Under
+   them rather than in the nav, because it is the question those numbers
+   raise and this is where they raised it. #}
+{# `show_rail` and not a role test, because it is the same gate the metrics
+   route enforces (leader and above). A link a staff member can see but not
+   open is worse than no link. #}
+{% if show_rail %}
+  <p class="dashmore">
+    <a href="{{ url_for('shell.metrics') }}">{{ dash.metrics_link }}</a>
+  </p>
+{% endif %}
+
 {# 3. People who need a human, and the health score. #}
 <div class="dashpair">
   <section class="card">

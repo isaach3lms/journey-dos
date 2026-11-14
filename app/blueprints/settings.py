@@ -24,7 +24,7 @@ from flask_login import current_user, login_required
 from app.accounts import send_set_password
 from app.audit import record
 from app.brand import assert_accent_readable
-from app.content import PEOPLE, SETTINGS
+from app.content import METRICS, PEOPLE, SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
 from app.notify_catalogue import GROUPS as notify_groups
@@ -50,6 +50,10 @@ bp = Blueprint("settings", __name__, url_prefix="/settings")
 ROWS = (
     "brand", "accounts", "automations", "signup", "giving", "ccli",
     "announcements", "pastoral", "guests", "kiosk", "email", "push", "sends",
+    # Beside the other recipient lists rather than down with the diagnostics:
+    # it is a question about who hears from the church, not about whether the
+    # plumbing works.
+    "digest",
     "audit", "support",
 )
 
@@ -107,6 +111,10 @@ def index():
         open_row=open_row,
         church=g.church,
         content=SETTINGS,
+        # Its own dictionary, because the digest row's wording is shared
+        # with the metrics screen and the email itself. One copy of
+        # "Metrics digest" across all three.
+        metrics=METRICS,
         timezones=COMMON_TIMEZONES,
         # What the church actually runs on. A blank column is not "None"
         # on screen, it is the fallback the rest of the app already uses.
@@ -583,6 +591,93 @@ def save_guest_recipients():
 
     flash(SETTINGS["guests_saved"], "notice")
     return _back("guests")
+
+
+@bp.post("/digest/")
+@login_required
+@min_role("staff")
+def save_digest_recipients():
+    """Who gets the metrics digest.
+
+    Audited like the other recipient lists. This one routes a summary of a
+    church's whole week to an address that may not be at that church, which
+    is exactly the setting somebody should be able to look up a year later
+    and see who changed.
+    """
+    church = g.church
+    before = church.digest_recipients
+
+    typed = (request.form.get("emails") or "").strip()
+    church.digest_emails = typed or None
+    after = church.digest_recipients
+
+    # What the parser threw away, said out loud. Every other recipient list
+    # drops a line without an `@` silently and falls back to all active
+    # staff, so the mail still arrives and the typo is a detail. This list
+    # falls back to nobody: a mistyped address here means the digest never
+    # sends and nothing on any screen says why. So the dropped lines get
+    # named, and the good ones are still saved.
+    # Tested against the parser's own rule, a missing `@`, rather than
+    # against what survived. A duplicate address is also dropped, and
+    # telling somebody that their own address does not look like an email
+    # address because they typed it twice would be worse than saying nothing.
+    dropped = [
+        line.strip() for line in typed.replace(",", "\n").splitlines()
+        if line.strip() and "@" not in line
+    ]
+    for line in dropped:
+        flash(METRICS["settings_bad_email"].format(value=line), "error")
+
+    if after != before:
+        record(
+            BRAND_CHANGED,
+            "Metrics digest now goes to "
+            + (f"{len(after)} addresses" if after else "nobody"),
+            actor=current_user,
+            subject_type="church",
+            subject_id=church.id,
+            subject_label=church.name,
+            detail=", ".join(after) if after else "not sent",
+        )
+    db.session.commit()
+    flash(METRICS["settings_saved"] if after else METRICS["settings_none"], "notice")
+    return _back("digest")
+
+
+@bp.post("/digest/send/")
+@login_required
+@min_role("staff")
+def send_digest_now():
+    """Send this week's digest now, rather than waiting until Monday.
+
+    Here because the first question anybody has about a scheduled report is
+    "what does it look like", and the honest answer is the real email in
+    their own inbox rather than a preview on a screen.
+
+    It uses the same dedupe key as the scheduled run, which has a
+    consequence worth knowing: send it now for a period and Monday's run
+    will not send it again. That is the right way round. A second copy of
+    the same week's numbers is worse than an early one.
+    """
+    from app import digest
+    from app.metrics import week_window
+
+    church = g.church
+    if not church.digest_recipients:
+        flash(METRICS["settings_nobody_to_send_to"], "error")
+        return _back("digest")
+
+    result = digest.send(church, week_window(church), actor=current_user)
+    db.session.commit()
+
+    if result.any_queued:
+        flash(METRICS["settings_sent_now"].format(
+            recipients=", ".join(result.queued)), "notice")
+    else:
+        # Everybody was deduped, which means it has already gone for this
+        # week. Said plainly rather than reported as a success.
+        flash(METRICS["settings_sent_already"], "notice")
+    return _back("digest")
 
 
 @bp.post("/kids-codes/")

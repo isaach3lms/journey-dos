@@ -328,6 +328,10 @@ a{color:inherit;text-decoration:none}
 }
 .setrow[open] > summary .chev{transform:rotate(90deg)}
 .setbd{padding:2px 18px 20px}
+/* Two separate forms, one after the other: saving the list and sending one
+   now are different posts, so they cannot share a form. Without this they
+   stack with no gap and read as one control that has grown a second half. */
+.digestsend{margin-top:10px}
 .setbd p{margin:0 0 14px;font-size:13px;color:var(--muted);max-width:64ch}
 .setbd h3{font-size:13.5px;font-weight:600;margin:18px 0 8px}
 @media (prefers-reduced-motion:reduce){
@@ -755,6 +759,41 @@ form.inline .select{min-width:170px}
 .fl{flex:1;min-width:0}
 .small{font-size:12px}
 
+/* ---------- The metrics sheet ----------
+   A number, what it counts, and how it compares. In that order, because the
+   number is what somebody came for and the label is how they check they are
+   reading the right one. */
+.metgrid{
+  display:grid;gap:14px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+}
+.met{display:flex;flex-direction:column;gap:5px}
+.metnum{
+  font-size:28px;line-height:1.1;font-weight:var(--weight-display,700);
+  color:var(--ink);
+  /* Aligns with the label underneath. `align-self:start` keeps the link's
+     box, and so its underline, the width of the digits rather than the
+     width of the column. */
+  align-self:start;
+}
+/* A rule under the number, always, not only on hover. The whole point of
+   linking these is that a number nobody can click into is a number nobody
+   believes, and an affordance that only appears under the pointer tells a
+   reader nothing on a first look, and nothing at all on a phone.
+   `--muted-2` rather than `--line`: at 14% opacity the rule read as a
+   rendering artifact rather than as something to tap. Measured in a
+   browser, not guessed. */
+a.metnum{
+  text-decoration:underline;
+  text-decoration-color:var(--muted-2);
+  text-decoration-thickness:1.5px;
+  text-underline-offset:4px;
+}
+a.metnum:hover{color:var(--accent);text-decoration-color:var(--accent)}
+a.metnum:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.metlabel{font-size:13px;color:var(--ink)}
+.metchange{font-size:11.5px;color:var(--muted-2)}
+
 /* ---------- Attendance over time ----------
    Fifty-two rectangles. Drawn with divs rather than a chart library: one
    series of positive whole numbers does not need a dependency that has to be
@@ -783,6 +822,11 @@ form.inline .select{min-width:170px}
 .down{color:var(--flag);font-weight:600}
 .tvalue.up{color:var(--good)}
 .tvalue.down{color:var(--flag)}
+/* The date opens that Sunday's plan. It carried a bare `class="link"`, and
+   there is no general `.link` class in this stylesheet, so it rendered as
+   plain black text in a table of plain black text: a link nobody could see
+   was a link. Found by measuring the computed colour in a browser. */
+.attend tbody a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
 .attend .mmeta{color:var(--muted-2);font-size:11.5px}
 .attend tbody tr{cursor:default}
 
@@ -2228,6 +2272,13 @@ ul.policy span{color:var(--muted)}
 .spark i{flex:1;background:var(--mist);border-radius:3px;min-height:4px}
 .spark i.now{background:var(--accent)}
 
+.dashmore{margin:-4px 0 18px;text-align:right}
+/* There is no general `.link` class in this stylesheet: the tile links are
+   `.ttrend.link`, scoped to a tile. An anchor given a bare `class="link"`
+   here rendered as plain black text and read as a caption, which is how a
+   link to the page the four tiles are summarising went unnoticed. */
+.dashmore a{color:var(--accent);text-decoration:underline;text-underline-offset:3px}
+@media (max-width:620px){.dashmore{text-align:left}}
 .dashpair{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;align-items:start}
 @media (max-width:1000px){.dashpair{grid-template-columns:minmax(0,1fr)}}
 .hline{margin-bottom:14px}

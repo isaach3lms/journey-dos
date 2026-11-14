@@ -87,6 +87,11 @@ def apply(person, *, actor=None) -> str | None:
         # was made by a rule rather than by the person whose name is on it.
         detail=PEOPLE["stage_rule_detail"],
         actor=actor,
+        # Counted the same as a move somebody made by hand. A rule-driven
+        # move that did not appear in the totals would make the metrics
+        # disagree with the rail they are measuring.
+        from_stage=previous,
+        to_stage=DISCIPLE,
     )
 
     # The same hook a manual move runs. A person who arrives at Disciple by

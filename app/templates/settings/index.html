@@ -453,6 +453,54 @@
     </div>
   </details>
 
+  {# The metrics digest.
+
+     Beside the other recipient lists rather than down with the email
+     diagnostics: it is a question about who hears from the church, not
+     about whether the plumbing works.
+
+     Empty is a real and safe state, so the pill says "Not sent" rather
+     than warning about it. A church that has not asked for a weekly
+     report is not misconfigured. #}
+  <details class="setrow" id="digest" {% if open_row == 'digest' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ metrics.settings_heading }}</span>
+        <span class="pe">
+          {% if church.digest_recipients|length == 1 %}{{ metrics.settings_sub_one }}
+          {% elif church.digest_recipients %}{{ metrics.settings_sub.format(count=church.digest_recipients|length) }}
+          {% else %}{{ metrics.settings_sub_none }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.digest_recipients %}pending{% endif %}">
+        {% if church.digest_recipients %}{{ metrics.settings_on }}
+        {% else %}{{ metrics.settings_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <form method="post" action="{{ url_for('settings.save_digest_recipients') }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="digest-emails">{{ metrics.settings_label }}</label>
+        <textarea class="input" id="digest-emails" name="emails" rows="3"
+                  spellcheck="false">{{ church.digest_emails or "" }}</textarea>
+        <p class="muted small">{{ metrics.settings_hint }}</p>
+        <button class="btn" type="submit">{{ metrics.settings_save }}</button>
+      </form>
+
+      {# The honest preview. The first question about a scheduled report is
+         what it looks like, and the real email in your own inbox answers it
+         better than a sample on a screen. #}
+      {% if church.digest_recipients %}
+        <form class="digestsend" method="post"
+              action="{{ url_for('settings.send_digest_now') }}">
+          {{ csrf_field() }}
+          <button class="btn ghostbtn" type="submit">{{ metrics.settings_send_now }}</button>
+        </form>
+      {% endif %}
+    </div>
+  </details>
+
   {# Check-in tablets.
 
      Here rather than under Kids because it is an account and a device, not a

@@ -371,6 +371,11 @@ def move_stage(person_id: int):
         ),
         detail=PEOPLE["stage_moved_detail"].format(direction=direction),
         actor=current_user,
+        # The codes as well as the sentence. The sentence is what a pastor
+        # reads; these two are what the metrics count, and counting by
+        # matching the sentence would break on the first copy edit.
+        from_stage=previous,
+        to_stage=target,
     )
     # Hard stop two, and the ordinary case of arriving somewhere new.
     on_stage_changed(person, previous, actor=current_user)

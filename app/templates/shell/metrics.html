@@ -1,0 +1,73 @@
+{# What people did, and what moved.
+
+   Three groups, in an order that is an argument: what people asked for
+   first, because that is the church happening; then movement along the
+   rail, because that is the system working; then what the church and the
+   staff did, because that is the question the first two raise.
+
+   Every number is a link to the people behind it where one exists. A number
+   nobody can click into is a number nobody believes, and the first question
+   after "eleven connect cards" is always "which eleven". #}
+{% extends "base.html" %}
+{% block title %}{{ content.title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.title }}{% endblock %}
+{% block subheading %}{{ content.subtitle }}{% endblock %}
+
+{% block content %}
+<div class="filters">
+  <a class="ghost back" href="{{ url_for('shell.index') }}">{{ content.back }}</a>
+  <span class="spacer"></span>
+  {# Four windows, as links rather than a control with state, so a staff
+     member can send another one the exact view they are looking at. #}
+  {% for option in windows %}
+    <a class="btn {{ 'ghostbtn' if option.key != active else '' }}"
+       href="{{ url_for('shell.metrics', period=option.key) }}">{{ option.label }}</a>
+  {% endfor %}
+</div>
+
+<p class="muted small">{{ window.label }}</p>
+
+{% if not anything %}
+  <section class="card"><div class="bd">
+    <p>{{ content.nothing_yet }}</p>
+  </div></section>
+{% endif %}
+
+{% for section in sections %}
+  <section class="card">
+    <div class="hd"><h2>{{ section.label }}</h2></div>
+    <div class="bd">
+      <div class="metgrid">
+        {% for metric in section.metrics %}
+          <div class="met">
+            {% if metric.endpoint %}
+              {# `metnum` only. There is no general `.link` class in this
+                 stylesheet, so a `link` here would be a class that styles
+                 nothing and reads in the markup as though it did. #}
+              <a class="metnum"
+                 href="{{ url_for(metric.endpoint, **dict(metric.args)) }}">{{ metric.count }}</a>
+            {% else %}
+              <span class="metnum">{{ metric.count }}</span>
+            {% endif %}
+            <span class="metlabel">{{ metric.label }}</span>
+            <span class="metchange">
+              {% if metric.change is none %}
+                <span class="muted">{{ content.nothing_before }}</span>
+              {% elif metric.change == 0 %}
+                <span class="muted">{{ content.no_change }}</span>
+              {% else %}
+                <span class="{{ 'up' if metric.change > 0 else 'down' }}">
+                  {{ "+" if metric.change > 0 }}{{ metric.change }}
+                </span>
+                {{ versus }}
+              {% endif %}
+            </span>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endfor %}
+
+<p class="muted small">{{ content.screen_close.format(church=church.name) }}</p>
+{% endblock %}

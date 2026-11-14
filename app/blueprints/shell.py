@@ -5,11 +5,16 @@ placeholder that names the increment it arrives in, so the shell can be walked
 end to end without dead links.
 """
 
-from flask import Blueprint, abort, g, redirect, render_template, url_for
+from types import SimpleNamespace
+
+from flask import (
+    Blueprint, abort, g, redirect, render_template, request, url_for,
+)
 from flask_login import current_user, login_required
 
 from app.content import (
     DASHBOARD,
+    METRICS,
     INCREMENT_NAMES,
     AUTOMATION,
     NAV_ITEMS,
@@ -20,6 +25,7 @@ from app.content import (
 from app.models import Person, SequenceEnrollment
 from app.extensions import db
 from app.dashboard import build as build_dashboard
+from app.security import min_role
 from app.stages import CONTACT_WINDOW_DAYS, stages_for
 
 # Where "Request support" goes. Between Sundays supports every church on the
@@ -61,6 +67,52 @@ def index():
         user=current_user,
         support_email=SUPPORT_EMAIL,
         **data,
+    )
+
+
+@bp.get("/metrics/")
+@login_required
+@min_role("leader")
+def metrics():
+    """What people did, and what moved.
+
+    Declared before the `/<key>/` catch-all below for readability; Flask
+    matches a static rule ahead of a converter either way.
+
+    Leader and above. The numbers are counts rather than names, but they are
+    still a picture of a congregation's giving, prayer and attendance, which
+    is not something a member should be able to read off a URL.
+    """
+    from app import metrics as metrics_module
+
+    period = (request.args.get("period") or "week").strip()
+    builder = {
+        "week": metrics_module.current_week,
+        "last_week": metrics_module.week_window,
+        "month": metrics_module.current_month,
+        "last_month": metrics_module.month_window,
+    }.get(period)
+    if builder is None:
+        abort(404)
+
+    window = builder(g.church)
+    sections = metrics_module.sections_for(g.church, window)
+
+    return render_template(
+        "shell/metrics.html",
+        church=g.church,
+        content=METRICS,
+        window=window,
+        sections=sections,
+        anything=any(section.total for section in sections),
+        versus=METRICS["vs_week"] if window.kind == "week" else METRICS["vs_month"],
+        active=period,
+        windows=(
+            SimpleNamespace(key="week", label=METRICS["this_week"]),
+            SimpleNamespace(key="last_week", label=METRICS["last_week"]),
+            SimpleNamespace(key="month", label=METRICS["this_month"]),
+            SimpleNamespace(key="last_month", label=METRICS["last_month"]),
+        ),
     )
 
 

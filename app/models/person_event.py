@@ -62,6 +62,13 @@ class PersonEvent(TenantScoped, TimestampMixin, db.Model):
         # The person drawer's only query: this person, newest first.
         Index("ix_event_church_person_time", "church_id", "person_id", "occurred_at"),
         Index("ix_event_church_kind_time", "church_id", "kind", "occurred_at"),
+        # The metrics' only query here: one church, one kind, a date range.
+        # Without it, counting a month of stage moves is a scan of every
+        # event the church has ever recorded.
+        Index(
+            "ix_event_church_stage_time",
+            "church_id", "kind", "occurred_at", "to_stage",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -82,6 +89,19 @@ class PersonEvent(TenantScoped, TimestampMixin, db.Model):
     occurred_at: Mapped[datetime] = mapped_column(
         UTCDateTime, nullable=False, default=utcnow
     )
+
+    # Where a stage change went from and to, as codes.
+    #
+    # `summary` already says it in English, and for a long time that was the
+    # only record of it. English is the wrong thing to count: "how many moved
+    # Visitor to Member last month" would mean matching a sentence, and the
+    # first copy edit to that sentence silently zeroes the number with
+    # nothing failing anywhere.
+    #
+    # Null on every other kind of event, and null on stage changes written
+    # before this existed that could not be read back out of their text.
+    from_stage: Mapped[Optional[str]] = mapped_column(String(32))
+    to_stage: Mapped[Optional[str]] = mapped_column(String(32))
 
     # Who or what caused it. Null means the system did.
     actor_user_id: Mapped[Optional[int]] = mapped_column(
@@ -105,12 +125,20 @@ class PersonEvent(TenantScoped, TimestampMixin, db.Model):
         detail: str | None = None,
         actor=None,
         occurred_at: datetime | None = None,
+        from_stage: str | None = None,
+        to_stage: str | None = None,
     ) -> "PersonEvent":
         """Append an event. The church comes from the person, never an argument.
 
         Taking `church_id` as a parameter here would make it possible to file
         an event against the wrong tenant by passing the wrong number. Deriving
         it from the person removes that option.
+
+        `from_stage` and `to_stage` are for stage changes and are what the
+        metrics count. They are optional rather than required on that kind
+        because an event written without them is still a correct timeline
+        entry; it is only missing from a total, which is the lesser of the
+        two failures.
         """
         event = cls(
             church_id=person.church_id,
@@ -121,6 +149,8 @@ class PersonEvent(TenantScoped, TimestampMixin, db.Model):
             occurred_at=occurred_at or utcnow(),
             actor_user_id=getattr(actor, "id", None),
             actor_name=getattr(actor, "name", None),
+            from_stage=from_stage,
+            to_stage=to_stage,
         )
         db.session.add(event)
         return event

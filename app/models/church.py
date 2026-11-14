@@ -233,6 +233,22 @@ class Church(TimestampMixin, db.Model):
     def guest_recipients(self) -> list[str]:
         return _addresses(self.guest_alert_emails)
 
+    # Who gets the metrics digest.
+    #
+    # Same shape as the two lists above but a different fallback, and that
+    # difference is the point. Those two fall back to all staff, because an
+    # alert nobody receives is a person nobody contacts. This one falls back
+    # to nobody: the digest is a standing report somebody asked for, and a
+    # platform that mailed every church's numbers to its staff by default
+    # would be deciding on their behalf that they want it.
+    #
+    # Empty means not sent, and nothing is broken when it is empty.
+    digest_emails: Mapped[Optional[str]] = mapped_column(Text)
+
+    @property
+    def digest_recipients(self) -> list[str]:
+        return _addresses(self.digest_emails)
+
     # Where a guest's request for a login goes.
     #
     # Not the church's own staff by default, because creating an account is

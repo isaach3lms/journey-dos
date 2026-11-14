@@ -69,6 +69,14 @@ EMAIL_ONLY = {
         "A test email to prove the mail transport works, and the delivery "
         "screen's retry. Both are about email specifically."
     ),
+    "app/digest.py": (
+        "The metrics digest. It goes to addresses a church typed into "
+        "Settings, which are usually not accounts in this system and may not "
+        "be at the church at all, so there is often no person to push to. "
+        "And a weekly report is the one thing nobody needs on a lock screen: "
+        "a push every Monday saying the numbers are in is how somebody turns "
+        "notifications off for everything else too."
+    ),
     "app/blueprints/people.py": (
         "A staff member composing an email to one person on their record, "
         "and the self-signup approval notice. The first is an email by "

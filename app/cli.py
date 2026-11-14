@@ -868,6 +868,12 @@ a{{
 
         steps = (
             ("run-sequences", ["run-sequences"]),
+            # Before send-outbox, so a digest built this tick goes out on the
+            # same tick rather than five minutes later. Safe to run every
+            # five minutes all Monday: each message carries a dedupe key of
+            # church, period and address, so the first one queues and the
+            # rest are refused by the outbox.
+            ("send-digests", ["send-digests"]),
             ("release-claims", ["release-claims", "--minutes", "15"]),
             ("send-outbox", ["send-outbox"]),
             # The safety net under `worker-loop`. If the continuous worker is
@@ -1249,6 +1255,45 @@ a{{
             click.echo(f"  {who:26} {recurring.stopped_reason}")
 
     # -- increment 14 -------------------------------------------------------
+
+    @app.cli.command("send-digests")
+    @click.option("--church", "church_slug", default=None)
+    @click.option("--date", "on_date", default=None,
+                  help="Pretend it is this date (YYYY-MM-DD), for testing.")
+    def send_digests(church_slug, on_date):
+        """Queue the metrics digest for any church that is owed one today.
+
+        Owed means Monday for the week just finished, or the 1st for the
+        month just finished. Both on a Monday the 1st.
+
+        Safe to run as often as the worker ticks. Nothing here asks whether
+        a digest has already gone: each message carries a dedupe key of
+        church, period and address, and the outbox refuses a repeat, so
+        running this twelve times on a Monday sends one email.
+        """
+        from datetime import date as date_type
+
+        from app import digest
+
+        church_id = None
+        if church_slug:
+            church = Church.by_slug(church_slug)
+            if church is None:
+                raise click.ClickException(f"No church with slug {church_slug!r}.")
+            church_id = church.id
+
+        today = date_type.fromisoformat(on_date) if on_date else None
+        results = digest.run(today=today, church_id=church_id)
+
+        queued = sum(len(result.queued) for result in results)
+        skipped = sum(len(result.skipped) for result in results)
+        if not results:
+            click.echo("No digests due today.")
+            return
+        for result in results:
+            click.echo(f"  {result.window.kind:6} {result.window.label}: "
+                       f"{len(result.queued)} queued, {len(result.skipped)} skipped")
+        click.echo(f"{queued} queued, {skipped} skipped.")
 
     @app.cli.command("run-sequences")
     @click.option("--church", "church_slug", default=None)

@@ -279,6 +279,7 @@ DASHBOARD = {
     # because the number is a link now and a link with nothing under it
     # looks like a tile that failed to finish loading.
     "attendance_history": "See every week",
+    "metrics_link": "See every number, week and month",
     "empty_giving": "Connect giving to see this",
 
     "health_heading": "Church health",
@@ -2209,6 +2210,125 @@ GROUPS = {
     "rsvp_going": "Going",
     "rsvp_maybe": "Maybe",
     "rsvp_not_going": "Can't make it",
+}
+
+
+# ---------------------------------------------------------------------------
+# Metrics: the screen and the digest.
+#
+# Written flat. A report that only knows how to celebrate is a report nobody
+# opens in January, and a pastor reading a quiet month needs the number, not
+# a sentence about how numbers are not everything. Nothing here congratulates
+# and nothing here apologises.
+#
+# Labels say what was counted rather than what it means. "Connect cards" and
+# not "New guest engagement": the first is a fact and the second is a claim.
+# ---------------------------------------------------------------------------
+METRICS = {
+    "title": "Metrics",
+    "subtitle": "What people did, and what moved.",
+    "back": "Dashboard",
+
+    "section_asked": "What people asked for",
+    "section_moved": "Moved along the rail",
+    "section_church": "The church and the staff",
+
+    "connect_cards": "Connect cards",
+    "prayer": "Prayer requests",
+    "baptism": "Baptism interest",
+    "volunteer": "Volunteer interest",
+    "moved_to": "Moved to {stage}",
+    "new_people": "People added",
+    "attendance": "Seats filled",
+    "kids": "Kids checked in",
+    "contacts": "Contacts logged by staff",
+
+    "this_week": "This week",
+    "this_month": "This month",
+    "last_week": "Last week",
+    "last_month": "Last month",
+    "vs_week": "on the week before",
+    "vs_month": "on the month before",
+    "no_change": "Same",
+    "nothing_before": "Nothing to compare against yet",
+    "view_people": "See who",
+    "nothing_yet": (
+        "Nothing recorded in this period. Numbers appear here as people fill "
+        "in forms and staff move them along the rail."
+    ),
+    "total_moves": "{n} moves along the rail",
+    # The screen's own closing line. It used to borrow the digest's, which
+    # told somebody already looking at the Metrics page that they could see
+    # these figures on the Metrics page. The thing worth saying here is the
+    # one that otherwise causes a confused email: why the week starts where
+    # it does.
+    "screen_close": (
+        "Weeks run Monday to Sunday and every number is counted on "
+        "{church}'s own clock, not the server's. Tap a number to see who is "
+        "behind it."
+    ),
+
+    # The digest email.
+    #
+    # One subject line for both periods, because the label already says which
+    # one it is ("Week of November 2", "February 2026"). Two keys holding the
+    # same format string would be a difference waiting to be invented.
+    #
+    # The church leads, because whoever reads these will one day be reading
+    # them for several churches, and "in numbers" is there so the subject says
+    # what the email is. "The Journey Church: Week of November 2" on its own
+    # is indistinguishable from a service plan.
+    "digest_subject": "{church}: {label} in numbers",
+    "digest_open": (
+        "Here is what happened at {church} in {label}. Every number below "
+        "is counted from what people actually did in the app."
+    ),
+    "digest_quiet": (
+        "Nothing was recorded in {label}. That is usually a quiet period "
+        "rather than a fault, but if you expected activity it is worth "
+        "checking that forms are reaching people."
+    ),
+    "digest_close": (
+        "Numbers are counted on {church}'s own clock. You can see the same "
+        "figures, and who is behind each one, on the Metrics page in the app."
+    ),
+    # The link, when the church has a real domain to link to. Its own line so
+    # that a church still being set up gets a digest with no broken link in
+    # it rather than one pointing at a hostname that does not resolve.
+    "digest_link": "See who is behind each number: {url}",
+    "digest_line": "{label}: {count}",
+    "digest_line_change": "{label}: {count} ({change} {versus})",
+
+    # Settings
+    "settings_heading": "Metrics digest",
+    "settings_hint": (
+        "A summary of what happened, emailed on Monday morning for the week "
+        "and on the 1st for the month. One address per line. Leave it empty "
+        "and nothing is sent."
+    ),
+    "settings_label": "Send the digest to",
+    "settings_save": "Save recipients",
+    "settings_saved": "Saved. The digest will go to these addresses.",
+    "settings_none": "Nobody. The digest is not being sent.",
+    # The collapsed row. Every other settings row shows the state in its
+    # subtitle and a short word in the pill; this one was showing the long
+    # hint in both the subtitle and the body, which printed the same
+    # paragraph twice on one screen.
+    "settings_sub_one": "1 address",
+    "settings_sub": "{count} addresses",
+    "settings_sub_none": "Not being sent",
+    "settings_on": "Sending",
+    "settings_off": "Off",
+    "settings_bad_email": "{value} does not look like an email address.",
+    "settings_send_now": "Send this week's digest now",
+    "settings_sent_now": "Sent to {recipients}.",
+    "settings_nobody_to_send_to": (
+        "Add an address above first. There is nobody to send it to."
+    ),
+    "settings_sent_already": (
+        "This week's digest has already gone to everybody on the list. "
+        "Monday's run will not send it twice."
+    ),
 }
 
 

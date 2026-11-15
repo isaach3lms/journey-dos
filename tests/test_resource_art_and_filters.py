@@ -481,3 +481,98 @@ class TestTheArtworkSitsWhereTheGradientDid:
         page = staff.get("/resources/", headers=H).data.decode()
         assert '<span class="rescover">' in page
         assert "coverart" in page
+
+
+class TestTheEditScreenHasNoHoleInIt:
+    """Measured in a browser, guarded here.
+
+    The edit screen is a two column grid. Left as four direct children, the
+    four cards fell into two rows, and a grid sizes every row by its tallest
+    cell: the short Cover artwork card sat at the top of a 638px row and left
+    397px of white space between itself and Sessions. Row alignment across
+    columns is right for a table and wrong for two independent stacks of
+    cards.
+
+    The fix is one wrapper, so the grid has two children and each column
+    flows on its own. Nothing about that is visible to a request, so what is
+    guarded here is the wrapper in the markup and the rule that makes it a
+    column.
+    """
+
+    from pathlib import Path as _Path
+
+    CSS = (_Path(__file__).resolve().parent.parent
+           / "app" / "static" / "css" / "app.css").read_text()
+
+    def test_the_grid_has_two_children_not_four(self, db, staff):
+        resource = make_resource(db)
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        grid = page[page.index('<div class="resedit">'):]
+        assert '<div class="resside">' in grid[:400], (
+            "the set-and-forget cards are loose in the grid again"
+        )
+
+    def test_the_three_small_cards_are_inside_the_wrapper(self, db, staff):
+        """Details, artwork and filters. Sessions is the card somebody works
+        in, so it is the other column and starts at the top."""
+        resource = make_resource(db)
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        side = page[page.index('<div class="resside">'):page.index('</div>\n\n  <section')]
+        assert 'id="art"' in side
+        assert 'id="tags"' in side
+        assert "Sessions" not in side
+
+    def test_the_wrapper_is_a_column_of_its_own(self):
+        block = self.CSS[self.CSS.index(".resside{"):]
+        block = block[:block.index("}")]
+        assert "display:grid" in block
+        assert "align-content:start" in block, (
+            "without it the three cards stretch to fill the tallest column"
+        )
+
+    def test_the_narrow_layout_still_collapses_to_one_column(self):
+        assert "@media (max-width:1000px){.resedit{grid-template-columns:minmax(0,1fr)}}" \
+            in self.CSS
+
+
+class TestTheSessionCountLine:
+    """"14 sessions, about 0 minutes" stated a length nobody had entered."""
+
+    def test_no_minutes_anywhere_means_the_length_is_left_unsaid(self, db, staff):
+        resource = make_resource(db)
+        for position in range(2, 15):
+            db.session.add(ResourceSession(
+                church_id=resource.church_id, resource_id=resource.id,
+                position=position, title=f"Day {position}",
+            ))
+        db.session.commit()
+
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        assert "14 sessions" in page
+        assert "about 0 minutes" not in page
+
+    def test_minutes_are_still_shown_when_somebody_entered_them(self, db, staff):
+        resource = make_resource(db)
+        resource.sessions[0].minutes = 20
+        db.session.add(ResourceSession(
+            church_id=resource.church_id, resource_id=resource.id,
+            position=2, title="Day 2", minutes=25,
+        ))
+        db.session.commit()
+
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        assert "2 sessions, about 45 minutes" in page
+
+    def test_one_session_is_not_one_sessions(self, db, staff):
+        resource = make_resource(db)
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        assert "1 session" in page
+        assert "1 sessions" not in page
+
+    def test_one_timed_session_reads_properly_too(self, db, staff):
+        resource = make_resource(db)
+        resource.sessions[0].minutes = 30
+        db.session.commit()
+        page = staff.get(f"/resources/{resource.id}/", headers=H).data.decode()
+        assert "1 session, about 30 minutes" in page
+        assert "1 sessions" not in page

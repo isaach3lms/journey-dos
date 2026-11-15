@@ -27,6 +27,13 @@
 </div>
 
 <div class="resedit">
+  {# The three set-and-forget cards are wrapped so the column flows on its
+     own. Left as four direct children of the grid, they fell into two rows,
+     and row one was as tall as the Details card: the short Cover artwork
+     card sat at the top of it and left 397px of white space underneath,
+     measured in a browser, before Sessions began. Sessions is the card
+     somebody actually works in, so it starts at the top. #}
+  <div class="resside">
   <section class="card">
     {{ cover(resource, "planbanner small") }}
     <div class="hd"><h2>{{ content.details_heading }}</h2></div>
@@ -125,12 +132,26 @@
       </form>
     </div>
   </section>
+  </div>
 
   <section class="card">
     <div class="hd">
       <h2>{{ content.session_heading }}</h2>
       <div class="spacer"></div>
-      <span class="muted small">{{ content.sessions_total.format(count=resource.session_count, minutes=resource.total_minutes) }}</span>
+      {# "about 0 minutes" claimed a length nobody had entered. No minutes on
+         any session means the total is unknown, not zero, so it is left
+         unsaid. #}
+      <span class="muted small">
+        {%- if resource.total_minutes and resource.session_count == 1 -%}
+          {{ content.sessions_total_one.format(minutes=resource.total_minutes) }}
+        {%- elif resource.total_minutes -%}
+          {{ content.sessions_total.format(count=resource.session_count, minutes=resource.total_minutes) }}
+        {%- elif resource.session_count == 1 -%}
+          {{ content.sessions_total_one_untimed }}
+        {%- else -%}
+          {{ content.sessions_total_untimed.format(count=resource.session_count) }}
+        {%- endif -%}
+      </span>
     </div>
     <div class="bd">
       {% if resource.sessions %}

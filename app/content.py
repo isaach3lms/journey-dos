@@ -2020,7 +2020,14 @@ RESOURCES = {
         "That is the only session in a live plan. Unpublish it first, or add "
         "another session before deleting this one."
     ),
+    # Four forms, because the one line covered all four cases badly. A
+    # resource whose sessions have no minutes set read "14 sessions, about 0
+    # minutes", which states a length nobody entered, and a resource with one
+    # session read "1 sessions".
     "sessions_total": "{count} sessions, about {minutes} minutes",
+    "sessions_total_one": "1 session, about {minutes} minutes",
+    "sessions_total_untimed": "{count} sessions",
+    "sessions_total_one_untimed": "1 session",
 
     # Member side
     "member_heading": "Reading",

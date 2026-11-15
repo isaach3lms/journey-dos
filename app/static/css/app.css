@@ -2016,6 +2016,13 @@ ul.policy span{color:var(--muted)}
 }
 .livebar.live{background:var(--good-bg);color:var(--good)}
 .resedit{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:18px;align-items:start}
+/* The set-and-forget cards, stacked as one column so the grid has two
+   children rather than four. With four, the browser laid them out in two
+   rows and sized row one by the tallest card in it: the short Cover artwork
+   card sat at the top of a 638px row and left a 397px hole above Sessions.
+   A grid aligns rows across columns, which is the right behaviour for a
+   table and the wrong one for two independent stacks of cards. */
+.resside{display:grid;gap:18px;align-content:start}
 @media (max-width:1000px){.resedit{grid-template-columns:minmax(0,1fr)}}
 .resedit .card{overflow:hidden}
 .resedit form .btn{margin-top:12px}

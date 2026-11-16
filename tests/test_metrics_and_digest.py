@@ -46,6 +46,7 @@ from app.metrics import (
     contacts_logged,
     current_month,
     current_week,
+    current_year,
     kids_checkins,
     month_window,
     new_people,
@@ -55,6 +56,7 @@ from app.metrics import (
     stage_moves,
     total_moves,
     week_window,
+    year_window,
 )
 from app.models import (
     Church,
@@ -252,6 +254,51 @@ class TestWhichPeriodTheEmailIsAbout:
         closed = week_window(church)
         assert current.start == closed.end
 
+    def test_the_yearly_window_is_the_calendar_year_that_finished(self, db):
+        """A calendar year, not a rolling twelve months.
+
+        A church compares itself against the year it can name. "2025" is a
+        thing a board has minutes about; twelve rolling months ending today
+        is not, and two people running that report a week apart would get two
+        different answers to "how was last year".
+        """
+        church = _journey(db)
+        window = year_window(church, ending=date(2026, 11, 15))
+        assert window.start.astimezone(UTC).date() == date(2025, 1, 1)
+        assert window.end.astimezone(UTC).date() == date(2026, 1, 1)
+        assert window.label == "2025"
+        assert window.kind == "year"
+
+    def test_the_yearly_window_is_the_same_on_any_day_of_the_year(self, db):
+        church = _journey(db)
+        january = year_window(church, ending=date(2026, 1, 2))
+        december = year_window(church, ending=date(2026, 12, 31))
+        assert (january.start, january.end) == (december.start, december.end)
+
+    def test_the_current_year_is_the_one_in_progress(self, db):
+        church = _journey(db)
+        current = current_year(church)
+        closed = year_window(church)
+        assert current.start == closed.end
+        assert current.end.astimezone(UTC).date().month == 1
+        # The kind is load-bearing, not a label. `previous` branches on it
+        # and the page builds its comparison copy from it, so a year carrying
+        # kind "month" compares January to December and says "on the month
+        # before" underneath every number.
+        assert current.kind == "year"
+        assert current.previous.start == current.start.replace(
+            year=current.start.year - 1
+        )
+
+    def test_a_year_starts_at_local_midnight_on_new_year_s_day(self, db):
+        """January 1 is always CST in Missouri, so this is 6am UTC. A year
+        built on UTC midnight would put a New Year's Eve connect card in the
+        wrong year, which is the one boundary a church will notice."""
+        church = _journey(db)
+        window = year_window(church, ending=date(2026, 6, 1))
+        assert window.start == datetime(2025, 1, 1, 6, tzinfo=UTC)
+        assert window.end == datetime(2026, 1, 1, 6, tzinfo=UTC)
+
     def test_the_current_month_ends_at_the_first_of_next_month(self, db):
         church = _journey(db)
         current = current_month(church)
@@ -280,6 +327,29 @@ class TestThePreviousPeriod:
         before = window.previous
         assert before.start.astimezone(UTC).date() == date(2026, 1, 1)
         assert before.end == window.start
+
+    def test_a_year_compares_against_the_calendar_year_before_it(self, db):
+        church = _journey(db)
+        window = year_window(church, ending=date(2026, 11, 15))
+        before = window.previous
+        assert before.start.astimezone(UTC).date() == date(2024, 1, 1)
+        assert before.end == window.start
+
+    def test_a_year_before_a_leap_year_is_still_a_whole_year(self, db):
+        """`replace(year=...)` rather than 365 days.
+
+        2024 is a leap year. Subtracting 365 days from 1 January 2025 lands
+        on 2 January 2024 and silently drops a day off the comparison, which
+        is the kind of error that makes a year look slightly worse than it
+        was and nobody can explain why.
+        """
+        church = _journey(db)
+        window = year_window(church, ending=date(2026, 6, 1))   # 2025
+        before = window.previous                                 # 2024
+        assert before.start.astimezone(UTC).date() == date(2024, 1, 1)
+        assert before.end.astimezone(UTC).date() == date(2025, 1, 1)
+        hours = (before.end.astimezone(UTC) - before.start.astimezone(UTC))
+        assert hours == timedelta(days=366), "a leap year is 366 days"
 
     def test_a_january_month_steps_back_across_the_year(self, db):
         church = _journey(db)
@@ -1041,12 +1111,59 @@ class TestTheMetricsScreen:
         response = member.get("/metrics/", headers={"Host": JOURNEY_HOST})
         assert response.status_code in (302, 403)
 
-    def test_each_of_the_four_periods_renders(self, leader):
-        for period in ("week", "last_week", "month", "last_month"):
+    def test_each_of_the_six_periods_renders(self, leader):
+        for period in ("week", "last_week", "month", "last_month",
+                       "year", "last_year"):
             response = leader.get(
                 f"/metrics/?period={period}", headers={"Host": JOURNEY_HOST}
             )
             assert response.status_code == 200, period
+
+    def test_the_year_buttons_are_offered(self, leader):
+        response = leader.get("/metrics/", headers={"Host": JOURNEY_HOST})
+        body = response.get_data(as_text=True)
+        assert 'href="/metrics/?period=year"' in body
+        assert 'href="/metrics/?period=last_year"' in body
+        assert "This year" in body and "Last year" in body
+
+    def test_the_year_buttons_show_years_and_not_months(self, app, leader):
+        """What the buttons actually do, with rows behind them.
+
+        A mutation run found that asserting the links exist proves nothing:
+        pointing `year` at `current_month` passed every test on the page.
+        This one puts a card in each period and insists the right number and
+        the right label come back.
+        """
+        with app.app_context():
+            church = _journey(_db)
+            this_year = current_year(church)
+            last = year_window(church)
+            # Three in the year that closed, one in the year in progress.
+            for index in range(3):
+                _card(_db, church, last.start + timedelta(days=40 + index))
+            _card(_db, church, this_year.start + timedelta(days=5))
+            _db.session.commit()
+            labels = (this_year.label, last.label)
+
+        page = leader.get("/metrics/?period=last_year",
+                          headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
+        assert labels[1] in page, "the page is not showing the year that closed"
+        assert ">3<" in page, "last year's three connect cards are not the count"
+        assert "on the year before" in page
+        assert "on the month before" not in page and "on the week before" not in page
+
+        page = leader.get("/metrics/?period=year",
+                          headers={"Host": JOURNEY_HOST}).get_data(as_text=True)
+        assert labels[0] in page
+        assert ">1<" in page, "the year in progress is not counting its own card"
+
+    def test_every_kind_has_the_copy_its_page_needs(self):
+        """Each window kind needs a `vs_<kind>` line. The lookup is built
+        from the kind, so a kind added without the copy is a 500."""
+        from app.content import METRICS
+
+        for kind in ("week", "month", "year"):
+            assert f"vs_{kind}" in METRICS, f"no comparison copy for a {kind}"
 
     def test_an_unknown_period_is_a_404_rather_than_this_week(self, leader):
         """Silently falling back would make a mistyped link look like a
@@ -1106,6 +1223,20 @@ class TestTheNumbersLookLikeSomethingToTap:
         assert "text-decoration-color:var(--muted-2)" in block, (
             "a fainter token reads as an artifact rather than as a link"
         )
+
+    def test_the_back_link_gets_its_own_line_on_a_phone(self):
+        """Six period buttons rather than four.
+
+        On a phone the spacer collapses and "Dashboard" ends up inline with
+        the first periods, reading as though it were one of them. The spacer
+        becomes a zero-height full-width item instead, which forces the wrap
+        after the link without stretching the link itself into a button the
+        full width of the phone. Measured at 390px.
+        """
+        css = self.css()
+        start = css.index("@media (max-width:620px){\n  /* The spacer becomes")
+        block = css[start:start + 500]
+        assert ".filters .spacer{flex:0 0 100%;height:0}" in block
 
     def test_the_rule_is_the_width_of_the_digits(self):
         """Without `align-self:start` the link's box fills the column and the

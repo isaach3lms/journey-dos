@@ -91,6 +91,8 @@ def metrics():
         "last_week": metrics_module.week_window,
         "month": metrics_module.current_month,
         "last_month": metrics_module.month_window,
+        "year": metrics_module.current_year,
+        "last_year": metrics_module.year_window,
     }.get(period)
     if builder is None:
         abort(404)
@@ -105,13 +107,15 @@ def metrics():
         window=window,
         sections=sections,
         anything=any(section.total for section in sections),
-        versus=METRICS["vs_week"] if window.kind == "week" else METRICS["vs_month"],
+        versus=METRICS[f"vs_{window.kind}"],
         active=period,
         windows=(
             SimpleNamespace(key="week", label=METRICS["this_week"]),
             SimpleNamespace(key="last_week", label=METRICS["last_week"]),
             SimpleNamespace(key="month", label=METRICS["this_month"]),
             SimpleNamespace(key="last_month", label=METRICS["last_month"]),
+            SimpleNamespace(key="year", label=METRICS["this_year"]),
+            SimpleNamespace(key="last_year", label=METRICS["last_year"]),
         ),
     )
 

@@ -97,12 +97,18 @@ class Window:
     start: datetime
     end: datetime
     label: str
-    kind: str  # "week" or "month"
+    kind: str  # "week", "month" or "year"
 
     @property
     def previous(self) -> "Window":
         if self.kind == "week":
             return Window(self.start - WEEK, self.start, self.label, self.kind)
+        if self.kind == "year":
+            # The same calendar year one back. `replace` rather than 365 days,
+            # which would land on the 31st of December in a leap year and
+            # compare a year against a year and a day.
+            return Window(self.start.replace(year=self.start.year - 1),
+                          self.start, self.label, self.kind)
         # A month back from the first of the month is the first of the month
         # before, whatever its length. Subtracting thirty days would compare
         # February against most of January.
@@ -182,6 +188,38 @@ def month_window(church, *, ending: Optional[date] = None) -> Window:
         end=_midnight(church, first_of_this),
         label=start.strftime("%B %Y"),
         kind="month",
+    )
+
+
+def year_window(church, *, ending: Optional[date] = None) -> Window:
+    """The calendar year that has just finished.
+
+    A calendar year rather than a rolling twelve months, for the same reason
+    the monthly window is a calendar month: a church compares itself against
+    the year it can name. "2025" is a thing a board has minutes about.
+    Twelve rolling months ending today is not.
+    """
+    from app.timeutil import now_local
+
+    today = ending or now_local(church).date()
+    return Window(
+        start=_midnight(church, date(today.year - 1, 1, 1)),
+        end=_midnight(church, date(today.year, 1, 1)),
+        label=str(today.year - 1),
+        kind="year",
+    )
+
+
+def current_year(church) -> Window:
+    """The year in progress."""
+    from app.timeutil import now_local
+
+    today = now_local(church).date()
+    return Window(
+        start=_midnight(church, date(today.year, 1, 1)),
+        end=_midnight(church, date(today.year + 1, 1, 1)),
+        label=str(today.year),
+        kind="year",
     )
 
 

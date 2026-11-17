@@ -501,6 +501,58 @@
     </div>
   </details>
 
+  {# The Android app on Google Play.
+
+     Two fields that do nothing for the website and everything for the
+     installed app: without them it opens inside a Chrome tab with the
+     address bar showing, which members read as a wrapped website rather
+     than as their church's app. #}
+  <details class="setrow" id="android" {% if open_row == 'android' %}open{% endif %}>
+    <summary>
+      <span class="fl">
+        <span class="pn">{{ android.heading }}</span>
+        <span class="pe">
+          {% if church.has_android_app %}{{ android.sub_on.format(package=church.android_package) }}
+          {% else %}{{ android.sub_off }}{% endif %}
+        </span>
+      </span>
+      <span class="pill {% if not church.has_android_app %}pending{% endif %}">
+        {% if church.has_android_app %}{{ android.pill_on }}
+        {% else %}{{ android.pill_off }}{% endif %}
+      </span>
+      {{ chev() }}
+    </summary>
+    <div class="setbd">
+      <form method="post" action="{{ url_for('settings.save_android_app') }}">
+        {{ csrf_field() }}
+        <label class="flabel" for="android-package">{{ android.package_label }}</label>
+        <input class="input" id="android-package" name="package" type="text"
+               spellcheck="false" autocapitalize="off"
+               value="{{ church.android_package or '' }}">
+        <p class="muted small">{{ android.package_hint }}</p>
+
+        <label class="flabel" for="android-fingerprints">{{ android.fingerprints_label }}</label>
+        <textarea class="input" id="android-fingerprints" name="fingerprints"
+                  rows="4" spellcheck="false"
+                  autocapitalize="off">{{ church.android_fingerprints or "" }}</textarea>
+        <p class="muted small">{{ android.fingerprints_hint }}</p>
+
+        <button class="btn" type="submit">{{ android.save }}</button>
+      </form>
+
+      {# The file itself, one click away. What Android reads is the only
+         thing that settles whether this is set up, and reading it is
+         faster than installing the app to find out. #}
+      {% if church.has_android_app %}
+        <p class="digestsend">
+          <a class="link" href="{{ url_for('pwa.assetlinks') }}" target="_blank"
+             rel="noopener">{{ android.check_link }}</a>
+        </p>
+      {% endif %}
+      <p class="muted small">{{ android.hint }}</p>
+    </div>
+  </details>
+
   {# Check-in tablets.
 
      Here rather than under Kids because it is an account and a device, not a

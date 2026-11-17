@@ -4311,6 +4311,46 @@ SETTINGS = {
 }
 
 
+# The Android app row in Settings.
+#
+# Written for somebody standing in the Play Console with two tabs open, not
+# for somebody who knows what a Digital Asset Link is. The wording names the
+# exact screen the fingerprint comes from, because that is the one step
+# people get wrong, and the failure it causes looks like nothing at all.
+ANDROID = {
+    "heading": "Android app",
+    "sub_on": "Verified for {package}",
+    "sub_off": "Not set up",
+    "pill_on": "Linked",
+    "pill_off": "Off",
+    "hint": (
+        "Fill these in after the app is uploaded to Google Play. Until both "
+        "are set, the app still opens but shows a browser address bar across "
+        "the top."
+    ),
+    "package_label": "Package name",
+    "package_hint": "For example com.thejourneychurchsemo.app",
+    "fingerprints_label": "SHA-256 certificate fingerprints",
+    "fingerprints_hint": (
+        "In the Play Console: Test and release, then Setup, then App "
+        "integrity, then App signing. Paste the SHA-256 certificate "
+        "fingerprint from the app signing key, and the one from the upload "
+        "key underneath it. One per line."
+    ),
+    "save": "Save app settings",
+    "saved": "Saved. The app can now open this site without an address bar.",
+    "incomplete": (
+        "Saved, but the app is not linked yet: it needs both a package name "
+        "and at least one fingerprint."
+    ),
+    "bad_fingerprint": (
+        "“{value}” is not a SHA-256 fingerprint, so it was not "
+        "saved. A fingerprint is 32 pairs of hex digits."
+    ),
+    "check_link": "Check what Android sees",
+}
+
+
 PWA = {
     "description": (
         "{church} in your pocket: what is next for you, what you are reading, "

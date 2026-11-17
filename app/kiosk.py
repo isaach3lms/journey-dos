@@ -102,6 +102,10 @@ KIOSK_ENDPOINTS = frozenset({
     "pwa.service_worker",
     "pwa.offline",
     "pwa.favicon",
+    # Android fetches this with no cookies and no session. A kiosk tablet
+    # redirecting it to the check-in screen would fail app verification on
+    # every phone that happened to ask while the tablet held the session.
+    "pwa.assetlinks",
     "public.privacy",
     "public.community",
 })

@@ -212,6 +212,59 @@ def service_worker():
     )
 
 
+@bp.get("/.well-known/assetlinks.json")
+def assetlinks():
+    """What Android reads to decide the app may own this domain.
+
+    An installed Trusted Web Activity asks for this file over HTTPS before it
+    shows a single pixel. If the package name and one of the fingerprints
+    match the app that is asking, it opens the site full screen as its own
+    app. If they do not, it falls back to a Chrome tab with the address bar
+    across the top, and nothing anywhere says why. That silent downgrade is
+    the single most common way a TWA ships broken, so this route is public,
+    unauthenticated and exact.
+
+    Public on purpose. Android fetches it with no cookies, before anybody has
+    signed in, and often on a phone that has never opened the site. Any
+    redirect to a login page is read as a failure.
+
+    A church with no app gets a 404 rather than an empty list. An empty list
+    is a valid assetlinks file that positively asserts no app may open this
+    domain, which is a different claim from "this church has not set one up"
+    and would be the wrong thing to publish while somebody is mid-setup.
+    """
+    church = g.church
+    if not church.has_android_app:
+        abort(404)
+
+    statements = [
+        {
+            "relation": [
+                "delegate_permission/common.handle_all_urls",
+                # Lets the app receive the site's web credentials too. Harmless
+                # when unused, and adding it later means every installed copy
+                # has to re-verify.
+                "delegate_permission/common.get_login_creds",
+            ],
+            "target": {
+                "namespace": "android_app",
+                "package_name": church.android_package,
+                "sha256_cert_fingerprints": church.android_certificates,
+            },
+        }
+    ]
+    return Response(
+        response=__import__("json").dumps(statements, indent=2),
+        mimetype="application/json",
+        headers={
+            # Android caches this aggressively. An hour is short enough that
+            # fixing a wrong fingerprint does not mean waiting a day, and long
+            # enough that it is not fetched on every cold start.
+            "Cache-Control": "public, max-age=3600",
+        },
+    )
+
+
 @bp.get("/offline/")
 def offline():
     """Shown when a page is requested with no connection and no cached copy.

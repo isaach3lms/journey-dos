@@ -263,6 +263,60 @@ class Church(TimestampMixin, db.Model):
         named = _addresses(self.account_request_email)
         return named or [DEFAULT_ACCOUNT_REQUEST_EMAIL]
 
+    # The Android app, if this church has one on Google Play.
+    #
+    # Both of these exist to serve `/.well-known/assetlinks.json`, the file
+    # Android fetches to decide whether the installed app is allowed to open
+    # this domain without a browser address bar across the top. Get it wrong
+    # and the app still works, but it renders inside a Chrome tab with the
+    # URL visible, which every member reads as "this is a website in a
+    # wrapper" rather than as their church's app.
+    #
+    # Per church, not per platform, because each church gets its own app
+    # under its own Play account and its own domain. A hard-coded package
+    # name would mean the second church's app never verifies.
+    android_package: Mapped[Optional[str]] = mapped_column(String(255))
+
+    # The SHA-256 certificate fingerprints that may open this domain.
+    #
+    # A list rather than one value, and this matters: with Play App Signing
+    # turned on, which Google requires for new apps, Google re-signs the
+    # bundle with its own key. So the fingerprint that ends up on members'
+    # phones is Google's, not the upload key's. Both usually need to be here:
+    # Google's so the installed app verifies, and the upload key's so a build
+    # sent round for testing outside Play verifies too.
+    android_fingerprints: Mapped[Optional[str]] = mapped_column(Text)
+
+    @property
+    def android_certificates(self) -> list[str]:
+        """The fingerprints, normalised to the colon-separated upper-case hex
+        that Android compares against.
+
+        Pasted from the Play Console, which formats them that way already,
+        but people paste from terminals and emails too. Whitespace, commas
+        and newlines all separate; anything that is not 32 hex bytes is
+        dropped rather than served, because a malformed entry in this file
+        invalidates nothing on its own but is impossible to spot by eye.
+        """
+        import re
+
+        out, seen = [], set()
+        for chunk in re.split(r"[\s,]+", (self.android_fingerprints or "")):
+            cleaned = chunk.strip().upper().replace(":", "")
+            if len(cleaned) != 64 or not re.fullmatch(r"[0-9A-F]{64}", cleaned):
+                continue
+            formatted = ":".join(
+                cleaned[index:index + 2] for index in range(0, 64, 2)
+            )
+            if formatted not in seen:
+                seen.add(formatted)
+                out.append(formatted)
+        return out
+
+    @property
+    def has_android_app(self) -> bool:
+        return bool(self.android_package and self.android_certificates)
+
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     def __repr__(self) -> str:

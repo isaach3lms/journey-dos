@@ -108,7 +108,7 @@ def create_app(config_name: str | None = None) -> Flask:
 
         allowed = {"auth.change_password", "auth.logout", "static",
                    "health.healthz", "health.readyz", "pwa.service_worker",
-                   "pwa.manifest", "pwa.offline"}
+                   "pwa.manifest", "pwa.offline", "pwa.assetlinks"}
         if request.endpoint in allowed:
             return None
 

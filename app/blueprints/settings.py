@@ -24,7 +24,7 @@ from flask_login import current_user, login_required
 from app.accounts import send_set_password
 from app.audit import record
 from app.brand import assert_accent_readable
-from app.content import METRICS, PEOPLE, SETTINGS
+from app.content import ANDROID, METRICS, PEOPLE, SETTINGS
 from app.extensions import db
 from app.mail.health import email_health, explain
 from app.notify_catalogue import GROUPS as notify_groups
@@ -54,6 +54,9 @@ ROWS = (
     # it is a question about who hears from the church, not about whether the
     # plumbing works.
     "digest",
+    # Next to push, because both are about the app on somebody's phone
+    # rather than about the website.
+    "android",
     "audit", "support",
 )
 
@@ -115,6 +118,7 @@ def index():
         # with the metrics screen and the email itself. One copy of
         # "Metrics digest" across all three.
         metrics=METRICS,
+        android=ANDROID,
         timezones=COMMON_TIMEZONES,
         # What the church actually runs on. A blank column is not "None"
         # on screen, it is the fallback the rest of the app already uses.
@@ -678,6 +682,64 @@ def send_digest_now():
         # week. Said plainly rather than reported as a success.
         flash(METRICS["settings_sent_already"], "notice")
     return _back("digest")
+
+
+@bp.post("/android/")
+@login_required
+@min_role("staff")
+def save_android_app():
+    """The package name and signing fingerprints for the Play Store app.
+
+    Staff only and audited. Getting these wrong does not break the website,
+    it breaks the installed app quietly: it keeps working but opens inside a
+    Chrome tab with the address bar showing, and nothing anywhere explains
+    why. A record of who last changed them is the only way to work backwards
+    from "the app looks different this week".
+    """
+    church = g.church
+    before = (church.android_package, church.android_certificates)
+
+    church.android_package = (request.form.get("package") or "").strip() or None
+    typed = (request.form.get("fingerprints") or "").strip()
+    church.android_fingerprints = typed or None
+    after = (church.android_package, church.android_certificates)
+
+    # The parser keeps only 32 hex bytes. Anything else is named rather than
+    # dropped in silence, because a fingerprint with a character missing
+    # looks exactly like a fingerprint to a human reading the box.
+    import re
+
+    kept = set(church.android_certificates)
+    for chunk in re.split(r"[\s,]+", typed):
+        candidate = chunk.strip()
+        if not candidate:
+            continue
+        tidy = candidate.upper().replace(":", "")
+        if re.fullmatch(r"[0-9A-F]{64}", tidy) and ":".join(
+            tidy[i:i + 2] for i in range(0, 64, 2)
+        ) in kept:
+            continue
+        flash(ANDROID["bad_fingerprint"].format(value=candidate), "error")
+
+    if after != before:
+        record(
+            BRAND_CHANGED,
+            "Android app settings changed",
+            actor=current_user,
+            subject_type="church",
+            subject_id=church.id,
+            subject_label=church.name,
+            detail=(
+                f"{church.android_package or 'no package'}, "
+                f"{len(church.android_certificates)} fingerprint(s)"
+            ),
+        )
+    db.session.commit()
+    flash(
+        ANDROID["saved"] if church.has_android_app else ANDROID["incomplete"],
+        "notice" if church.has_android_app else "error",
+    )
+    return _back("android")
 
 
 @bp.post("/kids-codes/")

@@ -22,6 +22,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.volunteers import (
+    BUSY_SUNDAY_SHARE,
+    CONCENTRATION_FLAG,
+    CONCENTRATION_SHARE,
+    LONG_STREAK,
+    MANY_POSITIONS,
+    WINDOW_MONTHS,
+)
+
 MM = 72.0 / 25.4
 
 # US Letter, landscape. The church prints on what is in the tray.
@@ -122,12 +131,20 @@ def _quietest(row, now: datetime) -> tuple[str, bool]:
     return _count(days // 365, "year") + "+", True
 
 
-def render_roster(*, sections, church, fmt, now=None, subtitle=None) -> bytes:
+def render_roster(
+    *, sections, church, fmt, now=None, subtitle=None, volunteers=None
+) -> bytes:
     """The sheet.
 
     `fmt` formats a UTC datetime on the church's clock, passed in rather
     than imported so this file does nothing with time zones itself and can
     be tested with a fixed formatter.
+
+    `volunteers` is an optional `app.volunteers.VolunteerReport`. When it is
+    there the same file continues into the volunteer pages, because the
+    request was one button and one document: a roster and a volunteer report
+    that arrive as two downloads are two documents somebody has to staple
+    together before a meeting.
     """
     from io import BytesIO
 
@@ -147,7 +164,15 @@ def render_roster(*, sections, church, fmt, now=None, subtitle=None) -> bytes:
         xs.append(running)
         running += usable * share
 
-    state = {"page": 0, "y": 0.0}
+    # The title and strap live in state because the volunteer half of the
+    # document changes both. A page headed "roster" over a table of burnout
+    # flags is the kind of thing nobody notices until it is printed.
+    state = {
+        "page": 0,
+        "y": 0.0,
+        "title": f"{church.name} roster",
+        "strap": subtitle or "Everyone, by stage",
+    }
 
     def new_page():
         if state["page"]:
@@ -160,11 +185,11 @@ def render_roster(*, sections, church, fmt, now=None, subtitle=None) -> bytes:
         top = PAGE_HEIGHT - MARGIN
         pdf.setFillColorRGB(*INK)
         pdf.setFont("Helvetica-Bold", 15)
-        pdf.drawString(MARGIN, top - (5 * MM), f"{church.name} roster")
+        pdf.drawString(MARGIN, top - (5 * MM), state["title"])
 
         pdf.setFillColorRGB(*MUTED)
         pdf.setFont("Helvetica", 8.5)
-        line = subtitle or "Everyone, by stage"
+        line = state["strap"]
         pdf.drawString(MARGIN, top - (10 * MM), line)
         pdf.drawRightString(
             PAGE_WIDTH - MARGIN, top - (10 * MM),
@@ -290,6 +315,289 @@ def render_roster(*, sections, church, fmt, now=None, subtitle=None) -> bytes:
         pdf.drawString(MARGIN, state["y"], line)
         state["y"] -= 3.4 * MM
 
+    if volunteers is not None:
+        _volunteer_pages(
+            pdf=pdf, report=volunteers, church=church, accent=accent,
+            state=state, new_page=new_page, room_for=room_for,
+            clipped=clipped, usable=usable,
+        )
+
     pdf.showPage()
     pdf.save()
     return buffer.getvalue()
+
+
+# How the volunteer tables are laid out. Fractions of the usable width, so
+# the sheet reflows if the margins ever change.
+VOLUNTEER_COLUMNS = (
+    ("Name", 0.26),
+    ("Shifts", 0.08),
+    ("Months", 0.08),
+    ("Roles", 0.26),
+    ("Last served", 0.14),
+    ("Regular", 0.18),
+)
+
+TREND_COLUMNS = (
+    ("Month", 0.18),
+    ("Volunteers", 0.14),
+    ("Shifts", 0.12),
+    ("Shifts each", 0.14),
+    ("On the month before", 0.21),
+    ("On the same month last year", 0.21),
+)
+
+
+def _roles(positions) -> str:
+    """The roles somebody covers, with the count in front once it matters.
+
+    `MANY_POSITIONS` is the burnout threshold, so at or above it the number
+    is the point and the list is detail. Below it the list is short enough to
+    read whole and a count in front would be noise.
+    """
+    if not positions:
+        return "Not recorded"
+    joined = ", ".join(positions)
+    if len(positions) >= MANY_POSITIONS:
+        return f"{len(positions)}: {joined}"
+    return joined
+
+
+def _delta(now: int, before: int | None) -> str:
+    """A change, or an honest blank.
+
+    None means there is nothing to compare against, which is different from
+    no change and has to read differently or a church in its first year sees
+    a column of zeroes and concludes it is flat.
+    """
+    if before is None:
+        return ""
+    if now == before:
+        return "no change"
+    return f"{'+' if now > before else ''}{now - before}"
+
+
+def _volunteer_pages(
+    *, pdf, report, church, accent, state, new_page, room_for, clipped, usable
+):
+    """The volunteer half of the document.
+
+    Shares the canvas and the page machinery with the roster above it, so
+    page numbering runs straight through and the reader gets one document.
+    """
+    state["title"] = f"{church.name} volunteers"
+    state["strap"] = f"Serving from {report.window_label}"
+    new_page()
+
+    def heading(text, note=""):
+        if not room_for((16 * MM) + (2 * ROW_HEIGHT)):
+            new_page()
+        pdf.setFillColorRGB(*INK)
+        pdf.setFont("Helvetica-Bold", 10.5)
+        pdf.drawString(MARGIN, state["y"], text)
+        if note:
+            pdf.setFillColorRGB(*MUTED)
+            pdf.setFont("Helvetica", 8.5)
+            pdf.drawString(
+                MARGIN + pdf.stringWidth(text, "Helvetica-Bold", 10.5) + (3 * MM),
+                state["y"], note,
+            )
+        state["y"] -= 5.5 * MM
+
+    def heads(columns):
+        xs, running = [], MARGIN
+        for _, share in columns:
+            xs.append(running)
+            running += usable * share
+        pdf.setFillColorRGB(*MUTED)
+        pdf.setFont("Helvetica-Bold", 7)
+        for (title, _), x in zip(columns, xs):
+            pdf.drawString(x, state["y"], title.upper())
+        state["y"] -= 2.2 * MM
+        pdf.setStrokeColorRGB(*RULE)
+        pdf.setLineWidth(0.6)
+        pdf.line(MARGIN, state["y"], PAGE_WIDTH - MARGIN, state["y"])
+        state["y"] -= ROW_HEIGHT * 0.75
+        return xs
+
+    def draw_row(cells, xs, columns, index):
+        if index % 2:
+            pdf.setFillColorRGB(*BAND)
+            pdf.rect(MARGIN - (1.5 * MM), state["y"] - (1.8 * MM),
+                     usable + (3 * MM), ROW_HEIGHT, stroke=0, fill=1)
+        widths = [usable * share - (3 * MM) for _, share in columns]
+        for (text, font, colour), x, width in zip(cells, xs, widths):
+            pdf.setFillColorRGB(*colour)
+            pdf.setFont(font, 8.2)
+            pdf.drawString(x, state["y"], clipped(str(text), font, 8.2, width))
+        state["y"] -= ROW_HEIGHT
+
+    def empty(text):
+        pdf.setFillColorRGB(*MUTED)
+        pdf.setFont("Helvetica-Oblique", 8.5)
+        pdf.drawString(MARGIN, state["y"], text)
+        state["y"] -= ROW_HEIGHT * 1.6
+
+    def people_table(rows, note_for=None):
+        xs = heads(VOLUNTEER_COLUMNS)
+        for index, row in enumerate(rows):
+            if not room_for(ROW_HEIGHT):
+                new_page()
+                xs = heads(VOLUNTEER_COLUMNS)
+            regular = note_for(row) if note_for else (
+                "Yes" if row.is_flagged else "Not ticked"
+            )
+            draw_row(
+                (
+                    (row.name, "Helvetica-Bold", INK),
+                    (row.shifts, "Helvetica", INK),
+                    (f"{row.months} of {WINDOW_MONTHS}", "Helvetica", MUTED),
+                    # The count first once somebody is over the roles
+                    # threshold. A long list gets an ellipsis, and on the one
+                    # page that is about workload, "Cameras, Coffee, Kids,
+                    # Sound, Welcome, Wo…" loses the only number a reader
+                    # needs: how many. Below the threshold the list speaks
+                    # for itself and a count would be noise.
+                    (_roles(row.positions), "Helvetica",
+                     INK if row.positions else MUTED),
+                    (row.last_served.strftime("%b %-d") if row.last_served
+                     else "Not in this window", "Helvetica", MUTED),
+                    (regular, "Helvetica-Bold" if not row.is_flagged else "Helvetica",
+                     accent if not row.is_flagged else MUTED),
+                ),
+                xs, VOLUNTEER_COLUMNS, index,
+            )
+        state["y"] -= 4 * MM
+
+    # 1. The four numbers somebody reads out loud.
+    monthly = report.monthly
+    heading("At a glance")
+    pdf.setFillColorRGB(*MUTED)
+    pdf.setFont("Helvetica", 8.5)
+    for line in (
+        f"{len(report.active)} people served at least once, across "
+        f"{report.weekends} weekend{'' if report.weekends == 1 else 's'} "
+        f"with a service.",
+        f"{len(monthly)} of them served in all {WINDOW_MONTHS} months, which "
+        f"is the bar this sheet uses for serving at least monthly.",
+        f"{report.total_shifts} shifts in total.",
+    ):
+        pdf.drawString(MARGIN, state["y"], line)
+        state["y"] -= 4.2 * MM
+    state["y"] -= 3 * MM
+
+    # 2. The monthly regulars.
+    heading("Serving at least monthly", f"{len(monthly)} people")
+    if monthly:
+        people_table(monthly)
+    else:
+        empty("Nobody served in all three months.")
+
+    # 3. The actionable list, and the one with teeth: ticking the box is what
+    #    moves somebody to Disciple on the rail.
+    should = report.should_be_flagged
+    heading(
+        "Should be ticked as a regular volunteer",
+        f"{len(should)} people" if should else "",
+    )
+    if should:
+        people_table(should, note_for=lambda row: "Tick this one")
+    else:
+        empty("Everybody serving monthly is already ticked.")
+
+    # 4. The opposite direction, which nobody goes looking for.
+    stale = report.stale_flags
+    heading("Ticked, but not serving", f"{len(stale)} people" if stale else "")
+    if stale:
+        people_table(stale, note_for=lambda row: "Still ticked")
+    else:
+        empty("Every ticked volunteer has served in this window.")
+
+    # 5. Workload.
+    heading("Workload")
+    pdf.setFont("Helvetica", 8.5)
+    pdf.setFillColorRGB(*(accent if report.is_concentrated else MUTED))
+    share = round(report.concentration * 100)
+    pdf.drawString(
+        MARGIN, state["y"],
+        f"The busiest {len(report.busiest)} of {len(report.active)} volunteers "
+        f"cover {share}% of all shifts."
+        + ("  That is a rota resting on a few people." if report.is_concentrated else ""),
+    )
+    state["y"] -= 5.5 * MM
+
+    at_risk = report.at_risk
+    if at_risk:
+        xs = heads((("Name", 0.26), ("Shifts", 0.1), ("Why they are flagged", 0.64)))
+        for index, row in enumerate(at_risk):
+            if not room_for(ROW_HEIGHT):
+                new_page()
+                xs = heads((("Name", 0.26), ("Shifts", 0.1),
+                            ("Why they are flagged", 0.64)))
+            draw_row(
+                (
+                    (row.name, "Helvetica-Bold", INK),
+                    (row.shifts, "Helvetica", INK),
+                    ("; ".join(row.reasons), "Helvetica", accent),
+                ),
+                xs, (("Name", 0.26), ("Shifts", 0.1), ("Why", 0.64)), index,
+            )
+        state["y"] -= 4 * MM
+    else:
+        empty("Nobody is over any of the thresholds below.")
+
+    # 6. The trend.
+    heading("Month by month", f"last {len(report.months)} months")
+    xs = heads(TREND_COLUMNS)
+    for index, point in enumerate(report.months):
+        if not room_for(ROW_HEIGHT):
+            new_page()
+            xs = heads(TREND_COLUMNS)
+        before = report.months[index - 1] if index else None
+        a_year = report.months[index - 12] if index >= 12 else None
+        last = index == len(report.months) - 1
+        draw_row(
+            (
+                (point.label + (" (so far)" if last else ""),
+                 "Helvetica-Bold" if last else "Helvetica", INK),
+                (point.volunteers, "Helvetica", INK),
+                (point.shifts, "Helvetica", MUTED),
+                (f"{point.per_volunteer:.1f}" if point.volunteers else "",
+                 "Helvetica", MUTED),
+                (_delta(point.volunteers, before.volunteers if before else None),
+                 "Helvetica", MUTED),
+                (_delta(point.volunteers, a_year.volunteers if a_year else None),
+                 "Helvetica", MUTED),
+            ),
+            xs, TREND_COLUMNS, index,
+        )
+    state["y"] -= 4 * MM
+
+    # 7. What every number on these pages means.
+    if not room_for(26 * MM):
+        new_page()
+    pdf.setStrokeColorRGB(*RULE)
+    pdf.line(MARGIN, state["y"], PAGE_WIDTH - MARGIN, state["y"])
+    state["y"] -= 5 * MM
+    pdf.setFillColorRGB(*MUTED)
+    pdf.setFont("Helvetica", 7.2)
+    for line in (
+        "Served: scheduled for a service that has already happened and did "
+        "not decline it. Being invited counts; declining does not. The same "
+        "rule as the Last served column on the roster.",
+        f"Serving at least monthly: served in all {WINDOW_MONTHS} of the "
+        "months in this window. Counted as distinct months, not shifts, so "
+        "three shifts in one week is one month.",
+        "Should be ticked: serving monthly with the Regular volunteer box "
+        "still off. Ticking it, alongside Regular giver, is what moves "
+        "somebody to Disciple.",
+        f"Flagged for workload: on {round(BUSY_SUNDAY_SHARE * 100)}% or more "
+        f"of the weekends that had a service, or covering {MANY_POSITIONS} "
+        f"or more roles, or {LONG_STREAK} or more weekends in a row.",
+        f"Concentrated: the busiest {round(CONCENTRATION_SHARE * 100)}% of "
+        f"volunteers covering {round(CONCENTRATION_FLAG * 100)}% or more of "
+        "the shifts.",
+        "Every date is on this church's own clock, not the server's.",
+    ):
+        pdf.drawString(MARGIN, state["y"], line)
+        state["y"] -= 3.4 * MM

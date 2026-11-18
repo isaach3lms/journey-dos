@@ -174,6 +174,7 @@ def report():
     from app.reports import sections_for
     from app.roster_pdf import render_roster
     from app.timeutil import format_local
+    from app.volunteers import report_for
 
     stage = (request.args.get("stage") or "").strip() or None
     if stage and stage not in STAGE_BY_CODE and stage not in AGE_FILTERS:
@@ -202,6 +203,12 @@ def report():
             if (stage or group) and sections
             else PEOPLE["report_all"]
         ),
+        # The volunteer half of the same document. Always the whole church,
+        # never narrowed by the roster filter above: "who is carrying too
+        # much" is a question about the serving team, and a copy of it
+        # filtered down to the Visitor stage would be a page of noise that
+        # still looked authoritative.
+        volunteers=report_for(g.church),
     )
 
     name = "".join(

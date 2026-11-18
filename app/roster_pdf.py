@@ -589,8 +589,8 @@ def _volunteer_pages(
         "months in this window. Counted as distinct months, not shifts, so "
         "three shifts in one week is one month.",
         "Should be ticked: serving monthly with the Regular volunteer box "
-        "still off. Ticking it, alongside Regular giver, is what moves "
-        "somebody to Disciple.",
+        "still off. Ticking it moves somebody to Volunteer, and to Disciple "
+        "if Regular giver is ticked too.",
         f"Flagged for workload: on {round(BUSY_SUNDAY_SHARE * 100)}% or more "
         f"of the weekends that had a service, or covering {MANY_POSITIONS} "
         f"or more roles, or {LONG_STREAK} or more weekends in a row.",

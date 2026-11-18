@@ -691,9 +691,12 @@ PEOPLE = {
     # a profile that changes the record it is not sitting on, and a warning
     # that appears in the flash afterwards is read by somebody who has
     # already done it.
+    # Both rules, in the order they fire, because somebody reading this is
+    # about to tick one box and the two outcomes are different stages.
     "flag_rule_hint": (
-        "Ticking both of the above moves this person to Disciple. Unticking "
-        "one later does not move them back."
+        "Ticking Regular volunteer moves this person to Volunteer. Ticking "
+        "both of the above moves them to Disciple. Unticking one later does "
+        "not move them back."
     ),
     "flag_stage_flash": "Saved. {name} moved from {frm} to {to}.",
     "flag_check": "Background check ordered",
@@ -1167,6 +1170,13 @@ PEOPLE = {
     "stage_rule_detail": (
         "Moved automatically: marked as both a regular volunteer and a "
         "regular tither"
+    ),
+    # Its own line rather than a shared one. Two rules write a stage change
+    # now, and a note reading "moved automatically" without saying which box
+    # did it is the one that sends somebody hunting through a changelog six
+    # months later.
+    "stage_rule_detail_volunteer": (
+        "Moved automatically: marked as a regular volunteer"
     ),
     "stage_flash": "{name} is now at {stage}.",
 

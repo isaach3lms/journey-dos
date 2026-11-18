@@ -316,10 +316,11 @@ def detail(person_id: int):
         # Worked out here rather than branched in the template: the condition
         # is "the rule would fire if the other box were ticked", which is one
         # idea and belongs in one place next to the rule itself.
-        show_stage_rule_hint=(
-            stage_order(person.stage) < stage_order(stage_rules.DISCIPLE)
-            and not (person.is_regular_giver and person.is_regular_volunteer)
-        ),
+        # Shown when a tick on this form could still move them. Asked of the
+        # rules rather than restated here: with two rules the condition is no
+        # longer "below Disciple and not both ticked", and a copy of it in
+        # this file would be the copy that goes stale when a third arrives.
+        show_stage_rule_hint=stage_rules.could_still_move(person),
         # Can this person sign in, and may the person looking change that.
         #
         # The controls are staff-only while the profile itself is open to

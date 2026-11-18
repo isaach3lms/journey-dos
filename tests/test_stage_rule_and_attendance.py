@@ -37,6 +37,7 @@ from app.models import (
     ServiceTrack,
 )
 from app.models.base import utcnow
+from app.models.person_event import KIND_STAGE_CHANGE
 from app.models.service import ACCEPTED, DECLINED, INVITED
 from app.stages import next_stage, stage_order
 from tests.conftest import JOURNEY_HOST
@@ -166,15 +167,188 @@ class TestWhenBothBoxesAreTicked:
         assert "moved from Member to Disciple" in page
 
 
-class TestWhenItMustNotFire:
-    def test_one_box_alone_does_nothing(self, db, journey, client, sign_in):
+class TestWhenTheVolunteerBoxAloneIsTicked:
+    """The second rule. Marking somebody a regular volunteer makes them a
+    Volunteer, without waiting for the giving box.
+
+    This used to do nothing, on the reasoning that one fact was not enough
+    to move anybody. It is: the box says "this person serves regularly", and
+    Volunteer is the stage that means exactly that. Leaving them at Member
+    made the rail disagree with a fact the church had already recorded.
+    """
+
+    def test_a_member_becomes_a_volunteer(self, db, journey, client, sign_in):
         person = a_person(db, journey, stage="member")
         sign_in("pastor@journeychurchsemo.com")
 
         save_flags(client, person.id, is_regular_volunteer=True)
 
         db.session.refresh(person)
+        assert person.stage == "volunteer"
+
+    def test_a_visitor_goes_straight_there(self, db, journey, client, sign_in):
+        """Member is a description, not a gate. Somebody serving every week
+        is only a Visitor because nobody updated the record."""
+        person = a_person(db, journey, stage="visitor")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        db.session.refresh(person)
+        assert person.stage == "volunteer"
+
+    def test_the_timeline_says_which_box_did_it(self, db, journey, client,
+                                                sign_in):
+        """Two rules write a stage change now. "Moved automatically" without
+        saying which box is the note that sends somebody hunting through a
+        changelog six months later."""
+        person = a_person(db, journey, stage="member")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        events = db.session.scalars(
+            db.select(PersonEvent).where(PersonEvent.person_id == person.id)
+        ).all()
+        move = next(e for e in events if e.kind == KIND_STAGE_CHANGE)
+        assert move.detail == "Moved automatically: marked as a regular volunteer"
+        assert move.from_stage == "member"
+        assert move.to_stage == "volunteer"
+
+    def test_the_stuck_clock_restarts(self, db, journey, client, sign_in):
+        """The stuck engine measures time in the current stage. Without this
+        somebody moved by the rule reads as stuck the moment they arrive."""
+        person = a_person(db, journey, stage="member")
+        person.stage_since = utcnow() - timedelta(days=200)
+        db.session.commit()
+        before = person.stage_since
+
+        sign_in("pastor@journeychurchsemo.com")
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        db.session.refresh(person)
+        assert person.stage_since > before
+
+    def test_the_giving_box_later_carries_on_to_disciple(self, db, journey,
+                                                         client, sign_in):
+        """The two rules compose. Ticking volunteer today and giving next
+        month is two moves, Member to Volunteer to Disciple, not one that
+        gets stuck halfway."""
+        person = a_person(db, journey, stage="member")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+        db.session.refresh(person)
+        assert person.stage == "volunteer"
+
+        save_flags(client, person.id, is_regular_volunteer=True,
+                   is_regular_giver=True)
+        db.session.refresh(person)
+        assert person.stage == "disciple"
+
+        moves = [
+            event for event in db.session.scalars(
+                db.select(PersonEvent).where(PersonEvent.person_id == person.id)
+            ).all()
+            if event.kind == KIND_STAGE_CHANGE
+        ]
+        assert [(m.from_stage, m.to_stage) for m in moves] == [
+            ("member", "volunteer"), ("volunteer", "disciple"),
+        ]
+
+    def test_both_boxes_at_once_go_straight_to_disciple(self, db, journey,
+                                                        client, sign_in):
+        """Strongest rule first. Checking the volunteer rule first would park
+        them at Volunteer and leave Disciple to some later save that happens
+        to touch the record, or to never."""
+        person = a_person(db, journey, stage="member")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True,
+                   is_regular_giver=True)
+
+        db.session.refresh(person)
+        assert person.stage == "disciple"
+        moves = [
+            event for event in db.session.scalars(
+                db.select(PersonEvent).where(PersonEvent.person_id == person.id)
+            ).all()
+            if event.kind == KIND_STAGE_CHANGE
+        ]
+        assert len(moves) == 1, "it stopped at Volunteer on the way"
+
+    def test_the_target_is_the_furthest_the_flags_justify(self, db, journey):
+        person = a_person(db, journey, stage="member",
+                          is_regular_volunteer=True)
+        assert stage_rules.target_for(person) == "volunteer"
+        person.is_regular_giver = True
+        assert stage_rules.target_for(person) == "disciple"
+
+    def test_the_giving_box_alone_still_does_nothing(self, db, journey, client,
+                                                     sign_in):
+        """Giving regularly is not serving, and there is no stage for it.
+        The Disciple rule needs both."""
+        person = a_person(db, journey, stage="member")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_giver=True)
+
+        db.session.refresh(person)
         assert person.stage == "member"
+        assert stage_rules.target_for(person) is None
+
+
+class TestWhenItMustNotFire:
+    def test_a_volunteer_ticked_as_one_is_left_alone(self, db, journey, client,
+                                                     sign_in):
+        """Already there. A second move to the same stage would show up as
+        two arrivals on one timeline."""
+        person = a_person(db, journey, stage="volunteer")
+        person.stage_since = utcnow() - timedelta(days=200)
+        db.session.commit()
+        before = person.stage_since
+
+        sign_in("pastor@journeychurchsemo.com")
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        db.session.refresh(person)
+        assert person.stage == "volunteer"
+        assert person.stage_since == before
+
+    def test_a_disciple_is_not_dragged_back_to_volunteer(self, db, journey,
+                                                         client, sign_in):
+        """The case that makes two rules safe to compose. The weaker rule
+        must never undo the stronger one's work, and a Disciple who gets
+        ticked as a regular volunteer has not gone backwards."""
+        person = a_person(db, journey, stage="disciple")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        db.session.refresh(person)
+        assert person.stage == "disciple"
+
+    def test_a_leader_ticked_as_a_volunteer_stays_a_leader(self, db, journey,
+                                                           client, sign_in):
+        person = a_person(db, journey, stage="leader")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+
+        db.session.refresh(person)
+        assert person.stage == "leader"
+
+    def test_unticking_volunteer_never_moves_anybody_back(self, db, journey,
+                                                          client, sign_in):
+        person = a_person(db, journey, stage="member")
+        sign_in("pastor@journeychurchsemo.com")
+
+        save_flags(client, person.id, is_regular_volunteer=True)
+        save_flags(client, person.id)
+
+        db.session.refresh(person)
+        assert person.stage == "volunteer"
+        assert person.is_regular_volunteer is False
 
     def test_a_leader_is_not_demoted(self, db, journey, client, sign_in):
         """A Leader who starts giving regularly has not stopped leading.
@@ -270,7 +444,23 @@ class TestTheCheckboxOnTheProfile:
         sign_in("pastor@journeychurchsemo.com")
         page = client.get(f"/people/{person.id}/", headers=H).get_data(as_text=True)
 
-        assert "moves this person to Disciple" in page
+        assert "moves this person to Volunteer" in page
+        assert "moves them to Disciple" in page
+
+    def test_a_volunteer_is_still_told_about_disciple(self, db, journey,
+                                                      client, sign_in):
+        """The hint asks what a tick would do next, not what the flags say
+        now. Somebody already at Volunteer can still be moved to Disciple by
+        the giving box, so the line has to stay. A mutation run found that
+        nothing was holding this: anchoring the hint to Volunteer instead of
+        Disciple passed every other test on the page.
+        """
+        person = a_person(db, journey, stage="volunteer",
+                          is_regular_volunteer=True)
+        sign_in("pastor@journeychurchsemo.com")
+        page = client.get(f"/people/{person.id}/", headers=H).get_data(as_text=True)
+
+        assert "moves them to Disciple" in page
 
     def test_the_warning_goes_once_it_cannot_apply(self, db, journey, client,
                                                    sign_in):
@@ -278,7 +468,8 @@ class TestTheCheckboxOnTheProfile:
         sign_in("pastor@journeychurchsemo.com")
         page = client.get(f"/people/{person.id}/", headers=H).get_data(as_text=True)
 
-        assert "moves this person to Disciple" not in page
+        assert "moves this person to Volunteer" not in page
+        assert "moves them to Disciple" not in page
 
     def test_ticking_it_is_recorded(self, db, journey, client, sign_in):
         person = a_person(db, journey, stage="member")

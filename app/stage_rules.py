@@ -1,8 +1,19 @@
 """When a fact about somebody is enough to move them along the rail.
 
-One rule today: a person their church has marked as both a regular volunteer
-and a regular giver is a Disciple, and the system says so rather than waiting
-for somebody to notice and press a button.
+Two rules, read strongest first:
+
+  - A person marked as both a regular volunteer and a regular giver is a
+    Disciple.
+  - A person marked as a regular volunteer is a Volunteer.
+
+The system says so rather than waiting for somebody to notice and press a
+button.
+
+**Strongest first, and it has to be.** Somebody with both boxes ticked
+satisfies the volunteer rule too. Checking that one first would park them at
+Volunteer and leave the Disciple rule to fire on some later save that happens
+to touch the record, or never. `target_for` returns one stage, the furthest
+the facts justify, so the order of the checks inside it is the whole rule.
 
 **Why automatic rather than a suggestion.** Those two boxes are ticked on the
 day the thing becomes true, by the person who knows it. A banner asking "shall
@@ -15,8 +26,11 @@ automatically safe rather than presumptuous.
 **Forward only, and never past Disciple.** Three rules, and all three are
 about never surprising a church with a demotion:
 
-  - Somebody already at Disciple or Leader is left alone. A Leader who starts
-    giving regularly has not stopped leading.
+  - Somebody already at or beyond the stage a rule names is left alone. A
+    Leader who starts giving regularly has not stopped leading, and a
+    Disciple who is ticked as a regular volunteer has not gone backwards to
+    Volunteer. This is the one that makes the two rules safe to compose:
+    the weaker rule can never undo the stronger one's work.
   - Unticking a box never moves anybody back. The flags say what is true now;
     the stage is a record of how far somebody has come, and a church that
     pauses giving for three months has not undone the last two years.
@@ -39,20 +53,56 @@ from app.models.base import utcnow
 from app.models.person_event import KIND_STAGE_CHANGE, PersonEvent
 from app.stages import stage_label, stage_order
 
-# The stage the rule moves people to. A code rather than the last stage in
-# the list: Leader is above it and must never be the target.
+# The stages the rules move people to. Codes rather than positions in the
+# list: Leader is above both and must never be a target.
 DISCIPLE = "disciple"
+VOLUNTEER = "volunteer"
+
+
+def target_for(person) -> str | None:
+    """The furthest stage this person's flags justify, or None.
+
+    Strongest first. Somebody with both boxes ticked also satisfies the
+    volunteer rule, so checking that one first would park them at Volunteer
+    and leave Disciple to some later save that happens to touch the record.
+
+    This says nothing about where they are now. `should_advance` is what
+    compares the two, because "what do the facts say" and "is that a move"
+    are different questions and the hint on the profile screen asks the
+    first one on its own.
+    """
+    if person.is_regular_volunteer and person.is_regular_giver:
+        return DISCIPLE
+    if person.is_regular_volunteer:
+        return VOLUNTEER
+    return None
+
+
+def could_still_move(person) -> bool:
+    """Whether ticking a box on this form could move them from here.
+
+    What the hint above the boxes is asking. Not the same question as
+    `should_advance`: that one is about the flags as they stand, this one is
+    about what a tick would do next, so it is true for somebody with nothing
+    ticked and false for somebody already at Disciple or beyond.
+
+    Written as "is the strongest rule's stage still ahead of them", which
+    stays correct when a third rule is added as long as DISCIPLE remains the
+    furthest any rule reaches.
+    """
+    return stage_order(person.stage) < stage_order(DISCIPLE)
 
 
 def should_advance(person) -> bool:
-    """Whether this person's flags say Disciple and their stage does not yet.
+    """Whether the flags name a stage further along than the current one.
 
     Separate from the move so a screen can ask the question without causing
     anything, and so the condition is testable without a database write.
     """
-    if not (person.is_regular_volunteer and person.is_regular_giver):
+    target = target_for(person)
+    if target is None:
         return False
-    return stage_order(person.stage) < stage_order(DISCIPLE)
+    return stage_order(person.stage) < stage_order(target)
 
 
 def apply(person, *, actor=None) -> str | None:
@@ -70,8 +120,9 @@ def apply(person, *, actor=None) -> str | None:
     if not should_advance(person):
         return None
 
+    target = target_for(person)
     previous = person.stage
-    person.stage = DISCIPLE
+    person.stage = target
     # The stuck engine measures time in the current stage. Without this a
     # person moved by the rule would read as stuck the moment they arrived.
     person.stage_since = utcnow()
@@ -80,21 +131,28 @@ def apply(person, *, actor=None) -> str | None:
         person,
         KIND_STAGE_CHANGE,
         PEOPLE["stage_moved"].format(
-            frm=stage_label(previous), to=stage_label(DISCIPLE)
+            frm=stage_label(previous), to=stage_label(target)
         ),
         # Why, not just what. A stage change with no reason on it is the one
         # somebody finds in six months and cannot account for, and this one
         # was made by a rule rather than by the person whose name is on it.
-        detail=PEOPLE["stage_rule_detail"],
+        #
+        # Which rule, too. Two rules write this event now, and "moved
+        # automatically" without saying which box did it is the note that
+        # sends somebody hunting through a changelog.
+        detail=(
+            PEOPLE["stage_rule_detail"] if target == DISCIPLE
+            else PEOPLE["stage_rule_detail_volunteer"]
+        ),
         actor=actor,
         # Counted the same as a move somebody made by hand. A rule-driven
         # move that did not appear in the totals would make the metrics
         # disagree with the rail they are measuring.
         from_stage=previous,
-        to_stage=DISCIPLE,
+        to_stage=target,
     )
 
-    # The same hook a manual move runs. A person who arrives at Disciple by
+    # The same hook a manual move runs. A person who arrives at a stage by
     # rule should enter the same sequences as one moved by hand, or the two
     # routes into a stage mean different things.
     on_stage_changed(person, previous, actor=actor)

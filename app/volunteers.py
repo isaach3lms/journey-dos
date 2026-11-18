@@ -161,9 +161,10 @@ class VolunteerReport:
     def should_be_flagged(self) -> list[VolunteerRow]:
         """Serving monthly, with the Regular volunteer tick still off.
 
-        The actionable list. Ticking it is what moves somebody to Disciple
-        under `app/stage_rules.py`, so a missing tick is not cosmetic: it is
-        a person the rail believes has not taken a step they took months ago.
+        The actionable list. Ticking it moves somebody to Volunteer under
+        `app/stage_rules.py`, and to Disciple if Regular giver is ticked too,
+        so a missing tick is not cosmetic: it is a person the rail believes
+        has not taken a step they took months ago.
         """
         return [row for row in self.monthly if not row.is_flagged]
 

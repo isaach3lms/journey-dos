@@ -331,7 +331,8 @@ class Person(TenantScoped, TimestampMixin, db.Model):
     # nothing.
     #
     # Beside the giving flag rather than anywhere else because the two of
-    # them together are what `app/stage_rules.py` reads.
+    # them are what `app/stage_rules.py` reads: this one on its own moves
+    # somebody to Volunteer, and the two together move them to Disciple.
     is_regular_volunteer: Mapped[bool] = mapped_column(
         db.Boolean, nullable=False, default=False, server_default=db.false()
     )

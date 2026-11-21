@@ -84,9 +84,170 @@ window.dosPush = (function () {
     permission: signal && (signal.Notifications || signal),
   };
 
+  {% if push_external_id %}
+  /* Telling the server what the phone said.
+
+     Permission lives on the device and can be revoked in Settings weeks
+     later with nothing reaching this server, so without this a church cannot
+     tell "nobody turned notifications on" from "everybody did and none are
+     arriving". Posted only when it differs from what the server already
+     thinks, so the ordinary page load costs nothing.
+
+     Defined above the branch below because both paths need it. The native
+     and web SDKs answer different objects, but what the server is told is
+     the same sentence either way. */
+  api.report = function (known) {
+    /* An answer already in hand is used as it is. The prompt resolves with
+       what the member just tapped, and going back to the device for it would
+       be a second round trip that can fail on its own. */
+    var settled = (known === true || known === false)
+      ? Promise.resolve(known)
+      : api.state();
+
+    return settled.then(function (granted) {
+      if (granted === null) { return null; }
+      var known = {{ push_permission | tojson }};
+      if ((granted && known === "granted") || (!granted && known === "denied")) {
+        return granted;
+      }
+      var token = document.querySelector("input[name=csrf_token]");
+      return fetch({{ url_for('member.push_state') | tojson }}, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": token ? token.value : ""
+        },
+        body: JSON.stringify({granted: granted})
+      }).then(function () { return granted; })
+        .catch(function () { return granted; });
+    });
+  };
+  {% else %}
+  /* Nobody signed in, so there is nothing to report against. It still hands
+     back whatever it was given, because `ask` reports through this and a
+     no-op that swallowed the answer would leave the card unable to tell a
+     granted permission from a refused one on a staff screen. */
+  api.report = function (known) {
+    return Promise.resolve(known === true || known === false ? known : null);
+  };
+  {% endif %}
+
   if (!signal) {
-    api.ask = function () {};
-    api.state = function () { return Promise.resolve(null); };
+    /* No native plugin. Either an ordinary browser, where the provider's web
+       SDK can do this properly, or a web view inside one of the wrappers,
+       where it must not.
+
+       **Never inside the apps.** A web view in a wrapper already has the
+       native SDK holding a subscription for this person. Starting the web
+       SDK there would create a second subscription under the same external
+       id and the provider would deliver to both: one phone, two
+       notifications, every time. The guard is whether the bridge exists at
+       all, not whether a plugin was found, because a wrapper whose plugin
+       failed to register is a wrapper to fix rather than one to paper over
+       with a second SDK that half works. */
+    var in_app = !!window.Capacitor;
+
+    /* Secure context first. Service workers and push do not exist on plain
+       http, and on a developer's machine this is the condition that explains
+       why nothing happens. */
+    var can_web = !in_app
+      && window.isSecureContext
+      && "serviceWorker" in navigator
+      && "PushManager" in window
+      && "Notification" in window;
+
+    if (!can_web) {
+      /* An old browser, a web view, or http. Not a fault and not worth a
+         message: the member app works, and the only thing missing is a
+         notification this browser could not have shown anyway. */
+      api.ask = function () { return Promise.resolve(null); };
+      api.state = function () { return Promise.resolve(null); };
+      return api;
+    }
+
+    api.available = true;
+    api.transport = "web";
+
+    /* Resolves to the provider's object once its SDK has started, or null if
+       it never arrives. null rather than a rejection, because every caller
+       already reads null as "could not answer" and stays quiet, which is
+       exactly right when a third-party script is blocked by an extension or
+       the network is down. */
+    var ready = new Promise(function (resolve) {
+      var settled = false;
+      function give(value) {
+        if (!settled) { settled = true; resolve(value); }
+      }
+
+      window.OneSignalDeferred = window.OneSignalDeferred || [];
+      window.OneSignalDeferred.push(function (OneSignal) {
+        OneSignal.init({
+          appId: {{ push_app_id | tojson }},
+          /* Both of these, or the SDK looks for its worker at the site root,
+             finds nothing, and registration fails. The path carries no
+             leading slash and the scope does; that asymmetry is the SDK's,
+             not a typo here.
+
+             The point of moving it is that `sw.js` keeps the root scope. Two
+             workers cannot share one scope, and the one at the root runs the
+             whole offline app. */
+          serviceWorkerPath: "push/onesignal/OneSignalSDKWorker.js",
+          serviceWorkerParam: {scope: "/push/onesignal/"}
+        }).then(function () { give(OneSignal); })
+          .catch(function () { give(null); });
+      });
+
+      var tag = document.createElement("script");
+      tag.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+      tag.defer = true;
+      tag.onerror = function () { give(null); };
+      document.head.appendChild(tag);
+
+      /* A script that loads but never runs its callback would leave every
+         screen waiting on a promise that never settles, and the ask card
+         would simply never appear with nothing in the console to explain
+         it. Ten seconds is long enough for a slow phone and short enough
+         that somebody looking at the screen has not given up. */
+      window.setTimeout(function () { give(null); }, 10000);
+    });
+
+    function notifications() {
+      return ready.then(function (OneSignal) {
+        return (OneSignal && OneSignal.Notifications) || null;
+      });
+    }
+
+    api.state = function () {
+      return notifications().then(function (n) {
+        return n ? !!n.permission : null;
+      }).catch(function () { return null; });
+    };
+
+    api.ask = function () {
+      return notifications().then(function (n) {
+        if (!n) { return null; }
+        /* The answer is read back off the SDK rather than taken from what
+           `requestPermission` resolves with, because its resolved value has
+           differed between versions while `permission` has not. */
+        return Promise.resolve(n.requestPermission()).then(function () {
+          return api.report(!!n.permission);
+        });
+      }).catch(function () { return null; });
+    };
+
+    {% if push_external_id %}
+    ready.then(function (OneSignal) {
+      if (!OneSignal) { return; }
+      /* Set on every page, for the same reason as the native branch: a
+         shared family laptop signed in as somebody else is exactly the case
+         this gets wrong if the id is only ever set once. */
+      try { OneSignal.login({{ push_external_id | tojson }}); } catch (e) {}
+    });
+
+    api.report();
+    {% endif %}
+
     return api;
   }
 
@@ -199,50 +360,7 @@ window.dosPush = (function () {
   };
 
   {% if push_external_id %}
-  /* Telling the server what the phone said.
-
-     Permission lives on the phone and can be revoked in iOS Settings weeks
-     later with nothing reaching this server, so without this a church cannot
-     tell "nobody turned notifications on" from "everybody did and none are
-     arriving". Posted only when it differs from what the server already
-     thinks, so the ordinary page load costs nothing. */
-  api.report = function (known) {
-    /* An answer already in hand is used as it is. The prompt resolves with
-       what the member just tapped, and going back to the phone for it would
-       be a second round trip that can fail on its own. */
-    var settled = (known === true || known === false)
-      ? Promise.resolve(known)
-      : api.state();
-
-    return settled.then(function (granted) {
-      if (granted === null) { return null; }
-      var known = {{ push_permission | tojson }};
-      if ((granted && known === "granted") || (!granted && known === "denied")) {
-        return granted;
-      }
-      var token = document.querySelector("input[name=csrf_token]");
-      return fetch({{ url_for('member.push_state') | tojson }}, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/json",
-          "X-CSRFToken": token ? token.value : ""
-        },
-        body: JSON.stringify({granted: granted})
-      }).then(function () { return granted; })
-        .catch(function () { return granted; });
-    });
-  };
-
   api.report();
-  {% else %}
-  /* Nobody signed in, so there is nothing to report against. It still hands
-     back whatever it was given, because `ask` reports through this and a
-     no-op that swallowed the answer would leave the card unable to tell a
-     granted permission from a refused one on a staff screen. */
-  api.report = function (known) {
-    return Promise.resolve(known === true || known === false ? known : null);
-  };
   {% endif %}
 
   return api;

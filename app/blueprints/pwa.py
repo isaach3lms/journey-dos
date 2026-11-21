@@ -212,6 +212,53 @@ def service_worker():
     )
 
 
+@bp.get("/push/onesignal/OneSignalSDKWorker.js")
+def onesignal_worker():
+    """The provider's service worker, deliberately not at the root.
+
+    **Why it lives down here.** A service worker owns a scope, and only one
+    worker can own a given scope. `sw.js` above is served from the root on
+    purpose, because that is the only way its scope covers `/me/`. The
+    provider's SDK registers its own worker at the root by default, and the
+    second registration at a scope replaces the first. Loading their SDK
+    without moving this file would therefore unregister the worker that runs
+    the whole offline app, and the symptom would be the install silently
+    losing its offline pages rather than anything that looks like a
+    notification problem.
+
+    Serving it from `/push/onesignal/` caps its scope at that directory,
+    which is all a worker needs to receive a push and show a notification.
+    Scope governs which page loads a worker intercepts, not which pushes it
+    receives. The page passes the matching `serviceWorkerPath` and
+    `serviceWorkerParam.scope` to the SDK.
+
+    **Note the missing `Service-Worker-Allowed` header.** `sw.js` sends it to
+    widen its scope to the root. This one must not: widening it is exactly
+    the collision this route exists to avoid.
+
+    Public and unauthenticated, like the worker above it. The browser fetches
+    a worker without cookies on registration, and a redirect to a login page
+    registers as a failure with nothing explaining why.
+    """
+    # Fetched from the provider's CDN at install time rather than vendored,
+    # which is how they ship it: the file is a single import line and they
+    # update what it points at. Pinning a copy here would freeze the push
+    # handling at whatever was current the day it was copied.
+    body = (
+        'importScripts("https://cdn.onesignal.com/sdks/web/v16/'
+        'OneSignalSDK.sw.js");\n'
+    )
+    return Response(
+        response=body,
+        mimetype="application/javascript",
+        headers={
+            # Same reasoning as the worker above: a cached worker keeps
+            # running old rules long after a fix has shipped.
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+        },
+    )
+
+
 @bp.get("/.well-known/assetlinks.json")
 def assetlinks():
     """What Android reads to decide the app may own this domain.

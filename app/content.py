@@ -1687,6 +1687,28 @@ MEMBER = {
         "Your phone is blocking notifications for this app. Open your "
         "phone's Settings, find this app, and switch Notifications on."
     ),
+
+    # Android and iOS answer a refusal differently, and copy that assumes one
+    # of them is wrong on the other half of the congregation.
+    #
+    # iOS shows its prompt once per install. After a refusal the only way back
+    # is Settings, so the card says so rather than offering a button that
+    # would do nothing.
+    #
+    # Android keeps asking. A refusal is just an answer to that one prompt,
+    # and the system will show it again on the next request. Sending somebody
+    # to Settings there is a longer trip than the tap that would have worked,
+    # so Android gets a retry first and only hears about Settings once the
+    # system has stopped showing the prompt at all.
+    "ask_body_denied_android": (
+        "Notifications are switched off for now. Tap below and your phone "
+        "will ask again."
+    ),
+    "ask_body_blocked_android": (
+        "Your phone has stopped asking. Open Settings, find this app, tap "
+        "Notifications, and switch them on."
+    ),
+    "ask_button_retry": "Ask me again",
     "ask_button": "Turn them on",
     "ask_button_settings": "Open Settings",
     "ask_later": "Not now",

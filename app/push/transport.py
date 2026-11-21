@@ -209,6 +209,47 @@ class OneSignalTransport(PushTransport):
             raise PushFailed(f"OneSignal refused: {str(parsed['errors'])[:300]}")
 
 
+class BothPushTransport(PushTransport):
+    """A provider and Web Push at once, for a church running both apps.
+
+    **Why this exists.** The two transports above reach different phones and
+    neither reaches all of them. A native app built around a provider's SDK
+    has no Web Push subscription, so the device fan-out never sees it. A
+    browser, and a Trusted Web Activity wrapping one, has no identity with the
+    provider, so addressing a person by id never reaches it. A church running
+    an App Store app and an Android wrapper around the live site therefore had
+    to choose which half of its congregation got notifications, and the choice
+    was a single environment variable nobody would connect to the symptom.
+
+    **It holds parts rather than sending.** `send` and `send_to_person` are
+    left to raise from the base class on purpose. A caller that has not been
+    taught about `parts` gets `NotImplementedError` immediately instead of
+    quietly delivering to one platform and dropping the other, which is the
+    failure this whole class is here to prevent and the kind that shows up as
+    "notifications work for me" from whoever happens to own the right phone.
+
+    **Order matters, slightly.** The provider goes first so that the fan-out's
+    row deletions and failure counts happen after the call most likely to be
+    refused, keeping a provider outage from looking like dead subscriptions.
+    """
+
+    name = "both"
+
+    # Not addressed as people, not addressed as devices: both, and the caller
+    # has to walk `parts` to find out. See the class docstring.
+    addresses_people = False
+
+    def __init__(self, *parts):
+        real = tuple(part for part in parts if part is not None)
+        if len(real) < 2:
+            raise ValueError(
+                "BothPushTransport needs at least two transports. One alone "
+                "is the transport itself, and wrapping it would only hide "
+                "which one is running."
+            )
+        self.parts = real
+
+
 @dataclass
 class MemoryPushTransport(PushTransport):
     """Records what it was asked to send. Used by the tests.
@@ -255,18 +296,31 @@ class NullPushTransport(PushTransport):
         )
 
 
+def _onesignal(config) -> OneSignalTransport:
+    return OneSignalTransport(
+        config.get("ONESIGNAL_APP_ID", ""),
+        config.get("ONESIGNAL_API_KEY", ""),
+    )
+
+
+def _webpush(config) -> WebPushTransport:
+    return WebPushTransport(
+        config.get("VAPID_PRIVATE_KEY", ""),
+        config.get("VAPID_SUBJECT", "mailto:isaac@betweensundaysconsulting.com"),
+    )
+
+
 def build_push_transport(config) -> PushTransport:
     name = (config.get("PUSH_TRANSPORT") or "null").lower()
     if name == "onesignal":
-        return OneSignalTransport(
-            config.get("ONESIGNAL_APP_ID", ""),
-            config.get("ONESIGNAL_API_KEY", ""),
-        )
+        return _onesignal(config)
     if name == "webpush":
-        return WebPushTransport(
-            config.get("VAPID_PRIVATE_KEY", ""),
-            config.get("VAPID_SUBJECT", "mailto:isaac@betweensundaysconsulting.com"),
-        )
+        return _webpush(config)
+    if name == "both":
+        # Both constructors refuse without their credentials, which is what
+        # should happen: a church that meant to run both and set up one has a
+        # misconfiguration, not a half-working setup to discover per phone.
+        return BothPushTransport(_onesignal(config), _webpush(config))
     if name == "memory":
         return MemoryPushTransport()
     return NullPushTransport()

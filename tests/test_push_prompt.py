@@ -305,3 +305,197 @@ class TestTheSettingsPageStoppedLying:
         page = client.get("/settings/", headers=H).get_data(as_text=True)
 
         assert "no way to turn notifications on for somebody else" in page
+
+
+class TestAndroidIsNotAniPhone:
+    """The two platforms answer a refusal differently, and the card has to
+    know which one it is standing on.
+
+    **iOS shows its prompt once per install, ever.** Everything above is
+    shaped by that: the single chance, the card that spends it deliberately,
+    the Settings instruction once it is gone.
+
+    **Android does not work that way at all.** A refusal there is an answer to
+    that one prompt and nothing more. Ask again and the system asks again. It
+    takes two refusals before Android stops showing it, and only then is
+    Settings the honest instruction.
+
+    Shipping the iOS copy to Android would tell somebody who refused once to
+    go hunting through Settings for a switch, when one more tap on the card
+    would have shown them the prompt again. That is a worse outcome than the
+    bug it came from: the member is now being sent somewhere they do not need
+    to go, by a sentence that sounds authoritative.
+    """
+
+    def test_the_app_says_which_platform_it_is(self, client, sign_in, linked):
+        """Read once, in the shared partial, rather than at each screen that
+        needs it. Two screens guessing separately is how they come to
+        disagree."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "platform: platform" in page
+        assert "window.Capacitor.getPlatform" in page
+
+    def test_only_android_may_be_asked_twice(self, client, sign_in, linked):
+        """Written as a capability rather than a platform check, so a third
+        platform lands on the cautious branch instead of the wrong one."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert 'can_reask: platform === "android"' in page
+
+    def test_android_is_offered_another_prompt_before_settings(
+            self, client, sign_in, linked):
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "your phone will ask again" in page.lower()
+        assert "Ask me again" in page
+
+    def test_android_hears_about_settings_once_it_has_stopped_asking(
+            self, client, sign_in, linked):
+        """The second half. The retry copy would become a lie after Android
+        has given up, because the button stops producing a prompt."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "Your phone has stopped asking" in page
+
+    def test_the_iphone_copy_is_still_there_for_iphones(self, client, sign_in,
+                                                        linked):
+        """The regression guard. Adding the Android branch must not take the
+        iOS one with it."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "Your phone is blocking notifications for this app" in page
+        assert "Open Settings" in page
+
+    def test_refusals_are_counted_somewhere_that_outlives_the_app_closing(
+            self, client, sign_in, linked):
+        """The thing being counted lives in the operating system. Counting it
+        in sessionStorage would reset every launch, so the card would offer a
+        retry forever to a phone that had stopped obliging."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert 'window.localStorage.setItem("dos-push-no"' in page
+        assert "var ANDROID_PROMPTS = 2" in page
+
+    def test_turning_them_on_clears_the_count(self, client, sign_in, linked):
+        """Somebody who allows notifications, turns them off in Settings
+        months later, and comes back should get the ordinary ask rather than
+        being told on their first refusal that their phone has given up."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert 'window.localStorage.removeItem("dos-push-no")' in page
+
+
+class TestAskingThePhoneWhatItDecided:
+    """The bug that made every screen above do nothing.
+
+    The partial asked for permission with `getPermissionAsync`. That method
+    exists on neither platform and never has: both native plugins define
+    `getPermission`, returning `{permission: true}`.
+
+    Nothing looked broken, which is the part worth remembering. Capacitor's
+    bridge builds a callable for any method name asked of it, so the
+    `typeof === "function"` guard passed. The call reached the native side,
+    the native side rejected an unknown method, and the rejection was caught
+    and turned into null.
+
+    null is the "could not answer" value, and every screen treats it as a
+    reason to stay quiet rather than risk telling somebody who already has
+    notifications to switch them on. So:
+
+      - the ask card never appeared, on any phone, ever;
+      - tapping Turn them on threw the prompt's answer away and re-read it
+        through the same broken call, so granting permission still left the
+        card insisting it had not been granted;
+      - `report` never posted, so `push_permission` stayed unset and every
+        account read as never-asked on the staff coverage screen.
+
+    A notification system delivering correctly end to end reported itself,
+    from inside the product, as one nobody had ever switched on. The tests
+    below pin the method name, the shape it returns, and the fallback that
+    keeps an older wrapper working.
+    """
+
+    def test_it_asks_for_the_permission_by_the_name_that_exists(
+            self, client, sign_in, linked):
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "p.getPermission()" in page
+
+    def test_the_working_call_is_not_skipped_past(self, client, sign_in,
+                                                  linked):
+        """Found by a mutation, and it exposed what these tests cannot do.
+
+        Every assertion in this class checks that a string is present. The
+        original bug was not a missing string: `getPermissionAsync` was
+        spelled correctly and guarded properly, and was simply a name the
+        plugin does not have. A structural test cannot see that, and it
+        cannot see an early return placed above the working call either,
+        which leaves the right code in the file and unreachable.
+
+        One `return legacy();` is the fallback at the end of the guard.
+        A second one means something returns before `getPermission` is ever
+        reached, which is the original bug wearing the fixed code as a
+        costume. Pinning the count is a proxy, not a proof. The proof is
+        running the page in a browser against a fake plugin, which is what
+        `prove_prompt.py` beside this suite does.
+        """
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert page.count("return legacy();") == 1
+
+    def test_it_reads_the_shape_the_plugin_actually_returns(
+            self, client, sign_in, linked):
+        """`{permission: true}`, not a bare boolean. Reading it as a boolean
+        makes every answer truthy, which is worse than the bug it replaced:
+        a refusal would register as consent."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert 'typeof result.permission === "boolean"' in page
+
+    def test_an_unrecognised_answer_is_not_mistaken_for_a_refusal(
+            self, client, sign_in, linked):
+        """null and false have to stay apart. "The phone did not answer" and
+        "the phone said no" lead to opposite screens."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "function asBool(result)" in page
+        assert "return null;" in page
+
+    def test_the_old_name_is_still_tried_afterwards(self, client, sign_in,
+                                                    linked):
+        """This partial is not the only thing built against it. A wrapper
+        carrying an older plugin must not be broken by the fix to a newer
+        one, so the old name becomes the fallback rather than disappearing."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "getPermissionAsync" in page
+        assert "function legacy()" in page
+
+    def test_the_prompt_result_is_used_rather_than_asked_for_again(
+            self, client, sign_in, linked):
+        """The second half of the bug. The tap already carries the answer."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "api.report(asBool(result))" in page
+
+    def test_reporting_accepts_an_answer_already_in_hand(self, client, sign_in,
+                                                         linked):
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/", headers=H).get_data(as_text=True)
+
+        assert "api.report = function (known)" in page
+        assert "known === true || known === false" in page

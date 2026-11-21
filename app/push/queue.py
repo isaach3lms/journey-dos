@@ -49,13 +49,22 @@ def reachable(person) -> bool:
     from app.push import send as push_send
 
     transport = push_send.build_push_transport(current_app.config)
-    if getattr(transport, "addresses_people", False):
-        user = push_send._login_for(person)
-        return bool(user is not None and user.push_external_id)
 
     from app.models import PushSubscription
 
-    return bool(PushSubscription.for_person(person.church_id, person.id))
+    # Any pipe is enough. With a provider and Web Push running together, an
+    # iPhone on the native app has no subscription row and an Android wrapper
+    # has no provider identity, so requiring both would drop every
+    # notification to everybody.
+    for part in push_send.parts_of(transport):
+        if getattr(part, "addresses_people", False):
+            user = push_send._login_for(person)
+            if user is not None and user.push_external_id:
+                return True
+        elif PushSubscription.for_person(person.church_id, person.id):
+            return True
+
+    return False
 
 
 def enqueue(

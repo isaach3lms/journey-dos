@@ -204,7 +204,11 @@ class ProductionConfig(BaseConfig):
                 "Falling back to SQLite here would put every church's data on "
                 "an ephemeral disk that is wiped on the next deploy."
             )
-        if app.config.get("PUSH_TRANSPORT") == "webpush" and not app.config.get(
+        # 'both' needs every credential, because it is two transports and each
+        # one refuses to be built without its own. Checked here so the deploy
+        # names the missing variable rather than failing at the first send.
+        push = app.config.get("PUSH_TRANSPORT")
+        if push in ("webpush", "both") and not app.config.get(
             "VAPID_PRIVATE_KEY"
         ):
             raise RuntimeError(
@@ -212,7 +216,7 @@ class ProductionConfig(BaseConfig):
                 "A church whose people tapped Turn on notifications and never "
                 "receive one is worse off than a deploy that refused to start."
             )
-        if app.config.get("PUSH_TRANSPORT") == "onesignal" and not (
+        if push in ("onesignal", "both") and not (
             app.config.get("ONESIGNAL_APP_ID")
             and app.config.get("ONESIGNAL_API_KEY")
         ):

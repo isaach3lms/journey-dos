@@ -40,10 +40,35 @@ from app.models.push import MAX_FAILURES
 
 PROVIDERS = ("onesignal",)
 
+# Runs a provider and Web Push side by side, so both halves of the summary
+# below are true at once and the screen has to show both.
+COMBINED = "both"
+
 
 def transport_summary(config=None) -> dict:
     config = config or current_app.config
     name = (config.get("PUSH_TRANSPORT") or "null").lower()
+
+    if name == COMBINED:
+        # Four credentials, all required. Reported as one `real` so the state
+        # machine below stays a single question, plus the four flags so the
+        # screen can say which one is missing.
+        app_id = bool(config.get("ONESIGNAL_APP_ID"))
+        api_key = bool(config.get("ONESIGNAL_API_KEY"))
+        vapid_public = bool(config.get("VAPID_PUBLIC_KEY"))
+        vapid_private = bool(config.get("VAPID_PRIVATE_KEY"))
+        return {
+            "transport": name,
+            "real": app_id and api_key and vapid_private,
+            # True because a provider is one of the parts: the device rows are
+            # no longer the whole picture, which is what this flag governs.
+            "provider": True,
+            "combined": True,
+            "public_key_present": app_id and vapid_public,
+            "private_key_present": api_key and vapid_private,
+            "provider_keys_present": app_id and api_key,
+            "webpush_keys_present": vapid_private,
+        }
 
     if name in PROVIDERS:
         # Whether they are set, never what they are. The App ID is public by
@@ -53,6 +78,7 @@ def transport_summary(config=None) -> dict:
             "real": bool(config.get("ONESIGNAL_APP_ID")
                          and config.get("ONESIGNAL_API_KEY")),
             "provider": True,
+            "combined": False,
             "public_key_present": bool(config.get("ONESIGNAL_APP_ID")),
             "private_key_present": bool(config.get("ONESIGNAL_API_KEY")),
         }
@@ -61,6 +87,7 @@ def transport_summary(config=None) -> dict:
         "transport": name,
         "real": name == "webpush",
         "provider": False,
+        "combined": False,
         "public_key_present": bool(config.get("VAPID_PUBLIC_KEY")),
         "private_key_present": bool(config.get("VAPID_PRIVATE_KEY")),
     }
@@ -97,11 +124,93 @@ def reach(church_id: int) -> dict:
     }
 
 
+def _webpush_counts(church_id: int) -> dict:
+    """The Web Push half: a row per device, so the rows are the measure.
+
+    One function rather than a query inline in each branch that needs it. Two
+    copies drifted apart would mean the combined transport and Web Push alone
+    reporting different numbers for the same church.
+    """
+    return {
+        "devices": db.session.scalar(
+            db.select(func.count(PushSubscription.id)).where(
+                PushSubscription.church_id == church_id
+            )
+        ) or 0,
+        "people": db.session.scalar(
+            db.select(func.count(func.distinct(PushSubscription.person_id))).where(
+                PushSubscription.church_id == church_id,
+                PushSubscription.person_id.is_not(None),
+            )
+        ) or 0,
+        "failing": db.session.scalar(
+            db.select(func.count(PushSubscription.id)).where(
+                PushSubscription.church_id == church_id,
+                PushSubscription.failure_count >= MAX_FAILURES,
+            )
+        ) or 0,
+        "last_success": db.session.scalar(
+            db.select(func.max(PushSubscription.last_success_at)).where(
+                PushSubscription.church_id == church_id
+            )
+        ),
+    }
+
+
+def _combined_people(church_id: int) -> int:
+    """How many distinct people are reachable by either pipe.
+
+    Adding the two counts would double every person who has the app on their
+    phone and the site open on a laptop, and a "people" figure above the
+    account count reads as a bug rather than as a person with two devices.
+
+    Accounts with no roster record are still people who can receive, so they
+    are keyed by account rather than dropped: a church whose staff logins are
+    not on the roster would otherwise report fewer people than phones.
+    """
+    reachable_keys = set()
+
+    granted = db.session.execute(
+        db.select(User.id, User.person_id).where(
+            User.church_id == church_id,
+            User.is_active_account.is_(True),
+            User.is_kiosk.is_(False),
+            User.push_permission == User.PUSH_GRANTED,
+        )
+    ).all()
+    for user_id, person_id in granted:
+        reachable_keys.add(person_id if person_id is not None else ("user", user_id))
+
+    subscribed = db.session.scalars(
+        db.select(func.distinct(PushSubscription.person_id)).where(
+            PushSubscription.church_id == church_id,
+            PushSubscription.person_id.is_not(None),
+        )
+    ).all()
+    reachable_keys.update(subscribed)
+
+    return len(reachable_keys)
+
+
 def push_health(church_id: int) -> dict:
     summary = transport_summary()
     counts = reach(church_id)
 
-    if summary.get("provider"):
+    if summary.get("combined"):
+        # Both pipes, so both measures count and neither alone is the answer.
+        # A phone on the native app has a granted permission and no
+        # subscription row; a wrapper around the live site has a row and no
+        # provider identity. Reporting either number on its own halves a
+        # working church.
+        rows = _webpush_counts(church_id)
+        devices = counts["granted"] + rows["devices"]
+        # Deduplicated, because one person owning an iPhone on the app and a
+        # laptop in a browser is one person, and a "people" figure larger than
+        # the account count would read as a bug on the screen.
+        people = _combined_people(church_id)
+        failing = rows["failing"]
+        last_success = rows["last_success"]
+    elif summary.get("provider"):
         # No rows to count and none to fail. A provider that has dropped a
         # device answers at send time, which is what the check page and the
         # send test are for.
@@ -110,37 +219,22 @@ def push_health(church_id: int) -> dict:
         failing = 0
         last_success = None
     else:
-        devices = db.session.scalar(
-            db.select(func.count(PushSubscription.id)).where(
-                PushSubscription.church_id == church_id
-            )
-        ) or 0
-
-        people = db.session.scalar(
-            db.select(func.count(func.distinct(PushSubscription.person_id))).where(
-                PushSubscription.church_id == church_id,
-                PushSubscription.person_id.is_not(None),
-            )
-        ) or 0
-
-        failing = db.session.scalar(
-            db.select(func.count(PushSubscription.id)).where(
-                PushSubscription.church_id == church_id,
-                PushSubscription.failure_count >= MAX_FAILURES,
-            )
-        ) or 0
-
-        last_success = db.session.scalar(
-            db.select(func.max(PushSubscription.last_success_at)).where(
-                PushSubscription.church_id == church_id
-            )
-        )
+        rows = _webpush_counts(church_id)
+        devices = rows["devices"]
+        people = rows["people"]
+        failing = rows["failing"]
+        last_success = rows["last_success"]
 
     # Which of the two problems this is, if either. Ordered by what has to be
     # fixed first: keys before devices, because enabling a device against a
     # dead transport teaches somebody that notifications do not work.
     if not summary["real"]:
-        state = "off" if summary["transport"] not in PROVIDERS else "no_keys"
+        state = (
+            "off"
+            if summary["transport"] not in PROVIDERS
+            and not summary.get("combined")
+            else "no_keys"
+        )
     elif not summary["private_key_present"]:
         state = "no_keys"
     elif devices == 0:

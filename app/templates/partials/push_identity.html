@@ -56,11 +56,31 @@ window.dosPush = (function () {
     }
   }
 
+  /* Which phone this is. "ios", "android", or "web".
+
+     Read here rather than at each screen that needs it, because the two
+     platforms answer a refused permission differently and a screen that
+     guesses wrong sends somebody on a trip into Settings they did not need.
+     Wrapped because `getPlatform` has not always existed and a missing
+     function must read as "do not know" rather than throw on page load. */
+  var platform = "web";
+  try {
+    if (window.Capacitor && typeof window.Capacitor.getPlatform === "function") {
+      platform = window.Capacitor.getPlatform() || "web";
+    }
+  } catch (e) {}
+
   var api = {
     /* Whether this page is running somewhere notifications can exist at all.
        False in a browser, which is not a fault and not worth a message. */
     available: !!signal,
     plugin: name,
+    platform: platform,
+    /* iOS spends its one prompt on the first ask and never shows another.
+       Android keeps asking until it decides you mean it. The screens branch
+       on this rather than on the platform string, so a third platform lands
+       on the safer of the two behaviours instead of the wrong one. */
+    can_reask: platform === "android",
     permission: signal && (signal.Notifications || signal),
   };
 
@@ -98,14 +118,60 @@ window.dosPush = (function () {
   }
   {% endif %}
 
+  /* What the native side actually hands back.
+
+     It resolves `{permission: true}` rather than a bare boolean, and an
+     older build or a different platform could do either, so this reads both
+     shapes and returns null for anything it does not recognise. null has to
+     stay distinguishable from false: "the phone did not answer" and "the
+     phone said no" lead to opposite screens. */
+  function asBool(result) {
+    if (result === true || result === false) { return result; }
+    if (result && typeof result.permission === "boolean") {
+      return result.permission;
+    }
+    if (result && typeof result.value === "boolean") { return result.value; }
+    return null;
+  }
+
+  /* **The bug this replaces, and why nothing looked broken.**
+
+     This used to call `getPermissionAsync`, which does not exist on either
+     platform and never has: the method is `getPermission`. The bridge builds
+     a callable for any name asked of it, so the typeof guard passed, the call
+     went to the native side, and the native side rejected it. The rejection
+     was caught and turned into null.
+
+     null means "could not answer", and every screen treats that as a reason
+     to stay quiet rather than risk telling somebody who already has
+     notifications to turn them on. So the ask card never appeared, on any
+     phone, and `report` below never posted, which left every account reading
+     as never-asked on the staff coverage screen. A notification system that
+     was working end to end looked, from inside the product, like one nobody
+     had ever switched on.
+
+     `getPermissionAsync` is still tried as a fallback. This app is not the
+     only thing built against this partial, and a wrapper carrying an older
+     plugin must not be broken by the fix to a newer one. */
   api.state = function () {
     var p = api.permission;
-    if (!p || typeof p.getPermissionAsync !== "function") {
-      return Promise.resolve(null);
+    if (!p) { return Promise.resolve(null); }
+
+    function legacy() {
+      if (typeof p.getPermissionAsync !== "function") {
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(p.getPermissionAsync())
+        .then(asBool)
+        .catch(function () { return null; });
     }
-    return p.getPermissionAsync().then(function (granted) {
-      return !!granted;
-    }).catch(function () { return null; });
+
+    if (typeof p.getPermission !== "function") { return legacy(); }
+
+    return Promise.resolve(p.getPermission()).then(function (result) {
+      var granted = asBool(result);
+      return granted === null ? legacy() : granted;
+    }).catch(legacy);
   };
 
   /* Fires the one prompt iOS will ever show. `fallbackToSettings` matters:
@@ -122,8 +188,13 @@ window.dosPush = (function () {
     catch (e) {
       try { asked = p.requestPermission(true); } catch (e2) { return Promise.resolve(null); }
     }
-    return Promise.resolve(asked).then(function () {
-      return api.report();
+    /* The answer comes back from the prompt itself. Asking the phone again
+       afterwards was the other half of the bug above: the result of the tap
+       was thrown away and re-read through a call that could not succeed, so
+       a member who granted permission still saw the card insist they had
+       not. */
+    return Promise.resolve(asked).then(function (result) {
+      return api.report(asBool(result));
     }).catch(function () { return null; });
   };
 
@@ -135,8 +206,15 @@ window.dosPush = (function () {
      tell "nobody turned notifications on" from "everybody did and none are
      arriving". Posted only when it differs from what the server already
      thinks, so the ordinary page load costs nothing. */
-  api.report = function () {
-    return api.state().then(function (granted) {
+  api.report = function (known) {
+    /* An answer already in hand is used as it is. The prompt resolves with
+       what the member just tapped, and going back to the phone for it would
+       be a second round trip that can fail on its own. */
+    var settled = (known === true || known === false)
+      ? Promise.resolve(known)
+      : api.state();
+
+    return settled.then(function (granted) {
       if (granted === null) { return null; }
       var known = {{ push_permission | tojson }};
       if ((granted && known === "granted") || (!granted && known === "denied")) {
@@ -158,7 +236,13 @@ window.dosPush = (function () {
 
   api.report();
   {% else %}
-  api.report = function () { return Promise.resolve(null); };
+  /* Nobody signed in, so there is nothing to report against. It still hands
+     back whatever it was given, because `ask` reports through this and a
+     no-op that swallowed the answer would leave the card unable to tell a
+     granted permission from a refused one on a staff screen. */
+  api.report = function (known) {
+    return Promise.resolve(known === true || known === false ? known : null);
+  };
   {% endif %}
 
   return api;

@@ -164,21 +164,57 @@
     card.hidden = true;
   }
 
+  /* How many times Android will show its prompt before it stops.
+
+     Android treats the first refusal as an answer to that prompt and nothing
+     more: ask again and the system asks again. After the second it stops
+     showing it at all, and from then on the request returns refused without
+     anything appearing on screen, which looks to the member like a dead
+     button. Counting here is the only way to know which side of that line
+     this phone is on, because the OS does not expose it.
+
+     localStorage rather than sessionStorage, because the thing being counted
+     lives in the operating system and outlives the app being closed. */
+  var ANDROID_PROMPTS = 2;
+
+  function refusals() {
+    try { return parseInt(window.localStorage.getItem("dos-push-no"), 10) || 0; }
+    catch (e) { return 0; }
+  }
+  function recordRefusal() {
+    var next = refusals() + 1;
+    try { window.localStorage.setItem("dos-push-no", String(next)); } catch (e) {}
+    return next;
+  }
+
+  /* What the card says once permission is not granted.
+
+     iOS gets the Settings instruction immediately, because that is genuinely
+     the only route back. Android gets an offer to ask again until the system
+     has stopped obliging, and only then the trip into Settings. */
+  function showRefused(count) {
+    if (window.dosPush.can_reask && count < ANDROID_PROMPTS) {
+      body.textContent = {{ content.ask_body_denied_android | tojson }};
+      go.textContent = {{ content.ask_button_retry | tojson }};
+      return;
+    }
+    if (window.dosPush.can_reask) {
+      body.textContent = {{ content.ask_body_blocked_android | tojson }};
+    } else {
+      body.textContent = {{ content.ask_body_denied | tojson }};
+    }
+    go.textContent = {{ content.ask_button_settings | tojson }};
+  }
+
   window.dosPush.state().then(function (granted) {
     /* null means the plugin could not answer. Showing the card then would
        risk telling somebody who already has notifications to turn them on. */
     if (granted === null || granted === true) { return; }
     if (dismissed()) { return; }
 
-    /* Already answered no, at some point, on this phone. iOS will not show
-       its prompt again, so the honest instruction is the Settings app. The
-       button still fires the request, because the plugin forwards it to
-       Settings when permission has already been decided. */
+    /* Already answered no, at some point, on this phone. */
     var known = {{ push_permission | tojson }};
-    if (known === "denied") {
-      body.textContent = {{ content.ask_body_denied | tojson }};
-      go.textContent = {{ content.ask_button_settings | tojson }};
-    }
+    if (known === "denied") { showRefused(refusals()); }
 
     card.hidden = false;
   });
@@ -186,15 +222,16 @@
   go.addEventListener("click", function () {
     go.disabled = true;
     window.dosPush.ask().then(function (granted) {
+      go.disabled = false;
       if (granted === true) {
         card.hidden = true;
+        /* Cleared so a member who later turns notifications off in Settings
+           and comes back starts the count again rather than being told on
+           the first refusal that their phone has stopped asking. */
+        try { window.localStorage.removeItem("dos-push-no"); } catch (e) {}
         return;
       }
-      /* Refused, or answered long ago and routed to Settings. Either way the
-         card stops asking and says where to go. */
-      body.textContent = {{ content.ask_body_denied | tojson }};
-      go.textContent = {{ content.ask_button_settings | tojson }};
-      go.disabled = false;
+      showRefused(recordRefusal());
     });
   });
 

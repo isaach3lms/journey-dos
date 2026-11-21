@@ -43,9 +43,30 @@ def send_to_person(person, message: PushMessage, category: str,
 
     transport = transport or build_push_transport(current_app.config)
 
-    if transport.addresses_people:
-        return _send_through_provider(person, message, transport, counts)
+    for part in parts_of(transport):
+        if part.addresses_people:
+            _send_through_provider(person, message, part, counts)
+        else:
+            _send_to_devices(person, message, part, counts)
 
+    return counts
+
+
+def parts_of(transport) -> tuple:
+    """The transports a send actually goes through.
+
+    One for an ordinary transport, several for the composite that runs a
+    provider and Web Push side by side. A helper rather than a `getattr` at
+    each call site, because the places that fan out have to agree: one of them
+    deciding a person is unreachable while another would have reached them
+    drops the notification at queue time for a reason nothing records.
+    """
+    return tuple(getattr(transport, "parts", None) or (transport,))
+
+
+def _send_to_devices(person, message: PushMessage, transport,
+                     counts: dict) -> dict:
+    """The Web Push shape: one call per registered device."""
     subscriptions = PushSubscription.for_person(person.church_id, person.id)
 
     for subscription in subscriptions:

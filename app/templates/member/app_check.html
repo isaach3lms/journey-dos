@@ -131,21 +131,36 @@
 
     /* Permission is the one that is genuinely unknown until asked, and the
        only one with a button, because iOS shows its prompt once ever. */
+    /* Asked through `window.dosPush` rather than through the plugin here.
+
+       This screen used to call the plugin directly, which made it the third
+       copy of "what did the phone say" in the app, and all three copies were
+       wrong in the same way: they called `getPermissionAsync`, which exists
+       on neither platform. The bridge answers any method name with a callable
+       and the native side then rejects it, so this check reported "unknown"
+       on a phone that had granted permission perfectly happily.
+
+       That is a worse failure here than anywhere else in the app. This is the
+       screen somebody opens *because* notifications are not arriving. An
+       answer of "unknown" on a working phone sends whoever is debugging
+       toward the app and away from the server, which is where the fault
+       usually is. */
     var permission = signal && (signal.Notifications || signal);
-    if (permission && typeof permission.getPermissionAsync === "function") {
-      permission.getPermissionAsync().then(function (granted) {
+    if (window.dosPush && window.dosPush.available) {
+      window.dosPush.state().then(function (granted) {
+        if (granted === null) {
+          /* Still a real answer, and the honest one: the plugin is present
+             but would not say. Offering the button is right either way. */
+          row({{ content.appcheck_allowed | tojson }}, "unknown",
+              {{ content.appcheck_allowed_unknown | tojson }});
+          show_ask(permission);
+          return;
+        }
         row({{ content.appcheck_allowed | tojson }}, granted ? "yes" : "no",
             granted ? {{ content.appcheck_allowed_yes | tojson }}
                     : {{ content.appcheck_allowed_no | tojson }});
         if (!granted) { show_ask(permission); }
-      }).catch(function () {
-        row({{ content.appcheck_allowed | tojson }}, "unknown", "");
-        show_ask(permission);
       });
-    } else if (permission && typeof permission.requestPermission === "function") {
-      row({{ content.appcheck_allowed | tojson }}, "unknown",
-          {{ content.appcheck_allowed_unknown | tojson }});
-      show_ask(permission);
     }
 
     /* The send test.

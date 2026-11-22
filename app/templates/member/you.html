@@ -277,7 +277,10 @@
       <span class="mrowicon" aria-hidden="true">{{ icons.bell | safe }}</span>
       <span class="fl">
         <span class="pn">{{ content.push_heading }}</span>
-        <span class="pe">{%- if push_devices -%}{{ content.push_devices.format(count=push_devices) }}{%- else -%}{{ content.push_none }}{%- endif -%}</span>
+        {# Rewritten client-side the moment the page loads, because the row
+           says "on this device" and only the device can answer that. This is
+           the server's best guess for the gap before then. #}
+        <span class="pe">{%- if push_devices > 1 -%}{{ content.push_devices.format(count=push_devices) }}{%- elif push_devices -%}{{ content.push_enabled }}{%- else -%}{{ content.push_none }}{%- endif -%}</span>
       </span>
       <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg></span>
     </summary>
@@ -285,7 +288,8 @@
   <p class="mnote">{{ content.push_hint }}</p>
   <div class="mrow">
     <span id="pushstate">
-      {% if push_devices %}{{ content.push_devices.format(count=push_devices) }}
+      {% if push_devices > 1 %}{{ content.push_devices.format(count=push_devices) }}
+      {% elif push_devices %}{{ content.push_enabled }}
       {% else %}{{ content.push_none }}{% endif %}
     </span>
     <b></b>
@@ -386,9 +390,20 @@
     var off = document.getElementById('pushoff');
     var note = document.getElementById('pushnote');
     var state = document.getElementById('pushstate');
+    /* The collapsed row, which is all somebody sees without opening this
+       panel. It was rendered once on the server and never touched again, so
+       while the panel inside corrected itself the row above it kept saying
+       Off on a phone with notifications working. Both say the same thing, so
+       from here they are written together. */
+    var summary = document.querySelector('#push .pe');
     if (!on) return;
 
     function say(text) { note.textContent = text; note.hidden = false; }
+
+    function show(text) {
+      state.textContent = text;
+      if (summary) { summary.textContent = text; }
+    }
 
     /* Inside the app, notifications come from the provider rather than from
        Web Push, which iOS does not expose to a wrapped web view at all. The
@@ -400,13 +415,13 @@
       window.dosPush.state().then(function (granted) {
         if (granted === true) {
           on.hidden = true;
-          state.textContent = {{ content.push_enabled | tojson }};
+          show({{ content.push_enabled | tojson }});
           /* No off button. Permission belongs to iOS and only Settings can
              take it back, so a button here would either lie or do nothing. */
           say({{ content.push_app_off_hint | tojson }});
           return;
         }
-        state.textContent = {{ content.push_none | tojson }};
+        show({{ content.push_none | tojson }});
         on.hidden = false;
         if (granted === false) { say({{ content.push_app_settings | tojson }}); }
       });
@@ -417,7 +432,7 @@
           on.disabled = false;
           if (granted === true) {
             on.hidden = true;
-            state.textContent = {{ content.push_enabled | tojson }};
+            show({{ content.push_enabled | tojson }});
             say({{ content.push_app_off_hint | tojson }});
             return;
           }
@@ -471,7 +486,7 @@
             return post('{{ url_for("member.subscribe_push") }}', payload);
           }).then(function () {
             on.hidden = true; off.hidden = false;
-            state.textContent = {{ content.push_enabled | tojson }};
+            show({{ content.push_enabled | tojson }});
             note.hidden = true;
           }).catch(function () { say({{ content.push_blocked | tojson }}); });
         });
@@ -486,7 +501,7 @@
           });
         }).then(function () {
           off.hidden = true; on.hidden = false;
-          state.textContent = {{ content.push_none | tojson }};
+          show({{ content.push_none | tojson }});
         });
       });
     });

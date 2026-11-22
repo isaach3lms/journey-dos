@@ -207,3 +207,120 @@ class TestTheServerStillLearnsTheAnswer:
         ]
 
         assert "api.report();" in web_branch
+
+
+class TestWhatTheSettingsRowSays:
+    """The row a member opens to check whether notifications are on.
+
+    It used to count `PushSubscription` rows, which is the Web Push way of
+    recording a device. A church on a provider transport has none of those
+    rows at all: the provider holds the devices, and nothing in this database
+    knows about the phone in somebody's hand.
+
+    So the row read "Off" for every member of every church on a provider,
+    while their phone was buzzing. That is worse than an unhelpful screen. It
+    is the screen somebody opens to check, and it told them the opposite of
+    the truth, which sends them to turn on something already on and makes the
+    product look broken when it is working.
+    """
+
+    def test_a_provider_counts_a_granted_permission(self, app, db, journey,
+                                                    linked):
+        from app.models import User
+        from app.push.health import devices_for
+
+        linked.push_permission = User.PUSH_GRANTED
+        db.session.commit()
+        app.config["PUSH_TRANSPORT"] = "onesignal"
+        app.config["ONESIGNAL_APP_ID"] = "a"
+        app.config["ONESIGNAL_API_KEY"] = "k"
+
+        assert devices_for(journey.id, linked) == 1
+
+    def test_a_provider_with_no_answer_yet_counts_nothing(self, app, db,
+                                                          journey, linked):
+        """Not the same as off, but the screen has nothing better to show
+        until the device reports, which happens on this very page load."""
+        from app.push.health import devices_for
+
+        app.config["PUSH_TRANSPORT"] = "onesignal"
+        app.config["ONESIGNAL_APP_ID"] = "a"
+        app.config["ONESIGNAL_API_KEY"] = "k"
+
+        assert devices_for(journey.id, linked) == 0
+
+    def test_web_push_still_counts_its_rows(self, app, db, journey, linked):
+        """The regression guard. Churches on Web Push must be unaffected."""
+        from app.models import PushSubscription
+        from app.push.health import devices_for
+
+        for n in range(2):
+            PushSubscription.register(
+                journey.id, linked, endpoint=f"https://push.example/{n}",
+                p256dh="p", auth="a", label=f"Device {n}")
+        db.session.commit()
+        app.config["PUSH_TRANSPORT"] = "webpush"
+        app.config["VAPID_PRIVATE_KEY"] = "priv"
+
+        assert devices_for(journey.id, linked) == 2
+
+    def test_the_row_reads_on_rather_than_off(self, app, db, client, sign_in,
+                                              journey, linked):
+        """End to end, which is the claim that matters: a member whose phone
+        has granted permission opens settings and the row says so."""
+        from app.models import User
+
+        linked.push_permission = User.PUSH_GRANTED
+        db.session.commit()
+        app.config["PUSH_TRANSPORT"] = "onesignal"
+        app.config["ONESIGNAL_APP_ID"] = "a"
+        app.config["ONESIGNAL_API_KEY"] = "k"
+
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/you/", headers=H).get_data(as_text=True)
+        # Scoped to the push row: `pe` is the shared class for every row
+        # subtitle on this screen, so the first match is a different setting.
+        push_row = page.split('id="push"')[1]
+        row = push_row.split('class="pe"')[1].split("</span>")[0]
+
+        assert "On for this device" in row
+        assert "Off" not in row
+
+    def test_one_device_is_not_described_as_a_number(self, app, db, client,
+                                                     sign_in, journey, linked):
+        """"On for 1 of your devices" is how a count reads when nobody
+        checked what one looks like."""
+        from app.models import User
+
+        linked.push_permission = User.PUSH_GRANTED
+        db.session.commit()
+        app.config["PUSH_TRANSPORT"] = "onesignal"
+        app.config["ONESIGNAL_APP_ID"] = "a"
+        app.config["ONESIGNAL_API_KEY"] = "k"
+
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/you/", headers=H).get_data(as_text=True)
+
+        assert "1 of your devices" not in page
+
+    def test_the_collapsed_row_is_kept_in_sync_by_the_device(
+            self, client, sign_in, linked):
+        """The panel inside corrected itself and the row above it did not,
+        which is why a member saw Off on a working phone even after the
+        server value was right."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/you/", headers=H).get_data(as_text=True)
+
+        assert "var summary = document.querySelector('#push .pe');" in page
+        assert "function show(text)" in page
+        assert "summary.textContent = text;" in page
+
+    def test_every_state_change_writes_both(self, client, sign_in, linked):
+        """One of the five call sites left writing only the inner element
+        would bring the bug back for whichever path that was."""
+        sign_in("member@journeychurchsemo.com")
+        page = client.get("/me/you/", headers=H).get_data(as_text=True)
+        script = page.split("var summary =")[1]
+
+        assert "state.textContent = " not in script.replace(
+            "state.textContent = text;", "")

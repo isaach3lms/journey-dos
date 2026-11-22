@@ -37,6 +37,8 @@ from app.extensions import db
 from app.models import PushSubscription, User
 from app.models.base import utcnow
 from app.models.push import MAX_FAILURES
+from app.push import send as push_send
+from app.push.transport import build_push_transport
 
 PROVIDERS = ("onesignal",)
 
@@ -122,6 +124,42 @@ def reach(church_id: int) -> dict:
         # the same fix: get them into the app once.
         "unasked": accounts - granted - denied,
     }
+
+
+def devices_for(church_id: int, user) -> int:
+    """How many of this person's devices have notifications switched on.
+
+    **Why this is not just a row count.** It used to be, and under a provider
+    transport that is always zero. The provider holds the devices; nothing in
+    this database has a row for the phone in somebody's hand. So the one
+    screen a member opens to check whether notifications are on told every
+    member of a church running a provider that they were off, while their
+    phone was buzzing.
+
+    What is knowable differs by transport, so this answers the question the
+    screen asks rather than the one the schema makes easy:
+
+      - Web Push keeps a row per device, so the rows are the count.
+      - A provider does not say how many devices it holds. The last thing an
+        app on this account reported is all there is, and it answers "are
+        they on" rather than "on how many", so it contributes one.
+
+    A best guess by design. The screen says "on this device", and only the
+    device can answer that, so the page corrects this client-side as soon as
+    it loads. This is what somebody sees in the meantime, and being roughly
+    right beats being confidently wrong.
+    """
+    config = current_app.config
+    total = 0
+
+    for part in push_send.parts_of(build_push_transport(config)):
+        if getattr(part, "addresses_people", False):
+            if getattr(user, "push_permission", None) == User.PUSH_GRANTED:
+                total += 1
+        else:
+            total += PushSubscription.device_count(church_id, user.id)
+
+    return total
 
 
 def _webpush_counts(church_id: int) -> dict:

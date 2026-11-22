@@ -40,6 +40,7 @@ from app.extensions import db
 from app.chat_notify import notify_announcement, notify_new_message
 from app.mail import opt_in, opt_out
 from app.push import selftest
+from app.push.health import devices_for
 from app.bible import parse as parse_reference
 from app.bible.providers import fetch_passage
 from app.models import (
@@ -634,7 +635,10 @@ def you():
         ) or 0,
         categories=CATEGORIES,
         optional_categories=OPTIONAL_CATEGORIES,
-        push_devices=PushSubscription.device_count(g.church.id, current_user.id),
+        # Transport-aware. A plain row count is zero for every church on a
+        # provider, which made this screen tell members notifications were
+        # off while their phone was buzzing.
+        push_devices=devices_for(g.church.id, current_user),
         blocks=db.session.scalars(PersonBlock.for_blocker(g.church.id, person.id)).all(),
         msg=MESSAGES,
         vapid_public_key=current_app.config.get("VAPID_PUBLIC_KEY", ""),

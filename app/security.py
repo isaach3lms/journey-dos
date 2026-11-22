@@ -130,6 +130,8 @@ def sign_in(user, remember: bool = True) -> None:
 
     session.permanent = True
 
+    _relink(user)
+
     # A kiosk account gets a year whether or not anybody ticked anything. A
     # tablet that logs out is a tablet somebody signs into with their own
     # account to get past the login screen, which is the problem the kiosk
@@ -142,6 +144,49 @@ def sign_in(user, remember: bool = True) -> None:
         return
 
     login_user(user, remember=remember)
+
+
+def _relink(user) -> bool:
+    """Attach a roster record to a login that has none, if one now matches.
+
+    **The failure this closes.** Everything the church sends is addressed to a
+    roster record, so a login without one is in no audience and cannot even be
+    queued. Accounts get into that state ordinarily: created from an address
+    that was not on the roster yet, created before the person was added,
+    created from a household address that two people share so the match was
+    correctly refused at the time.
+
+    Once in that state they stayed there, because the match was only ever
+    attempted at the moment the account was created. Adding the roster record
+    an hour later fixed nothing, and nothing anywhere said why that person
+    never got an announcement.
+
+    Retrying it on sign-in costs one indexed query for the small number of
+    accounts that have no record, and it is the moment the church is most
+    likely to have just fixed the roster. `link_person_by_email` keeps its own
+    rule of refusing an address two people share, so a household still waits
+    for somebody to link it by hand rather than guessing a spouse.
+
+    Deliberately silent and best-effort. A failed match, or a database that
+    will not take the write, must never be the reason somebody cannot sign in.
+    """
+    if getattr(user, "person_id", None):
+        return False
+
+    from app.extensions import db
+
+    try:
+        if not user.link_person_by_email():
+            return False
+        db.session.commit()
+    except Exception:  # noqa: BLE001
+        db.session.rollback()
+        current_app.logger.exception(
+            "could not link a roster record for user %s", getattr(user, "id", None)
+        )
+        return False
+
+    return True
 
 
 def assert_cookie_scope_is_safe(app) -> None:

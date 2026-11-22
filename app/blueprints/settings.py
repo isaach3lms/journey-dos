@@ -29,8 +29,10 @@ from app.extensions import db
 from app.mail.health import email_health, explain
 from app.notify_catalogue import GROUPS as notify_groups
 from app.notify_catalogue import every_event
+from app.push.coverage import FIXABLE, NO_RECORD, audience_state
 from app.push.health import push_health
-from app.models import AuditEvent, Church, PasswordResetToken, User
+from app.models import AuditEvent, Church, PasswordResetToken, Person, User
+from app.models.base import utcnow
 from app.models.audit import ROLE_CHANGED
 from app.models.password_reset import LIFETIME_MINUTES
 from app.models.user import ROLES
@@ -94,7 +96,7 @@ def _back_from(row: str):
 @bp.get("/")
 @login_required
 @min_role("staff")
-def index():
+def index():  # noqa: C901
     action = (request.args.get("action") or "").strip() or None
     if action and action not in ACTIONS:
         action = None
@@ -108,6 +110,8 @@ def index():
         # Arriving with a filter but no row named: they came from the filter
         # on the log, so open it.
         open_row = "audit"
+
+    accounts = db.session.scalars(User.for_church(g.church.id)).all()
 
     return render_template(
         "settings/index.html",
@@ -131,8 +135,14 @@ def index():
         audit_count=AuditEvent.count_since(g.church.id, 30),
         retention_days=RETENTION_DAYS,
         active="settings",
-        users=db.session.scalars(User.for_church(g.church.id)).all(),
+        users=accounts,
         roles=ROLES,
+        # Whether each account is in the audience when the church sends
+        # something, keyed by account id. Computed here rather than called
+        # from the template so the roster lookups happen once per account and
+        # are visible to anybody reading this function.
+        audience={user.id: audience_state(user) for user in accounts},
+        audience_fixable=FIXABLE,
         email=email_health(g.church.id),
         push=push_health(g.church.id),
         # The formatting guide, rendered through the function the emails
@@ -998,6 +1008,65 @@ def change_role(user_id: int):
     db.session.commit()
 
     flash(SETTINGS["role_changed"].format(name=user.name, role=role), "notice")
+    return _back_from("accounts")
+
+
+@bp.post("/accounts/<int:user_id>/roster/")
+@login_required
+@min_role("staff")
+def add_account_to_roster(user_id: int):
+    """Put a login on the roster so the church can actually reach it.
+
+    **Why a button exists at all.** Everything the church sends is addressed
+    to a roster record. A login without one is in no audience and cannot be
+    queued, by database constraint, so staff accounts created from an address
+    nobody had added to the roster received none of the announcements the
+    congregation got. Nothing said so, on any screen.
+
+    The match is tried again first. An account reaches this state when the
+    address was not on the roster at the time, and the record may well exist
+    now, in which case linking to it is right and creating a second one would
+    leave the church with two records for one person and notifications split
+    between them.
+
+    Approved on creation, deliberately. Approval is the question "does this
+    person belong to this church yet", and a member of staff with a login who
+    is standing in the settings screen has been answered. Leaving it pending
+    would create the record and still send nothing, which is the same bug
+    one step further along.
+    """
+    user = User.get_for_church(g.church.id, user_id)
+    if user is None:
+        abort(404)
+
+    if audience_state(user) != NO_RECORD:
+        # Already has a record. Whatever is wrong with it is fixed on that
+        # person's own screen, not by making another one.
+        return _back_from("accounts")
+
+    if not user.link_person_by_email():
+        person = Person(
+            church_id=g.church.id,
+            first_name=(user.name or user.email).split()[0][:80],
+            last_name=" ".join((user.name or "").split()[1:])[:80] or "",
+            email=user.email,
+            stage="member",
+            approved_at=utcnow(),
+        )
+        db.session.add(person)
+        db.session.flush()
+        user.person_id = person.id
+
+    record(
+        ROLE_CHANGED,
+        f"{user.name} was added to the roster so they receive what the "
+        f"church sends",
+        actor=current_user,
+        subject_type="user", subject_id=user.id, subject_label=user.name,
+    )
+    db.session.commit()
+
+    flash(SETTINGS["audience_added"].format(name=user.name), "ok")
     return _back_from("accounts")
 
 

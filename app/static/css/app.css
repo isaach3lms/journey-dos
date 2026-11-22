@@ -665,6 +665,15 @@ a{color:inherit;text-decoration:none}
 }
 .pn{display:block;font-weight:500}
 .pe{display:block;font-size:11.5px;color:var(--muted-2)}
+/* A subtitle carrying something the church has to act on, rather than a
+   quiet fact. Only the colour changes: the line is still a subtitle, and
+   making it shout would leave a settings list permanently on alert.
+
+   `--flag` is the token the rest of the app already uses for this, on field
+   errors and the pending pill, so a reskin moves all of them together. It
+   sits outside the brand hues on purpose, which is what keeps a problem
+   legible whatever a church picks for its colours. */
+.pe.warn{color:var(--flag)}
 
 .tag{
   display:inline-block;font-size:11px;font-weight:600;

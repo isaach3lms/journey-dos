@@ -3755,6 +3755,31 @@ SETTINGS = {
     "account_reactivate": "Switch back on",
     "account_deactivated": "{name} can no longer sign in.",
     "account_reactivated": "{name} can sign in again.",
+    # Whether this account is in the audience when the church sends
+    # something. Everything the DOS sends is addressed to a roster record, so
+    # an account with no record attached is in no audience and cannot be
+    # queued at all. That used to be invisible: the account worked, sign-in
+    # worked, notifications were on, and nothing arrived.
+    #
+    # Each line names the step that failed, because each has a different fix.
+    # "Will not get notifications" on its own sends somebody to check their
+    # phone, which is the one thing that is fine.
+    "audience_reached": "Gets church notifications",
+    "audience_no_record": "Not on the roster, so gets nothing the church sends",
+    "audience_archived": "Their roster record is archived",
+    "audience_unapproved": "Their roster record is waiting for approval",
+    "audience_child": "Linked to a child's record, which looks like a mistake",
+    "audience_no_email": "Their roster record has no email address",
+    "audience_opted_out": "They turned church notifications off themselves",
+    "audience_add": "Add to roster",
+    "audience_fix": "Open their record",
+    "audience_added": "{name} is on the roster and will get what the church sends.",
+    "audience_hint": (
+        "Anything the church sends goes to people on the roster. An account "
+        "that is not on it will not receive announcements, however their "
+        "phone is set up."
+    ),
+
     "account_resend": "Send a set-password link",
     "account_temp": "Give them a temporary password",
     "account_temp_hint": (

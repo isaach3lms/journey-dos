@@ -83,6 +83,7 @@
     </summary>
     <div class="setbd">
       <p>{{ content.accounts_hint }}</p>
+      <p class="muted small">{{ content.audience_hint }}</p>
       <p class="muted small">{{ content.account_temp_hint }}</p>
 
       <form method="post" action="{{ url_for('settings.create_account') }}">
@@ -113,6 +114,14 @@
                   {% elif account.last_login_at %}{{ content.account_last_seen.format(when=account.last_login_at|church_time("%b %-d")) }}
                   {% else %}{{ content.account_never }}{% endif %}
                 </span>
+                {# Whether the church can actually reach this account. Shown
+                   on every row rather than only the broken ones, because
+                   "nothing here says otherwise" is what let staff accounts
+                   receive nothing for months. #}
+                {% set state = audience.get(account.id) %}
+                <span class="pe {% if state != 'reached' %}warn{% endif %}">
+                  {{ content['audience_' + state] }}
+                </span>
               </span>
 
               <form method="post" class="inline" action="{{ url_for('settings.change_role', user_id=account.id) }}">
@@ -123,6 +132,18 @@
                   {% endfor %}
                 </select>
               </form>
+
+              {% if state == 'no_record' %}
+                <form method="post" class="inline" action="{{ url_for('settings.add_account_to_roster', user_id=account.id) }}">
+                  {{ csrf_field() }}
+                  <button class="btn ghostbtn tiny" type="submit">{{ content.audience_add }}</button>
+                </form>
+              {% elif state in audience_fixable %}
+                {# Archived, unapproved or missing an address. All three are
+                   fixed on that person's own screen rather than here, so this
+                   points at it instead of duplicating the controls. #}
+                <a class="btn ghostbtn tiny" href="{{ url_for('people.detail', person_id=account.person_id) }}">{{ content.audience_fix }}</a>
+              {% endif %}
 
               <form method="post" class="inline" action="{{ url_for('settings.resend_invite', user_id=account.id) }}">
                 {{ csrf_field() }}

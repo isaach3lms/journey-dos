@@ -91,12 +91,29 @@
        guesswork. With it, the list either names the plugin under a spelling
        nobody expected, or shows the build predates it. */
     var installed = plugins ? Object.keys(plugins).sort().join(", ") : "";
+
+    /* Two ways an app can carry notifications, and this row used to see only
+       one. An app built around Apple's own plugin was told it "was built
+       before notifications were added" and "needs rebuilding", which was
+       wrong on both counts and would have cost a store review to learn. */
+    var apple = !signal && plugins && plugins.PushNotifications;
     row({{ content.appcheck_sdk | tojson }},
-        signal ? "yes" : "no",
+        (signal || apple) ? "yes" : "no",
         signal ? {{ content.appcheck_sdk_yes | tojson }} + " (" + found.name + ")"
+               : apple ? {{ content.appcheck_sdk_apple | tojson }}
                : {{ content.appcheck_sdk_no | tojson }}
                  + (installed ? " " + {{ content.appcheck_sdk_has | tojson }}
                                 + " " + installed : ""));
+
+    /* Only shown once something has actually failed. On a phone there is no
+       console, and the provider's logs stay empty because a registration that
+       Apple refused never reached them, so this line is the only place the
+       reason exists. */
+    if (window.dosPush && window.dosPush.last_error) {
+      row({{ content.appcheck_apple_error | tojson }}, "no",
+          window.dosPush.last_error + " "
+          + {{ content.appcheck_apple_error_hint | tojson }});
+    }
 
     row({{ content.appcheck_printing | tojson }},
         (plugins && plugins.Browser) ? "yes" : "no",

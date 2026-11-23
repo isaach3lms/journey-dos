@@ -567,6 +567,59 @@ def push_state():
     return {"ok": True, "permission": current_user.push_permission}
 
 
+@bp.post("/push-token/")
+@login_required
+def push_token():
+    """The phone handing over Apple's own device token.
+
+    **Why this route exists.** An iOS app can be built around Apple's push
+    plugin rather than the provider's SDK. It then holds a perfectly good
+    device token while the provider has no record of the phone at all, so the
+    church reaches nobody and every screen says it is fine. Passing the token
+    on is what connects the two, and it reaches an app that is already
+    installed rather than waiting on a rebuild and a store review.
+
+    Reports the outcome rather than swallowing it. This runs behind a button
+    a member pressed, on a phone with no console, and "nothing happened" is
+    the answer that sent two days into the wrong half of the system. The
+    check screen prints whatever comes back.
+
+    Narrow, like `push_state` above: it registers the signed-in account's own
+    phone against that account's own external id, and nothing else. A device
+    that lies about its token has made itself unreachable and nobody else.
+    """
+    from app.push.apple import AppleRegistrationFailed, register
+
+    payload = request.get_json(silent=True) or {}
+    token = payload.get("token")
+    if not isinstance(token, str):
+        return {"ok": False, "error": "No token."}, 400
+
+    # App Store and TestFlight both issue production tokens, which is every
+    # member. A development build is the exception and says so for itself.
+    sandbox = payload.get("sandbox") is True
+
+    external_id = current_user.ensure_push_external_id()
+    db.session.commit()
+
+    try:
+        outcome = register(external_id, token, sandbox=sandbox)
+    except AppleRegistrationFailed as exc:
+        current_app.logger.warning(
+            "could not register an Apple token for user %s: %s",
+            current_user.id, exc,
+        )
+        return {"ok": False, "error": str(exc)}, 502
+
+    # Permission was granted or Apple would not have issued a token, so the
+    # coverage figures learn it here too rather than waiting for the next page
+    # load to report it separately.
+    if current_user.record_push_permission(True):
+        db.session.commit()
+
+    return {"ok": True, "outcome": outcome}
+
+
 @bp.post("/app-check/test/")
 @login_required
 def app_check_test():

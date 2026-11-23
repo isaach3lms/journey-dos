@@ -1774,11 +1774,33 @@ MEMBER = {
 
     "appcheck_sdk": "Notifications installed",
     "appcheck_sdk_yes": "The app has the notification system in it.",
+
+    # There are two ways an app can carry notifications, and this row used to
+    # recognise only one of them. An app built around Apple's own plugin
+    # instead of the provider's SDK was told it "was built before
+    # notifications were added" and "needs rebuilding", which was wrong twice
+    # over: the capability was installed, and a rebuild was not the fix. A
+    # church acting on that sentence would have spent a store review to end up
+    # exactly where it started.
+    "appcheck_sdk_apple": (
+        "The app uses Apple's own notification system, which works. It does "
+        "not carry the provider's library, which is fine."
+    ),
     "appcheck_sdk_no": (
-        "The app was built before notifications were added. It needs "
+        "This build carries no way to receive notifications and needs "
         "rebuilding and reinstalling."
     ),
     "appcheck_sdk_has": "This build has:",
+
+    # What Apple said when the app tried to register, kept word for word.
+    # This is where a build with no push entitlement identifies itself, and it
+    # is the only place a church can see it: there is no console on a phone
+    # and the provider's logs will show nothing at all, because the attempt
+    # never reached them.
+    "appcheck_apple_error": "What your phone reported",
+    "appcheck_apple_error_hint": (
+        "Apple's own words. Send this to whoever maintains the app."
+    ),
     "appcheck_build": "App version on this phone",
     "appcheck_build_is": "Running",
 

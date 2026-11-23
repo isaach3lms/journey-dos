@@ -56,6 +56,36 @@ TODAY = date(2026, 11, 18)
 UTC = timezone.utc
 
 
+def _trend_frozen_at(church, today):
+    """`trend_for` with the wall clock pinned to the same day it is given.
+
+    `trend_for` takes a `today` for its window but `shifts_for` reads the real
+    clock for its "has this happened yet" guard, so a test can pin one end and
+    not the other. That is how a test here came to pass for four days and then
+    start failing on the calendar instead of on the code.
+
+    Only the tests need this. In production the two come from the same clock
+    and already agree, so the fix belongs here rather than in a guard that
+    works.
+    """
+    import app.volunteers as volunteers
+
+    real = volunteers.datetime
+    frozen = datetime.combine(today, datetime.min.time()).replace(hour=23,
+                                                                  minute=59)
+
+    class Pinned(real):
+        @classmethod
+        def now(cls, tz=None):
+            return frozen.replace(tzinfo=tz) if tz else frozen
+
+    volunteers.datetime = Pinned
+    try:
+        return trend_for(church, today=today)
+    finally:
+        volunteers.datetime = real
+
+
 @pytest.fixture
 def journey(db):
     return db.session.scalar(db.select(Church).where(Church.slug == "journey"))
@@ -201,13 +231,25 @@ class TestWhatCountsAsServing:
         table runs to the end of the month, so without the guard next
         Sunday's rota inflates this month's numbers and every month over
         month comparison made against them.
+
+        **Why the clock is pinned.** This test hardcoded a Sunday four days
+        after TODAY and passed for exactly four days. TODAY is fixed, but the
+        future guard in `shifts_for` reads the real clock, so once the real
+        date passed that Sunday the service stopped being in the future and
+        the suite began failing on the calendar rather than on the code. A
+        test that is only correct during one particular week is worse than no
+        test: it is a false alarm waiting to interrupt somebody mid-deploy.
+
+        Freezing both ends to the same instant is the fix. There is no
+        clock-freezing library in this project, so the module's `datetime` is
+        stood in for just long enough to ask the question.
         """
         who = person(db, journey)
         served(db, journey, who, date(2026, 11, 22))   # a Sunday after TODAY
         served(db, journey, who, date(2026, 11, 8))    # and one already past
         db.session.commit()
 
-        november = trend_for(journey, today=TODAY)[-1]
+        november = _trend_frozen_at(journey, TODAY)[-1]
         assert november.label == "Nov 2026"
         assert november.shifts == 1, "a service still to come was counted"
         assert november.volunteers == 1

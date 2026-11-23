@@ -133,6 +133,160 @@ window.dosPush = (function () {
   };
   {% endif %}
 
+  /* **Apple's own plugin, when the provider's SDK is not in the build.**
+
+     A wrapper can ship with Capacitor's `PushNotifications` rather than the
+     provider's SDK. The app is then entirely capable of receiving
+     notifications, holding a real device token from Apple, while the provider
+     has no record of the phone because nothing ever told it. Every screen a
+     church can see reports health: the account works, the server has its
+     keys, the device is known. Nobody is reachable.
+
+     That state is not hypothetical. A church ran an App Store app in it and
+     reached two people out of a hundred.
+
+     The token Apple issues here is the same token the provider's SDK would
+     have obtained, so handing it to them directly reaches an app that is
+     already on the phone. The alternative is a rebuild, a store review, and
+     every member taking an update before any of them can be reached.
+
+     Checked after the provider's SDK and before the web branch: a build with
+     both should use the provider's, and a web view must never fall through to
+     web push. */
+  var apple = null;
+  if (!signal && plugins && plugins.PushNotifications) {
+    apple = plugins.PushNotifications;
+    api.available = true;
+    api.transport = "apple";
+
+    /* Apple decides once per install and the answer outlives the app, so this
+       reads rather than asks. `checkPermissions` never prompts. */
+    api.state = function () {
+      if (typeof apple.checkPermissions !== "function") {
+        return Promise.resolve(null);
+      }
+      return Promise.resolve(apple.checkPermissions()).then(function (result) {
+        var value = result && result.receive;
+        if (value === "granted") { return true; }
+        if (value === "denied") { return false; }
+        /* "prompt" and "prompt-with-rationale" both mean Apple has not put
+           the question yet, which counts as a refusal for every screen: there
+           is nothing to deliver to, and the card should offer to ask.
+
+           Worded around the obvious phrase on purpose. A member-facing status
+           string with those words exists elsewhere, and a test asserts it does
+           not appear on this page, so a comment containing it would fail that
+           test for no reason anybody could see. */
+        return value ? false : null;
+      }).catch(function () { return null; });
+    };
+
+    /* The token arrives on an event rather than from the call, so the
+       listener goes on before registering. Registering first would race it,
+       and losing that event means a phone that granted permission and is
+       still unreachable, which is the whole bug wearing a different hat. */
+    var token_waiter = null;
+    function next_token() {
+      if (token_waiter) { return token_waiter; }
+      token_waiter = new Promise(function (resolve) {
+        var settled = false;
+        function give(value) {
+          if (!settled) { settled = true; resolve(value); }
+        }
+        try {
+          apple.addListener("registration", function (payload) {
+            give((payload && payload.value) || null);
+          });
+          apple.addListener("registrationError", function (payload) {
+            /* Apple's own words, kept verbatim. This is where a build with no
+               push entitlement announces itself, and a paraphrase would lose
+               the one sentence that identifies it. */
+            give({error: (payload && (payload.error || payload.message))
+                        || "Apple refused to register this device."});
+          });
+        } catch (e) {
+          give({error: String(e)});
+        }
+        /* Neither event firing is itself the answer: an app without the push
+           capability can simply go quiet. */
+        window.setTimeout(function () {
+          give({error: "Apple did not answer. This build may not have "
+                       + "notifications enabled."});
+        }, 15000);
+      });
+      return token_waiter;
+    }
+
+    api.ask = function () {
+      if (typeof apple.requestPermissions !== "function") {
+        return Promise.resolve(null);
+      }
+      var waiting = next_token();
+
+      return Promise.resolve(apple.requestPermissions()).then(function (result) {
+        if (!result || result.receive !== "granted") {
+          return api.report(false);
+        }
+        apple.register();
+        return waiting.then(function (token) {
+          if (!token || token.error) {
+            api.last_error = (token && token.error) || "No token.";
+            return null;
+          }
+          /* Reported by handing the token over, not by posting a boolean:
+             permission alone leaves the provider with nothing to address,
+             which is exactly the state this whole branch exists to escape. */
+          return send_token(token);
+        });
+      }).catch(function () { return null; });
+    };
+
+    {% if push_external_id %}
+    function send_token(token) {
+      var field = document.querySelector("input[name=csrf_token]");
+      return fetch({{ url_for('member.push_token') | tojson }}, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": field ? field.value : ""
+        },
+        body: JSON.stringify({token: token})
+      }).then(function (response) {
+        return response.json().catch(function () { return {}; });
+      }).then(function (body) {
+        if (body && body.ok) { return true; }
+        /* Kept where the check screen can print it. A church debugging this
+           has no console and no log, and "it did not work" is the answer that
+           cost two days. */
+        api.last_error = (body && body.error) || "Registration failed.";
+        return null;
+      }).catch(function (e) {
+        api.last_error = String(e);
+        return null;
+      });
+    }
+
+    /* Re-registered on every launch, deliberately. A device token is not
+       stable: a reinstall, a restore from backup or a system update can
+       issue a new one, and the provider moves the subscription rather than
+       making a second. Registering once at first grant would leave a phone
+       silently unreachable the day its token changed. */
+    api.state().then(function (granted) {
+      if (granted !== true) { return; }
+      var waiting = next_token();
+      apple.register();
+      waiting.then(function (token) {
+        if (token && !token.error) { send_token(token); }
+      });
+    });
+    {% else %}
+    function send_token() { return Promise.resolve(null); }
+    {% endif %}
+
+    return api;
+  }
+
   if (!signal) {
     /* No native plugin. Either an ordinary browser, where the provider's web
        SDK can do this properly, or a web view inside one of the wrappers,

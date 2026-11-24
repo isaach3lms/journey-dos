@@ -89,6 +89,61 @@ bp = Blueprint("people", __name__, url_prefix="/people")
 PAGE_SIZE = 25
 
 
+@bp.context_processor
+def _section_tabs():
+    """The section strip, on every page in People rather than only the first.
+
+    **Why a context processor and not an argument.** The strip has to appear
+    on all five pages or it is not navigation, it is a menu that exists on
+    the roster and nowhere else. That is what the row of buttons it replaces
+    was: once you were on connect cards there was nothing saying the other
+    three pages existed, so each one was a dead end you reversed out of.
+    Passing it from five routes means the sixth page somebody adds quietly
+    does not get it.
+
+    **The counts are four scalar counts, run per page in this section.** They
+    are indexed and scoped to one church, and the alternative is a badge that
+    is right on the roster and stale everywhere else, which is worse than no
+    badge: somebody trusts it and stops checking.
+
+    Returns nothing outside this blueprint, and nothing at all when there is
+    no church on the request, which is the error pages.
+
+    **Only the pages that show the strip pay for it.** This runs on every
+    template render in the blueprint, and most of those are not in the strip:
+    a person's detail page is the most opened screen in the section and shows
+    no tabs, as do the archive and the stuck and support lists. Four counts
+    they discard is not much, but it is four for nothing, every time. The set
+    comes off the spec rather than a second list written out here, so a page
+    added to the section gets the strip and its counts together.
+    """
+    from app.models import AccountRequest, GuestCard, NextStepSignup, PrayerCheckin
+    from app.models.verse import week_of
+    from app.sections import PEOPLE_TABS, people_tabs
+    from app.timeutil import now_local
+
+    church = getattr(g, "church", None)
+    if church is None:
+        return {}
+
+    if request.endpoint not in {endpoint for endpoint, _, _ in PEOPLE_TABS}:
+        return {}
+
+    counts = {
+        "guest_cards": GuestCard.waiting_count(church.id),
+        "account_requests": AccountRequest.open_count(church.id),
+        "signup_count": NextStepSignup.open_count(church.id),
+        # This week's, by the church's clock rather than the server's, the
+        # same way the roster computed it. A count taken in another time zone
+        # empties on a Saturday evening for somebody looking on Sunday.
+        "prayer_count": PrayerCheckin.unprayed_count(
+            church.id, week_of(now_local(church).date())
+        ),
+    }
+
+    return {"tabs": people_tabs(PEOPLE, request.endpoint or "", counts)}
+
+
 @bp.get("/")
 @login_required
 @min_role("leader")

@@ -3,45 +3,30 @@
 {% block heading %}{{ content.title }}{% endblock %}
 {% block subheading %}{{ content.subtitle }}{% endblock %}
 
-{% block content %}
-{% include "partials/rail.html" %}
+{# The one thing in that old row that really was an action rather than a
+   destination. It sat among four links to other pages, which is how a row of
+   five identical buttons stops telling you anything. Up here it is next to
+   the other actions and out of the way of the roster.
 
-{# Collapsed by default: the roster is for reading, and a form sitting open
-   above it pushes the list down every time somebody opens the tab. #}
-{# Where the cards are. The dashboard tile opens them too, but somebody
-   working through the roster is not looking at the dashboard, and a page
-   nobody can find is a page nobody reads. #}
-<div class="filters">
-  <a class="btn ghostbtn" href="{{ url_for('people.guests') }}">
-    {{ content.guests_view }}{% if guest_cards %} &middot; {{ guest_cards }}{% endif %}
-  </a>
-  <a class="btn ghostbtn" href="{{ url_for('people.requests') }}">
-    {{ content.requests_view }}{% if account_requests %} &middot; {{ account_requests }}{% endif %}
-  </a>
-  {# The count is on the button for the same reason the others carry one:
-     somebody asking to be baptised is the most important message this app
-     carries, and a page you have to open to find out whether it is empty is
-     a page that gets opened on Wednesdays. #}
-  <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">
-    {{ content.signups_view }}{% if signup_count %} &middot; {{ signup_count }}{% endif %}
-  </a>
-  {# Same reasoning as the sign-ups button: the count is what makes somebody
-     open it on a Monday rather than on a Wednesday. It counts this week's
-     check-ins nobody has prayed for yet, so it empties as the list is
-     worked and fills again on Sunday. #}
-  <a class="btn ghostbtn" href="{{ url_for('people.prayer_list') }}">
-    {{ content.prayer_list_title }}{% if prayer_count %} &middot; {{ prayer_count }}{% endif %}
-  </a>
-  {# The report follows the filter that is on, so the button asks for what
-     the person is already looking at rather than always for everyone.
-     `target=_blank` because it is a PDF: opening it over the roster means
-     coming back to page one of a list somebody was part way through. #}
+   Still follows the filter that is on, so it asks for what the person is
+   already looking at rather than always for everyone. `target=_blank`
+   because it is a PDF: opening it over the roster means coming back to page
+   one of a list somebody was part way through. #}
+{% block actions %}
   <a class="btn ghostbtn" target="_blank" rel="noopener"
      href="{{ url_for('people.report', stage=active_stage) }}"
      title="{{ content.report_hint }}">
     {{ content.report }}{% if active_stage %} &middot; {{ active_stage|capitalize }}{% endif %}
   </a>
-</div>
+{% endblock %}
+
+{% block content %}
+{% include "partials/rail.html" %}
+
+{# The four pages that used to be buttons here are now the section strip,
+   built in `app/sections.py` and rendered on every page in People rather
+   than only on this one. #}
+{% include "partials/section_tabs.html" %}
 
 <details class="addbox">
   <summary class="btn">{{ content.add_open }}</summary>

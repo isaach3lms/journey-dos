@@ -1,0 +1,25 @@
+{# The pages inside a section, with the current one marked.
+
+   Replaces a row of outline buttons that were really destinations. A button
+   says "this does something"; a tab says "this is one of the places you can
+   be, and you are here". Four of the most used pages in the product were
+   wearing the wrong one, which left no way to see what a section contained
+   without opening each page and reversing out of it.
+
+   Walks whatever `tabs` it is handed, built in `app/sections.py`. Nothing
+   about which pages exist, what they are called or what they count lives in
+   here, so adding a page is a line of Python rather than an edit to markup.
+
+   `aria-current="page"` rather than the class alone: the highlight is the
+   whole point of the strip, and a screen reader that cannot tell which tab
+   is current is back to the dead ends this replaced. #}
+{% if tabs %}
+<nav class="sectabs" aria-label="{{ content.tabs_label|default('In this section') }}">
+  {% for tab in tabs %}
+    <a class="sectab{% if tab.current %} on{% endif %}" href="{{ tab.href }}"
+       {% if tab.current %}aria-current="page"{% endif %}>
+      {{ tab.label }}{% if tab.count %}<span class="sectabn">{{ tab.count }}</span>{% endif %}
+    </a>
+  {% endfor %}
+</nav>
+{% endif %}

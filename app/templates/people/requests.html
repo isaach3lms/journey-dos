@@ -8,13 +8,19 @@
    screen, and the only buttons are the ones that take it off the list. #}
 
 {% block content %}
+{# The section strip, so this page is one of the places you can be
+   rather than a dead end you reverse out of. #}
+{% include "partials/section_tabs.html" %}
+
 <div class="filters">
   {% if show_all %}
     <a class="btn ghostbtn" href="{{ url_for('people.requests') }}">{{ content.requests_hide_all }}</a>
   {% else %}
     <a class="btn ghostbtn" href="{{ url_for('people.requests', all=1) }}">{{ content.requests_show_all }}</a>
   {% endif %}
-  <a class="btn ghostbtn" href="{{ url_for('people.index') }}">{{ content.requests_back }}</a>
+  {# "Back to people" removed: the Roster tab in the section strip is
+     that link, and keeping both gave two controls for one
+     destination sitting inches apart. #}
 </div>
 
 {% if asks %}

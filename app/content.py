@@ -965,6 +965,17 @@ PEOPLE = {
         "Requests appear here when somebody uses the link on the sign-in "
         "page."
     ),
+    # The first tab in the section strip. The roster had no name of its own
+    # before, because it was the page you were already on and the others were
+    # buttons leading away from it. Once they are all tabs it needs one, and
+    # "Roster" says what the list is rather than repeating the section.
+    "tab_roster": "Roster",
+    "tabs_label": "Pages in People",
+    # The button said "View connect cards". That verb belonged to a button,
+    # which is a thing you press; a tab is a place you are standing, and
+    # "View" reads as an instruction sitting among four nouns.
+    "tab_guests": "Connect cards",
+
     "requests_view": "Account requests",
     "requests_count": "{count} waiting",
     "requests_count_one": "1 waiting",
@@ -981,7 +992,6 @@ PEOPLE = {
     "requests_handled_by": "{status} by {name}",
     "requests_show_all": "Show handled",
     "requests_hide_all": "Hide handled",
-    "requests_back": "Back to people",
 
     "request_subject": "{name} asked for an account at {church}",
     "request_body": (
@@ -1007,8 +1017,6 @@ PEOPLE = {
     "guests_show_discarded": "Show discarded",
     "guests_hide_discarded": "Hide discarded",
     "guests_discarded_by": "Discarded by {name}",
-    "guests_back": "Back to people",
-    "guests_view": "View connect cards",
 
     # What staff are told. Never what the guest wrote: a copy of somebody's
     # words sitting in four inboxes cannot be taken back.
@@ -1507,8 +1515,11 @@ MEMBER = {
         "asked to hear from somebody."
     ),
     "prayer_empty": "Say anything at all, and we will pray through it.",
-    "prayer_back": "Back",
     "prayer_last_week_label": "Last week you asked for prayer about",
+    # The member shell, not the staff one. The staff prayer page lost its back
+    # link to the section tab strip; this one is a member's way out of a single
+    # screen and has no strip above it.
+    "prayer_back": "Back",
     # On their own timeline. That they checked in, never what they wrote:
     # the timeline is read by more people than the prayer list is.
     "prayer_event": "Sent a weekly prayer check in",

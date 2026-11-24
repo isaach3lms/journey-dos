@@ -21,20 +21,32 @@
 (function () {
   var root = document.documentElement;
   root.classList.add("js");
-  /* Narrow unless this browser has been told otherwise.
+  /* Wide unless this browser has asked for the icons.
 
-     The default is the icons, because the rail was 236px of mostly empty
-     green beside every screen and the nine destinations are legible as
-     icons once you have used them twice. Somebody who widens it has said
-     so, and `"0"` is that answer: only an explicit no keeps it wide, so a
-     browser with storage blocked gets the default rather than the
-     opposite of it. */
+     **This default was the other way round, and the reason it changed.**
+     The old note said the rail was 236px of mostly empty green beside every
+     screen, and that nine destinations are legible as icons once you have
+     used them twice. The second half is the problem: "once you have used
+     them twice" describes whoever built it. A volunteer who opens this
+     monthly, or a new staff member in their first week, never reaches the
+     second time with any confidence, and a row of unlabelled glyphs is a
+     memory test they did not ask to sit.
+
+     A church buys this to hand to people who do not work in it daily. The
+     cost of the wide rail is some empty space; the cost of the narrow one
+     is somebody guessing which icon is Groups. Space is cheaper.
+
+     Both explicit answers still stand. The toggle writes `"1"` for icons
+     and `"0"` for labels, so anybody who has chosen either keeps it, and
+     only the people who never had an opinion see the change. Storage
+     blocked gets labels, because the fallback should be the readable one
+     rather than the one that happens to be shorter to write. */
   try {
-    if (localStorage.getItem("nav-collapsed") !== "0") {
+    if (localStorage.getItem("nav-collapsed") === "1") {
       root.classList.add("nav-collapsed");
     }
   } catch (e) {
-    root.classList.add("nav-collapsed");
+    /* Nothing. Labels are the default and this is the default path. */
   }
 })();
 </script>

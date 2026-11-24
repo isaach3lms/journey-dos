@@ -18,10 +18,16 @@
 
     {# One button, two jobs, because it is one idea to the person pressing
        it. The script picks which by width. Hidden until the script runs:
-       a button that does nothing is worse than no button. #}
+       a button that does nothing is worse than no button.
+
+       Rendered in the state the rail starts in, which is now labels rather
+       than icons. The script corrects it on load either way, and the button
+       is hidden until then, so nothing reads this for a frame. It says the
+       truth regardless, because the next person to change the default will
+       read this markup and believe it. #}
     <button class="navtoggle" type="button" data-nav-toggle hidden
-            aria-controls="sidebar" aria-expanded="false"
-            aria-label="{{ nav_ui.expand }}" title="{{ nav_ui.expand }}">
+            aria-controls="sidebar" aria-expanded="true"
+            aria-label="{{ nav_ui.collapse }}" title="{{ nav_ui.collapse }}">
       <span class="navtoggleic" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
              stroke-width="1.8" stroke-linecap="round">

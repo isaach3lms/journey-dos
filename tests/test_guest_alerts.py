@@ -22,6 +22,7 @@ Three rules, and the first two are about what the alert does *not* carry:
 import pytest
 
 from app import guests
+from app.content import PEOPLE
 from app.models import Church, GuestCard, OutboxMessage, Person, User
 from app.models.base import utcnow
 from app.models.church import DEFAULT_ACCOUNT_REQUEST_EMAIL
@@ -285,23 +286,30 @@ class TestAlertingNeverBreaksTheCard:
 
 
 class TestFindingThePage:
-    def test_the_roster_has_a_button(self, client, staff):
+    """These two used to assert the words "View connect cards", which was the
+    label on an outline button in a row of them. That row is now the section
+    tab strip, so the label is a noun and the count is a badge. The behaviour
+    these protect did not change, so they assert the behaviour and read the
+    label out of the copy rather than spelling it again here."""
+
+    def test_the_roster_links_to_the_cards(self, client, staff):
         """The dashboard tile opens the cards too, but somebody working
         through the roster is not looking at the dashboard."""
         page = client.get("/people/", headers=H).get_data(as_text=True)
 
-        assert "View connect cards" in page
+        assert PEOPLE["tab_guests"] in page
         assert "/people/guests/" in page
 
-    def test_the_button_carries_the_count(self, db, journey, client, staff):
+    def test_the_link_carries_the_count(self, db, journey, client, staff):
         """So staff can see there is something to read without opening the
         page to find out."""
         client.post("/welcome/", data=CARD, headers=H)
 
         page = client.get("/people/", headers=H).get_data(as_text=True)
+        strip = page.split('class="sectabs"')[1].split("</nav>")[0]
 
-        assert "View connect cards" in page
-        assert ">1<" in page or "&middot; 1" in page
+        assert PEOPLE["tab_guests"] in strip
+        assert 'class="sectabn">1<' in strip
 
 
 class TestChangingWhoIsTold:

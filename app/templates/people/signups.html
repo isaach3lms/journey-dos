@@ -12,13 +12,19 @@
    end of it. #}
 
 {% block content %}
+{# The section strip, so this page is one of the places you can be
+   rather than a dead end you reverse out of. #}
+{% include "partials/section_tabs.html" %}
+
 <div class="filters">
   {% if show_done %}
     <a class="btn ghostbtn" href="{{ url_for('people.signups') }}">{{ content.signups_show_open }}</a>
   {% else %}
     <a class="btn ghostbtn" href="{{ url_for('people.signups', done=1) }}">{{ content.signups_show_all }}</a>
   {% endif %}
-  <a class="btn ghostbtn" href="{{ url_for('people.index') }}">{{ content.guests_back }}</a>
+  {# "Back to people" removed: the Roster tab in the section strip is
+     that link, and keeping both gave two controls for one
+     destination sitting inches apart. #}
 </div>
 
 {% if signups %}

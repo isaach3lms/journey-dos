@@ -126,45 +126,58 @@ class TestTheNarrowedRail:
         assert ".nav-collapsed .navlbl{display:none}" in CSS
 
 
-class TestItStartsNarrow:
-    """Narrow is the default, and widening it is the thing that is
-    remembered. The rail was 236px of mostly empty green beside every
-    screen; the icons are legible once you have used them twice.
+class TestItStartsWithLabels:
+    """Labels are the default, and narrowing it is the thing that is
+    remembered.
+
+    This class used to assert the opposite, on the reasoning that the icons
+    are legible once you have used them twice. That describes whoever built
+    it. A church buys this product to hand to volunteers who open it monthly
+    and never reach the second time, so the cost of the wide rail is some
+    empty space and the cost of the narrow one is somebody guessing which
+    icon is Groups. Space is cheaper.
+
+    Both explicit answers still stand, which is what the second test here is
+    for: nobody who already chose is reset by the change.
     """
 
-    def test_a_browser_that_has_never_been_told_gets_the_icons(self):
-        """The test that matters: no stored answer means narrow. Written
+    def test_a_browser_that_has_never_been_told_gets_the_labels(self):
+        """The test that matters: no stored answer means labels. Written
         against the condition rather than the class name, because
         `=== "1"` and `!== "0"` both mention `nav-collapsed` and only one
-        of them starts narrow."""
+        of them starts with labels."""
         base = (TEMPLATES / "base.html").read_text()
         head = base[:base.index("</head>")]
-        assert 'localStorage.getItem("nav-collapsed") !== "0"' in head
+        assert 'localStorage.getItem("nav-collapsed") === "1"' in head
 
-    def test_widening_it_is_what_gets_remembered(self):
-        """`"0"` is the stored answer for wide, so somebody who widened it
-        before this change keeps it wide rather than being reset."""
+    def test_both_stored_answers_are_still_written(self):
+        """The toggle writes `"1"` for icons and `"0"` for labels, so
+        anybody who chose either before this change keeps it rather than
+        being reset to the new default."""
         script = (TEMPLATES / "partials" / "shell_nav.html").read_text()
         assert 'now ? "1" : "0"' in script
 
-    def test_storage_being_blocked_still_gives_the_default(self):
+    def test_storage_being_blocked_gives_the_labels_too(self):
         """A private window throws rather than returning nothing, and the
-        catch has to land on narrow too. Falling through to wide would
-        make the one setting behave backwards in exactly the window
-        somebody is least likely to report."""
+        catch has to land on labels too. The fallback should be the
+        readable state rather than the one that happens to be shorter to
+        write, and a browser with storage blocked is exactly where nobody
+        reports it."""
         base = (TEMPLATES / "base.html").read_text()
         head = base[:base.index("</head>")]
         catch = head[head.index("catch"):]
-        assert "nav-collapsed" in catch[:160]
+        assert "nav-collapsed" not in catch[:160]
 
     def test_the_button_starts_in_the_matching_state(self, db, staff):
-        """Rendered before the script runs. A button saying "Narrow the
-        menu" above an already narrow menu is a wrong label for one
-        frame, and a wrong label for a screen reader that read it first."""
+        """Rendered before the script runs. A button saying "Widen the
+        menu" beside an already wide menu is a wrong label for one frame,
+        and a wrong label for a screen reader that read it first. It moved
+        with the default rather than being left behind by it."""
         markup = page(staff)
         start = markup.index('<button class="navtoggle"')
         tag = markup[start:markup.index(">", start)]
-        assert 'aria-expanded="false"' in tag
+        assert 'aria-expanded="true"' in tag
+        assert NAV_UI["collapse"] in tag
 
 
 class TestTheNotch:

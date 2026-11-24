@@ -25,10 +25,9 @@ still has to render.
 
 from __future__ import annotations
 
-import re
-
 import pytest
 
+from app.content import PEOPLE
 from app.models import Church, NextStepSignup, OutboxMessage, Person, User
 from app.models.base import utcnow
 from app.next_steps import BY_CODE, OFFERS, get, icon_path, label_for
@@ -408,14 +407,22 @@ class TestTheStaffList:
         body = staff.get("/people/", headers=H).get_data(as_text=True)
         assert "/people/signups/" in body
 
-    def test_the_count_is_on_the_button(
+    def test_the_count_is_on_the_tab(
         self, app, db, journey, linked, staff
     ):
         """So staff can see there is something waiting without opening the
-        page to find out."""
+        page to find out.
+
+        This asserted `Sign-ups &middot; 1` when the way in was one of a row
+        of outline buttons. That row is the section tab strip now and the
+        count is a badge, so the assertion moved with the markup. What it
+        protects did not change: the number is readable from the roster."""
         self._ask(db, journey, linked)
         body = staff.get("/people/", headers=H).get_data(as_text=True)
-        assert re.search(r"Sign-ups[^<]*&middot;\s*1", body)
+        strip = body.split('class="sectabs"')[1].split("</nav>")[0]
+
+        assert PEOPLE["signups_view"] in strip
+        assert 'class="sectabn">1<' in strip
 
     def test_marking_one_done_takes_it_off_the_list(
         self, app, db, journey, linked, staff

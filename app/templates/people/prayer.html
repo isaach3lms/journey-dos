@@ -14,6 +14,10 @@
 {% block subheading %}{{ content.prayer_list_subtitle }}{% endblock %}
 
 {% block content %}
+{# The section strip, so this page is one of the places you can be
+   rather than a dead end you reverse out of. #}
+{% include "partials/section_tabs.html" %}
+
 <a class="ghost back" href="{{ url_for('shell.index') }}">{{ content.title }}</a>
 
 <section class="card">

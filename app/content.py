@@ -1862,15 +1862,29 @@ MEMBER = {
         "notification service, which usually means you have not allowed "
         "notifications. Tap the button above, then try again."
     ),
+    # Two causes, both of which land here, and this used to name only the
+    # first. Somebody who has already turned notifications on in iPhone
+    # Settings reads a message telling them to go and turn notifications on
+    # in iPhone Settings, checks it again, finds it was right all along, and
+    # has learned nothing. Naming both is the difference between a dead end
+    # and something to report.
     "appcheck_test_blocked": (
-        "The notification service has no device for you. The app is "
-        "installed but notifications are turned off for it. Open iPhone "
-        "Settings, find this app, and turn Notifications on."
+        "The notification service has no device it can deliver to for you. "
+        "Either this phone never finished registering, or the service cannot "
+        "reach it. First check that notifications are on for this app in "
+        "your phone's Settings. If they already are, the setup is not "
+        "finished on our side, so tell whoever maintains the app that you "
+        "saw this."
     ),
+    # One refused request is not proof the whole church is cut off, and the
+    # old wording said it was. It can be a key, and it can be the service
+    # being briefly unreachable, so this says what happened and what to do
+    # about it rather than announcing an outage from a single attempt.
     "appcheck_test_failed": (
-        "The notification service refused the send. The key on the server is "
-        "wrong or expired. Nobody at the church is receiving notifications "
-        "until that is fixed."
+        "The notification service refused this send. If it refuses every "
+        "time, the key on the server is wrong or expired and nobody is "
+        "receiving notifications until that is fixed. Try once more, and "
+        "report it if it keeps happening."
     ),
     "appcheck_test_unconfigured": (
         "The server has no notification keys, so it cannot send to anybody. "

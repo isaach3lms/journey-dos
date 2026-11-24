@@ -403,6 +403,106 @@ class TestTheRequestItSends:
         assert sent["url"] == "https://api.onesignal.com/notifications"
 
 
+class TestReadingTheirAnswer:
+    """What a 200 from OneSignal actually means.
+
+    Their success and their total failure are both HTTP 200. `id` is what
+    separates them: a notification that reached nobody comes back with `id`
+    set to the empty string and `errors` holding a bare string. A send that
+    went out and had one identifier fail validation comes back with a real
+    `id` and `errors` holding the per-channel detail.
+
+    So `errors` on its own says nothing about whether anything was delivered,
+    and that is exactly what this code used to branch on. It read `errors`
+    alone, under a comment claiming it handled a 200 that reached nobody, and
+    got both halves wrong in opposite directions: nobody-subscribed was
+    reported as a server key failure, and a delivered notification with one
+    stale id was recorded against the person as a failure.
+
+    The reason it survived is the more useful lesson. The test covering it
+    asserted the same field the code branched on, so the test and the bug
+    agreed with each other.
+    """
+
+    def _send(self, body: bytes, status: int = 200):
+        """Send one notification against a canned response body."""
+        class FakeResponse:
+            def read(self):
+                return body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        import urllib.request
+
+        original = urllib.request.urlopen
+        urllib.request.urlopen = lambda request, timeout=None: FakeResponse()
+        try:
+            OneSignalTransport("app", "key").send_to_person(
+                "ext-123", PushMessage(title="Hi", body="There."))
+        finally:
+            urllib.request.urlopen = original
+
+    def test_an_id_and_no_errors_is_a_send(self):
+        self._send(b'{"id": "6f0e-...", "external_id": null}')
+
+    def test_nobody_subscribed_is_gone_rather_than_failed(self):
+        """Their documented shape for an audience with no subscribed device:
+        200, an empty `id`, and `errors` as a list of bare strings.
+
+        `SubscriptionGone` rather than `PushFailed` because these are two
+        different things to go and fix, and the wrong one sends somebody
+        looking at server keys that are fine."""
+        with pytest.raises(SubscriptionGone):
+            self._send(
+                b'{"id": "", "errors": '
+                b'["All included players are not subscribed"]}')
+
+    def test_a_missing_id_is_gone_even_with_no_reason_given(self):
+        """Their docs say a missing `id` means the message was not created,
+        and say nothing promising `errors` alongside it. Treating a silent
+        non-creation as a success is the failure mode worth closing: it
+        reports a notification nobody can receive as delivered."""
+        with pytest.raises(SubscriptionGone):
+            self._send(b'{"id": ""}')
+
+    def test_a_real_id_with_a_stale_identifier_still_counts_as_sent(self):
+        """`errors` is present on a successful send too, holding the
+        identifiers that did not resolve. Raising here records a delivered
+        notification as a failure against the person who received it."""
+        self._send(
+            b'{"id": "6f0e-...", "errors": '
+            b'{"invalid_player_ids": ["dead-subscription-id"]}}')
+
+    def test_a_stale_identifier_is_logged_rather_than_swallowed(self, caplog):
+        """Counting it as sent is right and saying nothing about it is not:
+        somebody has to be able to find out why one phone is quiet."""
+        import logging
+
+        with caplog.at_level(logging.WARNING, logger="app.push.transport"):
+            self._send(
+                b'{"id": "6f0e-...", "errors": '
+                b'{"invalid_player_ids": ["dead-subscription-id"]}}')
+
+        assert "dead-subscription-id" in caplog.text
+
+    def test_a_body_that_is_not_json_is_not_treated_as_a_failure(self):
+        """A 200 their API did not give us JSON for is not evidence the send
+        failed, and turning it into one would mark live devices dead."""
+        self._send(b'<html>maintenance</html>')
+
+    def test_the_reason_reaches_the_exception(self):
+        """It lands in the check page's message and in the log. Dropping it
+        leaves somebody with "it did not work" and nothing to act on."""
+        with pytest.raises(SubscriptionGone, match="not subscribed"):
+            self._send(
+                b'{"id": "", "errors": '
+                b'["All included players are not subscribed"]}')
+
+
 class TestTheSetupCheck:
     """The page that answers "we set it up and nothing arrived".
 

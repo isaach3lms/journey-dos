@@ -20,7 +20,13 @@ private conversation, no child's name.
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass, field
+
+# This module stays free of Flask on purpose: a transport is the piece worth
+# exercising without an app context, so it logs through the standard library
+# rather than reaching for `current_app`.
+log = logging.getLogger(__name__)
 
 
 class PushFailed(Exception):
@@ -199,14 +205,56 @@ class OneSignalTransport(PushTransport):
         except Exception as exc:  # noqa: BLE001
             raise PushFailed(f"OneSignal unreachable ({exc}).") from exc
 
-        # A 200 with zero recipients means the same thing as the 400 above;
-        # which one comes back has changed between versions of their API.
+        # Their success and their total failure are both HTTP 200, and `id` is
+        # what separates them: a notification that reached nobody comes back
+        # with `id` set to the empty string and `errors` holding a bare string,
+        # usually "All included players are not subscribed".
+        #
+        # This block used to read `errors` alone, with a comment claiming it
+        # handled a 200 that reached nobody. It did not, and it got both
+        # halves wrong in opposite directions:
+        #
+        #   * Nobody subscribed came back as PushFailed, so the check page
+        #     told somebody the key on the server was wrong and nobody at the
+        #     church was receiving anything. The key was fine. They had no
+        #     subscribed device, which is a different thing to go and fix and
+        #     the one message guaranteed to send them looking in the wrong
+        #     place.
+        #   * A send that went out to everybody except one stale id also came
+        #     back as PushFailed, because `errors` is present on a successful
+        #     send too when an identifier fails validation. A delivered
+        #     notification was recorded against the person as a failure.
+        #
+        # Neither showed up in a test, because the assertion that was supposed
+        # to cover this read the same field the code did.
         try:
             parsed = json.loads(body)
         except ValueError:
             return
-        if isinstance(parsed, dict) and parsed.get("errors"):
-            raise PushFailed(f"OneSignal refused: {str(parsed['errors'])[:300]}")
+        if not isinstance(parsed, dict):
+            return
+
+        errors = parsed.get("errors")
+        created = bool(parsed.get("id"))
+
+        if not created:
+            # Nothing was created, so there is nothing to retry and nothing to
+            # record as a failure against the server. Same meaning as the 400
+            # above, and the same handling.
+            raise SubscriptionGone(
+                f"OneSignal created nothing: {str(errors)[:300]}"
+                if errors else "OneSignal created nothing and gave no reason."
+            )
+
+        # Created, so it went out. `errors` here lists the identifiers that
+        # did not resolve, which on a one-person send means the rest of the
+        # audience got it and this person may not have. Worth the log line and
+        # not worth telling the person their notifications are broken.
+        if errors:
+            log.warning(
+                "OneSignal accepted %s with errors: %s",
+                parsed.get("id"), str(errors)[:300],
+            )
 
 
 class BothPushTransport(PushTransport):

@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}{{ content.service_title }} | {{ church.name }}{% endblock %}
+{% block heading %}{{ content.service_title }}{% endblock %}
+{% block subheading %}{{ content.service_intro }}{% endblock %}
+
+{% block content %}
+
+{% if not found.asked %}
+  <section class="card">
+    <div class="bd">
+      <p>{{ content.service_not_configured }}</p>
+    </div>
+  </section>
+{% else %}
+
+{# The Apple credential first, because it is the one that makes every phone
+   silent at once and the one nothing on a phone can reveal. #}
+<section class="card">
+  <div class="hd"><h2>{{ content.service_apple_heading }}</h2></div>
+  <div class="bd">
+    {% if found.apple == "apple_no_credential" %}
+      <p>{{ content.service_apple_no_credential }}</p>
+    {% elif found.apple == "apple_sandbox" %}
+      <p>{{ content.service_apple_sandbox }}</p>
+    {% elif found.apple == "apple_ready" %}
+      <p>{{ content.service_apple_ready }}</p>
+    {% else %}
+      <p>{{ content.service_apple_unknown }}</p>
+    {% endif %}
+
+    <ul class="muted small">
+      {% if found.bundle_id %}
+        <li>{{ content.service_bundle.format(value=found.bundle_id) }}</li>
+      {% endif %}
+      {% if found.env %}
+        <li>{{ content.service_env.format(value=found.env) }}</li>
+      {% endif %}
+      {% if found.messageable is not none %}
+        <li>{{ content.service_messageable.format(count=found.messageable) }}</li>
+      {% endif %}
+    </ul>
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.service_person_heading }}</h2></div>
+  <div class="bd">
+    {% if found.person == "person_not_found" %}
+      <p>{{ content.service_person_not_found }}</p>
+    {% elif found.person == "person_no_push" %}
+      <p>{{ content.service_person_no_push }}</p>
+    {% elif found.person == "person_no_apple" %}
+      <p>{{ content.service_person_no_apple }}</p>
+    {% elif found.person == "person_apple_no_token" %}
+      <p>{{ content.service_person_apple_no_token }}</p>
+    {% elif found.person == "person_apple_off" %}
+      <p>{{ content.service_person_apple_off }}</p>
+    {% elif found.person == "person_ready" %}
+      <p>{{ content.service_person_ready }}</p>
+    {% else %}
+      <p>{{ content.service_person_unknown }}</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <div class="hd"><h2>{{ content.service_devices_heading }}</h2></div>
+  <div class="bd">
+    {% if found.subscriptions %}
+      <div class="tablewrap">
+      <table class="roster">
+        <thead>
+          <tr>
+            <th>{{ content.service_col_kind }}</th>
+            <th>{{ content.service_col_state }}</th>
+            <th>{{ content.service_col_token }}</th>
+            <th>{{ content.service_col_device }}</th>
+            <th>{{ content.service_col_detail }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in found.subscriptions %}
+            <tr>
+              <td>{{ sub.type }}</td>
+              <td>
+                {% if sub.enabled %}{{ content.service_yes }}
+                {% else %}{{ content.service_no }}{% endif %}
+              </td>
+              {# Never the whole token. Enough of it to tell two phones
+                 apart, and useless to anybody reading over a shoulder. #}
+              <td class="mono">
+                {% if sub.has_token %}
+                  {{ content.service_token_is.format(tail=sub.token_tail) }}
+                {% else %}{{ content.service_no_token }}{% endif %}
+              </td>
+              <td class="muted">
+                {{ sub.device }}{% if sub.os %} ({{ sub.os }}){% endif %}
+              </td>
+              <td class="muted mono">{{ sub.status_detail }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    {% else %}
+      <p class="muted">{{ content.service_none }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{% if found.errors %}
+  <section class="card">
+    <div class="hd"><h2>{{ content.service_errors_heading }}</h2></div>
+    <div class="bd">
+      <ul>
+        {% for problem in found.errors %}<li>{{ problem }}</li>{% endfor %}
+      </ul>
+    </div>
+  </section>
+{% endif %}
+
+{% endblock %}

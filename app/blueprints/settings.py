@@ -1284,3 +1284,34 @@ def email_retry():
         "notice" if counts.get("sent") == len(ids) else "error",
     )
     return _back("email")
+
+
+@bp.get("/notification-service/")
+@login_required
+@min_role("staff")
+def push_service():
+    """What the notification service itself has, asked of the service.
+
+    Separate from the settings page and from the member check screen, and
+    deliberately a page somebody opens rather than a panel that loads with
+    everything else. It makes two outbound requests, so putting it on the
+    settings page would mean every settings load waits on a third party and
+    breaks when that third party is slow.
+
+    Staff only, because it reports how the church's push is configured.
+    Read-only: see `app/push/diagnose.py`.
+    """
+    from app.push.diagnose import diagnose
+
+    found = diagnose(
+        current_app.config.get("ONESIGNAL_APP_ID") or "",
+        current_app.config.get("ONESIGNAL_API_KEY") or "",
+        current_user.push_external_id,
+    )
+    return render_template(
+        "settings/push_service.html",
+        church=g.church,
+        content=SETTINGS,
+        found=found,
+        active="settings",
+    )

@@ -4331,6 +4331,94 @@ SETTINGS = {
     ),
     # Typed rather than clicked, because the markers are what actually gets
     # stored, and because the toolbar is a cramped row on a phone.
+    # The notification service diagnostic. Every one of these says what was
+    # found and what to do about it, because the person reading it is reading
+    # it at the end of a week of notifications not arriving and a status word
+    # on its own has already failed them three times.
+    "service_title": "What the notification service has",
+    "service_intro": (
+        "Asked of the notification service directly, not of this phone. "
+        "This is read-only and changes nothing."
+    ),
+    "service_apple_heading": "Sending to iPhones",
+    "service_apple_no_credential": (
+        "The service holds no Apple credential for this app, so it cannot "
+        "deliver to any iPhone. Every send is accepted and then dropped, "
+        "which is why the app and the test both look fine. Upload an Apple "
+        "push key in the service dashboard under the app's iOS settings. "
+        "This is almost certainly the whole problem."
+    ),
+    "service_apple_sandbox": (
+        "The service holds an Apple credential but is pointed at Apple's "
+        "sandbox, and this app registers live tokens. Nothing will arrive "
+        "until that is switched to production, or until the app is run from "
+        "a development build."
+    ),
+    "service_apple_ready": (
+        "The service holds an Apple credential and is pointed at Apple's "
+        "live environment. If iPhones are still silent, the cause is on this "
+        "account rather than in the setup."
+    ),
+    "service_apple_unknown": (
+        "The service did not say whether it holds an Apple credential. "
+        "Nothing can be concluded from that either way."
+    ),
+    "service_person_heading": "This account",
+    "service_person_not_found": (
+        "The service has never heard of this account. Nothing this phone did "
+        "has reached it, so there is nothing for it to deliver to. Open the "
+        "app on the phone, allow notifications when asked, then check here "
+        "again."
+    ),
+    "service_person_no_push": (
+        "The service knows this account but has no phone or browser attached "
+        "to it. Same thing to do: open the app, allow notifications, check "
+        "again."
+    ),
+    "service_person_no_apple": (
+        "The service has a device for this account but no iPhone among them. "
+        "If the app is installed on an iPhone, that phone never finished "
+        "registering."
+    ),
+    "service_person_apple_no_token": (
+        "The service has an iPhone for this account with no delivery token "
+        "on it, which means registration started and never completed. That "
+        "usually means the app was built without the push capability turned "
+        "on."
+    ),
+    "service_person_apple_off": (
+        "The service has an iPhone for this account and is holding it as "
+        "unsubscribed, so it will not be sent to. Check that notifications "
+        "are on for the app in the phone's own Settings."
+    ),
+    "service_person_ready": (
+        "The service has an iPhone for this account, with a delivery token, "
+        "marked as able to receive. Nothing on this account is blocking "
+        "delivery."
+    ),
+    "service_person_unknown": (
+        "The service answered about this account in a way this page did not "
+        "recognise. The rows below are what it said."
+    ),
+    "service_devices_heading": "What it has attached",
+    "service_none": "Nothing.",
+    "service_col_kind": "Kind",
+    "service_col_state": "Can receive",
+    "service_col_token": "Token",
+    "service_col_device": "Device",
+    "service_col_detail": "Service detail",
+    "service_yes": "Yes",
+    "service_no": "No",
+    "service_no_token": "None",
+    "service_token_is": "ends {tail}",
+    "service_bundle": "App bundle id: {value}",
+    "service_env": "Apple environment: {value}",
+    "service_messageable": "Devices the service can message across this app: {count}",
+    "service_not_configured": (
+        "This server has no notification service credentials, so there was "
+        "nothing to ask."
+    ),
+    "service_errors_heading": "What could not be read",
     "format_sample": (
         "# A heading\n\n"
         "Plain writing, with **bold** and *italic*.\n\n"

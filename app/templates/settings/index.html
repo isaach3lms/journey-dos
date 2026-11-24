@@ -731,6 +731,17 @@
         </p>
       {% endif %}
 
+      {# Every number above this line is ours: what we queued, what we think
+         we sent. None of it can see whether the service can actually reach
+         an iPhone, which is the failure that leaves all of these green while
+         nothing arrives. Its own page because it calls out to the service,
+         and this page should not wait on a third party to load. #}
+      <p>
+        <a class="btn ghostbtn" href="{{ url_for('settings.push_service') }}">
+          {{ content.service_title }}
+        </a>
+      </p>
+
       {# Whether anything is draining the queue.
 
          Notifications are sent by a worker now, not by the app, which means
